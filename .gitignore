@@ -13,6 +13,8 @@ tts_cache\
 voices\
 *.bak
 *.rar
+*.bat
+*.diff
 core_gui_copy.py_бекап
 ДОСТУПНІ МІКРОФОНИ.txt
 створи план вдосконалення коду.txt
