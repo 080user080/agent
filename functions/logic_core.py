@@ -7,6 +7,7 @@ import inspect
 from pathlib import Path
 import time
 from colorama import Fore, Back, Style
+from .core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result
 
 # Глобальне посилання на реєстр, щоб aaa_architect міг його оновити
 global_registry = None
@@ -18,6 +19,7 @@ class FunctionRegistry:
         global global_registry
         self.functions = {}
         self.core_modules = {}
+        self.last_tool_result = None
         self.load_all_modules()
         global_registry = self  # Зберігаємо посилання на себе
     
@@ -96,6 +98,14 @@ class FunctionRegistry:
             if name in module_name:
                 return module
         return None
+
+    def get_tool_policy(self, action):
+        """Отримати політику інструмента."""
+        return get_tool_policy(action)
+
+    def get_tool_risk(self, action):
+        """Отримати risk-level інструмента."""
+        return get_tool_risk(action)
     
     def get_system_prompt(self):
         """Згенерувати Voice-First system prompt для Code Assistant"""
@@ -178,11 +188,21 @@ class FunctionRegistry:
     def execute_function(self, action, params):
         """Виконати функцію за назвою"""
         if action not in self.functions:
-            return f"{Fore.RED}❌ Функція {action} не знайдена"
+            result = normalize_tool_result(f"{Fore.RED}❌ Функція {action} не знайдена")
+            self.last_tool_result = result
+            return result["message"]
         
         try:
             func = self.functions[action]['function']
-            result = func(**params)
-            return result
+            raw_result = func(**params)
+            result = normalize_tool_result(raw_result)
+            result["action"] = action
+            result["params"] = params
+            self.last_tool_result = result
+            return result["message"]
         except Exception as e:
-            return f"{Fore.RED}❌ Помилка виконання {action}: {str(e)}"
+            result = normalize_tool_result(f"{Fore.RED}❌ Помилка виконання {action}: {str(e)}")
+            result["action"] = action
+            result["params"] = params
+            self.last_tool_result = result
+            return result["message"]

@@ -136,37 +136,153 @@ class VoiceAssistant:
         """Обробити команду"""
         try:
             # --- Planner branch --- #GPT
-            if hasattr(self, "planner") and self.planner and len(command_text.split()) > 6:
+            if hasattr(self, "planner") and self.planner and self.planner.should_plan(command_text):
                 plan = self.planner.create_plan(command_text)
                 if plan:
-                    # --- ПЕРЕВІРКА БЕЗПЕКИ ПЛАНУ ---
                     is_safe, explanation = self.planner.validate_plan_safety(plan, command_text)
                     if not is_safe:
                         warning_msg = f"⚠️ План може бути небезпечним: {explanation}"
                         self.log_to_gui("assistant", warning_msg)
-                        # Можна запитати підтвердження через GUI
-                        # (тут можна додати виклик confirm_action)
                         print(f"{Fore.RED}{warning_msg}{Fore.RESET}")
-                        # Поки що не виконуємо
                         return
-                    # ---------------------------------
-                    
+
                     print(f"{Fore.MAGENTA}📋 План: {plan}")
-                    
-                    # Функція для виконання одного кроку (викликається з Executor)
+                    self.log_to_gui("assistant", f"📋 План готовий: {len(plan)} кроків. Починаю виконання.")
+
+                    context = self.planner.build_execution_context(command_text, plan)
+
                     def execute_step(step):
-                        action = step.get("action")
-                        args = step.get("args", {})
-                        return self.registry.execute_function(action, args)
-                    
-                    # Колбек після завершення всього плану
+                        if self.executor.stop_requested:
+                            return {
+                                "action": step.get("action"),
+                                "status": "stopped",
+                                "result": "⏹️ Виконання зупинено користувачем.",
+                                "step": step,
+                                "context": context.copy(),
+                            }
+
+                        prepared_step = self.planner.prepare_step(step, context)
+                        action = prepared_step.get("action")
+                        args = prepared_step.get("args", {})
+                        risk = self.registry.get_tool_risk(action)
+
+                        if risk == "blocked":
+                            return {
+                                "action": action,
+                                "status": "blocked",
+                                "result": f"⛔ Дію '{action}' заблоковано політикою безпеки.",
+                                "validation": "blocked_by_policy",
+                                "step": prepared_step,
+                                "context": context.copy(),
+                            }
+
+                        if risk == "confirm_required":
+                            question = f"Підтвердити дію '{action}'?"
+                            if action == "open_program":
+                                question = f"Підтвердити відкриття програми '{args.get('program_name', '')}'?"
+                            elif action == "close_program":
+                                question = f"Підтвердити закриття програми '{args.get('process_name', '')}'?"
+                            elif action == "add_allowed_program":
+                                question = f"Підтвердити додавання програми '{args.get('program_name', '')}' у whitelist?"
+
+                            self.log_to_gui("assistant", f"❓ Потрібне підтвердження для кроку: {action}")
+                            confirmation_result = self.registry.execute_function(
+                                "confirm_action",
+                                {"action": action, "question": question},
+                            )
+                            confirmation_meta = getattr(self.registry, "last_tool_result", None)
+                            if not confirmation_meta or not confirmation_meta.get("ok"):
+                                return {
+                                    "action": action,
+                                    "status": "needs_confirmation",
+                                    "result": confirmation_result,
+                                    "validation": "confirmation_required",
+                                    "step": prepared_step,
+                                    "context": context.copy(),
+                                }
+
+                        self.log_to_gui("assistant", f"▶️ Крок: {action}")
+                        result = self.registry.execute_function(action, args)
+                        success, validation_message = self.planner._validate_step(action, args, result, context)
+                        tool_meta = getattr(self.registry, "last_tool_result", None)
+
+                        repair_step = None
+                        replanned_steps = None
+                        final_result = result
+                        final_action = action
+                        final_args = args
+
+                        if not success and not self.executor.stop_requested:
+                            if tool_meta and tool_meta.get("needs_confirmation"):
+                                return {
+                                    "action": action,
+                                    "status": "needs_confirmation",
+                                    "result": result,
+                                    "validation": validation_message,
+                                    "step": prepared_step,
+                                    "context": context.copy(),
+                                }
+
+                            self.log_to_gui("assistant", f"⚠️ Крок '{action}' не пройшов перевірку. Пробую виправити.")
+                            context["repair_attempts"] = context.get("repair_attempts", 0) + 1
+                            repair_step = self.planner.propose_repair_step(command_text, prepared_step, result, context)
+
+                            if repair_step:
+                                repaired = self.planner.prepare_step(repair_step, context)
+                                final_action = repaired.get("action")
+                                final_args = repaired.get("args", {})
+                                self.log_to_gui("assistant", f"🔁 Repair-крок: {final_action}")
+                                final_result = self.registry.execute_function(final_action, final_args)
+                                success, validation_message = self.planner._validate_step(final_action, final_args, final_result, context)
+                                prepared_step = repaired
+
+                                if not success:
+                                    context["replan_attempts"] = context.get("replan_attempts", 0) + 1
+                                    replanned_steps = self.planner.propose_replan(
+                                        command_text,
+                                        prepared_step,
+                                        final_result,
+                                        context,
+                                        [],
+                                    )
+                                    if replanned_steps:
+                                        self.log_to_gui("assistant", f"🧭 Переплановую задачу: додано {len(replanned_steps)} нових кроків.")
+                                    else:
+                                        self.log_to_gui("assistant", "⚠️ Перепланування не дало безпечного продовження.")
+
+                        self.planner.update_context_from_result(
+                            {"action": final_action, "args": final_args},
+                            final_result,
+                            context,
+                        )
+
+                        return {
+                            "action": final_action,
+                            "status": "ok" if success else "error",
+                            "result": final_result,
+                            "validation": validation_message,
+                            "step": prepared_step,
+                            "repair_step": repair_step,
+                            "append_steps": replanned_steps or [],
+                            "context": context.copy(),
+                        }
+
                     def on_plan_complete(results):
                         self.memory.update_task(command_text, plan, results)
-                        self.log_to_gui("assistant", f"✅ Виконано план із {len(results)} кроків.")
-                    
-                    # Запускаємо у фоновому потоці з прогресом
+                        error_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "error")
+                        blocked_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "blocked")
+                        confirm_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "needs_confirmation")
+                        if blocked_count:
+                            self.log_to_gui("assistant", f"⛔ План зупинено політикою безпеки: {blocked_count} крок заблоковано.")
+                        elif confirm_count:
+                            self.log_to_gui("assistant", f"❓ План не завершено: {confirm_count} крок не підтверджено або скасовано користувачем.")
+                        elif error_count:
+                            self.log_to_gui("assistant", f"⚠️ План завершено з помилками: {len(results) - error_count} успішно, {error_count} з помилкою.")
+                        else:
+                            self.log_to_gui("assistant", f"✅ Виконано план із {len(results)} кроків.")
+
                     self.executor.execute_plan_async(plan, execute_step, on_plan_complete)
-                    return  # не повертаємо нічого, бо виконання асинхронне
+                    return
             
             from .config import ASSISTANT_DISPLAY_NAME
             

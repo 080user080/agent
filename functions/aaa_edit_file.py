@@ -2,6 +2,9 @@ import os
 import shutil
 from datetime import datetime
 
+from .core_tool_runtime import make_tool_result
+
+
 def llm_function(name, description, parameters):
     """Декоратор для реєстрації функцій"""
     def decorator(func):
@@ -11,6 +14,7 @@ def llm_function(name, description, parameters):
         func._parameters = parameters
         return func
     return decorator
+
 
 @llm_function(
     name="edit_file",
@@ -23,34 +27,46 @@ def llm_function(name, description, parameters):
 def edit_file(filepath, new_content):
     """Редагувати файл з бекапом"""
     try:
-        # Якщо вказано тільки ім'я файлу, шукати на робочому столі
         if not os.path.isabs(filepath):
             desktop = os.path.join(os.path.expanduser("~"), "Desktop")
             filepath = os.path.join(desktop, filepath)
-        
-        # Перевірити чи файл існує
+
         if not os.path.exists(filepath):
-            return f"❌ Файл не знайдено: {filepath}"
-        
-        # Перевірити розширення
-        if not filepath.endswith(('.txt', '.py')):
-            return f"❌ Можна редагувати тільки .txt або .py файли"
-        
-        # Створити бекап
+            return make_tool_result(
+                False,
+                f"❌ Файл не знайдено: {filepath}",
+                error="file_not_found",
+                retryable=True,
+            )
+
+        if not filepath.endswith((".txt", ".py")):
+            return make_tool_result(
+                False,
+                "❌ Можна редагувати тільки .txt або .py файли",
+                error="unsupported_extension",
+            )
+
         backup_dir = os.path.join(os.path.dirname(filepath), "backups")
         os.makedirs(backup_dir, exist_ok=True)
-        
+
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = os.path.basename(filepath)
         backup_path = os.path.join(backup_dir, f"{filename}.backup_{timestamp}")
-        
+
         shutil.copy2(filepath, backup_path)
-        
-        # Записати новий вміст
-        with open(filepath, 'w', encoding='utf-8') as f:
+
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(new_content)
-        
-        return f"✅ Файл відредаговано: {filename}\n📦 Бекап збережено: {os.path.basename(backup_path)}"
-    
+
+        return make_tool_result(
+            True,
+            f"✅ Файл відредаговано: {filename}\n📦 Бекап збережено: {os.path.basename(backup_path)}",
+            data={"file_path": filepath, "backup_path": backup_path, "filename": filename},
+        )
     except Exception as e:
-        return f"❌ Помилка редагування: {str(e)}"
+        return make_tool_result(
+            False,
+            f"❌ Помилка редагування: {str(e)}",
+            error=str(e),
+            retryable=True,
+        )

@@ -3,6 +3,7 @@
 import time
 import threading
 from colorama import Fore
+from .core_tool_runtime import make_tool_result
 
 # Глобальна змінна для GUI
 _gui_instance = None
@@ -41,7 +42,12 @@ def confirm_action(action, question):
             
             # Імітуємо очікування
             time.sleep(10)
-            return {"status": "timeout", "action": action}
+            return make_tool_result(
+                False,
+                f"⏰ Підтвердження не отримано для дії: {action}",
+                data={"status": "timeout", "action": action},
+                needs_confirmation=True,
+            )
         
         # Створюємо подію для GUI
         result = {"confirmed": None}
@@ -58,13 +64,25 @@ def confirm_action(action, question):
         event.wait(timeout=30)
         
         if result["confirmed"] is None:
-            return {"status": "timeout", "action": action}
+            return make_tool_result(
+                False,
+                f"⏰ Час підтвердження вийшов для дії: {action}",
+                data={"status": "timeout", "action": action},
+                needs_confirmation=True,
+            )
         
-        return {
-            "status": "confirmed" if result["confirmed"] else "cancelled",
-            "action": action,
-            "confirmed": result["confirmed"]
-        }
+        confirmed = bool(result["confirmed"])
+        return make_tool_result(
+            confirmed,
+            "✅ Дію підтверджено." if confirmed else "❌ Дію скасовано користувачем.",
+            data={
+                "status": "confirmed" if confirmed else "cancelled",
+                "action": action,
+                "confirmed": confirmed,
+            },
+            error=None if confirmed else "cancelled",
+            needs_confirmation=not confirmed,
+        )
         
     except Exception as e:
-        return {"status": "error", "message": str(e)}
+        return make_tool_result(False, f"❌ Помилка підтвердження: {str(e)}", error=str(e), retryable=True)

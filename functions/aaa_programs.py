@@ -3,6 +3,7 @@
 import os
 import subprocess
 from colorama import Fore
+from .core_tool_runtime import make_tool_result
 
 def llm_function(name, description, parameters):
     """Декоратор для реєстрації функцій в LLM"""
@@ -81,12 +82,23 @@ def open_program(program_name, file_path=None):
                 subprocess.Popen(cmd)
                 message = f"Відкрито {program_name} з файлом {os.path.basename(file_path)}"
                 sandbox._log_action("open_program", program_name, True, message)
-            return f"✅ {message}"
+            return make_tool_result(
+                True,
+                f"✅ {message}",
+                data={"program_name": program_name, "file_path": file_path, "program_path": program_path},
+            )
         else:
-            return f"⚠️ {message}"
+            needs_confirmation = "ПІДТВЕРДЖЕННЯ" in message.upper()
+            return make_tool_result(
+                False,
+                f"⚠️ {message}",
+                error=message,
+                needs_confirmation=needs_confirmation,
+                retryable=not needs_confirmation,
+            )
 
     except Exception as e:
-        return f"⚡ МАРК: Помилка: {str(e)}"
+        return make_tool_result(False, f"⚡ МАРК: Помилка: {str(e)}", error=str(e), retryable=True)
 
 @llm_function(
     name="close_program",
@@ -101,9 +113,16 @@ def close_program(process_name):
         from .core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         success, message = sandbox.close_safe_program(process_name)
-        return message  # Вже містить префікс або чистий текст
+        return make_tool_result(
+            success,
+            message,
+            data={"process_name": process_name},
+            error=None if success else message,
+            needs_confirmation="ПІДТВЕРДЖЕННЯ" in message.upper(),
+            retryable=not success,
+        )
     except Exception as e:
-        return f"Помилка: {str(e)}"
+        return make_tool_result(False, f"Помилка: {str(e)}", error=str(e), retryable=True)
 
 @llm_function(
     name="add_allowed_program",
@@ -120,11 +139,11 @@ def add_allowed_program(program_name, program_path):
         sandbox = get_sandbox()
         success = sandbox.add_allowed_program(program_name, program_path)
         if success:
-            return f"✅ Програму додано в whitelist: {program_name}"
+            return make_tool_result(True, f"✅ Програму додано в whitelist: {program_name}", data={"program_name": program_name, "program_path": program_path})
         else:
-            return f"❌ Не вдалося додати програму."
+            return make_tool_result(False, "❌ Не вдалося додати програму.", error="add_allowed_program_failed", retryable=True)
     except Exception as e:
-        return f"❌ Помилка: {str(e)}"
+        return make_tool_result(False, f"❌ Помилка: {str(e)}", error=str(e), retryable=True)
 
 @llm_function(
     name="show_sandbox_status",
@@ -137,9 +156,9 @@ def show_sandbox_status():
         from .core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         sandbox.print_status()
-        return "Статус виведено в консоль."
+        return make_tool_result(True, "Статус виведено в консоль.")
     except Exception as e:
-        return f"Помилка: {str(e)}"
+        return make_tool_result(False, f"Помилка: {str(e)}", error=str(e), retryable=True)
 
 @llm_function(
     name="enable_auto_confirm",
@@ -151,9 +170,9 @@ def enable_auto_confirm():
         from .core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         sandbox.enable_auto_confirm()
-        return "✅ Автопідтвердження увімкнено для безпечних програм."
+        return make_tool_result(True, "✅ Автопідтвердження увімкнено для безпечних програм.")
     except Exception as e:
-        return f"❌ Помилка: {str(e)}"
+        return make_tool_result(False, f"❌ Помилка: {str(e)}", error=str(e), retryable=True)
 
 @llm_function(
     name="disable_auto_confirm",
@@ -165,6 +184,6 @@ def disable_auto_confirm():
         from .core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         sandbox.disable_auto_confirm()
-        return "✅ Автопідтвердження вимкнено. Підтвердження потрібне для всіх дій."
+        return make_tool_result(True, "✅ Автопідтвердження вимкнено. Підтвердження потрібне для всіх дій.")
     except Exception as e:
-        return f"❌ Помилка: {str(e)}"
+        return make_tool_result(False, f"❌ Помилка: {str(e)}", error=str(e), retryable=True)

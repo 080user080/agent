@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 from colorama import Fore
+from .core_tool_runtime import make_tool_result
 
 def llm_function(name, description, parameters):
     """Декоратор для реєстрації функцій"""
@@ -192,18 +193,33 @@ def execute_python(code, script_name=None):
         output = result['output']
         time_str = f"{result['execution_time']:.2f}с"
         
-        if output:
-            return f"✅ Виконано ({time_str}):\n{output}"
-        else:
-            return f"✅ Виконано ({time_str}). Вивід порожній."
+        message = f"✅ Виконано ({time_str}):\n{output}" if output else f"✅ Виконано ({time_str}). Вивід порожній."
+        return make_tool_result(
+            True,
+            message,
+            data={
+                "output": result.get("output", ""),
+                "stderr": result.get("stderr", ""),
+                "execution_time": result.get("execution_time"),
+                "script_path": result.get("script_path"),
+                "log_path": result.get("log_path"),
+            },
+        )
     else:
         error_msg = result['error']
         stderr = result.get('stderr', '')
-        
-        if stderr:
-            return f"❌ Помилка:\n{error_msg}\n\nДеталі:\n{stderr}"
-        else:
-            return f"❌ {error_msg}"
+        message = f"❌ Помилка:\n{error_msg}\n\nДеталі:\n{stderr}" if stderr else f"❌ {error_msg}"
+        return make_tool_result(
+            False,
+            message,
+            data={
+                "output": result.get("output", ""),
+                "stderr": stderr,
+                "execution_time": result.get("execution_time"),
+            },
+            error=error_msg,
+            retryable=True,
+        )
 
 @llm_function(
     name="execute_python_code",
@@ -229,7 +245,12 @@ def execute_python_file(filename):
     script_path = SCRIPTS_DIR / filename
     
     if not script_path.exists():
-        return f"❌ Файл не знайдено: {filename}"
+        return make_tool_result(
+            False,
+            f"❌ Файл не знайдено: {filename}",
+            error="file_not_found",
+            retryable=True,
+        )
     
     try:
         with open(script_path, 'r', encoding='utf-8') as f:
@@ -238,7 +259,12 @@ def execute_python_file(filename):
         return execute_python(code, filename)
     
     except Exception as e:
-        return f"❌ Помилка читання файлу: {e}"
+        return make_tool_result(
+            False,
+            f"❌ Помилка читання файлу: {e}",
+            error=str(e),
+            retryable=True,
+        )
 
 @llm_function(
     name="list_sandbox_scripts",

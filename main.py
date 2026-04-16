@@ -13,12 +13,13 @@ init(autoreset=True)
 
 # Для правильного показу українських символів в консолі Windows
 if os.name == 'nt':
-    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stdout.reconfigure(encoding='utf-8', line_buffering=True, write_through=True)
+    sys.stderr.reconfigure(encoding='utf-8', line_buffering=True, write_through=True)
     
     import io
     sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True, write_through=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', line_buffering=True, write_through=True)
 
 # Додати шляхи до CUDA бібліотек
 venv_path = sys.prefix
@@ -63,51 +64,61 @@ from functions.config import (
     TTS_DEFAULT_VOICE, TTS_SPEECH_RATE, TTS_VOLUME, TTS_SPEAK_PREFIXES
 )
 
-# Вивід інформації про мікрофони
-print("\n" + "="*60)
-print("🎤 ДОСТУПНІ МІКРОФОНИ:")
-print("="*60)
-print(sd.query_devices())
-print("="*60 + "\n")
-
-if MICROPHONE_DEVICE_ID is not None:
-    print(f"{Fore.YELLOW}🎤 Вибрано мікрофон #{MICROPHONE_DEVICE_ID}")
-    device_info = sd.query_devices(MICROPHONE_DEVICE_ID)
-    print(f"   Назва: {device_info['name']}")
-    print(f"   Канали: {device_info['max_input_channels']}")
-else:
-    print(f"{Fore.YELLOW}🎤 Використовується системний мікрофон за замовчуванням")
-    default_input = sd.query_devices(kind='input')
-    print(f"   Назва: {default_input['name']}")
-print()
-
-# Тестовий запис
-print("🧪 Тестовий запис 2 секунди...")
-test_audio = sd.rec(
-    int(2 * SAMPLE_RATE),
-    samplerate=SAMPLE_RATE,
-    channels=1,
-    dtype=np.float32,
-    device=MICROPHONE_DEVICE_ID,
-    blocking=True
-)
-volume = np.abs(test_audio).mean()
-print(f"   Середня гучність: {volume:.6f}")
-print(f"   Поріг: {VOLUME_THRESHOLD}")
-
-if volume < 0.01:
-    print(f"{Fore.RED}   ⚠️  ДУЖЕ ТИХО! Гучність {volume:.6f} < 0.01")
-    print(f"{Fore.YELLOW}   💡 Підвищіть гучність мікрофона:")
-    print(f"{Fore.YELLOW}      1. Правий клік на звук → Налаштування")
-    print(f"{Fore.YELLOW}      2. Введення → Властивості")
-    print(f"{Fore.YELLOW}      3. Рівні → Мікрофон 100% + Підсилення +20dB")
-elif volume > VOLUME_THRESHOLD:
-    print(f"   ✅ Мікрофон працює!")
-else:
-    print(f"   ❌ Занадто тихо")
-print()
-
 from functions.logic_stt import get_stt_engine
+
+
+def print_audio_diagnostics():
+    """Вивести інформацію про мікрофон тільки коли потрібен голосовий режим."""
+    try:
+        print("\n" + "=" * 60)
+        print("🎤 ДОСТУПНІ МІКРОФОНИ:")
+        print("=" * 60)
+        print(sd.query_devices())
+        print("=" * 60 + "\n")
+
+        if MICROPHONE_DEVICE_ID is not None:
+            print(f"{Fore.YELLOW}🎤 Вибрано мікрофон #{MICROPHONE_DEVICE_ID}")
+            device_info = sd.query_devices(MICROPHONE_DEVICE_ID)
+            print(f"   Назва: {device_info['name']}")
+            print(f"   Канали: {device_info['max_input_channels']}")
+        else:
+            print(f"{Fore.YELLOW}🎤 Використовується системний мікрофон за замовчуванням")
+            default_input = sd.query_devices(kind='input')
+            print(f"   Назва: {default_input['name']}")
+        print()
+    except Exception as e:
+        print(f"{Fore.YELLOW}⚠️  Діагностику мікрофона пропущено: {e}")
+
+
+def run_audio_smoke_test():
+    """Короткий тест запису лише для голосового режиму."""
+    try:
+        print("🧪 Тестовий запис 2 секунди...")
+        test_audio = sd.rec(
+            int(2 * SAMPLE_RATE),
+            samplerate=SAMPLE_RATE,
+            channels=1,
+            dtype=np.float32,
+            device=MICROPHONE_DEVICE_ID,
+            blocking=True
+        )
+        volume = np.abs(test_audio).mean()
+        print(f"   Середня гучність: {volume:.6f}")
+        print(f"   Поріг: {VOLUME_THRESHOLD}")
+
+        if volume < 0.01:
+            print(f"{Fore.RED}   ⚠️  ДУЖЕ ТИХО! Гучність {volume:.6f} < 0.01")
+            print(f"{Fore.YELLOW}   💡 Підвищіть гучність мікрофона:")
+            print(f"{Fore.YELLOW}      1. Правий клік на звук → Налаштування")
+            print(f"{Fore.YELLOW}      2. Введення → Властивості")
+            print(f"{Fore.YELLOW}      3. Рівні → Мікрофон 100% + Підсилення +20dB")
+        elif volume > VOLUME_THRESHOLD:
+            print("   ✅ Мікрофон працює!")
+        else:
+            print("   ❌ Занадто тихо")
+        print()
+    except Exception as e:
+        print(f"{Fore.YELLOW}⚠️  Тест аудіо пропущено: {e}")
 
 class AssistantCore:
     """Ядро асистента з інтеграцією GUI"""
@@ -347,6 +358,9 @@ class AssistantCore:
         self.registry = FunctionRegistry()
         load_time = time.time() - start_time
         print(f"{Fore.LIGHTBLACK_EX}⏱️  {load_time:.2f}с")
+
+        print_audio_diagnostics()
+        run_audio_smoke_test()
         
         print(f"\n{Fore.CYAN}🔊 Завантаження STT моделей...")
         start_time = time.time()
@@ -470,13 +484,10 @@ class AssistantCore:
         print(f"{Fore.CYAN}🔧 Завантаження функцій...")
         self.registry = FunctionRegistry()
 
-        # STT (потрібен для voice_input навички)
-        print(f"\n{Fore.CYAN}🔊 Завантаження STT...")
-        try:
-            self.stt_engine = self.load_stt_model()
-        except Exception as e:
-            print(f"{Fore.YELLOW}⚠️  STT не завантажено: {e}")
-            self.stt_engine = None
+        # STT тимчасово вимкнено для швидкого старту GUI
+        self.stt_engine = None
+        print(f"\n{Fore.YELLOW}⏭️  Автозапуск STT вимкнено для текстового режиму")
+        print(f"{Fore.YELLOW}   voice_input буде недоступний, доки STT не допрацюємо окремо")
 
         # Аудіо фільтр
         self.audio_filter = get_audio_filter(SAMPLE_RATE)
@@ -524,7 +535,7 @@ class AssistantCore:
         if self.tts_engine:
             self.assistant.set_tts_engine(self.tts_engine)
 
-        print(f"\n{Fore.GREEN}✅ Асистент готовий (текстовий режим)")
+        print(f"\n{Fore.GREEN}✅ Асистент готовий (текстовий режим, без STT)")
         return True
     
     def run(self):

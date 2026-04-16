@@ -6,6 +6,7 @@ import time
 import re
 import subprocess
 import pyperclip
+from .core_tool_runtime import make_tool_result
 
 # Додайте в імпорти в main.py та aaa_voice_input.py:
 from functions.config import MICROPHONE_DEVICE_ID
@@ -194,6 +195,14 @@ def transcribe_audio_w2v(audio, sample_rate):
 def voice_input(duration="10"):
     """Голосовий ввід зі збереженням фокусу активного вікна"""
     try:
+        if _assistant is None or getattr(_assistant, "stt_engine", None) is None:
+            return make_tool_result(
+                False,
+                "⚠️ voice_input тимчасово вимкнено: STT не завантажується під час старту GUI.",
+                error="stt_disabled",
+                retryable=False,
+            )
+
         duration = int(duration)
         sample_rate = 16000
         
@@ -222,7 +231,7 @@ def voice_input(duration="10"):
         text = transcribe_audio_w2v(audio, sample_rate)
         
         if not text or text.startswith("❌"):
-            return text
+            return make_tool_result(False, text or "❌ Не вдалося розпізнати текст", error=text or "transcription_failed", retryable=True)
         
         # Очистити розпізнаний текст
         cleaned_text = clean_recognized_text(text)
@@ -260,7 +269,7 @@ def voice_input(duration="10"):
                 print("✅ Текст скопійовано в буфер обміну (через clip)")
             except Exception as e:
                 print(f"❌ Не вдалося скопіювати в буфер: {e}")
-                return f"❌ Не вдалося скопіювати текст в буфер обміну"
+                return make_tool_result(False, "❌ Не вдалося скопіювати текст в буфер обміну", error=str(e), retryable=True)
         
         # Крок 3: Вставити текст
         print("📤 Вставляю текст...")
@@ -280,7 +289,11 @@ def voice_input(duration="10"):
                     except:
                         pass
                     
-                    return f"✅ Введено текст: '{cleaned_text}'"
+                    return make_tool_result(
+                        True,
+                        f"✅ Введено текст: '{cleaned_text}'",
+                        data={"text": cleaned_text, "window_title": active_window_info.get("title")},
+                    )
                 
                 print(f"⚠️ Спроба {attempt + 1} не вдалась, пробую знову...")
                 time.sleep(0.3)
@@ -292,7 +305,11 @@ def voice_input(duration="10"):
         print("❌ Не вдалося автоматично вставити текст")
         print(f"💡 Текст скопійовано в буфер обміну. Вставте вручну (Ctrl+V): '{cleaned_text}'")
         
-        return f"📋 Текст скопійовано в буфер обміну. Вставте через Ctrl+V: '{cleaned_text}'"
+        return make_tool_result(
+            True,
+            f"📋 Текст скопійовано в буфер обміну. Вставте через Ctrl+V: '{cleaned_text}'",
+            data={"text": cleaned_text, "copied_only": True, "window_title": active_window_info.get("title")},
+        )
     
     except Exception as e:
-        return f"❌ Помилка голосового вводу: {str(e)}"
+        return make_tool_result(False, f"❌ Помилка голосового вводу: {str(e)}", error=str(e), retryable=True)
