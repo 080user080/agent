@@ -7,10 +7,10 @@ __pycache__/
 # C extensions
 *.so
 
-becap\
-TTS\
-tts_cache\
-voices\
+becap/
+TTS/
+tts_cache/
+voices/
 *.bak
 *.rar
 *.bat
@@ -18,9 +18,6 @@ voices\
 core_gui_copy.py_бекап
 ДОСТУПНІ МІКРОФОНИ.txt
 створи план вдосконалення коду.txt
-TTS/
-tts_cache/
-voices/
 *.pt
 *.pth
 *.onnx
