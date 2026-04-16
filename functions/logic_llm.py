@@ -1,0 +1,148 @@
+# functions/logic_llm.py
+"""Робота з LLM"""
+import re
+import json
+import requests
+from colorama import Fore
+from .config import LM_STUDIO_URL
+
+def extract_json_from_text(text):
+    """Витягти JSON з тексту"""
+    # Видалити всі токени LM Studio
+    clean_text = re.sub(r'<\|[^|]+\|>', '', text)
+    
+    # Видалити службові слова та коментарі
+    clean_text = re.sub(r'assistant|channel|commentary|constrain|message|to=functions\.\w+', '', clean_text, flags=re.IGNORECASE)
+    
+    # Видалити все після останньої закриваючої дужки
+    if '}' in clean_text:
+        clean_text = clean_text[:clean_text.rfind('}') + 1]
+    
+    # Видалити все перед першою відкриваючою дужкою
+    if '{' in clean_text:
+        clean_text = clean_text[clean_text.find('{'):]
+    
+    clean_text = clean_text.strip()
+    
+    # Якщо це JSON в блоках ```json ... ```
+    json_match = re.search(r'```json\s*(\{.*?\})\s*```', clean_text, re.DOTALL)
+    if json_match:
+        return json_match.group(1).strip()
+    
+    # Якщо це JSON в блоках ``` ... ```
+    json_match = re.search(r'```\s*(\{.*?\})\s*```', clean_text, re.DOTALL)
+    if json_match:
+        return json_match.group(1).strip()
+    
+    # Якщо є тільки JSON об'єкт
+    json_match = re.search(r'(\{.*?\})', clean_text, re.DOTALL)
+    if json_match:
+        return json_match.group(1).strip()
+    
+    # Якщо нічого не знайдено, повертаємо як response
+    return json.dumps({"response": text.strip()})
+
+def ask_llm(user_message, conversation_history, system_prompt):
+    """Відправити запит до LM Studio"""
+    try:
+        messages = [{"role": "system", "content": system_prompt}]
+        messages.extend(conversation_history)
+        messages.append({"role": "user", "content": user_message})
+        
+        response = requests.post(LM_STUDIO_URL, 
+            json={
+                "model": "local-model",
+                "messages": messages,
+                "temperature": 0.1,
+                "max_tokens": 1024,
+                "stream": False
+            },
+            timeout=60
+        )
+        
+        if response.status_code == 200:
+            return response.json()['choices'][0]['message']['content']
+        else:
+            error_msg = f"Помилка API {response.status_code}: {response.text}"
+            print(f"{Fore.RED}{error_msg}")
+            return f"Помилка: {response.status_code}"
+            
+    except Exception as e:
+        return f"{Fore.RED}❌ Помилка з'єднання: {str(e)}"
+
+def process_llm_response(response_text, registry):
+    """Обробити відповідь LLM і виконати функції"""
+    # Спершу спробувати отримати чистий JSON
+    json_text = extract_json_from_text(response_text)
+    
+    print(f"{Fore.LIGHTBLACK_EX}📦 [Спроба парсингу]: {json_text[:200]}...")
+    
+    try:
+        response_json = json.loads(json_text)
+        
+        # Якщо це відповідь
+        if "response" in response_json and "action" not in response_json:
+            return response_json["response"]
+        
+        # 🔥 ВИПРАВЛЕННЯ: Додано execute_python
+        if "action" in response_json:
+            action = response_json.pop("action")
+            
+            # Мапінг action → function_name
+            action_map = {
+                "execute_python": "execute_python",
+                "execute_python_code": "execute_python",
+                "run_python": "execute_python",
+                "debug_python_code": "debug_python_code",
+                "list_sandbox_scripts": "list_sandbox_scripts",
+                "execute_python_file": "execute_python_file",
+                "open_program": "open_program",
+                "close_program": "close_program",
+            }
+            
+            # Перетворити action
+            function_name = action_map.get(action, action)
+            
+            # Логування
+            print(f"{Fore.MAGENTA}⚡ [Виконую]: {function_name} з параметрами {response_json}")
+            
+            # Виконати
+            result = registry.execute_function(function_name, response_json)
+            return result
+        
+        # Якщо немає action, але є code (прямий код)
+        if "code" in response_json and "action" not in response_json:
+            print(f"{Fore.MAGENTA}⚡ [Виконую execute_python з прямим code]")
+            result = registry.execute_function("execute_python", response_json)
+            return result
+        
+        # Якщо є program_name, то це відкриття програми
+        if "program_name" in response_json:
+            print(f"{Fore.MAGENTA}⚡ [Виконую open_program]")
+            result = registry.execute_function("open_program", response_json)
+            return result
+        
+        # Якщо невідомий формат
+        return f"❌ Невідомий формат команди: {response_json}"
+        
+    except json.JSONDecodeError as e:
+        print(f"{Fore.YELLOW}⚠️ [JSON помилка]: {e}")
+        print(f"{Fore.YELLOW}⚠️ [Оригінал]: {response_text}")
+        
+        # Якщо не вдалося розпарсити, спробуємо витягти JSON з токенів
+        if "to=functions.open_program" in response_text:
+            json_match = re.search(r'<\|message\|>(\{.*?\})', response_text)
+            if json_match:
+                try:
+                    json_str = json_match.group(1)
+                    response_json = json.loads(json_str)
+                    if "program_name" in response_json:
+                        print(f"{Fore.MAGENTA}⚡ [Знайдено через токени]: open_program")
+                        result = registry.execute_function("open_program", response_json)
+                        return result
+                except:
+                    pass
+        
+        return response_text
+    except Exception as e:
+        return f"{Fore.RED}❌ Помилка обробки: {str(e)}"
