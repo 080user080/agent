@@ -30,6 +30,9 @@ ASSISTANT_MODES = {
 
 ACTIVE_MODE = "verbose"
 
+# Режим агента: "voice" (звичайний голосовий) або "coding" (агент для коду)
+AGENT_MODE = "voice"
+
 # Аудіо
 SAMPLE_RATE = 16000
 LISTEN_DURATION = 5

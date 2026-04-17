@@ -15,6 +15,7 @@ voices/
 *.rar
 *.bat
 *.diff
+smart_patch_gui.py
 core_gui_copy.py_бекап
 ДОСТУПНІ МІКРОФОНИ.txt
 створи план вдосконалення коду.txt

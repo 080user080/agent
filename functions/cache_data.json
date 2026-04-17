@@ -10,5 +10,82 @@
     "action_info": null,
     "timestamp": "2026-04-17T01:22:55.033466",
     "hits": 1
+  },
+  "«знайди в папці d:\\python\\agent усі файли з розширенням .bak та .tmp. створи папку temp_archive і перемісти ці файли туди. після завершення виведи список переміщених файлів».": {
+    "response": "❌ Помилка:\n❌ Помилка виконання: 'NoneType' object has no attribute 'strip'\n\nДеталі:\n'NoneType' object has no attribute 'strip'",
+    "action_info": null,
+    "timestamp": "2026-04-17T01:44:31.775802",
+    "hits": 0
+  },
+  "«проскануй папку d:\\python\\agent. склади список усіх файлів (тільки назви) і збережи його у новий файл file_report.txt. в кінці звіту додай рядок: \"всього знайдено файлів: [число]\"».": {
+    "response": "{\"action\":\"execute_python\",\"code\":\"import os\\nfolder = r'D:\\\\Python\\\\agent'\\nfiles = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder,f))]\\nreport_path = os.path.join(folder,'file_report.txt')\\nwith open(report_path,'w',encoding='utf-8') as f:\\n    for name in files:\\n        f.write(name + '\\\\n')\\n    f.write(f'Всього знайдено файлів: {len(files)}\\\\n')\\nprint('Файл створено: ', report_path)\"}",
+    "action_info": null,
+    "timestamp": "2026-04-17T01:46:33.165982",
+    "hits": 0
+  },
+  "де ти його створив?": {
+    "response": "✅ Виконано (0.03с):\nD:\\Python\\agent\\file_report.txt",
+    "action_info": null,
+    "timestamp": "2026-04-17T01:49:24.279638",
+    "hits": 0
+  },
+  "немає файлу": {
+    "response": "<|channel|>commentary to=python <|constrain|>json<|message|>import os, json, subprocess, textwrap",
+    "action_info": null,
+    "timestamp": "2026-04-17T01:50:20.651497",
+    "hits": 0
+  },
+  "kljnk": {
+    "response": "Не зрозумів. Повторіть?",
+    "action_info": null,
+    "timestamp": "2026-04-17T21:29:06.357168",
+    "hits": 0
+  },
+  "вікрий блокнот": {
+    "response": "❌ Невідомий формат команди: {'process_name': 'notepad.exe'}",
+    "action_info": null,
+    "timestamp": "2026-04-17T21:29:31.620650",
+    "hits": 0
+  },
+  "ddf": {
+    "response": "Не зрозумів. Повторіть?",
+    "action_info": null,
+    "timestamp": "2026-04-17T21:34:11.532871",
+    "hits": 0
+  },
+  "відкрий блокнот": {
+    "response": "✅ Відкрив notepad",
+    "action_info": {
+      "action": "open_program",
+      "params": {
+        "program_name": "notepad"
+      }
+    },
+    "timestamp": "2026-04-17T21:34:48.188414",
+    "hits": 0
+  },
+  "ok": {
+    "response": "\u001b[31m❌ Функція noop не знайдена",
+    "action_info": null,
+    "timestamp": "2026-04-17T21:50:57.108963",
+    "hits": 1
+  },
+  "+": {
+    "response": "\u001b[31m❌ Функція noop не знайдена",
+    "action_info": null,
+    "timestamp": "2026-04-17T21:51:02.267721",
+    "hits": 0
+  },
+  "створи python скрипт calculator.py який додає 2 + 3, потім виконай його і покажи результат": {
+    "response": "✅ Файл створено: calculator.py на робочому столі",
+    "action_info": null,
+    "timestamp": "2026-04-17T22:09:17.338522",
+    "hits": 0
+  },
+  "потім виконай його і покажи результат": {
+    "response": "❌ Невідомий формат команди: {'filename': 'calculator.py'}",
+    "action_info": null,
+    "timestamp": "2026-04-17T22:09:53.044959",
+    "hits": 0
   }
 }

@@ -7,7 +7,7 @@ import inspect
 from pathlib import Path
 import time
 from colorama import Fore, Back, Style
-from .core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result
+from .core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result, get_audit_log
 
 # Глобальне посилання на реєстр, щоб aaa_architect міг його оновити
 global_registry = None
@@ -107,8 +107,75 @@ class FunctionRegistry:
         """Отримати risk-level інструмента."""
         return get_tool_risk(action)
     
-    def get_system_prompt(self):
-        """Згенерувати Voice-First system prompt для Code Assistant"""
+    def get_system_prompt(self, mode: str = None):
+        """Згенерувати system prompt залежно від режиму ('voice' або 'coding')."""
+        from .config import AGENT_MODE
+        active_mode = mode or AGENT_MODE
+        if active_mode == "coding":
+            return self.get_coding_system_prompt()
+        return self._get_voice_system_prompt()
+
+    def get_coding_system_prompt(self):
+        """System prompt для режиму coding agent.
+
+        Цикл: аналіз задачі -> пошук у коді -> читання -> редагування -> верифікація.
+        """
+        from .config import ASSISTANT_NAME
+
+        prompt = f"""ТИ: Агент-розробник {ASSISTANT_NAME} для роботи з кодом.
+
+МОВА: Українська для спілкування, англійська для коментарів у коді.
+РЕЖИМ: Coding Agent - фокус на якісному виконанні задач із кодом.
+
+ЦИКЛ РОБОТИ АГЕНТА:
+1. **Аналіз** - розбий задачу на кроки
+2. **Пошук** - `search_in_code` / `list_directory` для знайомства з проєктом
+3. **Читання** - `read_code_file` перед будь-яким редагуванням
+4. **Редагування** - `edit_file` або `create_file`
+5. **Верифікація** - `execute_python` або `debug_python_code` для перевірки
+6. **Git** - `git_status` / `git_diff` після змін
+
+КРИТИЧНІ ПРАВИЛА:
+1. ЗАВЖДИ читай файл перед редагуванням (`read_code_file`)
+2. НЕ пиши код "навмання" - спочатку подивись, що є в проєкті
+3. Перевіряй результат `execute_python` після змін
+4. Якщо помилка - використай `debug_python_code`
+5. Поверни JSON з action та параметрами
+6. На складні задачі — використовуй planner (багатокроковий план)
+
+ДОСТУПНІ CODE-TOOLS:
+- `read_code_file(filepath, start_line, max_lines)` — читання файлу
+- `search_in_code(pattern, directory, file_pattern)` — regex-пошук
+- `list_directory(directory)` — вміст директорії
+- `edit_file(filepath, new_content)` — редагування з бекапом
+- `create_file(filename, content)` — створення файлу
+- `execute_python(code)` — запуск Python у пісочниці
+- `debug_python_code(code)` — автовиправлення помилок
+- `git_status(directory)` — статус git-репозиторію
+- `git_diff(directory, staged)` — показати зміни
+
+ВЗІРЦІ (КОРОТКІ ПРИКЛАДИ):
+- "Знайди TODO в коді" → {{"action":"search_in_code","pattern":"TODO","directory":"."}}
+- "Покажи git зміни" → {{"action":"git_diff","directory":"."}}
+- "Прочитай файл config.py" → {{"action":"read_code_file","filepath":"config.py"}}
+
+ЗАБОРОНЕНІ ФРАЗИ: "Звичайно", "Я допоможу", "Дозвольте", "З радістю".
+ДОЗВОЛЕНІ: "Готово", "Виконую", "Знайдено", "Помилка у рядку X".
+
+ЗАВЖДИ ПОВЕРТАЙ JSON З action!
+"""
+        if self.functions:
+            prompt += "\n\nДОСТУПНІ ФУНКЦІЇ:\n"
+            for func_name, func_info in sorted(self.functions.items()):
+                prompt += f"\n🔧 {func_info['name']}: {func_info['description']}\n"
+                if func_info['parameters']:
+                    for pname, pdesc in func_info['parameters'].items():
+                        prompt += f"   • {pname}: {pdesc}\n"
+
+        return prompt
+
+    def _get_voice_system_prompt(self):
+        """Звичайний Voice-First system prompt."""
         from .config import ASSISTANT_NAME, ASSISTANT_MODES, ACTIVE_MODE
         
         mode = ASSISTANT_MODES[ACTIVE_MODE]
@@ -186,12 +253,16 @@ class FunctionRegistry:
         return prompt
     
     def execute_function(self, action, params):
-        """Виконати функцію за назвою"""
+        """Виконати функцію за назвою з аудитом"""
+        audit = get_audit_log()
+        risk = get_tool_risk(action)
+
         if action not in self.functions:
             result = normalize_tool_result(f"{Fore.RED}❌ Функція {action} не знайдена")
             self.last_tool_result = result
+            audit.log(action, params, result, risk)
             return result["message"]
-        
+
         try:
             func = self.functions[action]['function']
             raw_result = func(**params)
@@ -199,10 +270,12 @@ class FunctionRegistry:
             result["action"] = action
             result["params"] = params
             self.last_tool_result = result
+            audit.log(action, params, result, risk)
             return result["message"]
         except Exception as e:
             result = normalize_tool_result(f"{Fore.RED}❌ Помилка виконання {action}: {str(e)}")
             result["action"] = action
             result["params"] = params
             self.last_tool_result = result
+            audit.log(action, params, result, risk)
             return result["message"]

@@ -23,7 +23,9 @@ class VoiceAssistant:
         
         self.planner = None  #GPT
         from .core_memory import MemoryManager
-        self.memory = MemoryManager()  # довготривала пам'ять
+        self.memory = MemoryManager()  # довготривала + сесія + задачі
+        # Підключаємо LLM-caller для генерації summary
+        self.memory.set_llm_caller(self._memory_llm_caller)
         from .core_executor import TaskExecutor
         # Створюємо виконавець з колбеком для GUI
         self.executor = TaskExecutor(gui_callback=self.gui_log_callback)
@@ -135,6 +137,9 @@ class VoiceAssistant:
     def process_command(self, command_text, from_gui=False):
         """Обробити команду"""
         try:
+            # Лічильник команд у сесії
+            self.memory.session.track_command()
+
             # --- Planner branch --- #GPT
             if hasattr(self, "planner") and self.planner and self.planner.should_plan(command_text):
                 plan = self.planner.create_plan(command_text)
@@ -147,7 +152,12 @@ class VoiceAssistant:
                         return
 
                     print(f"{Fore.MAGENTA}📋 План: {plan}")
-                    self.log_to_gui("assistant", f"📋 План готовий: {len(plan)} кроків. Починаю виконання.")
+                    # Панель плану сама покаже перелік; у чаті не дублюємо
+
+                    # --- Ініціалізація TaskMemory ---
+                    task_id = self.memory.start_task(command_text)
+                    self.memory.record_task_plan(plan)
+                    print(f"{Fore.CYAN}📝 Задача: {task_id}")
 
                     context = self.planner.build_execution_context(command_text, plan)
 
@@ -176,7 +186,11 @@ class VoiceAssistant:
                                 "context": context.copy(),
                             }
 
-                        if risk == "confirm_required":
+                        # Двозначні дії (ambiguous) теж потребують підтвердження
+                        needs_confirm = risk == "confirm_required" or prepared_step.get("requires_confirmation")
+                        ambiguous_pattern = prepared_step.get("ambiguous_pattern")
+
+                        if needs_confirm:
                             question = f"Підтвердити дію '{action}'?"
                             if action == "open_program":
                                 question = f"Підтвердити відкриття програми '{args.get('program_name', '')}'?"
@@ -185,7 +199,12 @@ class VoiceAssistant:
                             elif action == "add_allowed_program":
                                 question = f"Підтвердити додавання програми '{args.get('program_name', '')}' у whitelist?"
 
-                            self.log_to_gui("assistant", f"❓ Потрібне підтвердження для кроку: {action}")
+                            if ambiguous_pattern:
+                                question = f"⚠️ Двозначна дія (патерн: '{ambiguous_pattern}'). {question}"
+                                # ambiguous логуємо у консоль, GUI показує в панелі
+                                print(f"{Fore.YELLOW}⚠️ Двозначна дія в кроці '{action}' (патерн: '{ambiguous_pattern}'){Fore.RESET}")
+
+                            # Не дублюємо в чат - панель плану вже показує "needs_confirmation"
                             confirmation_result = self.registry.execute_function(
                                 "confirm_action",
                                 {"action": action, "question": question},
@@ -201,7 +220,8 @@ class VoiceAssistant:
                                     "context": context.copy(),
                                 }
 
-                        self.log_to_gui("assistant", f"▶️ Крок: {action}")
+                        # "▶️ Крок" тепер у панелі плану як running
+                        print(f"{Fore.CYAN}▶️ Крок: {action}{Fore.RESET}")
                         result = self.registry.execute_function(action, args)
                         success, validation_message = self.planner._validate_step(action, args, result, context)
                         tool_meta = getattr(self.registry, "last_tool_result", None)
@@ -223,7 +243,8 @@ class VoiceAssistant:
                                     "context": context.copy(),
                                 }
 
-                            self.log_to_gui("assistant", f"⚠️ Крок '{action}' не пройшов перевірку. Пробую виправити.")
+                            # Консоль - детально, GUI - через панель плану
+                            print(f"{Fore.YELLOW}⚠️ Крок '{action}' не пройшов перевірку. Пробую виправити.{Fore.RESET}")
                             context["repair_attempts"] = context.get("repair_attempts", 0) + 1
                             repair_step = self.planner.propose_repair_step(command_text, prepared_step, result, context)
 
@@ -231,7 +252,7 @@ class VoiceAssistant:
                                 repaired = self.planner.prepare_step(repair_step, context)
                                 final_action = repaired.get("action")
                                 final_args = repaired.get("args", {})
-                                self.log_to_gui("assistant", f"🔁 Repair-крок: {final_action}")
+                                print(f"{Fore.CYAN}🔁 Repair-крок: {final_action}{Fore.RESET}")
                                 final_result = self.registry.execute_function(final_action, final_args)
                                 success, validation_message = self.planner._validate_step(final_action, final_args, final_result, context)
                                 prepared_step = repaired
@@ -246,9 +267,9 @@ class VoiceAssistant:
                                         [],
                                     )
                                     if replanned_steps:
-                                        self.log_to_gui("assistant", f"🧭 Переплановую задачу: додано {len(replanned_steps)} нових кроків.")
+                                        print(f"{Fore.MAGENTA}🧭 Переплановую задачу: додано {len(replanned_steps)} нових кроків.{Fore.RESET}")
                                     else:
-                                        self.log_to_gui("assistant", "⚠️ Перепланування не дало безпечного продовження.")
+                                        print(f"{Fore.YELLOW}⚠️ Перепланування не дало безпечного продовження.{Fore.RESET}")
 
                         self.planner.update_context_from_result(
                             {"action": final_action, "args": final_args},
@@ -256,7 +277,7 @@ class VoiceAssistant:
                             context,
                         )
 
-                        return {
+                        step_outcome = {
                             "action": final_action,
                             "status": "ok" if success else "error",
                             "result": final_result,
@@ -266,20 +287,39 @@ class VoiceAssistant:
                             "append_steps": replanned_steps or [],
                             "context": context.copy(),
                         }
+                        # Записати крок у TaskMemory
+                        self.memory.record_task_step(step_outcome)
+                        if step_outcome["status"] == "error":
+                            self.memory.session.track_error()
+                        return step_outcome
 
                     def on_plan_complete(results):
                         self.memory.update_task(command_text, plan, results)
                         error_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "error")
                         blocked_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "blocked")
                         confirm_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "needs_confirmation")
+
+                        # Визначити фінальний статус задачі
                         if blocked_count:
-                            self.log_to_gui("assistant", f"⛔ План зупинено політикою безпеки: {blocked_count} крок заблоковано.")
-                        elif confirm_count:
-                            self.log_to_gui("assistant", f"❓ План не завершено: {confirm_count} крок не підтверджено або скасовано користувачем.")
+                            final_status = "aborted"
                         elif error_count:
-                            self.log_to_gui("assistant", f"⚠️ План завершено з помилками: {len(results) - error_count} успішно, {error_count} з помилкою.")
+                            final_status = "error"
+                        elif confirm_count:
+                            final_status = "cancelled"
                         else:
-                            self.log_to_gui("assistant", f"✅ Виконано план із {len(results)} кроків.")
+                            final_status = "success"
+
+                        # Завершити TaskMemory (згенерує LLM summary)
+                        self.memory.finish_task(final_status)
+                        # Короткий фінальний підсумок у чат (панель показує деталі)
+                        if blocked_count:
+                            self.log_to_gui("assistant", f"⛔ Зупинено політикою безпеки.")
+                        elif confirm_count:
+                            self.log_to_gui("assistant", f"❓ Скасовано або не підтверджено.")
+                        elif error_count:
+                            self.log_to_gui("assistant", f"⚠️ Виконано з помилками.")
+                        else:
+                            self.log_to_gui("assistant", f"✅ Готово.")
 
                     self.executor.execute_plan_async(plan, execute_step, on_plan_complete)
                     return
@@ -437,13 +477,53 @@ class VoiceAssistant:
             
             elapsed = time.time() - start_total
             print(f"{Fore.LIGHTBLACK_EX}⏱️  {elapsed:.2f}с (LLM: {llm_time:.2f}с)")
-            
-            if len(self.conversation_history) > 10:
-                self.conversation_history = self.conversation_history[-10:]
-                
+
+            # Адаптивне управління історією діалогу
+            self._manage_conversation_history()
+
         except Exception as e:
             error_msg = f"❌ Помилка: {e}"
             self.log_to_gui("assistant", error_msg)
             print(f"{Fore.RED}{error_msg}")
             import traceback
             traceback.print_exc()
+
+    def _memory_llm_caller(self, prompt: str) -> str:
+        """Callable для MemoryManager - безпечний виклик LLM без історії діалогу."""
+        try:
+            from .logic_llm import ask_llm
+            # Передаємо порожню історію, щоб LLM не плутав контексти
+            return ask_llm(prompt, [], "Ти - асистент для підсумків. Відповідай коротко і по суті.")
+        except Exception as e:
+            print(f"⚠️ _memory_llm_caller помилка: {e}")
+            return ""
+
+    def _manage_conversation_history(self, max_messages: int = 20, summarize_threshold: int = 15):
+        """Адаптивне управління історією діалогу з LLM-based summary для старих повідомлень."""
+        if len(self.conversation_history) <= max_messages:
+            return
+
+        # Якщо багато повідомлень - генеруємо summary перших N через LLM
+        has_summary = any(
+            msg.get("role") == "system" and "Summary" in msg.get("content", "")
+            for msg in self.conversation_history
+        )
+
+        if len(self.conversation_history) > summarize_threshold and not has_summary:
+            to_summarize = self.conversation_history[:5]
+            # LLM-based summary через MemoryManager
+            summary_text = self.memory.summarize_conversation(to_summarize, max_messages=5)
+
+            self.conversation_history = [
+                {"role": "system", "content": f"Контекст попередньої розмови: {summary_text}"}
+            ] + self.conversation_history[5:]
+
+        # Обрізаємо до max_messages
+        if len(self.conversation_history) > max_messages:
+            # Зберігаємо system summary (якщо є) і останні max_messages-1
+            if self.conversation_history and self.conversation_history[0].get("role") == "system":
+                self.conversation_history = (
+                    [self.conversation_history[0]] + self.conversation_history[-(max_messages - 1):]
+                )
+            else:
+                self.conversation_history = self.conversation_history[-max_messages:]

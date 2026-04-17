@@ -274,15 +274,34 @@ def execute_python_file(filename):
 def list_sandbox_scripts():
     """Список скриптів"""
     scripts = list(SCRIPTS_DIR.glob("*.py"))
-    
+
     if not scripts:
-        return "📂 Пісочниця порожня"
-    
-    result = f"📂 Скриптів в пісочниці: {len(scripts)}\n\n"
-    
+        return make_tool_result(
+            True,
+            "📂 Пісочниця порожня",
+            data={"scripts": [], "count": 0, "scripts_dir": str(SCRIPTS_DIR)},
+        )
+
+    scripts_data = []
     for script in sorted(scripts):
-        size = script.stat().st_size
-        mtime = datetime.fromtimestamp(script.stat().st_mtime)
-        result += f"📄 {script.name} ({size} байт, {mtime.strftime('%Y-%m-%d %H:%M')})\n"
-    
-    return result.strip()
+        stat = script.stat()
+        scripts_data.append({
+            "name": script.name,
+            "size": stat.st_size,
+            "modified": datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M'),
+            "path": str(script),
+        })
+
+    result_text = f"� Скриптів в пісочниці: {len(scripts)}\n\n"
+    for s in scripts_data:
+        result_text += f"📄 {s['name']} ({s['size']} байт, {s['modified']})\n"
+
+    return make_tool_result(
+        True,
+        result_text.strip(),
+        data={
+            "scripts": scripts_data,
+            "count": len(scripts),
+            "scripts_dir": str(SCRIPTS_DIR),
+        },
+    )

@@ -141,6 +141,18 @@ class AssistantCore:
     def log_to_gui(self, sender, message):
         """Відправити повідомлення в GUI"""
         if self.gui_queue:
+            # --- Технічні події від TaskExecutor та planner (НЕ чат) ---
+            # Ці msg_type потрапляють у GUI як сигнали, а не текст
+            TECHNICAL_EVENTS = {
+                'update_progress', 'update_status',
+                'execution_started', 'execution_finished',
+                'plan_started', 'step_update', 'plan_finished',
+                'show_confirmation',
+            }
+            if sender in TECHNICAL_EVENTS:
+                self.gui_queue.put((sender, message))
+                return
+
             # Нові типи для стрімінгу
             if sender == "assistant_stream_start":
                 self.gui_queue.put(('stream_start', None))
@@ -156,7 +168,7 @@ class AssistantCore:
             if sender == "assistant":
                 from functions.config import TTS_SPEAK_PREFIXES
                 for prefix in TTS_SPEAK_PREFIXES:
-                    if message.strip().startswith(prefix):
+                    if message and isinstance(message, str) and message.strip().startswith(prefix):
                         message = message.strip()[len(prefix):].strip()
                         break
             

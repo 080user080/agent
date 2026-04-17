@@ -71,6 +71,14 @@ class AssistantApp:
                     elif msg_type == 'execution_finished':
                         log_console("[STATUS] Виконання завершено")
                         self.gui.queue_message('execution_finished', None)
+                    elif msg_type == 'plan_started':
+                        self.gui.queue_message('plan_started', data)
+                    elif msg_type == 'step_update':
+                        self.gui.queue_message('step_update', data)
+                    elif msg_type == 'plan_finished':
+                        self.gui.queue_message('plan_finished', data)
+                    elif msg_type == 'show_confirmation':
+                        self.gui.queue_message('show_confirmation', data)
             except queue.Empty:
                 pass
 

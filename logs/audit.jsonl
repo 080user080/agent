@@ -1,0 +1,16 @@
+{"timestamp": "2026-04-17T21:34:48.188414", "action": "open_program", "risk": "confirm_required", "ok": true, "error": null, "params_summary": {"program_name": "notepad"}}
+{"timestamp": "2026-04-17T21:49:03.394845", "action": "create_file", "risk": "safe", "ok": true, "error": null, "params_summary": {"filename": "calculator.py", "content": "print(2 + 3)"}}
+{"timestamp": "2026-04-17T21:49:03.608136", "action": "execute_python_file", "risk": "safe", "ok": false, "error": "file_not_found", "params_summary": {"filename": "calculator.py"}}
+{"timestamp": "2026-04-17T21:49:06.811888", "action": "execute_python", "risk": "safe", "ok": true, "error": null, "params_summary": {"code": "print(2 + 3)", "script_name": "calculator.py"}}
+{"timestamp": "2026-04-17T21:50:48.936709", "action": "confirm_action", "risk": "safe", "ok": false, "error": null, "params_summary": {"action": "open_program", "question": "Підтвердити відкриття програми 'notepad'?"}}
+{"timestamp": "2026-04-17T21:50:49.144013", "action": "create_file", "risk": "safe", "ok": true, "error": null, "params_summary": {"filename": "script.py", "content": "print('Hello, world!')"}}
+{"timestamp": "2026-04-17T21:50:49.350888", "action": "execute_python", "risk": "safe", "ok": false, "error": "❌ Помилка запису скрипта: [Errno 13] Permission denied: 'D:\\\\Python\\\\MARK\\\\sandbox\\\\scripts'", "params_summary": {"code": "print('Hello, world!')", "script_name": ""}}
+{"timestamp": "2026-04-17T21:50:52.468736", "action": "execute_python", "risk": "safe", "ok": true, "error": null, "params_summary": {"code": "print('Hello, world!')", "script_name": "script.py"}}
+{"timestamp": "2026-04-17T21:50:55.117597", "action": "debug_python_code", "risk": "safe", "ok": true, "error": null, "params_summary": {"code": "pritn('test')"}}
+{"timestamp": "2026-04-17T21:50:57.108963", "action": "noop", "risk": "blocked", "ok": true, "error": null, "params_summary": {}}
+{"timestamp": "2026-04-17T21:51:02.267721", "action": "noop", "risk": "blocked", "ok": true, "error": null, "params_summary": {}}
+{"timestamp": "2026-04-17T21:51:05.355858", "action": "confirm_action", "risk": "safe", "ok": false, "error": null, "params_summary": {"action": "enable_auto_confirm", "question": "Підтвердити дію 'enable_auto_confirm'?"}}
+{"timestamp": "2026-04-17T21:51:15.568957", "action": "confirm_action", "risk": "safe", "ok": false, "error": null, "params_summary": {"action": "close_program", "question": "Підтвердити закриття програми 'notepad.exe'?"}}
+{"timestamp": "2026-04-17T22:09:17.338522", "action": "create_file", "risk": "safe", "ok": true, "error": null, "params_summary": {"filename": "calculator.py", "content": "print(2 + 3)"}}
+{"timestamp": "2026-04-17T22:10:26.494721", "action": "create_file", "risk": "safe", "ok": true, "error": null, "params_summary": {"filename": "calculator.py", "content": "print(2 + 3)"}}
+{"timestamp": "2026-04-17T22:10:26.736341", "action": "execute_python_file", "risk": "safe", "ok": true, "error": null, "params_summary": {"filename": "calculator.py"}}
