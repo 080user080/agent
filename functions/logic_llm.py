@@ -6,48 +6,138 @@ import requests
 from colorama import Fore
 from .config import LM_STUDIO_URL
 
+
+def sanitize_json_string(text: str) -> str:
+    """Екранувати сирі переноси рядка/табуляції всередині JSON string-значень.
+
+    LLM часто генерує JSON з реальними \\n всередині полів типу `code`,
+    що ламає `json.loads`. Ця функція проходить текст і екранує control-
+    символи (\\n, \\r, \\t) тільки всередині лапок.
+    """
+    if not text:
+        return text
+
+    result = []
+    in_string = False
+    escape = False
+
+    for ch in text:
+        if escape:
+            # Попередній символ був \, пропускаємо поточний як-є
+            result.append(ch)
+            escape = False
+            continue
+
+        if ch == "\\" and in_string:
+            result.append(ch)
+            escape = True
+            continue
+
+        if ch == '"':
+            in_string = not in_string
+            result.append(ch)
+            continue
+
+        if in_string:
+            # Екрануємо сирі control chars усередині string
+            if ch == "\n":
+                result.append("\\n")
+            elif ch == "\r":
+                result.append("\\r")
+            elif ch == "\t":
+                result.append("\\t")
+            elif ord(ch) < 0x20:
+                result.append(f"\\u{ord(ch):04x}")
+            else:
+                result.append(ch)
+        else:
+            result.append(ch)
+
+    return "".join(result)
+
+
+def safe_json_loads(text: str):
+    """Спробувати `json.loads`, а при помилці — після санітизації."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        sanitized = sanitize_json_string(text)
+        return json.loads(sanitized)
+
+
+def clean_llm_tokens(text: str) -> str:
+    """Прибрати службові токени з відповіді LLM (gpt-oss / lm-studio / openai-чат-формат).
+
+    Видаляє:
+    - `<|channel|>`, `<|message|>`, `<|start|>`, `<|end|>`, ...
+    - Метадані каналу: `commentary to=python code`, `to=functions.name`, `final json`, ...
+    - Самостійні службові слова: `assistant`, `channel`, `constrain`, `commentary`, `final`.
+    """
+    if not text:
+        return ""
+    # 1. Прибрати токени <|...|>
+    cleaned = re.sub(r'<\|[^|]*\|>', '', text)
+    # 2. Прибрати метадані каналу типу `to=python code`, `to=functions.foo`
+    cleaned = re.sub(r'to\s*=\s*[\w.]+(\s+\w+)?', '', cleaned)
+    # 3. Прибрати службові слова поряд із токенами
+    cleaned = re.sub(
+        r'\b(assistant|channel|commentary|constrain|message|final)\b',
+        '',
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    # 4. Нормалізувати пробіли
+    cleaned = re.sub(r'[ \t]+', ' ', cleaned)
+    return cleaned.strip()
+
+
 def extract_json_from_text(text):
-    """Витягти JSON з тексту"""
-    # Видалити всі токени LM Studio
-    clean_text = re.sub(r'<\|[^|]+\|>', '', text)
-    
-    # Видалити службові слова та коментарі
-    clean_text = re.sub(r'assistant|channel|commentary|constrain|message|to=functions\.\w+', '', clean_text, flags=re.IGNORECASE)
-    
-    # Видалити все після останньої закриваючої дужки
-    if '}' in clean_text:
-        clean_text = clean_text[:clean_text.rfind('}') + 1]
-    
-    # Видалити все перед першою відкриваючою дужкою
-    if '{' in clean_text:
-        clean_text = clean_text[clean_text.find('{'):]
-    
-    clean_text = clean_text.strip()
-    
-    # Якщо це JSON в блоках ```json ... ```
-    json_match = re.search(r'```json\s*(\{.*?\})\s*```', clean_text, re.DOTALL)
+    """Витягти JSON з тексту (з очисткою службових токенів LLM)."""
+    clean_text = clean_llm_tokens(text)
+
+    # Якщо це JSON в блоках ```json ... ``` (або ```...```)
+    json_match = re.search(r'```(?:json)?\s*(\{.*?\})\s*```', clean_text, re.DOTALL | re.IGNORECASE)
     if json_match:
         return json_match.group(1).strip()
-    
-    # Якщо це JSON в блоках ``` ... ```
-    json_match = re.search(r'```\s*(\{.*?\})\s*```', clean_text, re.DOTALL)
-    if json_match:
-        return json_match.group(1).strip()
-    
-    # Якщо є тільки JSON об'єкт
-    json_match = re.search(r'(\{.*?\})', clean_text, re.DOTALL)
-    if json_match:
-        return json_match.group(1).strip()
-    
-    # Якщо нічого не знайдено, повертаємо як response
-    return json.dumps({"response": text.strip()})
+
+    # Якщо є JSON-масив [...]
+    if '[' in clean_text and ']' in clean_text:
+        start = clean_text.find('[')
+        end = clean_text.rfind(']')
+        if end > start:
+            candidate = clean_text[start : end + 1]
+            # Перевіримо валідність
+            try:
+                safe_json_loads(candidate)
+                return candidate
+            except Exception:
+                pass
+
+    # Якщо є JSON-об'єкт {...} (беремо від першого '{' до останнього '}')
+    if '{' in clean_text and '}' in clean_text:
+        start = clean_text.find('{')
+        end = clean_text.rfind('}')
+        if end > start:
+            candidate = clean_text[start : end + 1]
+            try:
+                safe_json_loads(candidate)
+                return candidate
+            except Exception:
+                # Може бути частковий JSON — повертаємо як є, парсер спробує sanitize
+                return candidate
+
+    # Нічого не знайдено — повертаємо ОЧИЩЕНИЙ текст як response
+    return json.dumps({"response": clean_text}, ensure_ascii=False)
 
 def ask_llm(user_message, conversation_history, system_prompt):
     """Відправити запит до LM Studio"""
     try:
         messages = [{"role": "system", "content": system_prompt}]
         messages.extend(conversation_history)
-        messages.append({"role": "user", "content": user_message})
+        # Уникнути дублювання: якщо останнє повідомлення вже == user_message, не додаємо ще раз
+        last = conversation_history[-1] if conversation_history else None
+        if not (last and last.get("role") == "user" and last.get("content") == user_message):
+            messages.append({"role": "user", "content": user_message})
         
         response = requests.post(LM_STUDIO_URL, 
             json={
@@ -78,7 +168,7 @@ def process_llm_response(response_text, registry):
     print(f"{Fore.LIGHTBLACK_EX}📦 [Спроба парсингу]: {json_text[:200]}...")
     
     try:
-        response_json = json.loads(json_text)
+        response_json = safe_json_loads(json_text)
         
         # Якщо це відповідь
         if "response" in response_json and "action" not in response_json:
@@ -135,7 +225,7 @@ def process_llm_response(response_text, registry):
             if json_match:
                 try:
                     json_str = json_match.group(1)
-                    response_json = json.loads(json_str)
+                    response_json = safe_json_loads(json_str)
                     if "program_name" in response_json:
                         print(f"{Fore.MAGENTA}⚡ [Знайдено через токени]: open_program")
                         result = registry.execute_function("open_program", response_json)

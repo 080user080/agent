@@ -72,20 +72,49 @@ class Planner:
         return "\n".join(lines)
 
     def _extract_json(self, text: str) -> Optional[Any]:
-        """Витягнути JSON-масив або об'єкт з відповіді LLM."""
+        """Витягнути JSON-масив або об'єкт з відповіді LLM.
+
+        Підтримує:
+        - Прибирання токенів `<|channel|>`, `<|message|>` тощо.
+        - Код у блоках ```json ... ```.
+        - Список об'єктів без зовнішніх `[]`: `{...}, {...}` → `[{...}, {...}]`.
+        """
         if not text:
             return None
 
+        from .logic_llm import safe_json_loads
+
+        # 1. Прибираємо LLM-токени типу <|channel|>, <|message|>, constrain, ...
+        cleaned = re.sub(r'<\|[^|]*\|>', '', text)
+        cleaned = re.sub(r'\b(channel|constrain|message|final)\b\s*:?', '', cleaned, flags=re.IGNORECASE).strip()
+
+        # 2. Витягаємо з ```json ... ``` блоку, якщо є
+        code_block = re.search(r'```(?:json)?\s*(.*?)\s*```', cleaned, re.DOTALL | re.IGNORECASE)
+        if code_block:
+            cleaned = code_block.group(1).strip()
+
         candidates: List[str] = []
-        for start_char, end_char in (("[", "]"), ("{", "}")):
-            start = text.find(start_char)
-            end = text.rfind(end_char)
-            if start != -1 and end > start:
-                candidates.append(text[start : end + 1])
+
+        # 3. Повний масив [...] з найдальшими дужками
+        arr_start = cleaned.find('[')
+        arr_end = cleaned.rfind(']')
+        if arr_start != -1 and arr_end > arr_start:
+            candidates.append(cleaned[arr_start : arr_end + 1])
+
+        # 4. Об'єкт {...} з найдальшими дужками
+        obj_start = cleaned.find('{')
+        obj_end = cleaned.rfind('}')
+        if obj_start != -1 and obj_end > obj_start:
+            obj_block = cleaned[obj_start : obj_end + 1]
+            candidates.append(obj_block)
+            # 5. Fallback: обгортаємо в [...] якщо там багато об'єктів через кому
+            #    (LLM іноді забуває зовнішні дужки)
+            if '},' in obj_block or '} ,' in obj_block or '}\n' in obj_block:
+                candidates.append('[' + obj_block + ']')
 
         for candidate in candidates:
             try:
-                return json.loads(candidate)
+                return safe_json_loads(candidate)
             except Exception:
                 continue
         return None
@@ -115,10 +144,35 @@ class Planner:
             )
         return normalized
 
+    def _recent_history_section(self, limit: int = 6) -> str:
+        """Взяти останні N повідомлень з діалогу для контексту planner-а."""
+        history = getattr(self.assistant, "conversation_history", None) or []
+        # Виключаємо останнє повідомлення (це і є поточна задача)
+        recent = history[-(limit + 1):-1] if len(history) > 1 else []
+        if not recent:
+            return ""
+        lines = []
+        for msg in recent:
+            role = msg.get("role", "user")
+            content = str(msg.get("content", "")).strip()
+            if not content:
+                continue
+            # Обрізаємо довгі повідомлення
+            if len(content) > 300:
+                content = content[:300] + "..."
+            label = "Користувач" if role == "user" else "Асистент"
+            lines.append(f"{label}: {content}")
+        if not lines:
+            return ""
+        return "\nНЕЩОДАВНІЙ ДІАЛОГ (для контексту, поточна задача — останнє повідомлення користувача):\n" + "\n".join(lines) + "\n"
+
     def create_plan(self, task: str, context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Побудувати план для задачі з врахуванням контексту."""
         available_actions = self._available_actions_description()
         is_coding = self._is_coding_task(task)
+
+        # Контекст з попередніх повідомлень (щоб фраза "виконай його" мала сенс)
+        history_section = self._recent_history_section()
 
         # Додаємо контекст якщо є
         context_section = ""
@@ -154,14 +208,16 @@ class Planner:
 
 ВИКОРИСТОВУЙ ЛИШЕ ЦІ ФУНКЦІЇ:
 {available_actions}
-{context_section}{coding_section}
+{history_section}{context_section}{coding_section}
 ПРАВИЛА:
-- Поверни ТІЛЬКИ JSON-масив.
+- Поверни ТІЛЬКИ JSON-масив: [{{...}}, {{...}}, ...]  ОБОВ'ЯЗКОВО з квадратними дужками!
 - Кожен елемент має формат:
   {{"action":"назва_функції","args":{{...}},"goal":"що має статись","validation":"як зрозуміти що крок успішний"}}
+- Якщо користувач посилається на "його"/"цей файл"/"той скрипт" — використовуй інформацію з діалогу вище.
 - Використовуй placeholder-и для посилання на файли з попередніх кроків (див. вище).
 - Не вигадуй функцій, яких немає у списку.
 - Не додавай небезпечні або зайві дії.
+- БЕЗ службових токенів типу <|channel|>, <|message|>, тільки чистий JSON.
 
 Задача користувача:
 {task}

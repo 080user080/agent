@@ -21,6 +21,114 @@ except ImportError:
     ASSISTANT_EMOJI = "⚡"
     ASSISTANT_TITLE = f"{ASSISTANT_EMOJI} {ASSISTANT_NAME}"
 
+class LLMEndpointsEditor:
+    """Редактор списку LLM-ендпоїнтів для вкладки налаштувань.
+
+    Рендерить по одному LabelFrame на кожен ендпоїнт (ім'я, URL, модель, API key,
+    role, type, rate limit, script). Повертає список словників через `.get()`.
+    """
+
+    # Опис полів: (key, label, width, widget_type, choices)
+    FIELDS = [
+        ("name",              "Назва",              24, "entry",   None),
+        ("enabled",           "Активний",            0, "check",   None),
+        ("role",              "Роль",               12, "combo",   ["primary", "secondary", "fallback", "alternative"]),
+        ("type",              "Тип",                18, "combo",   ["openai_compatible", "script"]),
+        ("url",               "URL",                38, "entry",   None),
+        ("model",             "Модель",             20, "entry",   None),
+        ("api_key",           "API Key",            24, "entry",   None),
+        ("temperature",       "Temperature",         6, "entry",   None),
+        ("max_tokens",        "Max tokens",          6, "entry",   None),
+        ("timeout",           "Timeout (c)",         5, "entry",   None),
+        ("script_command",    "Script command",     28, "entry",   None),
+        ("script_output_file","Output file",        20, "entry",   None),
+        ("rate_limit_mode",   "Rate mode",          12, "combo",   ["unlimited", "rpm", "total"]),
+        ("rate_limit_rpm",    "Max RPM",             5, "entry",   None),
+        ("rate_limit_total",  "Max total",           6, "entry",   None),
+    ]
+
+    INT_KEYS = {"max_tokens", "timeout", "rate_limit_rpm", "rate_limit_total"}
+    FLOAT_KEYS = {"temperature"}
+
+    def __init__(self, parent, endpoints: list, row: int):
+        self.parent = parent
+        self._vars: list[dict] = []  # [{field_key: tk.Variable, ...}, ...]
+
+        # Контейнер для всіх моделей
+        container = ttk.Frame(parent)
+        container.grid(row=row, column=0, columnspan=3, sticky='ew', padx=20, pady=8)
+        container.columnconfigure(0, weight=1)
+
+        for idx, ep in enumerate(endpoints):
+            self._render_endpoint(container, idx, ep)
+
+    def _render_endpoint(self, parent, idx: int, ep: dict):
+        """Намалювати один ендпоїнт у LabelFrame з grid-розкладкою полів."""
+        title = f"{idx + 1}. {ep.get('name', 'Без назви')}  [id={ep.get('id', '?')}]"
+        frame = ttk.LabelFrame(parent, text=title, padding=8)
+        frame.grid(row=idx, column=0, sticky='ew', pady=4)
+        frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(3, weight=1)
+
+        ep_vars = {"id": ep.get("id", f"llm{idx + 1}")}
+        # Два стовпці полів (пари label+entry), щоб не було надто високого фрейму
+        row = 0
+        col = 0
+        for field_key, label, width, wtype, choices in self.FIELDS:
+            val = ep.get(field_key, "")
+
+            tk.Label(frame, text=label, font=('Segoe UI', 9)).grid(
+                row=row, column=col * 2, sticky='w', padx=(0, 4), pady=2
+            )
+
+            if wtype == "check":
+                var = tk.BooleanVar(value=bool(val))
+                w = ttk.Checkbutton(frame, variable=var)
+            elif wtype == "combo":
+                var = tk.StringVar(value=str(val))
+                w = ttk.Combobox(frame, textvariable=var, values=choices or [],
+                                 state='readonly', width=width or 12)
+            else:  # entry
+                var = tk.StringVar(value=str(val) if val is not None else "")
+                show = "*" if field_key == "api_key" and val else None
+                w = ttk.Entry(frame, textvariable=var, width=width or 20, show=show)
+
+            w.grid(row=row, column=col * 2 + 1, sticky='ew', padx=(0, 12), pady=2)
+            ep_vars[field_key] = var
+
+            # Перехід на другий стовпчик
+            col += 1
+            if col >= 2:
+                col = 0
+                row += 1
+
+        self._vars.append(ep_vars)
+
+    def get(self) -> list:
+        """Зібрати значення з усіх віджетів у список словників."""
+        result = []
+        for ep_vars in self._vars:
+            ep = {"id": ep_vars["id"]}
+            for field_key, _, _, wtype, _ in self.FIELDS:
+                raw = ep_vars[field_key].get()
+                if wtype == "check":
+                    ep[field_key] = bool(raw)
+                elif field_key in self.INT_KEYS:
+                    try:
+                        ep[field_key] = int(raw) if str(raw).strip() else 0
+                    except (ValueError, TypeError):
+                        ep[field_key] = 0
+                elif field_key in self.FLOAT_KEYS:
+                    try:
+                        ep[field_key] = float(raw) if str(raw).strip() else 0.0
+                    except (ValueError, TypeError):
+                        ep[field_key] = 0.0
+                else:
+                    ep[field_key] = str(raw)
+            result.append(ep)
+        return result
+
+
 class AssistantGUI:
     """Головне вікно асистента"""
     
@@ -39,7 +147,8 @@ class AssistantGUI:
         self.root.geometry("500x400")
         self.root.configure(bg='#f0f0f0')
         self.root.resizable(True, True)
-        self.root.attributes('-alpha', 0.95)  # Напівпрозорість
+        # Прозорість вимкнена — повна непрозорість
+        self.root.attributes('-alpha', 1.0)
         self.root.minsize(450, 550)  # Мінімальний розмір
         
         # Стилі
@@ -58,7 +167,14 @@ class AssistantGUI:
     def setup_styles(self):
         """Налаштування стилів"""
         self.style = ttk.Style()
-        
+
+        # Примусово використати тему, яка підтримує власні кольори кнопок.
+        # Дефолтні Windows-теми ігнорують background у ttk.Button.
+        try:
+            self.style.theme_use('clam')
+        except tk.TclError:
+            pass  # якщо clam недоступна — лишаємо дефолт
+
         # Темна тема для заголовка
         self.style.configure(
             'Title.TLabel',
@@ -67,38 +183,65 @@ class AssistantGUI:
             font=('Segoe UI', 12, 'bold'),
             padding=10
         )
-        
-        # Стиль для кнопок подтверждения
+
+        # --- Кнопка ПІДТВЕРДИТИ (зелена) ---
         self.style.configure(
             'Confirm.TButton',
             background='#4CAF50',
             foreground='white',
             font=('Segoe UI', 10, 'bold'),
-            padding=10
+            padding=10,
+            borderwidth=0,
         )
-        
+        self.style.map(
+            'Confirm.TButton',
+            background=[('active', '#45a049'), ('pressed', '#3d8b40'), ('!active', '#4CAF50')],
+            foreground=[('active', 'white'), ('!active', 'white')],
+        )
+
+        # --- Кнопка СКАСУВАТИ (червона) ---
         self.style.configure(
             'Cancel.TButton',
             background='#f44336',
             foreground='white',
             font=('Segoe UI', 10, 'bold'),
-            padding=10
+            padding=10,
+            borderwidth=0,
         )
-        
+        self.style.map(
+            'Cancel.TButton',
+            background=[('active', '#d73026'), ('pressed', '#b71c1c'), ('!active', '#f44336')],
+            foreground=[('active', 'white'), ('!active', 'white')],
+        )
+
+        # --- Кнопка ВІДПРАВИТИ (чорна) ---
         self.style.configure(
             'Send.TButton',
-            background='#000000',
+            background='#1976d2',
             foreground='white',
             font=('Segoe UI', 12, 'bold'),
-            padding=(15, 10)
+            padding=(15, 10),
+            borderwidth=0,
         )
-        
+        self.style.map(
+            'Send.TButton',
+            background=[('active', '#1565c0'), ('pressed', '#0d47a1'), ('!active', '#1976d2')],
+            foreground=[('active', 'white'), ('!active', 'white')],
+        )
+
+        # --- Кнопка СТОП (оранжева) ---
         self.style.configure(
             'Stop.TButton',
-            background='#000000',
+            background='#e65100',
             foreground='white',
             font=('Segoe UI', 12, 'bold'),
-            padding=(15, 10)
+            padding=(15, 10),
+            borderwidth=0,
+        )
+        self.style.map(
+            'Stop.TButton',
+            background=[('active', '#bf360c'), ('pressed', '#8c2400'), ('!active', '#e65100')],
+            foreground=[('active', 'white'), ('!active', 'white')],
         )
     
     def create_widgets(self):
@@ -117,11 +260,15 @@ class AssistantGUI:
         # Головний контейнер з прокруткою
         main_container = ttk.Frame(self.root)
         main_container.pack(fill='both', expand=True, padx=5, pady=5)
-        
-        # Контейнер для чату
-        chat_frame = ttk.Frame(main_container)
-        chat_frame.pack(fill='both', expand=True, pady=(0, 10))
-        
+
+        # Notebook (вкладки): Чат / Налаштування
+        self.notebook = ttk.Notebook(main_container)
+        self.notebook.pack(fill='both', expand=True, pady=(0, 10))
+
+        # --- Вкладка Чат ---
+        chat_frame = ttk.Frame(self.notebook)
+        self.notebook.add(chat_frame, text='💬 Чат')
+
         # Історія чату з прокруткою
         self.chat_history = scrolledtext.ScrolledText(
             chat_frame,
@@ -135,6 +282,13 @@ class AssistantGUI:
             height=20
         )
         self.chat_history.pack(fill='both', expand=True)
+
+        # --- Вкладка Налаштування ---
+        self.settings_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.settings_frame, text='⚙️ Налаштування')
+        # Ліниве заповнення при першому відкритті
+        self._settings_built = False
+        self.notebook.bind('<<NotebookTabChanged>>', self._on_tab_changed)
 
         # --- Панель плану виконання (прихована за замовчуванням) ---
         self.plan_frame = ttk.Frame(main_container, relief='solid', borderwidth=1)
@@ -199,15 +353,24 @@ class AssistantGUI:
             style='Confirm.TButton',
             command=self.on_yes_clicked
         )
-        self.yes_button.pack(side='left', padx=10)
-        
+        self.yes_button.pack(side='left', padx=8)
+
         self.no_button = ttk.Button(
             button_frame,
             text="НІ",
             style='Cancel.TButton',
             command=self.on_no_clicked
         )
-        self.no_button.pack(side='left', padx=10)
+        self.no_button.pack(side='left', padx=8)
+
+        # Третя кнопка - увімкнути автопідтвердження всіх дій
+        self.auto_button = ttk.Button(
+            button_frame,
+            text="АВТОМАТИЧНО (всі дозволено)",
+            style='Confirm.TButton',
+            command=self.on_auto_clicked
+        )
+        self.auto_button.pack(side='left', padx=8)
         
         # Контейнер для поля вводу
         self.input_container = ttk.Frame(main_container)
@@ -659,18 +822,20 @@ class AssistantGUI:
         self.confirmation_timer = threading.Timer(30.0, self.on_confirmation_timeout)
         self.confirmation_timer.start()
 
-        # Фокус на кнопку ТАК + біндинг клавіш Y/N/Enter/Esc
+        # Фокус на кнопку ТАК + біндинг клавіш Y/N/A/Enter/Esc
         self.root.after(50, self.yes_button.focus_set)
         self.root.bind('<KeyPress-y>', lambda e: self.on_yes_clicked())
         self.root.bind('<KeyPress-Y>', lambda e: self.on_yes_clicked())
         self.root.bind('<KeyPress-n>', lambda e: self.on_no_clicked())
         self.root.bind('<KeyPress-N>', lambda e: self.on_no_clicked())
+        self.root.bind('<KeyPress-a>', lambda e: self.on_auto_clicked())
+        self.root.bind('<KeyPress-A>', lambda e: self.on_auto_clicked())
         self.root.bind('<Return>', lambda e: self.on_yes_clicked())
         self._esc_confirmation_binding = self.root.bind(
             '<Escape>', lambda e: self.on_no_clicked(), add='+'
         )
 
-        self.status_var.set("❓ Очікую підтвердження... (Y=так, N=ні, Enter=так, Esc=ні)")
+        self.status_var.set("❓ Підтвердження: Y=так, N=ні, A=автоматично, Enter=так, Esc=ні")
 
     def _update_confirmation_countdown(self):
         """Оновлювати зворотний відлік у заголовку кнопок."""
@@ -701,7 +866,7 @@ class AssistantGUI:
 
         # Зняти клавіатурні біндинги
         for key in ('<KeyPress-y>', '<KeyPress-Y>', '<KeyPress-n>',
-                    '<KeyPress-N>', '<Return>'):
+                    '<KeyPress-N>', '<KeyPress-a>', '<KeyPress-A>', '<Return>'):
             try:
                 self.root.unbind(key)
             except tk.TclError:
@@ -715,15 +880,21 @@ class AssistantGUI:
         self.status_var.set("✅ Готовий до роботи")
     
     def on_yes_clicked(self):
-        """Коли натиснуто ТАК"""
+        """Коли натиснуто ТАК (один раз)."""
         if self.confirmation_callback:
             self.confirmation_callback(True)
         self.hide_confirmation()
-    
+
     def on_no_clicked(self):
-        """Коли натиснуто НІ"""
+        """Коли натиснуто НІ."""
         if self.confirmation_callback:
             self.confirmation_callback(False)
+        self.hide_confirmation()
+
+    def on_auto_clicked(self):
+        """Коли натиснуто АВТОМАТИЧНО - увімкнути auto_approve_all і підтвердити."""
+        if self.confirmation_callback:
+            self.confirmation_callback("auto")
         self.hide_confirmation()
     
     def on_confirmation_timeout(self):
@@ -937,7 +1108,256 @@ class AssistantGUI:
         else:
             self.plan_steps_container.pack_forget()
             self.plan_collapse_btn.config(text="▶")
-    
+
+    # ============================================================
+    # ВКЛАДКА НАЛАШТУВАНЬ
+    # ============================================================
+
+    def _on_tab_changed(self, event=None):
+        """Викликається при перемиканні вкладок. Лінивно будує Settings."""
+        try:
+            current = self.notebook.index(self.notebook.select())
+        except tk.TclError:
+            return
+        # Вкладка Settings = індекс 1
+        if current == 1 and not self._settings_built:
+            self._build_settings_tab()
+            self._settings_built = True
+
+    def _build_settings_tab(self):
+        """Побудувати UI вкладки Налаштування на основі SETTINGS_SCHEMA."""
+        from functions.core_settings import get_settings, SETTINGS_SCHEMA
+
+        settings = get_settings()
+        self._settings_vars = {}  # key → tk.Variable
+
+        # Scrollable container
+        canvas = tk.Canvas(self.settings_frame, bg='#fafafa', highlightthickness=0)
+        scroll = ttk.Scrollbar(self.settings_frame, orient='vertical', command=canvas.yview)
+        canvas.configure(yscrollcommand=scroll.set)
+        canvas.pack(side='left', fill='both', expand=True)
+        scroll.pack(side='right', fill='y')
+
+        inner = ttk.Frame(canvas)
+        canvas_window = canvas.create_window((0, 0), window=inner, anchor='nw')
+
+        def _on_frame_configure(_event):
+            canvas.configure(scrollregion=canvas.bbox('all'))
+
+        def _on_canvas_configure(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+
+        inner.bind('<Configure>', _on_frame_configure)
+        canvas.bind('<Configure>', _on_canvas_configure)
+
+        # Mouse-wheel scroll
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
+        canvas.bind_all('<MouseWheel>', _on_mousewheel)
+
+        # --- Згрупувати по "group" ---
+        groups: dict[str, list[tuple[str, dict]]] = {}
+        for key, schema in SETTINGS_SCHEMA.items():
+            group = schema.get('group', 'Інше')
+            groups.setdefault(group, []).append((key, schema))
+
+        # Рендер груп
+        row_idx = 0
+        for group_name, items in groups.items():
+            # Header групи
+            header = ttk.Label(
+                inner,
+                text=f"▸ {group_name}",
+                font=('Segoe UI', 11, 'bold'),
+                foreground='#1976d2',
+            )
+            header.grid(row=row_idx, column=0, columnspan=3, sticky='w', padx=5, pady=(12, 4))
+            row_idx += 1
+
+            for key, schema in items:
+                current_value = settings.get(key)
+                var = self._create_settings_widget(inner, key, schema, current_value, row_idx)
+                self._settings_vars[key] = var
+                row_idx += 1
+
+        # Кнопки знизу
+        btn_frame = ttk.Frame(inner)
+        btn_frame.grid(row=row_idx, column=0, columnspan=3, sticky='ew', padx=5, pady=15)
+
+        save_btn = ttk.Button(
+            btn_frame,
+            text="💾 Зберегти всі",
+            style='Confirm.TButton',
+            command=self._save_all_settings,
+        )
+        save_btn.pack(side='left', padx=5)
+
+        reset_btn = ttk.Button(
+            btn_frame,
+            text="↺ Скинути до config.py",
+            command=self._reset_all_settings,
+        )
+        reset_btn.pack(side='left', padx=5)
+
+        reload_btn = ttk.Button(
+            btn_frame,
+            text="🔄 Перезавантажити",
+            command=self._reload_settings_tab,
+        )
+        reload_btn.pack(side='left', padx=5)
+
+        # Статус-лейбл
+        self._settings_status = ttk.Label(
+            inner,
+            text="Зміни деяких налаштувань (STT/TTS/аудіо) застосуються після перезапуску.",
+            font=('Segoe UI', 8, 'italic'),
+            foreground='#888888',
+            wraplength=600,
+        )
+        self._settings_status.grid(row=row_idx + 1, column=0, columnspan=3, sticky='w', padx=5, pady=5)
+
+        inner.columnconfigure(1, weight=1)
+
+    def _create_settings_widget(self, parent, key: str, schema: dict, value, row: int):
+        """Створити один віджет для одного налаштування. Повертає tk.Variable."""
+        label_text = schema.get('label', key)
+        desc = schema.get('desc', '')
+        wtype = schema.get('type', 'str')
+
+        # Label (назва)
+        lbl = ttk.Label(parent, text=label_text, font=('Segoe UI', 9, 'bold'))
+        lbl.grid(row=row, column=0, sticky='nw', padx=(20, 8), pady=4)
+
+        # Widget за типом
+        var = None
+        if wtype == 'bool':
+            var = tk.BooleanVar(value=bool(value))
+            widget = ttk.Checkbutton(parent, variable=var)
+            widget.grid(row=row, column=1, sticky='w', padx=4, pady=4)
+        elif wtype == 'choice':
+            choices = schema.get('choices', [])
+            var = tk.StringVar(value=str(value) if value is not None else '')
+            widget = ttk.Combobox(parent, textvariable=var, values=choices, state='readonly', width=20)
+            widget.grid(row=row, column=1, sticky='w', padx=4, pady=4)
+        elif wtype == 'int':
+            var = tk.StringVar(value=str(value) if value is not None else '0')
+            widget = ttk.Entry(parent, textvariable=var, width=15)
+            widget.grid(row=row, column=1, sticky='w', padx=4, pady=4)
+        elif wtype == 'float':
+            var = tk.StringVar(value=str(value) if value is not None else '0.0')
+            widget = ttk.Entry(parent, textvariable=var, width=15)
+            widget.grid(row=row, column=1, sticky='w', padx=4, pady=4)
+        elif wtype == 'llm_endpoints':
+            # Спеціальний редактор списку LLM-моделей
+            var = LLMEndpointsEditor(parent, value or [], row=row)
+            # Desc показуємо під ним
+            if desc:
+                desc_lbl = ttk.Label(
+                    parent,
+                    text=desc,
+                    font=('Segoe UI', 8),
+                    foreground='#888888',
+                    wraplength=600,
+                )
+                desc_lbl.grid(row=row + 1, column=0, columnspan=3, sticky='w', padx=20, pady=(0, 4))
+            return var
+        else:  # str
+            var = tk.StringVar(value=str(value) if value is not None else '')
+            widget = ttk.Entry(parent, textvariable=var, width=40)
+            widget.grid(row=row, column=1, sticky='ew', padx=4, pady=4)
+
+        # Desc (пояснення)
+        if desc:
+            desc_lbl = ttk.Label(
+                parent,
+                text=desc,
+                font=('Segoe UI', 8),
+                foreground='#888888',
+                wraplength=350,
+            )
+            desc_lbl.grid(row=row, column=2, sticky='w', padx=4, pady=4)
+
+        return var
+
+    def _save_all_settings(self):
+        """Зберегти всі значення з віджетів у SettingsManager."""
+        from functions.core_settings import get_settings, SETTINGS_SCHEMA
+
+        settings = get_settings()
+        saved = 0
+        errors = []
+        for key, var in self._settings_vars.items():
+            schema = SETTINGS_SCHEMA.get(key, {})
+            wtype = schema.get('type', 'str')
+            try:
+                raw = var.get()
+                value = self._cast_value(raw, wtype, schema)
+                settings.set(key, value, persist=not schema.get('user_only', False))
+                saved += 1
+            except (ValueError, TypeError) as e:
+                errors.append(f"{key}: {e}")
+
+        if errors:
+            self._settings_status.config(
+                text=f"⚠️ Помилки у {len(errors)} полях: {'; '.join(errors[:3])}",
+                foreground='#c62828',
+            )
+        else:
+            self._settings_status.config(
+                text=f"✅ Збережено {saved} налаштувань.",
+                foreground='#2e7d32',
+            )
+
+    def _cast_value(self, raw, wtype: str, schema: dict):
+        """Привести значення з tk.Variable до потрібного типу + валідація."""
+        if wtype == 'bool':
+            return bool(raw)
+        if wtype == 'int':
+            v = int(raw)
+            if 'min' in schema and v < schema['min']:
+                raise ValueError(f">= {schema['min']}")
+            if 'max' in schema and v > schema['max']:
+                raise ValueError(f"<= {schema['max']}")
+            return v
+        if wtype == 'float':
+            v = float(raw)
+            if 'min' in schema and v < schema['min']:
+                raise ValueError(f">= {schema['min']}")
+            if 'max' in schema and v > schema['max']:
+                raise ValueError(f"<= {schema['max']}")
+            return v
+        if wtype == 'choice':
+            if schema.get('choices') and raw not in schema['choices']:
+                raise ValueError(f"невалідний вибір")
+            return str(raw)
+        if wtype == 'llm_endpoints':
+            # `raw` вже list[dict] з LLMEndpointsEditor.get()
+            if not isinstance(raw, list):
+                raise ValueError("очікується список моделей")
+            return raw
+        return str(raw)
+
+    def _reset_all_settings(self):
+        """Скинути всі user-налаштування до дефолтів з config.py."""
+        from functions.core_settings import get_settings, SETTINGS_SCHEMA
+
+        settings = get_settings()
+        for key in SETTINGS_SCHEMA.keys():
+            settings.reset(key)
+        self._reload_settings_tab()
+        self._settings_status.config(
+            text="↺ Налаштування скинуто до config.py.",
+            foreground='#1976d2',
+        )
+
+    def _reload_settings_tab(self):
+        """Перезбудувати вкладку налаштувань (щоб побачити скинуті значення)."""
+        for child in self.settings_frame.winfo_children():
+            child.destroy()
+        self._settings_built = False
+        self._build_settings_tab()
+        self._settings_built = True
+
     def start_stream_message(self):
         """Почати нове повідомлення асистента для стрімінгу."""
         self.chat_history.configure(state='normal')

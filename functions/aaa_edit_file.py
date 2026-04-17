@@ -25,19 +25,11 @@ def llm_function(name, description, parameters):
     }
 )
 def edit_file(filepath, new_content):
-    """Редагувати файл з бекапом"""
+    """Редагувати файл з бекапом. Якщо файл не існує — створити його (upsert)."""
     try:
         if not os.path.isabs(filepath):
             desktop = os.path.join(os.path.expanduser("~"), "Desktop")
             filepath = os.path.join(desktop, filepath)
-
-        if not os.path.exists(filepath):
-            return make_tool_result(
-                False,
-                f"❌ Файл не знайдено: {filepath}",
-                error="file_not_found",
-                retryable=True,
-            )
 
         if not filepath.endswith((".txt", ".py")):
             return make_tool_result(
@@ -46,11 +38,26 @@ def edit_file(filepath, new_content):
                 error="unsupported_extension",
             )
 
+        filename = os.path.basename(filepath)
+        file_existed = os.path.exists(filepath)
+
+        # Якщо файлу немає — створюємо новий (upsert). Це запобігає зацикленню,
+        # коли planner плутає create_file/edit_file.
+        if not file_existed:
+            os.makedirs(os.path.dirname(filepath) or ".", exist_ok=True)
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(new_content)
+            return make_tool_result(
+                True,
+                f"✅ Файл створено: {filename}",
+                data={"file_path": filepath, "filename": filename, "created": True},
+            )
+
+        # Файл існує — робимо бекап і редагуємо
         backup_dir = os.path.join(os.path.dirname(filepath), "backups")
         os.makedirs(backup_dir, exist_ok=True)
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.basename(filepath)
         backup_path = os.path.join(backup_dir, f"{filename}.backup_{timestamp}")
 
         shutil.copy2(filepath, backup_path)

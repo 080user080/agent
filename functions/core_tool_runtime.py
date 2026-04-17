@@ -53,6 +53,9 @@ TOOL_POLICIES: Dict[str, Dict[str, Any]] = {
     "enable_auto_confirm": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_SYSTEM, "description": "Увімкнути автопідтвердження"},
     "disable_auto_confirm": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_SYSTEM, "description": "Вимкнути автопідтвердження"},
     "create_skill": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_META, "description": "Створення нової навички"},
+
+    # --- Системні дії (безпечні) ---
+    "clear_cache": {"risk": SAFE, "category": CATEGORY_SYSTEM, "description": "Очистити кеш асистента"},
 }
 
 # Патерни небезпечних дій у планах

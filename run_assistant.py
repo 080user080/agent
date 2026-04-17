@@ -8,6 +8,10 @@ import os
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Завантажити user-налаштування ДО імпортів, що читають config.py
+from functions.core_settings import get_settings
+get_settings()
+
 from core_gui import AssistantGUI
 from main import AssistantCore
 from functions.aaa_confirmation import set_gui_instance
