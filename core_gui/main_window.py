@@ -1,0 +1,398 @@
+# core_gui/main_window.py
+"""Головне вікно асистента AssistantGUI."""
+import queue
+import time
+import tkinter as tk
+from tkinter import scrolledtext, ttk
+
+from .chat_panel import ChatPanelMixin
+from .confirmation import ConfirmationMixin
+from .constants import ASSISTANT_NAME, ASSISTANT_TITLE
+from .plan_panel import PlanPanelMixin
+from .settings_tab import SettingsTabMixin
+from .styles import apply_styles
+
+
+class AssistantGUI(
+    ChatPanelMixin,
+    ConfirmationMixin,
+    PlanPanelMixin,
+    SettingsTabMixin,
+):
+    """Головне вікно асистента.
+
+    Композиція поведінки через Mixin-класи:
+    - ChatPanelMixin: чат, введення, clipboard, стрімінг, контекстні меню
+    - ConfirmationMixin: діалог підтвердження з таймаутом
+    - PlanPanelMixin: панель плану виконання з прогресом
+    - SettingsTabMixin: вкладка налаштувань (SETTINGS_SCHEMA)
+    """
+
+    def __init__(self, assistant_callback):
+        self.root = tk.Tk()
+        self.root.title(f"Асистент {ASSISTANT_NAME}")
+        self.assistant_callback = assistant_callback
+        self.message_queue = queue.Queue()
+        self.confirmation_callback = None
+        self.awaiting_confirmation = False
+        self.input_active = False
+        self.idle_timeout = 300  # 5 хвилин
+        self.last_input_time = time.time()
+
+        # Налаштування вікна
+        self.root.geometry("500x400")
+        self.root.configure(bg='#f0f0f0')
+        self.root.resizable(True, True)
+        # Прозорість вимкнена — повна непрозорість
+        self.root.attributes('-alpha', 1.0)
+        self.root.minsize(450, 550)  # Мінімальний розмір
+
+        # Стилі
+        self.style = ttk.Style()
+        apply_styles(self.style)
+
+        # Створення інтерфейсу
+        self.create_widgets()
+        self.setup_window()
+
+        # Запуск обробки черги повідомлень
+        self.process_queue()
+
+        # Слідкування за активністю
+        self.check_idle()
+
+    # ============================================================
+    # ВІДЖЕТИ
+    # ============================================================
+
+    def create_widgets(self):
+        """Створення віджетів інтерфейсу."""
+        # Заголовок
+        title_frame = ttk.Frame(self.root, style='Title.TLabel')
+        title_frame.pack(fill='x', side='top', pady=(0, 5))
+
+        title_label = ttk.Label(
+            title_frame,
+            text=ASSISTANT_TITLE,
+            style='Title.TLabel',
+        )
+        title_label.pack()
+
+        # Головний контейнер
+        main_container = ttk.Frame(self.root)
+        main_container.pack(fill='both', expand=True, padx=5, pady=5)
+
+        # Notebook (вкладки): Чат / Налаштування
+        self.notebook = ttk.Notebook(main_container)
+        self.notebook.pack(fill='both', expand=True, pady=(0, 10))
+
+        # --- Вкладка Чат ---
+        chat_frame = ttk.Frame(self.notebook)
+        self.notebook.add(chat_frame, text='💬 Чат')
+
+        # Історія чату з прокруткою
+        self.chat_history = scrolledtext.ScrolledText(
+            chat_frame,
+            wrap=tk.WORD,
+            font=('Segoe UI', 10),
+            bg='#fafafa',
+            fg='#333333',
+            state='disabled',
+            relief='flat',
+            borderwidth=1,
+            height=20,
+        )
+        self.chat_history.pack(fill='both', expand=True)
+
+        # --- Вкладка Налаштування ---
+        self.settings_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.settings_frame, text='⚙️ Налаштування')
+        # Ліниве заповнення при першому відкритті
+        self._settings_built = False
+        self.notebook.bind('<<NotebookTabChanged>>', self._on_tab_changed)
+
+        # --- Панель плану виконання (прихована за замовчуванням) ---
+        self.plan_frame = ttk.Frame(main_container, relief='solid', borderwidth=1)
+
+        plan_header = ttk.Frame(self.plan_frame)
+        plan_header.pack(fill='x', padx=5, pady=(5, 2))
+
+        self.plan_title_var = tk.StringVar(value="📋 План виконання")
+        plan_title = ttk.Label(
+            plan_header,
+            textvariable=self.plan_title_var,
+            font=('Segoe UI', 9, 'bold'),
+            foreground='#2c3e50',
+        )
+        plan_title.pack(side='left')
+
+        self.plan_collapse_btn = ttk.Button(
+            plan_header,
+            text="▼",
+            width=3,
+            command=self._toggle_plan_panel,
+        )
+        self.plan_collapse_btn.pack(side='right')
+
+        # Контейнер для списку кроків
+        self.plan_steps_container = ttk.Frame(self.plan_frame)
+        self.plan_steps_container.pack(fill='x', padx=5, pady=(0, 5))
+
+        # Прогрес-бар у панелі плану
+        self.plan_progress_var = tk.IntVar()
+        self.plan_progress_bar = ttk.Progressbar(
+            self.plan_frame,
+            variable=self.plan_progress_var,
+            maximum=100,
+            mode='determinate',
+        )
+        self.plan_progress_bar.pack(fill='x', padx=5, pady=(0, 5))
+
+        # Стан панелі плану
+        self._plan_steps: list = []
+        self._plan_step_labels: list = []
+        self._plan_expanded = True
+
+        # Фрейм для підтвердження (прихований за замовчуванням)
+        self.confirmation_frame = ttk.Frame(main_container)
+
+        self.confirmation_label = ttk.Label(
+            self.confirmation_frame,
+            text="",
+            font=('Segoe UI', 10, 'bold'),
+            foreground='#d32f2f',
+            wraplength=400,
+        )
+        self.confirmation_label.pack(pady=(10, 5))
+
+        button_frame = ttk.Frame(self.confirmation_frame)
+        button_frame.pack(pady=5)
+
+        self.yes_button = ttk.Button(
+            button_frame,
+            text="ТАК",
+            style='Confirm.TButton',
+            command=self.on_yes_clicked,
+        )
+        self.yes_button.pack(side='left', padx=8)
+
+        self.no_button = ttk.Button(
+            button_frame,
+            text="НІ",
+            style='Cancel.TButton',
+            command=self.on_no_clicked,
+        )
+        self.no_button.pack(side='left', padx=8)
+
+        # Третя кнопка - увімкнути автопідтвердження всіх дій
+        self.auto_button = ttk.Button(
+            button_frame,
+            text="АВТОМАТИЧНО (всі дозволено)",
+            style='Confirm.TButton',
+            command=self.on_auto_clicked,
+        )
+        self.auto_button.pack(side='left', padx=8)
+
+        # Контейнер для поля вводу
+        self.input_container = ttk.Frame(main_container)
+        self.input_container.pack(fill='x', side='bottom', pady=(5, 0))
+
+        # Фрейм для вводу з grid менеджером
+        input_frame = ttk.Frame(self.input_container)
+        input_frame.pack(fill='x', expand=True)
+
+        # Налаштування grid
+        input_frame.columnconfigure(0, weight=1)  # Поле вводу розтягується
+        input_frame.columnconfigure(1, weight=0)  # Кнопка фіксована
+
+        # Поле вводу
+        self.input_text = tk.Text(
+            input_frame,
+            height=3,
+            font=('Segoe UI', 10),
+            wrap=tk.WORD,
+            bg='white',
+            fg='#333333',
+            relief='solid',
+            borderwidth=1,
+        )
+        self.input_text.grid(row=0, column=0, sticky='nsew', padx=(0, 5))
+
+        # Кнопка відправки
+        self.send_button = ttk.Button(
+            input_frame,
+            text="➤",
+            width=3,
+            command=self.send_text_command,
+            style='Send.TButton',
+        )
+        self.send_button.grid(row=0, column=1, sticky='ns')
+
+        # Кнопка «Стоп» (спочатку прихована)
+        self.stop_button = ttk.Button(
+            input_frame,
+            text="⬛ СТОП",
+            command=self.stop_execution,
+            style='Stop.TButton',
+        )
+
+        # Підказка
+        self.input_text.insert(1.0, "Введіть команду...")
+        self.input_text.configure(fg='#999999')
+
+        # Обробка клавіш
+        self.input_text.bind('<Return>', self.on_enter_pressed)
+        self.input_text.bind('<Shift-Return>', self.on_shift_enter)
+        self.input_text.bind('<FocusIn>', self.on_input_focus)
+        self.input_text.bind('<FocusOut>', self.on_input_blur)
+        self.input_text.bind('<Key>', self.on_input_key)
+        # Зупинка виконання через Esc (Ctrl+C конфліктує з копіюванням)
+        self.root.bind('<Escape>', lambda e: self.stop_execution())
+
+        # Налаштування copy/paste/cut з підтримкою будь-якої розкладки
+        self._setup_clipboard_bindings(self.input_text, editable=True)
+        self._setup_clipboard_bindings(self.chat_history, editable=False)
+
+        # Контекстні меню (правий клік)
+        self._create_context_menu_input()
+        self._create_context_menu_chat()
+
+        # Статус бар
+        self.status_var = tk.StringVar()
+        self.status_var.set("✅ Готовий до роботи")
+
+        status_bar = ttk.Label(
+            main_container,
+            textvariable=self.status_var,
+            relief=tk.SUNKEN,
+            anchor=tk.W,
+            font=('Segoe UI', 9),
+            padding=5,
+        )
+        status_bar.pack(fill='x', side='bottom', pady=(5, 0))
+
+        # Прогрес-бар (прихований за замовчуванням)
+        self.progress_var = tk.IntVar()
+        self.progress_bar = ttk.Progressbar(
+            main_container,
+            variable=self.progress_var,
+            maximum=100,
+            mode='determinate',
+        )
+        self.progress_bar.pack(fill='x', side='bottom', pady=(2, 0))
+        self.progress_bar.pack_forget()  # приховати спочатку
+
+    # ============================================================
+    # ВІКНО (події)
+    # ============================================================
+
+    def setup_window(self):
+        """Налаштування поведінки вікна."""
+        self.root.bind('<Configure>', self.on_resize)
+        self.root.after(100, self.focus_input)
+
+    def on_resize(self, event=None):
+        """Обробка зміни розміру вікна."""
+        self.root.update_idletasks()
+
+    def check_idle(self):
+        """Перевірка простою."""
+        if self.input_active:
+            idle_time = time.time() - self.last_input_time
+            if idle_time > self.idle_timeout:
+                self.on_input_blur()
+                self.add_message("system", "⏳ Автоматичне відновлення аудіо")
+
+        self.root.after(1000, self.check_idle)
+
+    # ============================================================
+    # ЧЕРГА ПОВІДОМЛЕНЬ
+    # ============================================================
+
+    def process_queue(self):
+        """Обробка черги повідомлень від core."""
+        try:
+            while True:
+                message = self.message_queue.get_nowait()
+                msg_type, data = message
+
+                if msg_type == 'add_message':
+                    sender, text = data
+                    self.root.after(0, self.add_message, sender, text)
+                elif msg_type == 'show_confirmation':
+                    question, callback = data
+                    self.root.after(0, self.show_confirmation, question, callback)
+                elif msg_type == 'stream_start':
+                    self.root.after(0, self.start_stream_message)
+                elif msg_type == 'stream_chunk':
+                    self.root.after(0, self.append_stream_chunk, data)
+                elif msg_type == 'stream_end':
+                    self.root.after(0, self.end_stream_message)
+                elif msg_type == 'update_status':
+                    status = data
+                    self.root.after(0, self.status_var.set, status)
+                elif msg_type == 'update_progress':
+                    progress, status_text = data
+                    self.root.after(0, self.update_progress, progress, status_text)
+                elif msg_type == 'execution_started':
+                    self.root.after(0, self.show_stop_button)
+                elif msg_type == 'execution_finished':
+                    self.root.after(0, self.hide_stop_button)
+                elif msg_type == 'plan_started':
+                    self.root.after(0, self.show_plan_panel, data)
+                elif msg_type == 'step_update':
+                    self.root.after(0, self.update_plan_step, data)
+                elif msg_type == 'plan_finished':
+                    self.root.after(0, self.finish_plan_panel, data)
+
+        except queue.Empty:
+            pass
+
+        self.root.after(100, self.process_queue)
+
+    def queue_message(self, msg_type, data):
+        """Додати повідомлення до черги."""
+        self.message_queue.put((msg_type, data))
+
+    # ============================================================
+    # ПРОГРЕС / КНОПКИ
+    # ============================================================
+
+    def update_progress(self, progress: int, status_text: str):
+        """Оновити статус-текст (progress-bar тепер у панелі плану)."""
+        if status_text:
+            self.status_var.set(status_text)
+        self.root.update_idletasks()
+
+    def show_stop_button(self):
+        """Показати кнопку «Стоп» і приховати кнопку відправки."""
+        self.send_button.grid_remove()
+        self.stop_button.grid(row=0, column=1, sticky='ns')
+        self.status_var.set("⏳ Виконання... (Esc або Стоп для переривання)")
+
+    def hide_stop_button(self):
+        """Приховати кнопку «Стоп» і показати кнопку відправки."""
+        self.stop_button.grid_remove()
+        self.send_button.grid(row=0, column=1, sticky='ns')
+        self.progress_bar.pack_forget()
+        self.status_var.set("✅ Готовий до роботи")
+
+    def stop_execution(self):
+        """Обробник натискання кнопки «Стоп»."""
+        if self.assistant_callback:
+            self.assistant_callback('stop_execution', None)
+        self.hide_stop_button()
+
+    # ============================================================
+    # ЗАПУСК
+    # ============================================================
+
+    def run(self):
+        """Запустити GUI (mainloop)."""
+        self.root.mainloop()
+
+
+def run_gui(assistant_callback):
+    """Запуск GUI (utility-функція для зворотної сумісності)."""
+    gui = AssistantGUI(assistant_callback)
+    gui.run()

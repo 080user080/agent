@@ -37,7 +37,7 @@
       "timeout": 60,
       "script_command": "",
       "script_output_file": "альтернатива.txt",
-      "rate_limit_mode": "unlimited",
+      "rate_limit_mode": "rpm",
       "rate_limit_rpm": 60,
       "rate_limit_total": 10000
     },
@@ -55,7 +55,7 @@
       "timeout": 60,
       "script_command": "",
       "script_output_file": "альтернатива.txt",
-      "rate_limit_mode": "rpm",
+      "rate_limit_mode": "total",
       "rate_limit_rpm": 20,
       "rate_limit_total": 500
     },
@@ -63,7 +63,7 @@
       "id": "llm3",
       "name": "Додаткова модель #3",
       "enabled": false,
-      "role": "secondary",
+      "role": "fallback",
       "type": "openai_compatible",
       "url": "",
       "model": "",
@@ -73,7 +73,7 @@
       "timeout": 60,
       "script_command": "",
       "script_output_file": "альтернатива.txt",
-      "rate_limit_mode": "rpm",
+      "rate_limit_mode": "total",
       "rate_limit_rpm": 20,
       "rate_limit_total": 500
     },
@@ -91,7 +91,7 @@
       "timeout": 60,
       "script_command": "",
       "script_output_file": "альтернатива.txt",
-      "rate_limit_mode": "unlimited",
+      "rate_limit_mode": "rpm",
       "rate_limit_rpm": 60,
       "rate_limit_total": 1000
     },
@@ -109,7 +109,7 @@
       "timeout": 120,
       "script_command": "python alternative_llm.py",
       "script_output_file": "альтернатива.txt",
-      "rate_limit_mode": "unlimited",
+      "rate_limit_mode": "rpm",
       "rate_limit_rpm": 60,
       "rate_limit_total": 1000
     }

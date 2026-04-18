@@ -70,10 +70,53 @@ class PythonSandbox:
         
         return True, "OK"
     
+    def _auto_wrap_print(self, code: str) -> str:
+        """Обгорнути однорядковий вираз у print(), щоб було що виводити.
+
+        Приклади які обгортаємо:
+        - `sum(range(1,101))`  →  `print(sum(range(1,101)))`
+        - `max([1,2,3])`        →  `print(max([1,2,3]))`
+        Не чіпаємо:
+        - Багаторядкові скрипти
+        - Скрипти з `print`, `=`, `import`, `def`, `class`, `for`, `if`, `while`, `try`, `with`
+        """
+        try:
+            stripped = (code or "").strip()
+            if not stripped:
+                return code
+            # Багаторядковий або має явні statements — не чіпаємо
+            if "\n" in stripped:
+                return code
+            # Ключові слова, після яких зрозуміло, що це statement
+            lower = stripped.lower()
+            skip_keywords = ("print", "import ", "from ", "def ", "class ",
+                             "for ", "if ", "while ", "try", "with ", "return ",
+                             "raise ", "assert ", "global ", "nonlocal ",
+                             "pass", "break", "continue", "yield ")
+            if lower.startswith(skip_keywords):
+                return code
+            # Має присвоєння на верхньому рівні? ( = , але не == )
+            # Проста евристика: якщо знак = знайдений і не == / != / <= / >= — це присвоєння
+            import re
+            if re.search(r'(?<![=!<>])=(?!=)', stripped):
+                return code
+            # Спробуємо розпарсити як вираз
+            try:
+                compile(stripped, "<test>", "eval")
+            except SyntaxError:
+                return code
+            # Обгортаємо
+            return f"print({stripped})"
+        except Exception:
+            return code
+
     def execute(self, code, script_name=None):
         """Виконати код в пісочниці"""
         print(f"{Fore.CYAN}🔒 Виконання в пісочниці...")
-        
+
+        # Авто-обгортка однорядкових виразів у print()
+        code = self._auto_wrap_print(code)
+
         # Валідація
         is_safe, message = self.validate_code(code)
         if not is_safe:

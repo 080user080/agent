@@ -43,12 +43,24 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
     "auto_approve_all": {
         "type": "bool", "group": "Безпека", "label": "Автопідтвердження всіх дій",
         "desc": "Усі дії, що потребують підтвердження, будуть схвалені автоматично. УВАГА: безпека знижена!",
-        "default": False, "user_only": True,
+        "default": True, "user_only": True,
     },
     "auto_approve_expires_ms": {
         "type": "int", "group": "Безпека", "label": "Тайм-аут автопідтвердження (сек, 0=назавжди)",
         "desc": "Скільки секунд тримати 'автопідтвердження' після увімкнення. 0 = до вимкнення вручну.",
         "default": 0, "user_only": True, "min": 0, "max": 3600,
+    },
+
+    # --- Продуктивність ---
+    "CACHE_ENABLED": {
+        "type": "bool", "group": "Продуктивність", "label": "Кешування команд",
+        "desc": "Зберігати результати команд і повертати їх миттєво при повторі. УВАГА: може повертати застарілі відповіді після оновлень.",
+        "default": False, "user_only": True,
+    },
+    "CACHE_DURATION_HOURS": {
+        "type": "int", "group": "Продуктивність", "label": "Час життя кешу (годин)",
+        "desc": "Скільки годин зберігати кешовані відповіді.",
+        "default": 24, "user_only": True, "min": 1, "max": 720,
     },
 
     # --- LLM ---
@@ -201,13 +213,20 @@ class SettingsManager:
     # ---------- API ----------
 
     def get(self, key: str, default: Any = None) -> Any:
-        """Повернути поточне значення (runtime > user > config.py > default)."""
+        """Повернути поточне значення (runtime > user > config.py > schema default > default)."""
         with self._lock:
             if key in self._runtime:
                 return self._runtime[key]
             if key in self._user:
                 return self._user[key]
-            return getattr(base_config, key, default)
+            # config.py
+            if hasattr(base_config, key):
+                return getattr(base_config, key)
+            # SCHEMA default — важливо для user_only ключів (як auto_approve_all)
+            schema = SETTINGS_SCHEMA.get(key)
+            if schema and "default" in schema:
+                return schema["default"]
+            return default
 
     def set(self, key: str, value: Any, persist: bool = True) -> None:
         """Змінити значення. persist=True — зберегти в user_settings.json.

@@ -47,7 +47,14 @@ class VoiceAssistant:
         cache_module = registry.get_core_module('cache')
         if cache_module:
             self.cache_manager = cache_module.CacheManager(registry)
-            print(f"{Fore.MAGENTA}💾 Кеш активовано")
+            # Статус кешу читається з налаштувань при кожному запиті
+            try:
+                from .core_settings import get_setting
+                cache_on = bool(get_setting("CACHE_ENABLED", False))
+            except Exception:
+                cache_on = False
+            status = "УВІМКНЕНО" if cache_on else "ВИМКНЕНО"
+            print(f"{Fore.MAGENTA}💾 Кеш: {status} (можна змінити в Налаштуваннях)")
         
         streaming_module = registry.get_core_module('streaming')
         if streaming_module:
@@ -89,6 +96,16 @@ class VoiceAssistant:
         """Обгортка для виклику LLM (для Planner)."""
         from .logic_llm import ask_llm
         return ask_llm(prompt, self.conversation_history, self.system_prompt)
+
+    def _is_cache_enabled(self) -> bool:
+        """Перевірити, чи дозволено кешування (з user-налаштувань)."""
+        if not self.cache_manager:
+            return False
+        try:
+            from .core_settings import get_setting
+            return bool(get_setting("CACHE_ENABLED", False))
+        except Exception:
+            return False
 
     def execute_function(self, action: str, params: dict):
         """Виконати функцію через реєстр (для Planner)."""
@@ -139,6 +156,9 @@ class VoiceAssistant:
         try:
             # Лічильник команд у сесії
             self.memory.session.track_command()
+
+            # ✨ Спочатку обрізаємо стару історію, щоб планер/LLM не отримали overflow
+            self._manage_conversation_history()
 
             # ✨ ЗАВЖДИ додаємо команду в історію ДО будь-якої гілки (planner/LLM/кеш).
             # Це дає planner-у контекст попередніх повідомлень.
@@ -372,8 +392,8 @@ class VoiceAssistant:
             # Кеш вимикається для planner-команд (інакше повторна задача підхоплює стару відповідь)
             skip_cache = hasattr(self, "planner") and self.planner and self.planner.should_plan(command_text)
 
-            # Перевірка кешу
-            if self.cache_manager and not skip_cache:
+            # Перевірка кешу (тільки якщо увімкнено в налаштуваннях)
+            if self._is_cache_enabled() and not skip_cache:
                 cached_response, action_info = self.cache_manager.get(command_text)
                 if cached_response:
                     print(f"{Fore.YELLOW}⚡ [Кеш]")
@@ -419,7 +439,7 @@ class VoiceAssistant:
                     
                     print(f"{Fore.LIGHTBLACK_EX}⏱️  {elapsed:.2f}с")
                     
-                    if self.cache_manager:
+                    if self._is_cache_enabled():
                         self.cache_manager.set(command_text, quick_result)
                     return
             
@@ -489,8 +509,8 @@ class VoiceAssistant:
                         daemon=True
                     ).start()
             
-            # Зберегти в кеш (крім planner-команд)
-            if self.cache_manager and not skip_cache:
+            # Зберегти в кеш (крім planner-команд, і тільки якщо увімкнено)
+            if self._is_cache_enabled() and not skip_cache:
                 self.cache_manager.set(command_text, final_answer)
             
             elapsed = time.time() - start_total
@@ -516,12 +536,25 @@ class VoiceAssistant:
             print(f"⚠️ _memory_llm_caller помилка: {e}")
             return ""
 
-    def _manage_conversation_history(self, max_messages: int = 20, summarize_threshold: int = 15):
-        """Адаптивне управління історією діалогу з LLM-based summary для старих повідомлень."""
-        if len(self.conversation_history) <= max_messages:
+    def _estimate_tokens(self, messages) -> int:
+        """Грубо оцінити к-сть токенів у списку повідомлень (1 токен ≈ 4 символи)."""
+        total_chars = 0
+        for m in messages:
+            content = m.get("content", "") if isinstance(m, dict) else str(m)
+            total_chars += len(str(content))
+        return total_chars // 4
+
+    def _manage_conversation_history(self, max_messages: int = 12, max_tokens: int = 2500, summarize_threshold: int = 10):
+        """Адаптивне управління історією діалогу:
+        - обмеження за к-стю повідомлень (max_messages)
+        - обмеження за к-стю токенів (max_tokens, gpt-oss має 4000 context)
+        - LLM-summary перших N при великій кількості
+        """
+        # Перевірка за к-стю повідомлень АБО токенів
+        token_count = self._estimate_tokens(self.conversation_history)
+        if len(self.conversation_history) <= max_messages and token_count <= max_tokens:
             return
 
-        # Якщо багато повідомлень - генеруємо summary перших N через LLM
         has_summary = any(
             msg.get("role") == "system" and "Summary" in msg.get("content", "")
             for msg in self.conversation_history
@@ -529,19 +562,36 @@ class VoiceAssistant:
 
         if len(self.conversation_history) > summarize_threshold and not has_summary:
             to_summarize = self.conversation_history[:5]
-            # LLM-based summary через MemoryManager
-            summary_text = self.memory.summarize_conversation(to_summarize, max_messages=5)
+            try:
+                summary_text = self.memory.summarize_conversation(to_summarize, max_messages=5)
+            except Exception:
+                summary_text = "попередня розмова (автоматично скорочено через обмеження контексту)"
+
+            # Обмежуємо довжину summary, щоб не розрослося
+            if len(summary_text) > 500:
+                summary_text = summary_text[:500] + "..."
 
             self.conversation_history = [
-                {"role": "system", "content": f"Контекст попередньої розмови: {summary_text}"}
+                {"role": "system", "content": f"Summary: {summary_text}"}
             ] + self.conversation_history[5:]
 
         # Обрізаємо до max_messages
         if len(self.conversation_history) > max_messages:
-            # Зберігаємо system summary (якщо є) і останні max_messages-1
             if self.conversation_history and self.conversation_history[0].get("role") == "system":
                 self.conversation_history = (
                     [self.conversation_history[0]] + self.conversation_history[-(max_messages - 1):]
                 )
             else:
                 self.conversation_history = self.conversation_history[-max_messages:]
+
+        # Якщо все ще перевищуємо токен-ліміт — агресивно обрізаємо хвіст
+        while self._estimate_tokens(self.conversation_history) > max_tokens and len(self.conversation_history) > 2:
+            # Видаляємо найстаріше не-system повідомлення
+            removed = False
+            for i, msg in enumerate(self.conversation_history):
+                if msg.get("role") != "system":
+                    del self.conversation_history[i]
+                    removed = True
+                    break
+            if not removed:
+                break

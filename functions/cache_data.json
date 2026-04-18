@@ -1,164 +1,21 @@
 {
-  "створи код для калькулятор на роб столі і запусти його": {
-    "response": "{\"action\":\"execute_python\",\"code\":\"import os, sys\\ndesktop = os.path.join(os.path.expanduser('~'), 'Desktop')\\nscript_path = os.path.join(desktop, 'calculator.py')\\n# Write a simple Tkinter calculator to the desktop\\nopen(script_path, 'w', encoding='utf-8').write(\\n    \\\"import tkinter as tk\\\\n\\\" +\\n    \\\"def add(a,b): return str(int(a)+int(b))\\\\n\\\" +\\n    \\\"root=tk.Tk(); root.title('Calculator')\\\\n\\\" +\\n    \\\"tk.Entry(root, width=35, borderwidth=5).grid(row=0, column=0, columnspan=4, padx=10, pady=10)\\\\n\\\" +\\n    \\\"def click(num): pass  # placeholder for button logic\\\\n\\\" +\\n    \\\"for i in range(1,11): pass\\\\n\\\" +\\n    \"# (The code above is illustrative; actual GUI implementation omitted for brevity.)\\\\n\")\\n# Execute the newly created script\\nos.system(f'python \\\"{script_path}\\\"')\"}",
-    "action_info": null,
-    "timestamp": "2026-04-17T01:15:11.741927",
-    "hits": 0
-  },
-  "привіт": {
-    "response": "{\"action\":\"noop\",\"params\":{}}",
-    "action_info": null,
-    "timestamp": "2026-04-17T01:22:55.033466",
-    "hits": 1
-  },
-  "«знайди в папці d:\\python\\agent усі файли з розширенням .bak та .tmp. створи папку temp_archive і перемісти ці файли туди. після завершення виведи список переміщених файлів».": {
-    "response": "❌ Помилка:\n❌ Помилка виконання: 'NoneType' object has no attribute 'strip'\n\nДеталі:\n'NoneType' object has no attribute 'strip'",
-    "action_info": null,
-    "timestamp": "2026-04-17T01:44:31.775802",
-    "hits": 0
-  },
-  "«проскануй папку d:\\python\\agent. склади список усіх файлів (тільки назви) і збережи його у новий файл file_report.txt. в кінці звіту додай рядок: \"всього знайдено файлів: [число]\"».": {
-    "response": "{\"action\":\"execute_python\",\"code\":\"import os\\nfolder = r'D:\\\\Python\\\\agent'\\nfiles = [f for f in os.listdir(folder) if os.path.isfile(os.path.join(folder,f))]\\nreport_path = os.path.join(folder,'file_report.txt')\\nwith open(report_path,'w',encoding='utf-8') as f:\\n    for name in files:\\n        f.write(name + '\\\\n')\\n    f.write(f'Всього знайдено файлів: {len(files)}\\\\n')\\nprint('Файл створено: ', report_path)\"}",
-    "action_info": null,
-    "timestamp": "2026-04-17T01:46:33.165982",
-    "hits": 0
-  },
-  "де ти його створив?": {
-    "response": "✅ Виконано (0.03с):\nD:\\Python\\agent\\file_report.txt",
-    "action_info": null,
-    "timestamp": "2026-04-17T01:49:24.279638",
-    "hits": 0
-  },
-  "немає файлу": {
-    "response": "<|channel|>commentary to=python <|constrain|>json<|message|>import os, json, subprocess, textwrap",
-    "action_info": null,
-    "timestamp": "2026-04-17T01:50:20.651497",
-    "hits": 0
-  },
-  "kljnk": {
-    "response": "Не зрозумів. Повторіть?",
-    "action_info": null,
-    "timestamp": "2026-04-17T21:29:06.357168",
-    "hits": 0
-  },
-  "вікрий блокнот": {
-    "response": "❌ Невідомий формат команди: {'process_name': 'notepad.exe'}",
-    "action_info": null,
-    "timestamp": "2026-04-17T21:29:31.620650",
-    "hits": 0
-  },
-  "ddf": {
-    "response": "Не зрозумів. Повторіть?",
-    "action_info": null,
-    "timestamp": "2026-04-17T21:34:11.532871",
-    "hits": 0
-  },
-  "відкрий блокнот": {
-    "response": "✅ Відкрив notepad",
-    "action_info": {
-      "action": "open_program",
-      "params": {
-        "program_name": "notepad"
-      }
-    },
-    "timestamp": "2026-04-17T21:34:48.188414",
-    "hits": 0
-  },
-  "ok": {
-    "response": "\u001b[31m❌ Функція noop не знайдена",
-    "action_info": null,
-    "timestamp": "2026-04-17T21:50:57.108963",
-    "hits": 1
-  },
-  "+": {
-    "response": "\u001b[31m❌ Функція noop не знайдена",
-    "action_info": null,
-    "timestamp": "2026-04-17T21:51:02.267721",
-    "hits": 0
-  },
-  "створи python скрипт calculator.py який додає 2 + 3, потім виконай його і покажи результат": {
-    "response": "✅ Файл створено: calculator.py на робочому столі",
-    "action_info": null,
-    "timestamp": "2026-04-17T22:09:17.338522",
-    "hits": 2
-  },
-  "потім виконай його і покажи результат": {
-    "response": "❌ Невідомий формат команди: {'filename': 'calculator.py'}",
-    "action_info": null,
-    "timestamp": "2026-04-17T22:09:53.044959",
-    "hits": 2
-  },
-  "👑 ви: створи python скрипт calculator.py який додає 2 + 3, потім виконай його і покажи результат!!!!\n\n--------------------------------------------------\n⚡ марк: ✅ файл створено: calculator.py на робочому столі": {
-    "response": "✅ Файл створено: calculator.py на робочому столі",
-    "action_info": null,
-    "timestamp": "2026-04-17T22:28:38.862766",
-    "hits": 0
-  },
-  "jxbcnb cdsq rti": {
-    "response": "\u001b[31m❌ Функція unknown не знайдена",
-    "action_info": null,
-    "timestamp": "2026-04-17T22:29:54.507602",
-    "hits": 0
-  },
-  "очисти свій кеш": {
-    "response": "\u001b[31m❌ Функція unknown не знайдена",
-    "action_info": null,
-    "timestamp": "2026-04-17T22:30:12.926891",
-    "hits": 2
-  },
-  "очисти свій кеш!": {
-    "response": "✅ Кеш очищено: TTS аудіо (0 файлів), Логи аудіо (крім audit.jsonl)",
-    "action_info": null,
-    "timestamp": "2026-04-17T22:36:51.803100",
-    "hits": 0
-  },
-  "створення код для абетки україни. підрахуй кількість літер виконай код запиши в текст файл": {
-    "response": "{\"action\":\"execute_python\",\"code\":\"alphabet = 'абвгґдеєжзиіїйклмнопрстуфхцчшщьюя'\\ncount = len(alphabet)\\nwith open('C:/Users/Public/ukrainian_letter_count.txt', 'w', encoding='utf-8') as f:\\n    f.write(f'Кількість літер у українській абетці: {count}\\\\n')\\nprint('Файл створено')\" }",
-    "action_info": null,
-    "timestamp": "2026-04-17T22:46:27.586336",
-    "hits": 0
-  },
-  "🎯 [gui] команда: 'створення код для абетки україни. підрахуй кількість літер виконай код запиши в текст файл'": {
-    "response": "{\"action\":\"execute_python\",\"code\":\"alphabet = 'абвгґдеєжзиіїйклмнопрстуфхцчшщьюя'\\ncount = len(alphabet)\\nwith open('C:/Users/Public/ukrainian_letter_count.txt', 'w', encoding='utf-8') as f:\\n    f.write(f'Кількість літер у українській абетці: {count}\\\\n')\\nprint('Файл створено')\"}",
-    "action_info": null,
-    "timestamp": "2026-04-17T22:54:03.508369",
-    "hits": 0
-  },
-  "привіт на робочому столі створи текст файл із текстом про тебе": {
-    "response": "✅ Файл створено: about_me.txt на робочому столі",
-    "action_info": null,
-    "timestamp": "2026-04-17T22:56:49.110240",
-    "hits": 0
-  },
-  ", потім виконай його і покажи результат": {
-    "response": "\u001b[31m❌ Функція ask не знайдена",
-    "action_info": null,
-    "timestamp": "2026-04-17T23:23:10.073195",
-    "hits": 0
-  },
-  "повтори": {
-    "response": "<|channel|>commentary to=python code<|message|># We will create a simple script",
-    "action_info": null,
-    "timestamp": "2026-04-17T23:32:31.107112",
-    "hits": 0
-  },
   "виведи поточну дату і час": {
     "response": "\u001b[31m❌ Помилка виконання create_file: create_file() got an unexpected keyword argument 'filepath'",
     "action_info": null,
     "timestamp": "2026-04-17T23:46:04.722406",
-    "hits": 0
+    "hits": 2
   },
   "перейменуй файл test.txt → test2.txt": {
     "response": "\u001b[31m❌ Помилка виконання create_file: create_file() got an unexpected keyword argument 'filepath'",
     "action_info": null,
     "timestamp": "2026-04-17T23:48:02.869833",
-    "hits": 0
+    "hits": 1
   },
   "порахуй суму чисел від 1 до 100": {
     "response": "✅ Виконано (0.03с). Вивід порожній.",
     "action_info": null,
     "timestamp": "2026-04-17T23:48:17.042375",
-    "hits": 0
+    "hits": 1
   },
   "перевір: число 37 — просте чи ні": {
     "response": "✅ Виконано (0.03с). Вивід порожній.",
@@ -218,6 +75,30 @@
     "response": "\u001b[31m❌ Помилка виконання create_file: create_file() got an unexpected keyword argument 'filepath'",
     "action_info": null,
     "timestamp": "2026-04-17T23:55:07.171831",
+    "hits": 0
+  },
+  "👑 ви: виведи поточну дату і час\n\n--------------------------------------------------\n⚡ марк: ❌ помилка виконання create_file: create_file() got an unexpected keyword argument 'filepath'": {
+    "response": "✅ Виконано (0.03с):\n2026-04-18 22:38:37",
+    "action_info": null,
+    "timestamp": "2026-04-18T22:38:37.992175",
+    "hits": 0
+  },
+  "перейменуй файл test.txt → test23.txt": {
+    "response": "❌ Помилка:\nКод завершився з помилкою (return code 1)\n\nДеталі:\nTraceback (most recent call last):\n  File \"D:\\Python\\MARK\\sandbox\\scripts\\script_20260418_224416.py\", line 4, in <module>\n    print(open(txt_path,'r',encoding='utf-8').read())\nFileNotFoundError: [Errno 2] No such file or directory: 'test.txt'",
+    "action_info": null,
+    "timestamp": "2026-04-18T22:44:16.826962",
+    "hits": 0
+  },
+  "створи папку data\n\nствори 3 файли всередині (a.txt, b.txt, c.txt)\n\nзапиши в кожен різний текст": {
+    "response": "# We'll just output the required JSON actions",
+    "action_info": null,
+    "timestamp": "2026-04-18T23:09:28.608127",
+    "hits": 2
+  },
+  "очисти кеш": {
+    "response": "✅ Кеш очищено: TTS аудіо (0 файлів), Логи аудіо (крім audit.jsonl)",
+    "action_info": null,
+    "timestamp": "2026-04-18T23:10:15.549839",
     "hits": 0
   }
 }

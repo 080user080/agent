@@ -55,7 +55,21 @@ def clear_cache():
             except Exception as e:
                 errors.append(f"LLM memory backup: {e}")
 
-        # 4. Логи аудіо (якщо є)
+        # 4. Кеш команд (cache_data.json)
+        import json
+        cache_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cache_data.json")
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    prev = json.load(f) or {}
+                count = len(prev)
+                with open(cache_file, "w", encoding="utf-8") as f:
+                    json.dump({}, f, ensure_ascii=False)
+                cleared.append(f"Кеш команд ({count} записів)")
+            except Exception as e:
+                errors.append(f"cache_data.json: {e}")
+
+        # 5. Логи аудіо (якщо є)
         logs_dir = "logs"
         if os.path.exists(logs_dir):
             try:

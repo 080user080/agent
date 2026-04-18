@@ -18,27 +18,55 @@ def llm_function(name, description, parameters):
 
 @llm_function(
     name="create_file",
-    description="створення txt файлу на робочому столі",
+    description="створення txt або py файлу (за замовч. на робочому столі)",
     parameters={
-        "filename": "назва файлу (можна без .txt)",
+        "filename": "назва файлу (можна без .txt) або повний шлях",
         "content": "текстовий вміст файлу"
     }
 )
-def create_file(filename, content):
-    """Створити txt файл на робочому столі"""
+def create_file(filename=None, content="", filepath=None, path=None, name=None):
+    """Створити файл (txt/py).
+
+    Підтримує кілька ім'я аргументу (`filename`, `filepath`, `path`, `name`),
+    бо LLM іноді плутається у назві параметра.
+    """
     try:
-        if "." not in filename:
-            filename += ".txt"
+        # Нормалізуємо аргумент імені файлу
+        target = filename or filepath or path or name
+        if not target:
+            return make_tool_result(
+                False,
+                "❌ Не вказано назви файлу (очікувався filename / filepath)",
+                error="missing_filename",
+            )
 
-        filepath = os.path.join(DESKTOP_PATH, filename)
+        # Якщо шлях не абсолютний — кладемо на робочий стіл
+        if not os.path.isabs(target):
+            # Якщо немає розширення — додаємо .txt
+            if "." not in os.path.basename(target):
+                target += ".txt"
+            filepath_abs = os.path.join(DESKTOP_PATH, target)
+            display_name = target
+        else:
+            filepath_abs = target
+            display_name = os.path.basename(target)
+            # Створити батьківську папку якщо треба
+            parent = os.path.dirname(filepath_abs)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
 
-        with open(filepath, "w", encoding="utf-8") as f:
-            f.write(content)
+        # Якщо relative-шлях містить каталоги — створюємо їх всередині Desktop
+        parent_dir = os.path.dirname(filepath_abs)
+        if parent_dir:
+            os.makedirs(parent_dir, exist_ok=True)
+
+        with open(filepath_abs, "w", encoding="utf-8") as f:
+            f.write(content or "")
 
         return make_tool_result(
             True,
-            f"✅ Файл створено: {filename} на робочому столі",
-            data={"file_path": filepath, "filename": filename},
+            f"✅ Файл створено: {display_name}",
+            data={"file_path": filepath_abs, "filename": display_name},
         )
     except Exception as e:
         return make_tool_result(

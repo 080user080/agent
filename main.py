@@ -331,11 +331,8 @@ class AssistantCore:
         """Обробити текстову команду з GUI"""
         if not text or len(text.strip()) == 0:
             return
-        
-        # ВИДАЛЕНО: self.log_to_gui("user", text) - логування в VoiceAssistant
-        
-        print(f"{Fore.CYAN}🎯 [GUI] Команда: '{text}'")
-        
+
+        # Лог команди виводиться в process_command (щоб не дублювалося)
         if self.assistant:
             self.assistant.process_command(text, from_gui=True)
     

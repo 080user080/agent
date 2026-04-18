@@ -53,17 +53,25 @@ class FunctionRegistry:
         
         for file_path in core_files:
             module_name = file_path.stem
+            full_name = f"functions.{module_name}"
             try:
-                spec = importlib.util.spec_from_file_location(module_name, file_path)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                
+                # Якщо модуль уже завантажений через `from functions.xxx import ...`
+                # (наприклад core_settings з run_assistant.py), використовуємо його.
+                if full_name in sys.modules:
+                    module = sys.modules[full_name]
+                else:
+                    # Важливо: ім'я пакета functions.xxx — інакше relative import (`from . import config`) падає
+                    spec = importlib.util.spec_from_file_location(full_name, file_path)
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules[full_name] = module
+                    spec.loader.exec_module(module)
+
                 self.core_modules[module_name] = module
                 print(f"{Fore.MAGENTA}⚡ Core: {Fore.CYAN}{module_name}")
-                
+
                 if hasattr(module, 'init'):
                     module.init()
-                    
+
             except Exception as e:
                 print(f"{Fore.RED}❌ Помилка завантаження {module_name}: {e}")
         
