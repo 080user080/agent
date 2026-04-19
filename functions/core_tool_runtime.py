@@ -1,10 +1,11 @@
 """Сумісний runtime для структурованих результатів інструментів."""
 import json
 import os
+import re
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 # Рівні ризику
 SAFE = "safe"                        # Можна виконувати без підтвердження
@@ -58,31 +59,110 @@ TOOL_POLICIES: Dict[str, Dict[str, Any]] = {
     "clear_cache": {"risk": SAFE, "category": CATEGORY_SYSTEM, "description": "Очистити кеш асистента"},
 }
 
-# Патерни небезпечних дій у планах
+# Патерни небезпечних дій у планах (literal substring match, lowercased)
 DANGEROUS_PATTERNS: List[str] = [
+    # Деструктивне видалення
     "rm -rf",
+    "rm -fr",
     "format c:",
     "del /f /s /q",
+    "del /q /s",
     "rmdir /s",
+    "rd /s /q",
+    "vssadmin delete shadows",
+    "wbadmin delete",
+    "diskpart",
+    # Потужний PowerShell (execution-bypass + remote)
     "powershell -enc",
-    "shutdown",
+    "powershell -encodedcommand",
+    "powershell -nop",
+    "invoke-expression",
+    "iex (",
+    "downloadstring",
+    "downloadfile",
+    "invoke-webrequest http",
+    # Системне керування
+    "shutdown /",
+    "shutdown -",
     "reg delete",
+    "reg add hklm\\software\\microsoft\\windows\\currentversion\\run",
+    "schtasks /create",
     "taskkill /f",
     "net user",
-    "curl http",  # Потенційне віддалене виконання
+    "net localgroup administrators",
+    "bcdedit",
+    # Віддалене виконання / reverse shell
+    "curl http",
     "wget http",
-    "invoke-webrequest",
-    "base64",
+    "nc -e",
+    "ncat -e",
+    "bash -i",
+    "/dev/tcp/",
+    "mshta http",
+    "bitsadmin /transfer",
+    # Credential theft / сканери
+    "mimikatz",
+    "sekurlsa",
+    "procdump lsass",
+    "sam.hive",
+    "ntds.dit",
+    # Обфускація
+    " base64 -d",
+    "frombase64string",
+    "[convert]::frombase64",
+    # Ransomware-подібні операції
+    "cipher /w",
+    "encrypt /",
+]
+
+# Regex-патерни для складніших небезпечних дій
+DANGEROUS_REGEXES: List[str] = [
+    r"\brm\s+-[rf]+\s+/\S*",                    # rm -rf / (у т.ч. -fr, -Rf)
+    r"\bdd\s+if=.+of=/dev/",                    # dd if=... of=/dev/sda
+    r":\(\)\s*\{\s*:\s*\|\s*:\s*&\s*\}",        # fork bomb
+    r"chmod\s+-?R?\s*777\s+/",                  # chmod 777 /
+    r"\bkill\s+-9\s+1\b",                       # kill -9 1 (init)
+    r"format\s+[a-z]:\s*/",                     # format X: /
 ]
 
 # Патерни двозначних дій (потрібна додаткова обережність)
 AMBIGUOUS_PATTERNS: List[str] = [
+    # Системні шляхи Windows
     "system32",
+    "syswow64",
+    "windows\\",
     "windows/",
     "program files",
+    "programdata",
     "appdata",
     "startup",
+    # Критичні файли
     "hosts",
+    "bootmgr",
+    "boot.ini",
+    # Приховані конфіги зі credentials
+    ".ssh/id_",
+    ".git-credentials",
+    ".aws/credentials",
+    ".npmrc",
+    ".env",
+    "wp-config.php",
+    "secrets.",
+    # Security-sensitive
+    "lsass",
+    "sam ",
+    # Широкі sudo/admin
+    "sudo rm",
+    "sudo chmod",
+    "runas ",
+]
+
+# Regex для двозначних шляхів (захоплює шляхи з різними роздільниками)
+AMBIGUOUS_REGEXES: List[str] = [
+    r"c:[\\/]windows[\\/]",
+    r"c:[\\/]program\s*files",
+    r"/etc/(passwd|shadow|sudoers)",
+    r"~/\.\w+rc",                               # ~/.bashrc, ~/.zshrc тощо
 ]
 
 
@@ -145,20 +225,81 @@ def get_audit_log() -> AuditLog:
 
 
 def check_dangerous_content(content: str) -> Optional[str]:
-    """Перевірити текст на небезпечні патерни. Повертає патерн, якщо знайдений."""
+    """Перевірити текст на небезпечні патерни. Повертає знайдений патерн або None.
+
+    Перевіряє (1) літеральні substring та (2) регулярні вирази.
+    """
+    if not content:
+        return None
     content_lower = content.lower()
+    # Літеральні substring
     for pattern in DANGEROUS_PATTERNS:
         if pattern in content_lower:
             return pattern
+    # Regex
+    for rx in DANGEROUS_REGEXES:
+        m = re.search(rx, content_lower, flags=re.IGNORECASE)
+        if m:
+            return m.group(0)
     return None
 
 
 def check_ambiguous_content(content: str) -> Optional[str]:
-    """Перевірити текст на двозначні патерни."""
+    """Перевірити текст на двозначні патерни (літеральні + regex)."""
+    if not content:
+        return None
     content_lower = content.lower()
     for pattern in AMBIGUOUS_PATTERNS:
         if pattern in content_lower:
             return pattern
+    for rx in AMBIGUOUS_REGEXES:
+        m = re.search(rx, content_lower, flags=re.IGNORECASE)
+        if m:
+            return m.group(0)
+    return None
+
+
+def check_dangerous_content_full(content: str) -> Optional[Tuple[str, str]]:
+    """Як check_dangerous_content, але повертає (pattern, kind) де kind='literal'|'regex'."""
+    if not content:
+        return None
+    content_lower = content.lower()
+    for pattern in DANGEROUS_PATTERNS:
+        if pattern in content_lower:
+            return (pattern, "literal")
+    for rx in DANGEROUS_REGEXES:
+        m = re.search(rx, content_lower, flags=re.IGNORECASE)
+        if m:
+            return (m.group(0), "regex")
+    return None
+
+
+# Ключі параметрів інструментів, що містять команду/код/шлях — їх треба перевіряти
+_SENSITIVE_PARAM_KEYS = {
+    "code", "script", "command", "cmd", "powershell",
+    "filepath", "file_path", "path", "filename", "target", "dest", "destination",
+    "url", "pattern", "query",
+}
+
+
+def check_params_safety(action: str, params: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    """Перевірити параметри виклику інструменту на небезпечні/двозначні патерни.
+
+    Повертає dict з полями {kind, pattern, param} або None якщо все чисто.
+    kind='dangerous' або 'ambiguous'.
+    """
+    if not isinstance(params, dict):
+        return None
+    for key, value in params.items():
+        if key.lower() not in _SENSITIVE_PARAM_KEYS:
+            continue
+        text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+        danger = check_dangerous_content(text)
+        if danger:
+            return {"kind": "dangerous", "pattern": danger, "param": key}
+        ambig = check_ambiguous_content(text)
+        if ambig:
+            return {"kind": "ambiguous", "pattern": ambig, "param": key}
     return None
 
 
