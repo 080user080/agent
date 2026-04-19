@@ -7,7 +7,8 @@ __pycache__/
 # C extensions
 *.so
 
-becap/
+beckup/
+logs/
 TTS/
 tts_cache/
 voices/
