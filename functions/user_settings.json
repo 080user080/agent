@@ -3,7 +3,7 @@
   "ACTIVE_MODE": "normal",
   "AGENT_MODE": "coding",
   "LM_STUDIO_URL": "http://localhost:1234/v1/chat/completions",
-  "STT_ENABLED": false,
+  "STT_ENABLED": true,
   "STT_MODEL_TYPE": "whisper",
   "STT_MODEL_ID": "large-v3",
   "STT_LANGUAGE": "uk",
@@ -115,5 +115,5 @@
       "rate_limit_total": 1000
     }
   ],
-  "WINDOW_GEOMETRY": "590x691+1290+187"
+  "WINDOW_GEOMETRY": "590x862+1290+76"
 }

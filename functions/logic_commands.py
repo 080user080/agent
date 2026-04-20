@@ -2,7 +2,6 @@
 """Обробка команд та VoiceAssistant"""
 import threading
 import time
-import threading
 from colorama import Fore, Back, Style
 from .config import LM_STUDIO_URL, TTS_ENABLED, TTS_SPEAK_PREFIXES
 from .logic_audio import correct_whisper_text, check_activation_word, remove_activation_word
@@ -92,9 +91,19 @@ class VoiceAssistant:
         else:
             print(f"{Fore.YELLOW}⚠️  TTS двигун не встановлено або вимкнено")
 
-    def ask_llm(self, prompt: str) -> str:
-        """Обгортка для виклику LLM (для Planner)."""
+    def ask_llm(self, prompt: str, minimal: bool = True) -> str:
+        """Обгортка для виклику LLM.
+        
+        Args:
+            prompt: Промпт для LLM
+            minimal: Якщо True (для Planner), не включає великий system_prompt 
+                     та conversation_history — щоб не переповнювати контекст.
+        """
         from .logic_llm import ask_llm
+        if minimal:
+            # Мінімальний system prompt для планера (без списку функцій — він у prompt)
+            minimal_system = "Ти — планувальник. Відповідай тільки JSON без пояснень."
+            return ask_llm(prompt, [], minimal_system)
         return ask_llm(prompt, self.conversation_history, self.system_prompt)
 
     def _is_cache_enabled(self) -> bool:
@@ -529,7 +538,7 @@ class VoiceAssistant:
                         if self.gui_log_callback and buffer_data["count"] % 10 == 0:
                             self.gui_log_callback(
                                 "update_status",
-                                f"💭 Генерую... ({buffer_data['count']} токенів)",
+                                f"🤔 Думаю... ({buffer_data['count']} токенів)",
                             )
 
                     self.streaming_handler.stream_response_with_callback(messages, on_chunk)
@@ -551,6 +560,8 @@ class VoiceAssistant:
             else:
                 # Звичайний запит без стрімінгу
                 print(f"{Fore.MAGENTA}🤔 [Думаю...]")
+                if self.gui_log_callback:
+                    self.gui_log_callback("update_status", "🤔 Думаю...")
                 start_llm = time.time()
                 answer = ask_llm(command_text, self.conversation_history, self.system_prompt)
                 full_response = answer
@@ -613,7 +624,7 @@ class VoiceAssistant:
             total_chars += len(str(content))
         return total_chars // 4
 
-    def _manage_conversation_history(self, max_messages: int = 12, max_tokens: int = 2500, summarize_threshold: int = 10):
+    def _manage_conversation_history(self, max_messages: int = 6, max_tokens: int = 1200, summarize_threshold: int = 8):
         """Адаптивне управління історією діалогу:
         - обмеження за к-стю повідомлень (max_messages)
         - обмеження за к-стю токенів (max_tokens, gpt-oss має 4000 context)

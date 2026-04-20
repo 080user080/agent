@@ -88,17 +88,40 @@ class Planner:
         return any(m in normalized for m in coding_markers)
 
     def _available_actions_description(self) -> str:
-        """Зібрати доступні функції з реєстру."""
+        """Зібрати доступні функції з реєстру (скорочений список для планера)."""
         if not hasattr(self.assistant, "registry") or not self.assistant.registry:
             return ""
 
+        # Priority функції для планера (тільки найважливіші)
+        priority_funcs = [
+            'execute_python', 'debug_python_code', 'create_file', 'read_file', 'edit',
+            'list_directory', 'search_in_code', 'list_sandbox_scripts',
+            'open_program', 'close_program', 'mouse_click', 'keyboard_type',
+            'take_screenshot', 'ocr_screen', 'click_text', 'find_text_on_screen',
+            'analyze_current_context', 'click_element', 'fill_form',
+            'create_skill', 'list_windows', 'get_active_window',
+            'ask_user', 'voice_input', 'record_action', 'undo_last',
+        ]
+
         lines = []
+        added = set()
+
+        # Спочатку priority функції
+        for name in priority_funcs:
+            if name in self.assistant.registry.functions:
+                func_info = self.assistant.registry.functions[name]
+                description = func_info.get("description", "")[:50]  # Обрізаємо опис
+                lines.append(f"- {name}: {description}")
+                added.add(name)
+
+        # Додаємо ще трохи функцій якщо є місце (до 35 загальом)
+        MAX_PLANNER_FUNCTIONS = 35
         for name, func_info in sorted(self.assistant.registry.functions.items()):
-            description = func_info.get("description", "")
-            parameters = func_info.get("parameters", {})
-            params_text = ", ".join(parameters.keys()) if parameters else "без параметрів"
-            risk = self.assistant.registry.get_tool_risk(name)
-            lines.append(f"- {name}({params_text}) — {description} [risk={risk}]")
+            if name not in added and len(added) < MAX_PLANNER_FUNCTIONS:
+                description = func_info.get("description", "")[:40]
+                lines.append(f"- {name}: {description}")
+                added.add(name)
+
         return "\n".join(lines)
 
     def _extract_json(self, text: str) -> Optional[Any]:
@@ -174,7 +197,7 @@ class Planner:
             )
         return normalized
 
-    def _recent_history_section(self, limit: int = 6) -> str:
+    def _recent_history_section(self, limit: int = 3) -> str:
         """Взяти останні N повідомлень з діалогу для контексту planner-а."""
         history = getattr(self.assistant, "conversation_history", None) or []
         # Виключаємо останнє повідомлення (це і є поточна задача)

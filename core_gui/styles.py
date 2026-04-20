@@ -81,3 +81,32 @@ def apply_styles(style: ttk.Style) -> None:
         background=[('active', '#bf360c'), ('pressed', '#8c2400'), ('!active', '#e65100')],
         foreground=[('active', 'white'), ('!active', 'white')],
     )
+
+    # --- Кнопка МІКРОФОН (сіра, неактивна / червона при записі) ---
+    style.configure(
+        'Mic.TButton',
+        background='#9e9e9e',
+        foreground='white',
+        font=('Segoe UI', 12, 'bold'),
+        padding=(10, 10),
+        borderwidth=0,
+    )
+    style.map(
+        'Mic.TButton',
+        background=[('active', '#757575'), ('pressed', '#616161'), ('!active', '#9e9e9e')],
+        foreground=[('active', 'white'), ('!active', 'white')],
+    )
+    # Стиль при записі (червоний)
+    style.configure(
+        'MicRecording.TButton',
+        background='#e74c3c',
+        foreground='white',
+        font=('Segoe UI', 12, 'bold'),
+        padding=(10, 10),
+        borderwidth=0,
+    )
+    style.map(
+        'MicRecording.TButton',
+        background=[('active', '#c0392b'), ('pressed', '#a93226'), ('!active', '#e74c3c')],
+        foreground=[('active', 'white'), ('!active', 'white')],
+    )

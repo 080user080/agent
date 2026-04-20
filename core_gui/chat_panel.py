@@ -163,13 +163,18 @@ class ChatPanelMixin:
         current_text = self.chat_history.get(1.0, tk.END).strip()
         if current_text:
             self.chat_history.insert(tk.END, "\n" + "-" * 50 + "\n")
+        # Запам'ятовуємо позицію ПЕРЕД префіксом щоб можна було видалити все
+        self._stream_start_pos = self.chat_history.index(tk.INSERT)
         prefix = f"{ASSISTANT_TITLE}: "
         self.chat_history.insert(tk.END, prefix, ('bold',))
         self.stream_insert_pos = self.chat_history.index(tk.INSERT)
+        self._stream_has_content = False
         self.chat_history.configure(state='disabled')
 
     def append_stream_chunk(self, text):
         """Додати фрагмент тексту до стрімінгового повідомлення."""
+        if text and text.strip():
+            self._stream_has_content = True
         self.chat_history.configure(state='normal')
         self.chat_history.mark_set(tk.INSERT, self.stream_insert_pos)
         self.chat_history.insert(tk.INSERT, text)
@@ -181,7 +186,15 @@ class ChatPanelMixin:
         """Завершити стрімінг (додати новий рядок і оновити статус)."""
         import time as _time
         self.chat_history.configure(state='normal')
-        self.chat_history.insert(self.stream_insert_pos, "\n")
+        # Якщо пуста відповідь — замінюємо на повідомлення про помилку
+        if not getattr(self, '_stream_has_content', False):
+            # Видаляємо пустий префікс
+            if hasattr(self, '_stream_start_pos'):
+                self.chat_history.delete(self._stream_start_pos, tk.END)
+            error_msg = f"\n{ASSISTANT_TITLE}: ⚠️ Порожня відповідь (можливо, перевантажено контекст LLM)\n"
+            self.chat_history.insert(tk.END, error_msg, ('bold',))
+        else:
+            self.chat_history.insert(self.stream_insert_pos, "\n")
         self.chat_history.see(tk.END)
         self.chat_history.configure(state='disabled')
         ts = _time.strftime('%H:%M:%S')

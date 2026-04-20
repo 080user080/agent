@@ -285,17 +285,47 @@ class AssistantCore:
 
         print(f"{Fore.CYAN}   Primary модель: {DESIRED_MODEL}")
 
-        # Перевірити чи модель вже завантажена
+        # Допоміжна функція: перевірити чи модель РЕАЛЬНО відповідає на запит
+        def is_model_ready():
+            try:
+                # Спробуємо зробити тестовий запит — це перевірить чи модель в пам'яті
+                test_response = requests.post(
+                    f"{BASE_URL}/v1/chat/completions",
+                    json={
+                        "model": DESIRED_MODEL,
+                        "messages": [{"role": "user", "content": "Hi"}],
+                        "max_tokens": 5,
+                        "temperature": 0
+                    },
+                    timeout=5
+                )
+                if test_response.status_code == 200:
+                    return True
+                # Якщо помилка "model not found" або "no model loaded" — модель не готова
+                error_text = test_response.text.lower()
+                if "no model loaded" in error_text or "model not found" in error_text:
+                    return False
+                # Інші помилки — можливо модель завантажена але є інші проблеми
+                return test_response.status_code == 200
+            except Exception:
+                return False
+
+        # Перевірити чи модель вже завантажена (список + реальна перевірка)
         try:
             response = requests.get(f"{BASE_URL}/v1/models", timeout=2)
             if response.status_code == 200:
                 data = response.json()
                 models = [m['id'] for m in data.get('data', [])]
                 if DESIRED_MODEL in models:
-                    print(f"{Fore.GREEN}✅ Модель вже завантажена: {DESIRED_MODEL}")
-                    return True
-        except:
-            pass
+                    # Модель є в списку, але перевіримо чи вона реально відповідає
+                    print(f"{Fore.CYAN}   Модель є в списку, перевіряю чи готова до роботи...")
+                    if is_model_ready():
+                        print(f"{Fore.GREEN}✅ Модель завантажена і готова: {DESIRED_MODEL}")
+                        return True
+                    else:
+                        print(f"{Fore.YELLOW}⚠️  Модель є в списку, але не завантажена в пам'ять")
+        except Exception as e:
+            print(f"{Fore.YELLOW}   Не вдалося перевірити список моделей: {e}")
 
         print(f"{Fore.CYAN}🤖 Завантаження {DESIRED_MODEL}...")
 
@@ -309,40 +339,37 @@ class AssistantCore:
                 encoding='utf-8'
             )
 
-            print(f"{Fore.CYAN}⏳ Очікування завантаження (до 20с)...")
+            print(f"{Fore.CYAN}⏳ Очікування завантаження (до 30с)...")
 
-            # Перевіряти чи модель завантажена через тестовий запит
-            for i in range(20):
+            # Перевіряти чи модель РЕАЛЬНО завантажена через тестовий запит
+            for i in range(30):
                 time.sleep(1)
+
+                # Спершу перевіримо чи модель в списку
                 try:
                     response = requests.get(f"{BASE_URL}/v1/models", timeout=1)
                     if response.status_code == 200:
                         data = response.json()
-                        # Перевіряємо чи модель в списку доступних (вона завантажена якщо є в списку)
                         models = [m['id'] for m in data.get('data', [])]
                         if DESIRED_MODEL in models:
-                            print(f"{Fore.GREEN}✅ Модель завантажена за {i+1}с!")
-                            return True
+                            # Модель в списку — тепер перевіримо чи вона відповідає
+                            if is_model_ready():
+                                print(f"{Fore.GREEN}✅ Модель завантажена і готова за {i+1}с!")
+                                return True
                 except:
                     pass
 
-                if i % 3 == 0:
-                    print(f"{Fore.LIGHTBLACK_EX}   {i}с...")
+                if i % 5 == 0 and i > 0:
+                    print(f"{Fore.LIGHTBLACK_EX}   {i}с... очікую завантаження в пам'ять")
 
             # Фінальна перевірка
-            try:
-                response = requests.get(f"{BASE_URL}/v1/models", timeout=1)
-                if response.status_code == 200:
-                    data = response.json()
-                    models = [m['id'] for m in data.get('data', [])]
-                    if DESIRED_MODEL in models:
-                        print(f"{Fore.GREEN}✅ Модель завантажена!")
-                        return True
-            except:
-                pass
-
-            print(f"{Fore.YELLOW}⚠️  Завантаження триває довше")
-            return True
+            if is_model_ready():
+                print(f"{Fore.GREEN}✅ Модель завантажена і готова!")
+                return True
+            else:
+                print(f"{Fore.YELLOW}⚠️  Модель завантажена в список, але не відповідає на запити")
+                print(f"{Fore.YELLOW}   Можливо, завантаження ще триває або потрібно перезавантажити LM Studio")
+                return False
 
         except Exception as e:
             print(f"{Fore.RED}❌ Помилка автозавантаження: {e}")
@@ -585,7 +612,26 @@ class AssistantCore:
         if self.tts_engine:
             self.assistant.set_tts_engine(self.tts_engine)
 
-        print(f"\n{Fore.GREEN}✅ Асистент готовий (текстовий режим, без STT)")
+        # --- Ініціалізація STT контролера для GUI (кнопка мікрофона) ---
+        if stt_enabled and self.gui_queue is not None:
+            try:
+                from functions.core_stt_listener import get_stt_controller
+                print(f"\n{Fore.CYAN}🎤 Ініціалізація голосових команд для GUI...")
+                stt_controller = get_stt_controller(
+                    process_command_callback=self.process_text_command
+                )
+                if stt_controller:
+                    # GUI може ще не бути готовим - відкладене встановлення через чергу
+                    self._pending_stt_controller = stt_controller
+                    print(f"{Fore.GREEN}✅ STT контролер створено, буде передано в GUI")
+                else:
+                    print(f"{Fore.YELLOW}⚠️  STT контролер не створено")
+            except Exception as e:
+                print(f"{Fore.YELLOW}⚠️  Не вдалося ініціалізувати STT контролер: {e}")
+                import traceback
+                traceback.print_exc()
+
+        print(f"\n{Fore.GREEN}✅ Асистент готовий")
         return True
     
     def run(self):
@@ -612,6 +658,32 @@ class AssistantCore:
         print(f"{Fore.LIGHTBLACK_EX}💡 Ctrl+C для виходу")
         print()
         
+        self.gui.set_assistant(self)
+
+        # --- Ініціалізація STT контролера для голосових команд ---
+        from functions.core_stt_listener import get_stt_controller
+        from functions.config import STT_ENABLED
+
+        if STT_ENABLED:
+            print(f"\n{Fore.CYAN}🎤 Ініціалізація голосових команд...")
+            try:
+                stt_controller = get_stt_controller(
+                    process_command_callback=self.process_text_command
+                )
+                if stt_controller:
+                    self.gui.set_stt_controller(stt_controller)
+                    print(f"{Fore.GREEN}✅ Голосові команди готові (натисніть 🎤 в чаті)")
+                else:
+                    print(f"{Fore.YELLOW}⚠️  STT контролер не створено (перевірте налаштування)")
+            except Exception as e:
+                print(f"{Fore.YELLOW}⚠️  Не вдалося ініціалізувати STT: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"\n{Fore.YELLOW}⏭️  Голосові команди вимкнено (STT_ENABLED=False)")
+
+        print()
+
         if CONTINUOUS_LISTENING_ENABLED:
             self._run_continuous_mode()
         else:

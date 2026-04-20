@@ -99,7 +99,39 @@ class FunctionRegistry:
             
             except Exception as e:
                 print(f"{Fore.RED}❌ Помилка завантаження {module_name}: {e}")
-    
+
+        # Завантажити GUI Automation tools (tools_*.py) — функції без декораторів, для прямого виклику
+        print(f"\n{Fore.CYAN}📦 Завантаження GUI Automation tools...")
+        for file_path in sorted(functions_dir.glob("tools_*.py")):
+            module_name = file_path.stem
+            try:
+                spec = importlib.util.spec_from_file_location(f"functions.{module_name}", file_path)
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[f"functions.{module_name}"] = module
+                spec.loader.exec_module(module)
+
+                # Реєструємо всі публічні функції (без підкреслення на початку)
+                count = 0
+                for name, obj in inspect.getmembers(module):
+                    if inspect.isfunction(obj) and not name.startswith('_') and hasattr(module, name):
+                        # Перевіряємо чи це функція з модуля (не імпортована)
+                        if obj.__module__ == f"functions.{module_name}":
+                            self.functions[name] = {
+                                'function': obj,
+                                'name': name,
+                                'description': obj.__doc__ or f"GUI tool: {name}",
+                                'parameters': getattr(obj, '_parameters', {})
+                            }
+                            count += 1
+
+                if count > 0:
+                    print(f"{Fore.GREEN}✅ {Fore.CYAN}{module_name} ({count} функцій)")
+                else:
+                    print(f"{Fore.YELLOW}⚠️  {module_name} (немає публічних функцій)")
+
+            except Exception as e:
+                print(f"{Fore.RED}❌ Помилка завантаження {module_name}: {e}")
+
     def get_core_module(self, name):
         """Отримати core модуль за назвою"""
         for module_name, module in self.core_modules.items():
@@ -236,16 +268,32 @@ class FunctionRegistry:
         if not self.functions:
             return prompt + "\n\n⚠️ Функції недоступні."
         
-        prompt += "\n\nДОСТУПНІ ФУНКЦІЇ:\n"
+        # Скорочений список функцій (тільки назва + опис, без параметрів)
+        # Обмежуємо кількість функцій для зменшення розміру промпта
+        MAX_FUNCTIONS_IN_PROMPT = 20
         
+        prompt += f"\n\nДОСТУПНІ ФУНКЦІЇ (перші {MAX_FUNCTIONS_IN_PROMPT}):\n"
+        
+        # Сортуємо: спочатку найважливіші (core функції)
+        priority_funcs = [
+            'execute_python', 'debug_python_code', 'open_program', 'close_program',
+            'list_sandbox_scripts', 'read_file', 'edit', 'create_file', 'list_directory',
+            'mouse_click', 'keyboard_type', 'take_screenshot', 'ocr_screen'
+        ]
+        
+        # Додаємо priority функції першими
+        added = set()
+        for func_name in priority_funcs:
+            if func_name in self.functions and len(added) < MAX_FUNCTIONS_IN_PROMPT:
+                func_info = self.functions[func_name]
+                prompt += f"• {func_info['name']}: {func_info['description'][:50]}...\n"
+                added.add(func_name)
+        
+        # Додаємо решту функцій до ліміту
         for func_name, func_info in self.functions.items():
-            prompt += f"\n🔧 {func_info['name']}\n"
-            prompt += f"   Опис: {func_info['description']}\n"
-            
-            if func_info['parameters']:
-                prompt += "   Параметри:\n"
-                for param_name, param_desc in func_info['parameters'].items():
-                    prompt += f"   • {param_name}: {param_desc}\n"
+            if func_name not in added and len(added) < MAX_FUNCTIONS_IN_PROMPT:
+                prompt += f"• {func_info['name']}: {func_info['description'][:40]}\n"
+                added.add(func_name)
         
         prompt += """
 

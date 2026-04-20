@@ -151,7 +151,17 @@ def ask_llm(user_message, conversation_history, system_prompt):
         )
         
         if response.status_code == 200:
-            return response.json()['choices'][0]['message']['content']
+            result = response.json()
+            # Перевірка на пусту відповідь
+            if 'choices' not in result or len(result['choices']) == 0:
+                return "❌ **Модель повернула пусту відповідь (choices відсутні)**\n\nМожливі причини:\n1. Модель завантажена в список, але не в пам'ять (Reload в LM Studio)\n2. Неправильний формат запиту для цієї моделі\n3. Проблема з LM Studio — спробуйте перезапустити"
+
+            content = result['choices'][0]['message']['content']
+            # Перевірка на пустий контент
+            if not content or content.strip() == "":
+                return "❌ **Модель повернула пустий рядок**\n\nМодель є в списку, але не відповідає. Спробуйте:\n1. Перезавантажити модель в LM Studio (Unload → Load)\n2. Перезапустити LM Studio\n3. Вибрати іншу модель"
+
+            return content
         else:
             error_text = response.text
             error_msg = f"Помилка API {response.status_code}: {error_text}"

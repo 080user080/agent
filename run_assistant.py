@@ -110,6 +110,15 @@ class AssistantApp:
                 self.gui.queue_message('add_message', ('assistant', f'✅ Готовий до роботи! Введіть команду.'))
                 self.gui.queue_message('update_status', '✅ Готовий до роботи')
 
+                # Передаємо STT контролер в GUI, якщо він був створений
+                pending_stt = getattr(self.core, '_pending_stt_controller', None)
+                if pending_stt:
+                    try:
+                        self.gui.root.after(0, self.gui.set_stt_controller, pending_stt)
+                        log_console("✅ STT контролер передано в GUI")
+                    except Exception as e:
+                        log_console(f"⚠️ Не вдалося передати STT контролер в GUI: {e}")
+
             # Тримаємо потік живим
             while self.is_running:
                 time.sleep(0.5)

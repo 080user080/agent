@@ -19,6 +19,7 @@ CATEGORY_SYSTEM = "system"
 CATEGORY_BROWSER = "browser"
 CATEGORY_MEDIA = "media"
 CATEGORY_META = "meta"
+CATEGORY_GUI = "gui"  # GUI Automation Phase 1-7
 
 TOOL_POLICIES: Dict[str, Dict[str, Any]] = {
     # --- Безпечні файлові операції (тільки Desktop) ---
@@ -62,6 +63,181 @@ TOOL_POLICIES: Dict[str, Dict[str, Any]] = {
 
     # --- Системні дії (безпечні) ---
     "clear_cache": {"risk": SAFE, "category": CATEGORY_SYSTEM, "description": "Очистити кеш асистента"},
+
+    # --- GUI Automation Phase 1: Миша та клавіатура (безпечні) ---
+    "mouse_click": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Клік мишою в координати"},
+    "mouse_move": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Перемістити курсор"},
+    "mouse_scroll": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Прокрутка мишою"},
+    "mouse_drag": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Перетягування drag & drop"},
+    "get_mouse_position": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Позиція курсора", "idempotent": True},
+    "mouse_click_image": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Клік по зображенню на екрані"},
+    "keyboard_press": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Натиснути клавішу"},
+    "keyboard_type": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Ввести текст"},
+    "keyboard_hotkey": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Комбінація клавіш"},
+    "keyboard_hold": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Утримати клавішу"},
+    "keyboard_send_special": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Спеціальна клавіша (PrintScreen...)"},
+    "clipboard_copy_text": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Копіювати текст у буфер"},
+    "clipboard_get_text": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Отримати текст з буфера", "idempotent": True},
+    "clipboard_copy_image": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Копіювати зображення у буфер"},
+
+    # --- GUI Automation Phase 1: Вікна Windows (читання безпечно, зміна — підтвердження) ---
+    "list_windows": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Список вікон", "idempotent": True},
+    "find_window_by_title": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти вікно за заголовком", "idempotent": True},
+    "find_window_by_process": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти вікна процесу", "idempotent": True},
+    "find_window_by_class": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти вікна за класом", "idempotent": True},
+    "get_active_window": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Активне вікно", "idempotent": True},
+    "get_window_rect": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Координати вікна", "idempotent": True},
+    "is_window_visible": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Чи видиме вікно", "idempotent": True},
+    "is_window_minimized": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Чи згорнуте вікно", "idempotent": True},
+    "is_window_maximized": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Чи розгорнуте вікно", "idempotent": True},
+    "wait_for_window": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Очікувати вікно"},
+    "wait_window_close": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Очікувати закриття вікна"},
+
+    # Зміна стану вікон — підтвердження (модифікують систему)
+    "activate_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Активувати вікно"},
+    "minimize_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Згорнути вікно"},
+    "maximize_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Розгорнути вікно"},
+    "restore_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Відновити вікно"},
+    "move_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Перемістити вікно"},
+    "resize_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Змінити розмір вікна"},
+    "move_resize_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Перемістити та змінити розмір"},
+    "center_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Відцентрувати вікно"},
+    "bring_all_to_top": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Підняти всі вікна процесу"},
+
+    # Небезпечні операції з вікнами
+    "close_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Закрити вікно"},
+    "hide_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Приховати вікно"},
+    "show_window": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Показати вікно"},
+
+    # --- GUI Automation Phase 2: Скріншоти та аналіз екрану (безпечні, ідемпотентні) ---
+    "take_screenshot": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Зняти скріншот екрану", "idempotent": True},
+    "capture_monitor": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Захопити монітор", "idempotent": True},
+    "capture_region": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Захопити область екрану", "idempotent": True},
+    "capture_window": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Захопити вікно", "idempotent": True},
+    "capture_active_window": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Захопити активне вікно", "idempotent": True},
+    "get_screen_size": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Розмір екрану", "idempotent": True},
+    "get_monitors_info": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Інформація про монітори", "idempotent": True},
+    "get_pixel_color": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Колір пікселя", "idempotent": True},
+    "find_image_on_screen": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти зображення на екрані", "idempotent": True},
+    "wait_for_image": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Очікувати зображення"},
+    "pixel_matches_color": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Перевірити колір пікселя", "idempotent": True},
+    "wait_for_color": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Очікувати колір"},
+    "clear_screenshot_cache": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Очистити кеш скріншотів"},
+
+    # --- GUI Automation Phase 3: OCR — Розпізнавання тексту (безпечні, ідемпотентні) ---
+    "ocr_screen": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Розпізнати текст на екрані", "idempotent": True},
+    "ocr_region": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Розпізнати текст в області", "idempotent": True},
+    "ocr_window": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Розпізнати текст у вікні", "idempotent": True},
+    "ocr_image": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Розпізнати текст на зображенні", "idempotent": True},
+    "find_text_on_screen": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти текст на екрані", "idempotent": True},
+    "find_all_text_on_screen": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти всі входження тексту", "idempotent": True},
+    "click_text": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Знайти текст і клікнути по ньому"},
+    "wait_for_text": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Очікувати появи тексту"},
+    "ocr_to_string": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Розпізнати текст і повернути рядок", "idempotent": True},
+
+    # --- GUI Automation Phase 4: Computer Vision — Детекція UI-елементів (idempotent) ---
+    "find_button_by_image": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти кнопку за зображенням", "idempotent": True},
+    "find_icon": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти іконку на екрані", "idempotent": True},
+    "find_checkbox": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти чекбокси", "idempotent": True},
+    "find_input_field": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти поля вводу", "idempotent": True},
+    "find_progress_bar": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти прогрес-бар", "idempotent": True},
+    "find_button_by_text": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти кнопку за текстом (OCR+CV)", "idempotent": True},
+    "find_label": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти мітку за текстом", "idempotent": True},
+    "find_input_near_label": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Знайти поле поруч з міткою", "idempotent": True},
+    "is_button_enabled": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Чи кнопка активна", "idempotent": True},
+    "is_checkbox_checked": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Чи чекбокс включений", "idempotent": True},
+    "get_button_state": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Отримати стан кнопки", "idempotent": True},
+
+    # --- GUI Automation Phase 4: Розпізнавання програм (idempotent) ---
+    "detect_active_application": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Визначити активну програму", "idempotent": True},
+    "detect_application_state": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Визначити стан програми", "idempotent": True},
+    "is_application_ready": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Чи програма готова", "idempotent": True},
+    "detect_file_dialog": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Визначити файловий діалог", "idempotent": True},
+    "detect_error_dialog": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Визначити діалог помилки", "idempotent": True},
+    "detect_context_menu": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Визначити контекстне меню", "idempotent": True},
+
+    # --- GUI Automation Phase 4: Візуальний diff (idempotent) ---
+    "capture_baseline": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Зберегти еталонний скріншот"},
+    "delete_baseline": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Видалити еталон"},
+    "list_baselines": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Список еталонів", "idempotent": True},
+    "compare_with_baseline": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Порівняти з еталоном", "idempotent": True},
+    "highlight_changes": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Підсвітити зміни", "idempotent": True},
+    "wait_for_visual_change": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Очікувати зміну на екрані"},
+    "wait_for_visual_stable": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Очікувати стабільності"},
+
+    # --- GUI Automation Phase 5: Smart UI Navigation — Розумна навігація ---
+    # Базові UI-дії (потребують підтвердження — це дії)
+    "click_element": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Клік по елементу за описом"},
+    "type_in_field": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Ввести текст у поле"},
+    "select_option": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Вибрати пункт з dropdown"},
+    "check_checkbox": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Встановити чекбокс"},
+    "select_radio": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Вибрати radio button"},
+    "navigate_tabs": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Перейти на вкладку"},
+    # Форми (потребують підтвердження)
+    "fill_form": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Заповнити форму"},
+    "submit_form": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Відправити форму"},
+    "read_form_values": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Прочитати значення форми", "idempotent": True},
+    "validate_form_filled": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Перевірити заповнення форми", "idempotent": True},
+    # Меню (потребують підтвердження)
+    "open_menu": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Відкрити меню"},
+    "click_menu_item": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Клік по пункту меню"},
+    "open_context_menu": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Відкрити контекстне меню"},
+    "click_context_item": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Вибрати пункт контекстного меню"},
+    "close_menu": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Закрити меню"},
+    # Діалоги (потребують підтвердження)
+    "handle_dialog": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Відповісти на діалог"},
+    "dismiss_all_dialogs": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Закрити всі діалоги"},
+    # Сценарії (потребують підтвердження — виконують дії)
+    "run_scenario": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Виконати сценарій"},
+    "run_scenario_from_file": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Виконати сценарій з файлу"},
+    "save_scenario": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Зберегти сценарій"},
+    "load_scenario": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Завантажити сценарій", "idempotent": True},
+    "list_scenarios": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Список сценаріїв", "idempotent": True},
+    "delete_scenario": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Видалити сценарій"},
+    "validate_scenario": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Перевірити сценарій", "idempotent": True},
+    # Вбудовані сценарії (потребують підтвердження)
+    "scenario_save_file": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Сценарій: зберегти файл"},
+    "scenario_open_file": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Сценарій: відкрити файл"},
+    "scenario_save_as": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Сценарій: зберегти як"},
+    "scenario_find_in_program": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Сценарій: пошук"},
+    "scenario_print": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Сценарій: друк"},
+    "scenario_undo_redo": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Сценарій: undo/redo"},
+    "scenario_select_all_copy": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Сценарій: виділити все та скопіювати"},
+
+    # --- GUI Automation Phase 5: Context Analyzer — Аналіз контексту (idempotent) ---
+    "analyze_current_context": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Проаналізувати поточний контекст UI", "idempotent": True},
+    "suggest_next_action": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Запропонувати наступну дію", "idempotent": True},
+    "explain_screen": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Отримати текстовий опис екрану", "idempotent": True},
+    "detect_user_goal_completion": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Перевірити чи виконана ціль", "idempotent": True},
+    "detect_blocker": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Виявити перешкоду", "idempotent": True},
+    "get_context_changes": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Отримати зміни в контексті", "idempotent": True},
+
+    # --- GUI Automation Phase 6: Safety, Audit & Undo — Безпека та відкат ---
+    # Action Recorder (безпечні, idempotent для читання)
+    "record_action": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Записати дію в журнал"},
+    "get_recent_actions": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Останні дії з журналу", "idempotent": True},
+    "export_session_log": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Експортувати лог сесії", "idempotent": True},
+    "generate_action_report": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Звіт по діях", "idempotent": True},
+    "search_actions": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Пошук в журналі", "idempotent": True},
+    # Undo Manager (потребує підтвердження для відкату)
+    "save_snapshot": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Зберегти стан системи"},
+    "restore_snapshot": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Відновити стан системи"},
+    "list_snapshots": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Список snapshots", "idempotent": True},
+    "undo_last": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Відкатити останні дії"},
+    "undo_to_snapshot": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Відкатити до snapshot"},
+    "get_undo_stack": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Отримати undo stack", "idempotent": True},
+    "clear_undo_stack": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Очистити undo stack"},
+    # GUI Guardian (безпечні, idempotent для аналізу)
+    "enable_sandbox_mode": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Увімкнути sandbox"},
+    "disable_sandbox_mode": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Вимкнути sandbox"},
+    "set_allowed_region": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Встановити дозволену зону"},
+    "set_allowed_applications": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Whitelist програм"},
+    "add_blocked_application": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_GUI, "description": "Додати в blacklist"},
+    "assess_risk": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Оцінити ризик дії", "idempotent": True},
+    "is_action_allowed": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Перевірити чи дія дозволена", "idempotent": True},
+    "preview_action": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Preview дії без виконання", "idempotent": True},
+    "simulate_action": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Симулювати дію", "idempotent": True},
+    "get_safety_report": {"risk": SAFE, "category": CATEGORY_GUI, "description": "Звіт безпеки", "idempotent": True},
 }
 
 # Патерни небезпечних дій у планах (literal substring match, lowercased)

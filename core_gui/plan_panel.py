@@ -93,13 +93,28 @@ class PlanPanelMixin:
             return
 
         label = self._plan_step_labels[idx]
+
+        # Перевіряємо чи widget ще існує
+        try:
+            label.winfo_exists()
+        except Exception:
+            # Widget знищено, пропускаємо оновлення
+            return
+
         icon, color = self._STATUS_ICONS.get(status, ("•", "#555555"))
         text = f"  {icon}  {idx + 1}. {action}"
         if goal:
             text += f" — {goal}"
         if detail and status in ("error", "blocked"):
             text += f"  [{detail[:60]}]"
-        label.config(text=text, fg=color)
+        try:
+            label.config(text=text, foreground=color)
+        except Exception:
+            # Fallback для tk.Label (не ttk)
+            try:
+                label.config(text=text, fg=color)
+            except Exception:
+                label.config(text=text)
 
         # Підрахунок прогресу
         done_count = sum(
@@ -116,7 +131,22 @@ class PlanPanelMixin:
         """Визначити статус кроку з кольору label (helper)."""
         if idx >= len(self._plan_step_labels):
             return "pending"
-        color = self._plan_step_labels[idx].cget("fg")
+
+        label = self._plan_step_labels[idx]
+
+        # Перевіряємо чи widget ще існує
+        try:
+            label.winfo_exists()
+        except Exception:
+            return "pending"
+
+        try:
+            color = label.cget("foreground")
+        except Exception:
+            try:
+                color = label.cget("fg")
+            except Exception:
+                return "pending"
         for status, (_, status_color) in self._STATUS_ICONS.items():
             if status_color == color:
                 return status

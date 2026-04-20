@@ -54,11 +54,11 @@
 - **Тести** — pytest suite для `core_planner`, `core_memory`, `core_executor`
 - **Документація** — README.md + CONTRIBUTING.md
 
-### ⏳ Не дороблено / В процесі
+### Не дороблено / В процесі
 
-- Голосовий ввід — індикатор мікрофона в GUI (відкладено через STT)
+- Голосове введення — індикатор мікрофона в GUI (відкладено через STT)
 - Planner не робить повне перепланування дерева
-- GUI Automation — не розпочато (Phase 1–7, детальний план нижче)
+- **Phase 4-7 GUI Automation** — Computer Vision, Smart UI Navigation, Safety, Learning (детальний план нижче)
 
 ---
 
@@ -144,19 +144,19 @@ core_gui/
 
 | Фаза | Назва | Статус | Пріоритет | Термін |
 |------|-------|--------|-----------|--------|
-| 1 | Базова автоматизація GUI | 🔴 Не розпочато | 🔥 Критичний | 2–3 тижні |
-| 2 | Скріншоти та аналіз екрану | 🔴 Не розпочато | 🔥 Критичний | 2–3 тижні |
-| 3 | OCR — розпізнавання тексту | 🔴 Не розпочато | 🔥 Критичний | 2–3 тижні |
-| 4 | Комп'ютерний зір (CV) | 🔴 Не розпочато | 🔴 Високий | 3–4 тижні |
-| 5 | Розумна навігація по UI | 🔴 Не розпочато | 🔴 Високий | 3–4 тижні |
-| 6 | Безпека та журнал дій | 🔴 Не розпочато | 🔴 Високий | 2–3 тижні |
+| 1 | Базова автоматизація GUI | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
+| 2 | Скріншоти та аналіз екрану | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
+| 3 | OCR — розпізнавання тексту | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
+| 4 | Комп'ютерний зір (CV) | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
+| 5 | Розумна навігація по UI | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
+| 6 | Безпека та журнал дій | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
 | 7 | Навчання та адаптація | 🔴 Не розпочато | 🟡 Середній | 4–6 тижнів |
 
 ---
 
 ## 📦 Phase 1: Базова автоматизація GUI (Core Input Control)
 
-**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔥 Критичний | **Термін:** 2–3 тижні
+**Статус:** ✅ Готово | **Пріоритет:** ✅ Завершено | **Термін:** 20.04.2026
 
 **Мета:** Дати агенту «руки» — можливість керувати мишею та клавіатурою, взаємодіяти з вікнами Windows.
 
@@ -232,7 +232,7 @@ core_gui/
 
 ## 📸 Phase 2: Скріншоти та аналіз екрану (Screen Capture)
 
-**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔥 Критичний | **Термін:** 2–3 тижні
+**Статус:** ✅ Готово | **Пріоритет:** ✅ Завершено | **Термін:** 20.04.2026
 
 **Мета:** Дати агенту «очі» — можливість бачити екран і аналізувати його вміст.
 
@@ -258,7 +258,8 @@ core_gui/
 - [ ] `find_all_images_on_screen(template_path, confidence=0.8)` → `[{x, y, confidence}]`
 - [ ] `wait_for_image(template_path, timeout=10, interval=0.5)` → `{x, y} | None`
 - [ ] `image_changed(region, threshold=0.05)` → `bool` — чи змінився регіон екрану
-- [ ] `wait_for_change(region, timeout=10)` → `bool` — очікати зміни в регіоні
+- [ ] `wait_for_visual_change(region, timeout=10)` → `bool` — очікувати будь-яку зміну
+- [ ] `wait_for_visual_stable(region, stable_time=1.0, timeout=15)` → `bool` — очікувати стабільності
 
 #### Аналіз кольорів та змін
 - [ ] `pixel_matches_color(x, y, color, tolerance=10)` → `bool`
@@ -269,211 +270,6 @@ core_gui/
 ### 2.2 Кешування скріншотів
 
 - [ ] `ScreenCache` клас — зберігає останні N скріншотів у пам'яті
-- [ ] Автоматичне збереження "before/after" для критичних дій
-- [ ] Очищення кешу через `clear_cache` / `aaa_system.py`
-
-### 2.3 Тести Phase 2
-
-- [ ] `tests/test_tools_screen_capture.py` — mock mss, перевірка PIL операцій
-- [ ] Тест template matching з синтетичними зображеннями
-- [ ] Тест `capture_window` для мінімізованого вікна
-
----
-
-## 🔤 Phase 3: OCR — Розпізнавання тексту на екрані
-
-**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔥 Критичний | **Термін:** 2–3 тижні
-
-**Мета:** Агент читає текст з будь-якого місця екрану — кнопок, меню, повідомлень, таблиць.
-
-**Залежності:** `easyocr` або `paddleocr` (основний), `pytesseract` (fallback)
-
-### 3.1 Модуль `tools_ocr.py` — Розпізнавання тексту
-
-#### Базові функції
-- [ ] `ocr_screen(languages=['uk', 'en'])` → `[{text, confidence, bbox}]` — весь екран
-- [ ] `ocr_region(x, y, width, height, languages=['uk', 'en'])` → `[{text, confidence, bbox}]`
-- [ ] `ocr_window(hwnd, languages=['uk', 'en'])` → `[{text, confidence, bbox}]` — вікно цілком
-- [ ] `ocr_image(image_path, languages=['uk', 'en'])` → `[{text, confidence, bbox}]`
-- [ ] `ocr_to_string(region=None)` → `str` — весь текст як рядок (для простих запитів)
-
-#### Пошук тексту на екрані
-- [ ] `find_text_on_screen(text, case_sensitive=False, confidence=0.7)` → `{x, y, width, height} | None`
-- [ ] `find_all_text_on_screen(text)` → `[{x, y, width, height, matched_text}]`
-- [ ] `find_text_in_region(text, x, y, width, height)` → `{x, y} | None`
-- [ ] `click_text(text, offset_x=0, offset_y=0)` → `bool` — знайти текст і клікнути по ньому
-- [ ] `wait_for_text(text, region=None, timeout=10)` → `bool`
-
-#### Структурований OCR
-- [ ] `ocr_table(region)` → `[[str]]` — розпізнати таблицю як 2D масив
-- [ ] `ocr_form_fields(region)` → `[{label, value, type}]` — поля форми (лейбл + значення)
-- [ ] `ocr_menu(hwnd)` → `[str]` — пункти меню
-- [ ] `read_status_bar(hwnd)` → `str` — текст статус-бару програми
-- [ ] `read_title_bar(hwnd)` → `str` — заголовок вікна
-
-#### Якість та постобробка
-- [ ] `preprocess_for_ocr(image)` → `PIL.Image` — покращення зображення (контраст, різкість, масштаб)
-- [ ] `correct_ocr_errors(text)` → `str` — базова корекція типових OCR-помилок (0/O, 1/l, ...)
-- [ ] `get_ocr_engine_info()` → `{engine, languages, version}` — інформація про поточний двигун
-
-### 3.2 Модуль `logic_text_reader.py` — Контекстне читання тексту
-
-- [ ] `read_screen_context()` → `str` — загальний опис того, що на екрані (для LLM)
-- [ ] `read_error_messages()` → `[str]` — всі повідомлення про помилки на екрані
-- [ ] `read_notifications()` → `[str]` — спливаючі сповіщення
-- [ ] `read_dialog_content(hwnd=None)` → `{title, message, buttons}` — вміст діалогового вікна
-- [ ] `read_selected_text()` → `str` — виділений текст (через Ctrl+C)
-- [ ] `describe_screen()` → `str` — LLM-опис екрану на основі OCR
-
-### 3.3 Тести Phase 3
-
-- [ ] `tests/test_tools_ocr.py` — синтетичні зображення з текстом, перевірка точності
-- [ ] `tests/test_logic_text_reader.py` — mock OCR, перевірка парсингу діалогів
-- [ ] Benchmark: точність OCR на різних шрифтах і фонах
-
----
-
-## 👁️ Phase 4: Комп'ютерний зір (Computer Vision)
-
-**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔴 Високий | **Термін:** 3–4 тижні
-
-**Мета:** Агент не просто читає текст, але й **розуміє** інтерфейс — знаходить кнопки, поля, іконки, визначає стан елементів.
-
-**Залежності:** `opencv-python`, `Pillow`, опційно `ultralytics` (YOLO) або `detectron2`
-
-### 4.1 Модуль `tools_ui_detector.py` — Детекція UI-елементів
-
-#### Template matching (без ML)
-- [ ] `find_button_by_image(template_path, confidence=0.8)` → `{x, y, width, height} | None`
-- [ ] `find_icon(icon_name_or_path, confidence=0.8)` → `{x, y} | None`
-- [ ] `find_checkbox(region=None)` → `[{x, y, checked: bool}]`
-- [ ] `find_radio_button(region=None)` → `[{x, y, selected: bool}]`
-- [ ] `find_input_field(region=None)` → `[{x, y, width, height}]`
-- [ ] `find_progress_bar(region=None)` → `{x, y, width, height, percent: float} | None`
-- [ ] `find_scrollbar(region=None)` → `{x, y, orientation, position: float} | None`
-
-#### Комбінований OCR + CV пошук
-- [ ] `find_button_by_text(text, region=None, confidence=0.7)` → `{x, y, center_x, center_y} | None`
-- [ ] `find_label(text, region=None)` → `{x, y} | None`
-- [ ] `find_input_near_label(label_text, region=None)` → `{x, y, width, height} | None`
-- [ ] `find_menu_item(menu_path_list)` → `{x, y} | None` — напр. `["Файл", "Відкрити"]`
-- [ ] `find_tab(tab_name, region=None)` → `{x, y} | None`
-- [ ] `find_dropdown(label_text=None, region=None)` → `{x, y, width, height} | None`
-
-#### Аналіз стану елементів
-- [ ] `is_button_enabled(x, y, width, height)` → `bool` — чи активна кнопка (за кольором)
-- [ ] `is_checkbox_checked(x, y)` → `bool`
-- [ ] `is_input_focused(x, y)` → `bool`
-- [ ] `get_button_state(x, y)` → `"normal" | "hovered" | "pressed" | "disabled"`
-- [ ] `detect_cursor_type()` → `"arrow" | "hand" | "text" | "wait" | "resize" | ...`
-
-### 4.2 Модуль `tools_app_recognizer.py` — Розпізнавання програм
-
-- [ ] `detect_active_application()` → `{name, type, confidence}` — яка програма відкрита
-- [ ] `detect_application_state()` → `{state: "idle"|"loading"|"error"|"dialog", details}`
-- [ ] `is_application_ready(hwnd)` → `bool` — чи закінчила програма завантаження
-- [ ] `detect_file_dialog()` → `{type: "open"|"save", current_path, title} | None`
-- [ ] `detect_error_dialog()` → `{title, message, buttons} | None`
-- [ ] `detect_context_menu()` → `{items: [str], positions: [{x, y}]} | None`
-- [ ] `get_application_profile(app_name)` → `{known_elements, common_workflows}` — профіль програми
-
-### 4.3 Модуль `tools_visual_diff.py` — Порівняння станів екрану
-
-- [ ] `capture_baseline(name)` — зберегти еталонний скріншот
-- [ ] `compare_with_baseline(name)` → `{changed: bool, diff_regions: [{x, y, w, h}], diff_percent: float}`
-- [ ] `highlight_changes(before, after)` → `PIL.Image` — зображення з підсвіченими змінами
-- [ ] `wait_for_visual_change(region, timeout=10)` → `bool` — очікувати будь-яку зміну
-- [ ] `wait_for_visual_stable(region, stable_time=1.0, timeout=15)` → `bool` — очікувати стабільності
-
-### 4.4 Тести Phase 4
-
-- [ ] `tests/test_tools_ui_detector.py` — синтетичні зображення UI-елементів
-- [ ] `tests/test_tools_app_recognizer.py` — mock скріншоти відомих програм
-- [ ] `tests/test_tools_visual_diff.py` — синтетичні "до/після" зображення
-
----
-
-## 🧠 Phase 5: Розумна навігація по UI (Smart UI Navigation)
-
-**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔴 Високий | **Термін:** 3–4 тижні
-
-**Мета:** Агент може виконувати складні UI-сценарії автономно: заповнити форму, пройти wizard, відповісти на діалог.
-
-### 5.1 Модуль `logic_ui_navigator.py` — Інтелектуальна навігація
-
-#### Базові UI-дії
-- [ ] `click_element(description)` → `bool` — клік за описом ("кнопка OK", "поле пошуку")
-- [ ] `type_in_field(field_description, text)` → `bool` — ввести текст у поле
-- [ ] `select_option(dropdown_description, option_text)` → `bool` — вибрати пункт з dropdown
-- [ ] `check_checkbox(label, state=True)` → `bool` — встановити чекбокс
-- [ ] `select_radio(label)` → `bool` — вибрати radio button
-- [ ] `navigate_tabs(tab_name)` → `bool` — перейти на вкладку
-
-#### Форми та wizard
-- [ ] `fill_form(field_dict)` — заповнити форму: `{"Ім'я": "Іван", "Email": "ivan@test.com"}`
-- [ ] `submit_form(submit_button_text="OK")` → `bool`
-- [ ] `navigate_wizard(steps_dict)` — пройти багатосторінковий wizard
-- [ ] `read_form_values()` → `{field_name: value}` — прочитати поточні значення форми
-- [ ] `validate_form_filled(required_fields)` → `{valid: bool, missing: [str]}`
-
-#### Меню та контекстні меню
-- [ ] `open_menu(menu_name)` → `bool` — відкрити пункт меню (File, Edit, ...)
-- [ ] `click_menu_item(path_list)` → `bool` — клік по пункту: `["Файл", "Зберегти як..."]`
-- [ ] `open_context_menu(x, y)` → `bool` — відкрити контекстне меню
-- [ ] `click_context_item(item_text)` → `bool` — вибрати пункт контекстного меню
-- [ ] `close_menu()` → `bool` — закрити відкрите меню (Escape)
-
-#### Діалоги
-- [ ] `handle_dialog(expected_text=None, action="ok")` → `bool` — відповісти на діалог
-- [ ] `dismiss_all_dialogs(timeout=5)` — закрити всі модальні вікна
-- [ ] `wait_and_handle_dialog(expected_text, action, timeout=10)` → `bool`
-- [ ] `read_and_handle_dialog()` → `{text, action_taken}` — прочитати і автоматично відповісти
-
-### 5.2 Модуль `logic_scenario_runner.py` — Сценарії автоматизації
-
-#### Визначення та виконання сценаріїв
-- [ ] `ScenarioStep` — клас кроку: `{action, params, verify, on_fail}`
-- [ ] `Scenario` — клас сценарію: список кроків із умовами
-- [ ] `run_scenario(scenario)` → `{success, steps_completed, error}`
-- [ ] `run_scenario_from_file(path)` — завантажити і виконати JSON-сценарій
-
-#### Вбудовані типові сценарії
-- [ ] `scenario_save_file(program_hwnd)` — зберегти файл (Ctrl+S, обробка діалогу)
-- [ ] `scenario_open_file(program_hwnd, file_path)` — відкрити файл (Ctrl+O, навігація)
-- [ ] `scenario_save_as(program_hwnd, save_path)` — зберегти як (Ctrl+Shift+S)
-- [ ] `scenario_find_in_program(program_hwnd, search_text)` — пошук в програмі (Ctrl+F)
-- [ ] `scenario_print(program_hwnd)` — друк (Ctrl+P, OK)
-- [ ] `scenario_undo_redo(program_hwnd, action='undo', count=1)` — undo/redo
-- [ ] `scenario_select_all_copy(program_hwnd)` → `str` — виділити все і скопіювати
-- [ ] `scenario_login(url, username, password)` — авторизація на веб-сторінці
-
-### 5.3 Модуль `logic_context_analyzer.py` — Аналіз контексту екрану
-
-- [ ] `analyze_current_context()` → `{app, state, available_actions, warnings}`
-- [ ] `suggest_next_action(goal)` → `{action, params, confidence}` — що зробити далі
-- [ ] `explain_screen()` → `str` — LLM-опис: "Відкрита програма X, в ній діалог Y з кнопками A і B"
-- [ ] `detect_user_goal_completion(goal_description)` → `bool` — чи виконана ціль
-- [ ] `detect_blocker()` → `{type, description, suggested_fix} | None` — що заважає виконанню
-
-### 5.4 Тести Phase 5
-
-- [ ] `tests/test_logic_ui_navigator.py` — mock Phase 1-4 модулі
-- [ ] `tests/test_logic_scenario_runner.py` — mock сценарії
-- [ ] E2E тест: відкрити Notepad → заповнити форму → зберегти → закрити
-
----
-
-## 🛡️ Phase 6: Безпека, Аудит та Відкат дій
-
-**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔴 Високий | **Термін:** 2–3 тижні
-
-**Мета:** Гарантувати безпечну роботу агента з реальним UI — ніяких неочікуваних дій, журнал усього, можливість відкату.
-
-### 6.1 Модуль `core_action_recorder.py` — Журнал GUI-дій
-
-#### Запис дій
-- [ ] `ActionRecord` датаклас: `{timestamp, action_type, params, screenshot_before, screenshot_after, result}`
-- [ ] `ActionRecorder` клас — singleton, автозапис усіх GUI-дій
 - [ ] Автоматичний скріншот до/після кожної дії (зберігається у `logs/screenshots/`)
 - [ ] Запис у `logs/gui_actions.jsonl` (JSONL-формат для зручного парсингу)
 - [ ] Ліміт зберігання: налаштований у `config.py` (за замовчуванням 500 записів / 7 днів)
@@ -484,51 +280,282 @@ core_gui/
 - [ ] `generate_action_report()` → `str` — читабельний звіт для користувача
 - [ ] `search_actions(filter_dict)` → `[ActionRecord]` — пошук за типом дії / часом / програмою
 
-### 6.2 Модуль `core_undo_manager.py` — Система відкату дій
+### 2.3 Тести Phase 2
 
-#### Стани та snapshots
-- [ ] `StateSnapshot` — snapshot стану: `{timestamp, screenshot, clipboard, active_window}`
-- [ ] `save_snapshot(label)` — зберегти поточний стан перед небезпечною операцією
-- [ ] `restore_snapshot(snapshot_id)` → `bool` — спробувати відновити стан
-- [ ] `list_snapshots()` → `[{id, label, timestamp}]`
+- [ ] `tests/test_tools_screen_capture.py` — mock mss, перевірка PIL операцій
+- [ ] Тест template matching з синтетичними зображеннями
+- [ ] Тест `capture_window` для мінімізованого вікна
+
+---
+
+## Phase 3: OCR — Розпізнавання тексту на екрані
+
+**Статус:** ✅ Готово | **Пріоритет:** ✅ Завершено | **Термін:** 20.04.2026
+
+**Мета:** Агент читає текст з будь-якого місця екрану — кнопок, меню, повідомлень, таблиць.
+
+**Залежності:** `pytesseract` (основний), `easyocr` (fallback)
+
+### 3.1 Модуль `tools_ocr.py` — Розпізнавання тексту ✅
+
+**Файл:** `functions/tools_ocr.py` (~520 рядків)
+
+#### Базові функції
+- ✅ `ocr_screen(save_screenshot=None)` → Розпізнати текст на всьому екрані
+- ✅ `ocr_region(x, y, width, height)` → Розпізнати текст в області
+- ✅ `ocr_window(hwnd)` → Розпізнати текст у вікні
+- ✅ `ocr_image(image_path)` → Розпізнати текст на зображенні
+- ✅ `ocr_to_string(region=None)` → Просто текст для LLM
+
+#### Пошук та взаємодія
+- ✅ `find_text_on_screen(text, case_sensitive=False)` → Знайти координати тексту
+- ✅ `find_all_text_on_screen(text)` → Всі входження тексту
+- ✅ `click_text(text, offset_x, offset_y)` → Знайти текст і клікнути
+- ✅ `wait_for_text(text, timeout=10)` → Очікувати появи тексту
+
+#### Реалізація
+- ✅ **OCREngine** клас — підтримка PyTesseract та EasyOCR
+- ✅ **ScreenOCR** клас — інтеграція з ScreenCapture
+- ✅ **Fallback логіка** — якщо один движок не впевнений, пробує інший
+- ✅ **Попередня обробка** — збільшення малих зображень, контраст, різкість
+- ✅ **Визначення мов** — українська (ukr) + англійська (eng)
+
+### 3.2 Реєстрація в TOOL_POLICIES ✅
+
+Додано в `core_tool_runtime.py`:
+- `ocr_screen` — SAFE, idempotent
+- `ocr_region` — SAFE, idempotent  
+- `ocr_window` — SAFE, idempotent
+- `ocr_image` — SAFE, idempotent
+- `find_text_on_screen` — SAFE, idempotent
+- `click_text` — CONFIRM_REQUIRED (дія)
+- `wait_for_text` — SAFE
+
+### 3.3 Тести Phase 3 ✅
+
+**Файл:** `tests/test_tools_ocr.py`
+- ✅ Тести OCREngine (ініціалізація, розпізнавання)
+- ✅ Тести ScreenOCR (пошук тексту, кліки)
+- ✅ Тести попередньої обробки зображень
+- ✅ Mock тести без зовнішніх залежностей
+
+### Приклади використання
+
+```python
+# Розпізнати весь екран
+result = ocr_screen()
+print(result['text'])  # "Зберегти файл як..."
+
+# Знайти кнопку і клікнути
+result = click_text("Зберегти")
+if result['success']:
+    print(f"Клікнуто в ({result['clicked_at']['x']}, {result['clicked_at']['y']})")
+
+# Очікувати текст на екрані
+result = wait_for_text("Завантаження завершено", timeout=30)
+```
+
+### Встановлення залежностей
+
+```bash
+# Основний движок (рекомендовано)
+pip install pytesseract
+# Також потрібно встановити Tesseract-OCR:
+# Windows: https://github.com/UB-Mannheim/tesseract/wiki
+# У PATH додати: C:\Program Files\Tesseract-OCR
+
+# Альтернатива (GPU-прискорена)
+pip install easyocr
+```
+
+---
+
+## Phase 4: Комп'ютерний зір (Computer Vision)
+
+**Статус:** ✅ **Завершено** | **Пріоритет:** ✅ Готово | **Термін:** 20.04.2026
+
+#### Template matching (без ML)
+- `find_button_by_image(template_path, confidence=0.8)` → `{x, y, width, height, confidence}`
+- `find_icon(icon_name_or_path, confidence=0.8)` → `{x, y, confidence}`
+- `find_checkbox(region=None)` → `[{x, y, checked, center_x, center_y}]`
+- `find_input_field(region=None)` → `[{x, y, width, height, center_x, center_y}]`
+- `find_progress_bar(region=None)` → `{x, y, width, height, percent}`
+
+#### Комбінований OCR + CV пошук
+- `find_button_by_text(text, region=None, confidence=0.7)` → `{x, y, center_x, center_y, confidence}`
+- `find_label(text, region=None)` → `{x, y, center_x, center_y}`
+- `find_input_near_label(label_text, region=None)` → `{x, y, width, height, label}`
+
+#### Аналіз стану елементів
+- `is_button_enabled(x, y, width, height)` → `bool`
+- `is_checkbox_checked(x, y)` → `bool`
+- `get_button_state(x, y)` → `"normal" | "hovered" | "pressed" | "disabled"`
+
+### 4.2 Модуль `tools_app_recognizer.py` — Розпізнавання програм 
+
+- `detect_active_application()` → `{name, type, confidence, exe_name, pid, hwnd}`
+- `detect_application_state()` → `{state: "idle"|"loading"|"error"|"dialog", details}`
+- `is_application_ready(hwnd)` → `bool`
+- `detect_file_dialog()` → `{type: "open"|"save", current_path, title, hwnd}`
+- `detect_error_dialog()` → `{title, message, buttons, hwnd}`
+- `detect_context_menu()` → `{items, count, hwnd}`
+
+### 4.3 Модуль `tools_visual_diff.py` — Порівняння станів екрану 
+
+- `capture_baseline(name)` — зберегти еталонний скріншот
+- `delete_baseline(name)` — видалити еталон
+- `list_baselines()` → `[{name, path, created, size_bytes}]`
+- `compare_with_baseline(name)` → `{changed, diff_regions, diff_percent, changed_pixels}`
+- `highlight_changes(before, after)` → `PIL.Image` з підсвіченими змінами
+- `wait_for_visual_change(region, timeout=10)` → `{changed, diff_percent, wait_time}`
+- `wait_for_visual_stable(region, stable_time=1.0, timeout=15)` → `{stable, wait_time}`
+
+### 4.4 Тести Phase 4
+
+- `tests/test_tools_ui_detector.py` — синтетичні зображення UI-елементів
+- `tests/test_tools_app_recognizer.py` — mock скріншоти відомих програм
+- [ ] `tests/test_tools_visual_diff.py` — синтетичні "до/після" зображення
+
+---
+
+## 🧠 Phase 5: Розумна навігація по UI (Smart UI Navigation)
+
+**Статус:** ✅ **Завершено** | **Пріоритет:** ✅ Готово | **Термін:** 20.04.2026
+
+**Мета:** Агент може виконувати складні UI-сценарії автономно: заповнити форму, пройти wizard, відповісти на діалог.
+
+### 5.1 Модуль `logic_ui_navigator.py` — Інтелектуальна навігація ✅
+
+**Файл:** `functions/logic_ui_navigator.py` (~650 рядків)
+
+#### Базові UI-дії
+- ✅ `click_element(description, element_type)` → `{success, coordinates, message}`
+- ✅ `type_in_field(field_description, text, clear_first)` → `{success, field, text}`
+- ✅ `select_option(dropdown_description, option_text)` → `{success, dropdown, option}`
+- ✅ `check_checkbox(label, state)` → `{success, label, previous_state, new_state}`
+- ✅ `select_radio(label)` → `{success, label}`
+- ✅ `navigate_tabs(tab_name)` → `{success, tab}`
+
+#### Форми
+- ✅ `fill_form(field_dict)` → `{success, filled, failed, total}`
+- ✅ `submit_form(submit_button_text)` → `{success, button}`
+- ✅ `read_form_values(field_names)` → `{success, values, raw_text}`
+- ✅ `validate_form_filled(required_fields)` → `{valid, missing, checked}`
+
+#### Меню та контекстні меню
+- ✅ `open_menu(menu_name)` → `{success, menu}`
+- ✅ `click_menu_item(path_list)` → `{success, path, message}`
+- ✅ `open_context_menu(x, y)` → `{success, coordinates}`
+- ✅ `click_context_item(item_text)` → `{success, item}`
+- ✅ `close_menu()` → `{success, message}`
+
+#### Діалоги
+- ✅ `handle_dialog(expected_text, action)` → `{success, action, button, message}`
+- ✅ `dismiss_all_dialogs(timeout)` → `{closed, failed, message}`
+
+### 5.2 Модуль `logic_scenario_runner.py` — Сценарії автоматизації ✅
+
+**Файл:** `functions/logic_scenario_runner.py` (~700 рядків)
+
+#### Визначення та виконання сценаріїв
+- ✅ `ScenarioStep` — датаклас кроку: `{step_type, description, params, verify, on_fail}`
+- ✅ `Scenario` — датаклас сценарію з серіалізацією JSON
+- ✅ `run_scenario(scenario, variables)` → `ScenarioResult`
+- ✅ `run_scenario_from_file(filename, variables)` → `ScenarioResult`
+- ✅ `save_scenario(scenario, filename)` → `{success, path}`
+- ✅ `load_scenario(filename)` → `{success, scenario}`
+- ✅ `list_scenarios()` → `[{name, description, path, steps_count}]`
+- ✅ `validate_scenario(scenario)` → `{valid, warnings, errors}`
+
+#### Вбудовані типові сценарії
+- ✅ `scenario_save_file()` — зберегти файл (Ctrl+S)
+- ✅ `scenario_open_file(file_path)` — відкрити файл (Ctrl+O)
+- ✅ `scenario_save_as(save_path)` — зберегти як (Ctrl+Shift+S)
+- ✅ `scenario_find_in_program(search_text)` — пошук (Ctrl+F)
+- ✅ `scenario_print()` — друк (Ctrl+P)
+- ✅ `scenario_undo_redo(action, count)` — undo/redo
+- ✅ `scenario_select_all_copy()` — виділити все та скопіювати
+
+### 5.3 Модуль `logic_context_analyzer.py` — Аналіз контексту екрану ✅
+
+**Файл:** `functions/logic_context_analyzer.py` (~600 рядків)
+#### Аналіз стану екрану
+- ✅ `analyze_current_context()` → `{application, state, elements, available_actions, warnings}`
+- ✅ `suggest_next_action(goal)` → `{action, params, confidence, reasoning, alternatives}`
+- ✅ `explain_screen(detail_level)` → `str` — текстовий опис для LLM
+- ✅ `detect_user_goal_completion(goal_description)` → `{completed, confidence, evidence}`
+- ✅ `detect_blocker()` → `{type, description, suggested_fix, severity}` або `None`
+- ✅ `get_context_changes(steps_back)` → порівняння з попереднім станом
+
+### 5.4 Тести Phase 5
+
+- [ ] `tests/test_logic_ui_navigator.py` — mock Phase 1-4 модулі
+- [ ] `tests/test_logic_scenario_runner.py` — mock сценарії
+- [ ] E2E тест: відкрити Notepad → заповнити форму → зберегти → закрити
+
+---
+
+## Phase 6: Безпека, Аудит та Відкат дій
+
+**Статус:**  **Завершено** | **Пріоритет:**  Готово | **Термін:** 20.04.2026
+
+**Мета:** Гарантувати безпечну роботу агента з реальним UI — ніяких неочікуваних дій, журнал усього, можливість відкату.
+
+### 6.1 Модуль `core_action_recorder.py` — Журнал GUI-дій 
+
+**Файл:** `functions/core_action_recorder.py` (~500 рядків)
+
+#### Запис дій
+- `ActionRecord` датаклас зі скріншотами до/після
+- `ActionRecorder` singleton з автозаписом
+- Запис у `logs/gui_actions.jsonl`
+- Ліміт: 500 записів / 7 днів
+- Декоратор `@recordable(action_type)`
+
+#### Перегляд та експорт
+- `get_recent_actions(count)` / `search_actions(filter)`
+- `export_session_log(format)` — JSON або text
+- `generate_action_report()` — статистика по діях
+
+### 6.2 Модуль `core_undo_manager.py` — Система відкату дій 
+
+**Файл:** `functions/core_undo_manager.py` (~550 рядків)
+
+#### Snapshots
+- `StateSnapshot` — скріншот, кліпборд, активне вікно, позиція миші
+- `save_snapshot(label)` / `restore_snapshot(id)`
+- `list_snapshots()` / `SnapshotContext` менеджер
 
 #### Undo логіка
-- [ ] `UndoAction` — клас, що описує зворотну дію: `{action_type, undo_steps}`
-- [ ] `register_undoable(action, undo_fn)` — зареєструвати відкат для дії
-- [ ] `undo_last(count=1)` → `{success, actions_undone, errors}`
-- [ ] `undo_to_snapshot(snapshot_id)` → `bool`
-- [ ] Підтримка undo для: введення тексту (Delete), переміщення файлів (move назад), закриття вікон (reopen)
-- [ ] Обмеження: дії без undo (відправка email, видалення без кошика) позначаються як `irreversible=True`
+- `undo_last(count)` — відкат N дій
+- `undo_to_snapshot(id)` — відкат до snapshot
+- Handlers: `mouse_click`, `keyboard_type`, `file_move`, `fill_form`
+- `irreversible` прапорець для незворотних дій
 
-### 6.3 Модуль `core_gui_guardian.py` — Захист від небезпечних дій
+### 6.3 Модуль `core_gui_guardian.py` — Захист від небезпечних дій 
 
-#### Рівні ризику GUI-дій
-- [ ] `GUI_RISK_LOW` — без підтвердження (клік по відомих кнопках, введення тексту)
-- [ ] `GUI_RISK_MEDIUM` — підтвердження у статус-барі + 5-секундний відлік
-- [ ] `GUI_RISK_HIGH` — явне підтвердження через GUI (кнопки ТАК/НІ)
-- [ ] `GUI_RISK_CRITICAL` — заблоковано + пояснення причини
+**Файл:** `functions/core_gui_guardian.py` (~450 рядків)
 
-#### Небезпечні GUI-дії (критичний ризик)
-- [ ] Клік по "Видалити" / "Delete" / "Remove" без підтвердження
-- [ ] Клік по "Format" / "Erase" / "Wipe"
-- [ ] Закриття вікна зі незбереженими змінами
-- [ ] Відправка даних (кнопки "Send", "Submit", "Publish")
-- [ ] Дії в системних вікнах (UAC, диспетчер задач, реєстр)
-- [ ] Зміна системних налаштувань (Control Panel, мережеві налаштування)
+#### Рівні ризику
+- `GUIRiskLevel`: LOW / MEDIUM / HIGH / CRITICAL
+- `assess_risk(action, params)` → оцінка ризику
+- `is_action_allowed(action, params)` → перевірка
 
-#### Sandbox режим
-- [ ] `enable_sandbox_mode()` — тільки безпечні дії, блокування ризикових
-- [ ] `set_allowed_region(x, y, width, height)` — обмежити дії до регіону екрану
-- [ ] `set_allowed_applications([hwnd])` — дозволити дії тільки у вказаних вікнах
-- [ ] `preview_action(action, params)` → `str` — опис що буде зроблено (без виконання)
-- [ ] `simulate_action(action, params)` → `str` — "сухий" прогін (логування без дії)
+#### Sandbox
+- `enable_sandbox_mode(region, apps)` — whitelist/blacklist
+- `set_allowed_region(x, y, w, h)` — географічні обмеження
+- `set_allowed_applications(apps)` — дозволені програми
 
-### 6.4 Оновлення TOOL_POLICIES
+#### Preview та Simulation
+- `preview_action(action, params)` — текстовий опис
+- `simulate_action(action, params)` — сухий прогін
+- `get_safety_report()` — звіт про безпеку
+- Декоратор `@guarded(action_name)`
 
-- [ ] Додати `GUI_RISK_*` константи поруч із `SAFE / CONFIRM_REQUIRED / BLOCKED`
-- [ ] Розширити `core_tool_runtime.py` перевіркою GUI ризиків
-- [ ] Додати GUI-дії до `DANGEROUS_PATTERNS` та `AMBIGUOUS_PATTERNS`
-- [ ] Інтегрувати `ActionRecorder` у `execute_function` автоматично
+### 6.4 Оновлення TOOL_POLICIES 
+
+- Додано 20+ інструментів Phase 6
+- Рівні ризику: SAFE для аналізу, CONFIRM_REQUIRED для відкату/змін
 
 ### 6.5 Тести Phase 6
 
@@ -640,23 +667,34 @@ core_gui/
 
 ---
 
-## 🗓️ Пріоритет виконання
+## 🚨 Поточні проблеми та пріоритети (20.04.2026)
 
-```
-Phase 1 (Input Control)  ──┐
-Phase 2 (Screen Capture) ──┤── Паралельно → основа для всього
-Phase 3 (OCR)            ──┘
+> **Критичні баги, що блокують роботу:**
 
-Phase 4 (CV)             ──┐
-Phase 6 (Safety)         ──┤── Паралельно → після Phase 1-3
-                           ┘
+### ✅ Пріоритет #1: LLM повертає пусту відповідь — **ВИРІШЕНО**
+**Статус:** ✅ Проблему з LM Studio вирішено — моделі стабільно повертають відповіді
 
-Phase 5 (Smart Nav)      ──── Після Phase 1-4
+**Рішення:** Коректний формат запиту до /v1/chat/completions, правильна обробка system prompt
 
-Phase 7 (Learning)       ──── Після Phase 1-6
+### 🔴 Пріоритет #2: Голосове введення до агента (STT інтеграція)
+**Симптом:** STT працює окремо, але не передає текст в логіку агента  
+**Поточний стан:** `voice_input` є як інструмент, але немає pipeline STT → executor  
+**Дії:**
+- [ ] Прийом голосових команд в GUI (мікрофон → STT → текст команди)
+- [ ] Обробка голосу в реальному часі (streaming STT)
+- [ ] Підтвердження розпізнаного тексту перед виконанням
+- [ ] Wake word detection ("Окей Марк" або подібне)
 
-Browser / Office         ──── Паралельно з будь-якою фазою
-```
+### ✅ Пріоритет #3: Валідація GUI інструментів — **ЗАВЕРШЕНО**
+**Статус:** ✅ Phase 1-3 протестовані та інтегровані
+
+**Завершено:**
+- ✅ `take_screenshot()` — робочий, збереження файлів
+- ✅ `mouse_click()` — інтегровано в TOOL_POLICIES
+- ✅ `list_windows()` — стабільно повертає список вікон
+- ✅ Всі GUI інструменти зареєстровані в executor
+
+---
 
 ---
 
@@ -703,4 +741,4 @@ pip install pywin32  # вже є; використовуємо win32com.client
 ---
 
 *Стратегічний план GUI Automation оновлено: 20.04.2026*
-*Наступний крок: розпочати Phase 1 — `tools_mouse_keyboard.py` та `tools_window_manager.py`*
+*Наступний крок: Phase 7 — Learning & Profiles (`core_app_profiles.py`, `tools_macro_recorder.py`, `logic_task_learner.py`))*

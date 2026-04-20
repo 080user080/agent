@@ -1,9 +1,11 @@
 # core_gui/main_window.py
 """Головне вікно асистента AssistantGUI."""
 import queue
+import threading
 import time
 import tkinter as tk
 from tkinter import scrolledtext, ttk
+from typing import Optional
 
 from .chat_panel import ChatPanelMixin
 from .confirmation import ConfirmationMixin
@@ -221,7 +223,8 @@ class AssistantGUI(
 
         # Налаштування grid
         input_frame.columnconfigure(0, weight=1)  # Поле вводу розтягується
-        input_frame.columnconfigure(1, weight=0)  # Кнопка фіксована
+        input_frame.columnconfigure(1, weight=0)  # Кнопка мікрофона фіксована
+        input_frame.columnconfigure(2, weight=0)  # Кнопка відправки фіксована
 
         # Поле вводу
         self.input_text = tk.Text(
@@ -236,6 +239,26 @@ class AssistantGUI(
         )
         self.input_text.grid(row=0, column=0, sticky='nsew', padx=(0, 5))
 
+        # --- Кнопка мікрофона (STT) ---
+        self.mic_button = ttk.Button(
+            input_frame,
+            text="🎤",
+            width=3,
+            command=self.on_mic_clicked,
+            style='Mic.TButton',
+        )
+        self.mic_button.grid(row=0, column=1, sticky='ns', padx=(0, 3))
+
+        # Індикатор статусу STT (прихований за замовчуванням)
+        self.mic_status_label = ttk.Label(
+            input_frame,
+            text="",
+            font=('Segoe UI', 9),
+            foreground='#e74c3c',
+        )
+        self.mic_status_label.grid(row=0, column=1, sticky='nsew', padx=(0, 3))
+        self.mic_status_label.grid_remove()  # Приховуємо
+
         # Кнопка відправки
         self.send_button = ttk.Button(
             input_frame,
@@ -244,7 +267,7 @@ class AssistantGUI(
             command=self.send_text_command,
             style='Send.TButton',
         )
-        self.send_button.grid(row=0, column=1, sticky='ns')
+        self.send_button.grid(row=0, column=2, sticky='ns')
 
         # Кнопка «Стоп» (спочатку прихована)
         self.stop_button = ttk.Button(
@@ -380,18 +403,53 @@ class AssistantGUI(
         """Оновити статус-текст (progress-bar тепер у панелі плану)."""
         if status_text:
             self.status_var.set(status_text)
+            # Запускаємо анімацію крапок якщо статус "Думаю"
+            if "думаю" in status_text.lower() or "thinking" in status_text.lower():
+                self._start_thinking_animation()
+            else:
+                self._stop_thinking_animation()
         self.root.update_idletasks()
 
+    def _start_thinking_animation(self):
+        """Запустити анімацію крапок для 'Думаю...'."""
+        if hasattr(self, '_thinking_animation_active') and self._thinking_animation_active:
+            return
+        self._thinking_animation_active = True
+        self._thinking_dots = 0
+        self._animate_thinking_dots()
+
+    def _stop_thinking_animation(self):
+        """Зупинити анімацію крапок."""
+        self._thinking_animation_active = False
+
+    def _animate_thinking_dots(self):
+        """Анімувати крапки 'Думаю...' -> 'Думаю..' -> 'Думаю.' -> 'Думаю...'"""
+        if not self._thinking_animation_active:
+            return
+        
+        dots = ["   ", ".  ", ".. ", "..."]
+        self._thinking_dots = (self._thinking_dots + 1) % len(dots)
+        dots_str = dots[self._thinking_dots]
+        
+        # Оновлюємо статус з анімованими крапками
+        base_text = "🤔 Думаю"
+        self.status_var.set(f"{base_text}{dots_str}")
+        
+        # Продовжуємо анімацію кожні 500мс
+        self.root.after(500, self._animate_thinking_dots)
+
     def show_stop_button(self):
-        """Показати кнопку «Стоп» і приховати кнопку відправки."""
+        """Показати кнопку «Стоп» і приховати кнопку відправки та мікрофон."""
         self.send_button.grid_remove()
-        self.stop_button.grid(row=0, column=1, sticky='ns')
+        self.mic_button.grid_remove()
+        self.stop_button.grid(row=0, column=2, sticky='ns')
         self.status_var.set("⏳ Виконання... (Esc або Стоп для переривання)")
 
     def hide_stop_button(self):
-        """Приховати кнопку «Стоп» і показати кнопку відправки."""
+        """Приховати кнопку «Стоп» і показати кнопку відправки та мікрофон."""
         self.stop_button.grid_remove()
-        self.send_button.grid(row=0, column=1, sticky='ns')
+        self.mic_button.grid()
+        self.send_button.grid(row=0, column=2, sticky='ns')
         self.progress_bar.pack_forget()
         self.status_var.set("✅ Готовий до роботи")
 
@@ -400,6 +458,106 @@ class AssistantGUI(
         if self.assistant_callback:
             self.assistant_callback('stop_execution', None)
         self.hide_stop_button()
+
+    # ============================================================
+    # STT / ГОЛОСОВИЙ ВВІД
+    # ============================================================
+
+    def set_stt_controller(self, stt_controller):
+        """Встановити STT контролер (викликається з main.py)."""
+        self.stt_controller = stt_controller
+        # Оновлюємо callback для статусу
+        if hasattr(self.stt_controller, 'listener'):
+            self.stt_controller.status_callback = self._on_stt_status_change
+
+    def on_mic_clicked(self):
+        """Обробник натискання кнопки мікрофона."""
+        if not hasattr(self, 'stt_controller') or self.stt_controller is None:
+            from tkinter import messagebox
+            messagebox.showwarning(
+                "Голосовий ввід",
+                "STT не ініціалізовано.\n\nПеревірте налаштування:\nНалаштування → Розпізнавання мови → Увімкнути STT"
+            )
+            return
+
+        # Якщо вже слухаємо — зупинити
+        if getattr(self, '_is_listening_mic', False):
+            self._stop_mic_listening()
+            return
+
+        # Почати слухання
+        self._start_mic_listening()
+
+    def _start_mic_listening(self):
+        """Почати запис з мікрофона."""
+        self._is_listening_mic = True
+
+        # Оновити UI
+        self.mic_button.configure(text="⏹️", style='MicRecording.TButton')
+        self.mic_status_label.configure(text="● Слухаю...", foreground='#e74c3c')
+        self.mic_status_label.grid()
+        self.status_var.set("🎤 Слухаю... говоріть вашу команду")
+
+        # Запустити в окремому потоці щоб не блокувати GUI
+        self._mic_thread = threading.Thread(target=self._mic_listen_worker, daemon=True)
+        self._mic_thread.start()
+
+    def _stop_mic_listening(self):
+        """Зупинити запис (викликається автоматично після розпізнавання)."""
+        self._is_listening_mic = False
+
+        # Оновити UI
+        self.mic_button.configure(text="🎤", style='Mic.TButton')
+        self.mic_status_label.grid_remove()
+
+    def _mic_listen_worker(self):
+        """Потік для запису та розпізнавання."""
+        try:
+            # Слухаємо
+            text = self.stt_controller.toggle_listening()
+
+            # Повернутися в головний потік для оновлення UI
+            self.root.after(0, lambda: self._on_mic_finished(text))
+
+        except Exception as e:
+            print(f"❌ Помилка мікрофона: {e}")
+            self.root.after(0, lambda: self._on_mic_finished(None))
+
+    def _on_mic_finished(self, text: Optional[str]):
+        """Викликається коли розпізнавання завершено."""
+        self._stop_mic_listening()
+
+        if text:
+            # Вставляємо текст в поле вводу
+            self.input_text.delete(1.0, tk.END)
+            self.input_text.insert(1.0, text)
+            self.input_text.configure(fg='#333333')
+
+            # Показуємо розпізнаний текст
+            self.status_var.set(f"🎤 Розпізнано: {text[:50]}...")
+
+            # Автоматично відправляємо команду
+            self.send_text_command()
+        else:
+            self.status_var.set("⚠️ Не розпізнано мову")
+
+    def _on_stt_status_change(self, status: str, data=None):
+        """Обробник зміни статусу STT."""
+        # Цей метод викликається з STT Listener в іншому потоці
+        # Тому використовуємо root.after для оновлення UI
+
+        def update_ui():
+            if status == "listening":
+                self.mic_status_label.configure(text="● Слухаю...", foreground='#e74c3c')
+            elif status == "processing":
+                self.mic_status_label.configure(text="◌ Розпізнаю...", foreground='#f39c12')
+            elif status == "recognized":
+                text = data.get("text", "") if data else ""
+                self.mic_status_label.configure(text=f"✓ {text[:20]}...", foreground='#27ae60')
+            elif status == "error":
+                self.mic_status_label.configure(text="✗ Помилка", foreground='#e74c3c')
+
+        self.root.after(0, update_ui)
 
     # ============================================================
     # ЗАПУСК
