@@ -1,21 +1,50 @@
-# Залежності для аудіо фільтрації
-# Встановлення: pip install -r requirements_audio.txt
+# ============================================================
+# МАРК (Agent Assistant) — runtime dependencies
+# ============================================================
+# Встановлення:
+#   pip install -r requirements.txt
+#
+# PyTorch встановлюйте окремо (з відповідним CUDA-варіантом):
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# або (CPU-only):
+#   pip install torch torchvision torchaudio
+# ============================================================
 
-# Основні
+# --- Core / утиліти ---
 numpy
 scipy
 colorama
+requests
 
-# Аудіо обробка
+# --- GUI Automation (Phase 1) ---
+pyautogui
+pyperclip
+pywin32            # win32gui / win32con / win32process / win32ui
+psutil
+
+# --- Screen capture + Image processing (Phase 2/4) ---
+mss
+Pillow
+opencv-python
+
+# --- OCR (Phase 3) ---
+pytesseract        # основний OCR-движок (потребує Tesseract встановленого у системі)
+# easyocr          # опційний fallback; розкоментуйте якщо потрібен (важкий, тягне torch-моделі)
+
+# --- Аудіо: STT / TTS / фільтрація ---
 sounddevice
+soundfile
 noisereduce
 
-# PyTorch (для CUDA 13.0 - встанови окремо!)
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-
-# Transformers для w2v-bert-uk
-transformers
+# --- ML моделі (STT / голос) ---
+transformers       # w2v-bert-uk, Silero і т.п.
 accelerate
 
-# Silero VAD (встановиться автоматично через torch.hub)
-# Не потрібно додавати в requirements
+# ============================================================
+# Dev-залежності (lint, tests) перенести у requirements-dev.txt:
+#   pytest
+#   pytest-cov
+#   ruff
+#   black
+#   mypy
+# ============================================================
