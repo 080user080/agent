@@ -1,22 +1,53 @@
 # Проєкт: Асистент МАРК
-> Останнє оновлення: 20.04.2026 (актуалізація за результатами аудиту коду)
+> Останнє оновлення: 20.04.2026 (розширення візії: універсальний task executor + оркестрація ШІ)
 
 ---
 
 ## 1. Загальний опис
 
-**МАРК** — локальний голосовий і текстовий асистент для Windows на Python.
-Мета: не просто голосовий помічник, а **агент**, який:
-- отримує задачу українською мовою
-- будує план дій
-- виконує кроки через інструменти
-- перевіряє результат
-- пробує виправити невдалий крок
-- зберігає контекст виконання
-- **бачить екран і взаємодіє з будь-якою програмою**
+**МАРК** — локальний **універсальний агент-виконавець** для Windows на Python.
+Мета: не просто голосовий помічник, а **агент, здатний виконати будь-яку задачу**:
+- отримує задачу українською мовою (голос/текст)
+- будує план дій, виконує кроки через інструменти, перевіряє результат
+- **бачить екран і взаємодіє з будь-якою програмою** (GUI-автоматизація)
+- **виконує довгі автономні сесії** (3–6 годин — нагляд за іншими агентами, циклічні задачі)
+- **оркеструє інші ШІ** (Windsurf, Cursor, Claude, GPT, локальні LLM) через API та/або браузер
+- працює у **будь-яких доменах**: кодинг, фото/відео редагування, pipeline-и (ComfyUI, Blender), офіс, браузер
 
-Основний стабільний сценарій: **текстова взаємодія через GUI**.
-Стратегічний напрямок: **Універсальний Windows-агент з Computer Vision та GUI Automation**.
+Стратегічний напрямок: **Універсальний Windows-агент**, що може керувати собою, іншими ШІ-агентами та будь-яким встановленим софтом.
+
+---
+
+## 1.1 🎯 Поведінкова філософія та пріоритети
+
+Ці принципи визначають, **як** агент вирішує задачі та розставляє акценти під час розробки.
+
+### Ієрархія пріоритетів поведінки (від найвищого до нижчого)
+
+| # | Рівень | Опис | Приклад |
+|---|--------|------|---------|
+| **P0** | **Безпека й передбачуваність** | Не виконувати руйнівні дії без підтвердження (`execute_python`, `file_delete`, `system_command`). Rollback через `UndoManager`. | Перед `rm -rf`: snapshot + явне «ТАК». |
+| **P1** | **Універсальність (task-agnostic)** | Агент НЕ обмежений кодингом. Має виконати будь-яку задачу, до якої має інструменти: фото, відео, ComfyUI, офіс, браузер, інсталятори. | «Наклади фільтр на фото» → Photoshop/GIMP/Pillow pipeline. |
+| **P2** | **Оркестрація інших ШІ** | Коли задача складна — делегувати спеціалізованому агенту (Windsurf, Cursor, Claude, GPT, локальні моделі). Агент = диригент, не виконавець-самоучка. | «Дебаг цього репо» → відправити в Cursor/Claude Code, моніторити результат. |
+| **P3** | **Довга автономія (3–6 год)** | Watcher-цикли: «коли інший агент дав відповідь → сформулюй наступний промпт → відправ». Самостійно переживає таймаути, reconnect-и, rate-limit-и. | Весь день переналагоджує репо через Windsurf без втручання. |
+| **P4** | **Інженерна якість** | Debug, рефакторинг, створення PR. Може робити сам або делегувати (див. P2). | «Додай тести до модуля X» |
+| **P5** | **Computer Vision + GUI** | Поточна сильна сторона (Phase 1–6). База для всього вищого. | OCR, template matching, scenario runner. |
+
+### Інваріанти поведінки
+
+1. **Завжди намагайся завершити задачу.** Якщо один інструмент зламався — спробуй альтернативу (pillow замість photoshop, HTTP API замість браузера). Ніколи не зупинятися на першій помилці.
+2. **Оркеструй, не конкуруй.** Якщо інший ШІ робить щось краще — делегувати йому, не переписувати самому.
+3. **Автономія = терпіння.** У watcher-режимі агент очікує хвилини/години між step-ами без зайвих дій. Немає «треба щось робити щосекунди».
+4. **Бюджет дій обмежений.** Кожна автономна сесія має ліміт: `max_steps`, `max_tokens`, `max_duration_hours`, `max_api_cost`. Досяг — зупинка + summary.
+5. **Прозорість.** Кожна автономна дія пишеться в `logs/audit.jsonl` з timestamp-ом. Користувач у будь-який момент бачить, що робиться.
+
+### Що агент НЕ робить (anti-patterns)
+
+- ❌ Не вигадує відповіді замість виклику інструмента («халюцинації»).
+- ❌ Не виконує подовжені операції блокуюче в UI-потоці.
+- ❌ Не проявляє ініціативу поза задачею («я помітив що можна ще..., робитиму»).
+- ❌ Не відправляє дані користувача у зовнішні сервіси без дозволу.
+- ❌ Не імітує відповіді інших ШІ (якщо Windsurf offline — так і повідомляє).
 
 ---
 
@@ -219,7 +250,10 @@ tests/
 | 4 | Комп'ютерний зір (CV) | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
 | 5 | Розумна навігація по UI | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
 | 6 | Безпека та журнал дій | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
-| 7 | Навчання та адаптація | 🔴 Не розпочато | 🟡 Середній | 4–6 тижнів |
+| 7 | Навчання, адаптація, профілі, макроси | 🟡 Фундамент у роботі | 🟡 Середній | 4–6 тижнів |
+| 8 | **Автономія (Watcher, довгі сесії)** | 🔴 Не розпочато | 🔴 Високий | 4–6 тижнів |
+| 9 | **Оркестрація інших ШІ** (API + браузер) | 🔴 Не розпочато | 🔴 Високий | 6–8 тижнів |
+| 10 | Універсальні домени (фото/відео/ComfyUI/офіс/браузер) | 🔴 Не розпочато | 🟡 Середній | постійно |
 
 ---
 
@@ -628,13 +662,13 @@ pip install easyocr
 
 ---
 
-## 📚 Phase 7: Навчання, Адаптація та Профілі програм
+## 📚 Phase 7: Навчання, Адаптація, Профілі програм, Макроси
 
-**Статус:** 🔴 Не розпочато | **Пріоритет:** 🟡 Середній | **Термін:** 4–6 тижнів
+**Статус:** 🟡 Фундамент у роботі | **Пріоритет:** 🟡 Середній | **Термін:** 4–6 тижнів
 
-**Мета:** Агент вчиться зі свого досвіду — запам'ятовує успішні шляхи, будує профілі програм, автоматизує повторювані задачі.
+**Мета:** Агент вчиться зі свого досвіду — запам'ятовує успішні шляхи, будує профілі програм, автоматизує повторювані задачі через макроси. Це база для Phase 8 (автономія) та Phase 9 (оркестрація).
 
-### 7.1 Модуль `core_app_profiles.py` — Профілі програм
+### 7.1 Модуль `core_app_profile.py` — Профілі програм
 
 - [ ] `AppProfile` клас: `{app_name, exe_path, known_elements, common_shortcuts, workflows}`
 - [ ] Вбудовані профілі для: Notepad, Paint, Explorer, Calculator, Chrome, Word, Excel
@@ -682,9 +716,142 @@ pip install easyocr
 
 ### 7.5 Тести Phase 7
 
-- [ ] `tests/test_core_app_profiles.py`
-- [ ] `tests/test_tools_macro_recorder.py` — mock запис та відтворення
+- [ ] `tests/test_core_app_profile.py`
+- [ ] `tests/test_core_macro.py` — mock запис та відтворення
 - [ ] `tests/test_logic_task_learner.py` — синтетична history, перевірка pattern detection
+
+---
+
+## 🤖 Phase 8: Автономія — довгі watcher-сесії (3–6 годин)
+
+**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔴 Високий | **Термін:** 4–6 тижнів
+
+**Мета:** Агент може **самостійно працювати годинами**, чекаючи подій і продовжуючи ланцюжок дій без втручання користувача. Це критично для делегування іншим ШІ (див. Phase 9) та будь-яких довгих pipeline-ів.
+
+**Приклад use-case:** «Протягом 6 годин давай Windsurf по черзі такі задачі: 1) додати тести, 2) виправити lint, 3) зробити PR. Після кожної — перевірити CI, відправити наступну.»
+
+### 8.1 Модуль `logic_watcher.py` — Watcher engine
+
+- [ ] `Watcher` клас: `{condition_fn, action_fn, poll_interval, max_duration, max_iterations}`
+- [ ] `start_watcher(watcher)` → неблокуючий запуск у окремому треді/процесі
+- [ ] `stop_watcher(watcher_id)` — коректна зупинка
+- [ ] `list_active_watchers()` → `[{id, task, running_for, last_action}]`
+- [ ] Вбудовані conditions:
+  - [ ] `condition_file_changed(path)`
+  - [ ] `condition_process_finished(pid)`
+  - [ ] `condition_window_title_contains(pattern)`
+  - [ ] `condition_chat_idle(chat_provider, idle_seconds)` — інший ШІ закінчив відповідь
+  - [ ] `condition_url_response_contains(url, pattern)` — CI/GitHub перевірка
+
+### 8.2 Бюджет та безпека автономних сесій
+
+- [ ] `SessionBudget` dataclass: `{max_steps, max_tokens, max_duration_hours, max_api_cost_usd}`
+- [ ] Жорсткі ліміти на кількість дій, tokens, час — зупинка + summary.
+- [ ] `core_gui_guardian` обов'язково бере дозвіл на руйнівні дії, навіть в автономі.
+- [ ] Emergency kill-switch: гаряча клавіша або файл-маркер `/tmp/marc-stop`.
+
+### 8.3 Персистентність довгих сесій
+
+- [ ] Стан watcher-а зберігається у `logs/watchers/{id}.jsonl` (append-only).
+- [ ] Можна reconnect-итися після краху / перезавантаження.
+- [ ] `resume_watcher(id)` — продовжити з останньої точки.
+
+### 8.4 Тести Phase 8
+
+- [ ] `tests/test_logic_watcher.py` — синтетичні condition/action, перевірка циклу + таймаутів.
+- [ ] `tests/test_session_budget.py` — зупинка при досягненні лімітів.
+
+---
+
+## 🎭 Phase 9: Оркестрація інших ШІ (AI Conductor)
+
+**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔴 Високий | **Термін:** 6–8 тижнів
+
+**Мета:** Агент виступає **диригентом**: делегує задачі спеціалізованим ШІ (Windsurf, Cursor, Claude Code, GPT-коду, локальні моделі), моніторить їх, формулює наступні промпти. Разом із Phase 8 дає: «відправив та забув на 6 годин — отримав готовий PR».
+
+### 9.1 Модуль `logic_ai_adapter.py` — Уніфіковані адаптери
+
+- [ ] Абстрактний клас `AIProvider`: `{send(prompt, context) → response, stream(prompt), health_check() → bool}`
+- [ ] HTTP-адаптери:
+  - [ ] `OpenAIAdapter` (OpenAI, OpenRouter, LM Studio, Ollama)
+  - [ ] `AnthropicAdapter` (Claude)
+  - [ ] `GoogleAdapter` (Gemini)
+- [ ] Browser-адаптери (через Playwright, див. трек E2):
+  - [ ] `WindsurfBrowserAdapter` — локальний Windsurf IDE через accessibility API / браузер
+  - [ ] `CursorBrowserAdapter`
+  - [ ] `ChatGPTWebAdapter`
+  - [ ] `ClaudeWebAdapter`
+- [ ] `ProviderRegistry` — вибір провайдера за capability (coding/vision/long-context).
+
+### 9.2 Модуль `logic_orchestrator.py` — Декомпозиція та делегування
+
+- [ ] `decompose_task(goal)` → `[SubTask]` (де кожна підзадача має `preferred_provider`)
+- [ ] `delegate(subtask, provider)` → `Response` (через adapter)
+- [ ] `aggregate(responses)` → фінальний результат
+- [ ] Fallback: якщо основний провайдер fail — повторити через резервний.
+- [ ] Паралельне делегування (N провайдерів одночасно, беремо найкращу відповідь).
+
+### 9.3 Моніторинг зовнішніх ШІ (через Phase 8 Watcher)
+
+- [ ] `watch_chat_for_completion(provider, chat_id)` — чекає «готово» і повертає текст.
+- [ ] `continue_conversation(provider, chat_id, next_prompt)` — продовжує у тому ж чаті.
+- [ ] Детекція різних станів: `busy`, `idle`, `error`, `rate_limited`, `auth_expired`.
+
+### 9.4 Безпека оркестрації
+
+- [ ] API-ключі тільки з `.env` / keyring, НІКОЛИ в коді.
+- [ ] Per-provider rate-limits.
+- [ ] Redaction PII у промптах, що йдуть у хмару.
+- [ ] Audit log: хто кого про що питав.
+
+### 9.5 Тести Phase 9
+
+- [ ] `tests/test_logic_ai_adapter.py` — моки HTTP/browser.
+- [ ] `tests/test_logic_orchestrator.py` — декомпозиція + делегування.
+- [ ] `tests/test_ai_provider_registry.py` — вибір провайдера за capability.
+
+---
+
+## 🌈 Phase 10: Універсальні домени (task-agnostic)
+
+**Статус:** 🔴 Не розпочато | **Пріоритет:** 🟡 Середній | **Термін:** постійно (drip-in)
+
+**Мета:** Реалізація принципу **«агент має виконати будь-яку задачу»** через додавання доменних інструментів. Нарощується інкрементально.
+
+### 10.1 Домен: Фото / відео редагування
+
+- [ ] `tools_image_pillow.py` — базові фільтри, crop, resize, формати (без GUI).
+- [ ] `tools_image_photoshop.py` — через COM/Photoshop Scripting (якщо встановлено).
+- [ ] `tools_image_gimp.py` — через Script-Fu / batch mode.
+- [ ] `tools_video_ffmpeg.py` — обгортка над ffmpeg (cut, concat, rescale, extract frames).
+
+### 10.2 Домен: AI-генерація (Stable Diffusion / ComfyUI)
+
+- [ ] `tools_comfyui.py` — HTTP API до локального ComfyUI (`/prompt`, `/view`).
+- [ ] `tools_a1111.py` — AUTOMATIC1111 API.
+- [ ] `tools_ollama.py` — локальні LLM + vision моделі.
+- [ ] Автоматичне встановлення: агент вміє запустити інсталятор ComfyUI та завантажити моделі (за дозволом).
+
+### 10.3 Домен: Офіс / документи
+
+- [ ] `tools_word.py` (вже намічено в додатках) — через `win32com.client`.
+- [ ] `tools_excel.py` — читання/запис комірок, формули, pivot.
+- [ ] `tools_pdf.py` — merge, split, OCR (pdfplumber + pytesseract).
+
+### 10.4 Домен: Браузерна автоматизація
+
+- [ ] `tools_browser.py` — Playwright (див. трек E2). Спільна база для Phase 9 browser-адаптерів.
+- [ ] Сценарії: Gmail, Google Docs, Notion, Jira.
+
+### 10.5 Домен: Системне адміністрування
+
+- [ ] `tools_installer.py` — winget/choco/apt запуск з підтвердженням.
+- [ ] `tools_service_manager.py` — Windows services, systemd (за наявності WSL).
+- [ ] `tools_network.py` — ping/curl/DNS checks.
+
+### 10.6 Тести Phase 10
+
+- [ ] По-доменні, drip-in: додаємо разом із кожним новим інструментом.
 
 ---
 
@@ -917,17 +1084,55 @@ pip install pywin32  # вже є; використовуємо win32com.client
 
 ### 🚀 Трек D. Phase 7 — Learning & Adaptation
 
-- **D1 [P2] `core_app_profiles.py` (мінімальний MVP):**
-  Dataclass `AppProfile` + JSON-збереження; 3 вбудованих профілі (Notepad, Explorer, Chrome) з `common_shortcuts` та `known_elements`.
+- **D1 [P1] Фундамент Phase 7 (`core_app_profile` + `core_macro`):**
+  `AppProfile` dataclass + JSON-persistence; `MacroRecorder` з інтеграцією `core_action_recorder`. Мінімальний MVP — без fancy ML.
 
-- **D2 [P2] `tools_macro_recorder.py`:**
-  Інтегрувати з існуючим `core_action_recorder` (recorder вже збирає `{action, params}`): додати лише `start/stop/play` API і зберігання у `macros/*.json`.
+- **D2 [P2] Вбудовані профілі:**
+  Notepad, Explorer, Chrome, Paint із `common_shortcuts` та `known_elements`. Дозволяє агенту одразу впевнено працювати з цими програмами.
 
 - **D3 [P3] `logic_task_learner.py`:**
-  Починати з простого `detect_repeated_pattern` (N-gram по історії дій). Складніші ML-фічі — пізніше.
+  Простий `detect_repeated_pattern` (N-gram по історії дій). Складніші ML-фічі — пізніше.
 
 - **D4 [P3] Планувальник задач (scheduling).**
-  Тригери по часу/подіях файловій системі (`watchdog`).
+  Тригери по часу/подіях файловій системі (`watchdog`). Частково пересікається з Phase 8 Watcher.
+
+### 🤖 Трек I. Phase 8 — Автономія (Watcher + довгі сесії)
+
+- **I1 [P1] `logic_watcher.py` engine:**
+  `Watcher` клас із `condition_fn` / `action_fn` / `poll_interval`, запуск у окремому треді, персистенція стану в `logs/watchers/`.
+
+- **I2 [P1] Бюджетні ліміти + kill-switch:**
+  `SessionBudget`, `/tmp/marc-stop`-маркер, hotkey. Без цього небезпечно запускати на 6 годин.
+
+- **I3 [P2] Вбудовані conditions:**
+  `file_changed`, `process_finished`, `window_title_contains`, `chat_idle`, `url_response_contains`.
+
+- **I4 [P3] Resume & reconnect:**
+  `resume_watcher(id)` — продовжити з останньої точки після перезавантаження.
+
+### 🎭 Трек J. Phase 9 — Оркестрація ШІ
+
+- **J1 [P1] Абстракція `AIProvider` + HTTP-адаптери:**
+  `OpenAIAdapter`, `AnthropicAdapter`, `GoogleAdapter` — повторне використання логіки `logic_llm.py`.
+
+- **J2 [P1] `ProviderRegistry` + capability-based вибір:**
+  Реєстр з описом можливостей (coding / vision / long-context) та автоматичним вибором.
+
+- **J3 [P2] Browser-адаптери (Playwright):**
+  `WindsurfBrowserAdapter`, `CursorBrowserAdapter`, `ChatGPTWebAdapter`, `ClaudeWebAdapter`.
+
+- **J4 [P2] `logic_orchestrator.py`:**
+  Декомпозиція задачі → делегування → агрегація. Fallback і паралельне делегування.
+
+- **J5 [P3] Redaction PII + audit log:**
+  Маска конфіденційних даних у промптах, що виходять у хмару.
+
+### 🌈 Трек K. Phase 10 — Універсальні домени
+
+- **K1 [P2] Фото/відео:** `tools_image_pillow`, `tools_video_ffmpeg`.
+- **K2 [P2] ComfyUI / SD:** HTTP API до локального ComfyUI.
+- **K3 [P3] Офіс:** `tools_word`, `tools_excel`, `tools_pdf`.
+- **K4 [P3] Інсталятори:** winget/choco/apt із підтвердженням.
 
 ### 🌐 Трек E. Розширення можливостей
 
@@ -981,14 +1186,16 @@ pip install pywin32  # вже є; використовуємо win32com.client
 
 ---
 
-## 🗓 Рекомендована послідовність (4 спринти × 2 тижні)
+## 🗓 Рекомендована послідовність (оновлено під нову візію — 6 спринтів × 2 тижні)
 
 | Спринт | Пріоритети | Результат |
 |--------|-----------|-----------|
-| **S1 (тиждень 1–2)** | A1, A2, A3, C1 | Робочий CI, чистий requirements, актуальний README |
-| **S2 (тиждень 3–4)** | B1 (всі missing unit-тести з mock), A4, A5 | Покриття ≥ 70%, pre-commit |
-| **S3 (тиждень 5–6)** | F1 (tool calling), D1+D2 (профілі + макроси MVP), C3 | Міцніший планер + Phase 7 MVP |
-| **S4 (тиждень 7–8)** | E2 (Playwright), G1, B2 (Windows CI) | Браузерна автоматизація + безпечний sandbox + Windows integration тести |
+| **S1 (✅ done)** | A1, A2, A3, C1, B1 | Робочий CI, чистий requirements, актуальний README, 147 тестів, 0 skipped |
+| **S2 (in progress)** | D1 (Phase 7 фундамент), A4, A5 | `core_app_profile` + `core_macro` MVP, pre-commit, pyproject.toml повністю |
+| **S3** | I1+I2 (Phase 8 Watcher + бюджети), F1 (tool calling), C3 | Довгі автономні сесії можливі + міцніший планер |
+| **S4** | J1+J2 (Phase 9 адаптери + registry), G1, B2 | Оркестрація через HTTP API + безпечний sandbox + Windows CI |
+| **S5** | J3+J4 (browser-адаптери, orchestrator), E2 (Playwright) | Windsurf/Cursor через браузер, паралельне делегування |
+| **S6** | K1–K4 (Phase 10 домени, drip-in), H1 | Фото/ComfyUI/офіс-інструменти, PyInstaller-інсталятор |
 
 ---
 
