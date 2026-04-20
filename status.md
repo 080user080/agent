@@ -1,5 +1,5 @@
 # Проєкт: Асистент МАРК
-> Останнє оновлення: 20.04.2026
+> Останнє оновлення: 20.04.2026 (актуалізація за результатами аудиту коду)
 
 ---
 
@@ -22,13 +22,14 @@
 
 ## 2. Поточний стан (20.04.2026)
 
-### ✅ Реалізовано
+### ✅ Реалізовано (ядро)
 
-- GUI на Tkinter (модульна структура `core_gui/` з 9 модулів)
+- GUI на Tkinter (модульна структура `core_gui/` — 9 файлів, `main_window.py` 584 рядки)
 - Текстовий режим як основний робочий режим
 - STT і TTS інтегровані (TTS вимкнено, STT — опційно)
-- Реєстр функцій `aaa_*.py`
-- Кеш, dispatcher і LLM-виклики
+- Реєстр функцій `aaa_*.py` (12 інструментів) + `tools_*.py` (7 GUI-модулів)
+- Кеш (`core_cache.py`), dispatcher (`core_dispatcher.py`), стрімінг (`core_streaming.py`)
+- LLM-виклики з JSON парсингом (`logic_llm.py`)
 - Стрімінг відповіді LLM у GUI
 - Довготривала пам'ять через `functions/core_memory.py`
 - Planner інтегрований у `main.py` і `logic_commands.py`
@@ -42,7 +43,7 @@
 - **Code tools** — `read_code_file`, `search_in_code`, `list_directory`, `git_status`, `git_diff`
 - **Трирівнева пам'ять** — `SessionMemory` (RAM), `TaskMemory` (per-task), довготривала (JSON)
 - **LLM-based summaries** — для задач та довгих діалогів
-- **Coding Agent mode** — окремий prompt, автодетекція кодових задач
+- **Coding Agent mode** — окремий prompt, автодетекція кодових задач (`aaa_architect.py`, `aaa_debug_code.py`)
 - **GUI clipboard fix** — Ctrl+C/V/X на будь-якій розкладці
 - **Панель плану** — прогрес-бар, статуси (pending/running/ok/error/blocked/skipped)
 - **Підтвердження** — зворотний відлік 30с, кнопки ТАК/НІ/АВТОМАТИЧНО
@@ -51,14 +52,37 @@
 - **Багатоетапний repair** — цикл до 3 спроб + 1 replan
 - **Retry механізм планера** — 2 спроби з різними промптами
 - **Утиліти** — `create_folder`, `search_in_text`, `count_words`
-- **Тести** — pytest suite для `core_planner`, `core_memory`, `core_executor`
-- **Документація** — README.md + CONTRIBUTING.md
+- **Safety sandbox** — `core_safety_sandbox.py` + `safety_config.json` (whitelist/blacklist)
+- **Smart Patch GUI** — допоміжний GUI `smart_patch_gui.py` (642 рядки) для редагування коду
+- **Тести** — pytest suite для `core_planner`, `core_memory`, `core_executor`, `tools_mouse_keyboard`, `tools_window_manager`, `tools_ocr` (6 файлів, ~1.6k рядків)
+- **Документація** — README.md + CONTRIBUTING.md + tests.md
+
+### ⚠️ Виявлено під час аудиту (20.04.2026)
+
+1. **README.md розходиться з кодом:**
+   - Посилається на структуру `gui/` — насправді `core_gui/`
+   - Приклад запуску `python agent.py` — коректна команда `python run_assistant.py`
+   - Перелік core-модулів у README неповний (відсутні `logic_scenario_runner`, `logic_ui_navigator`, `logic_context_analyzer`, `core_action_recorder`, `core_undo_manager`, `core_gui_guardian`, `tools_*`)
+2. **`requirements.txt` застарілий:**
+   - Містить лише audio-залежності (numpy, scipy, colorama, sounddevice, noisereduce, transformers, accelerate)
+   - **Відсутні** фактично використовувані пакети: `pyautogui`, `pywin32`, `psutil`, `mss`, `Pillow`, `opencv-python`, `pytesseract` / `easyocr`, `requests`
+3. **Чекбокси Phase 1–6 нижче все ще `[ ]`**, хоча самі фази позначені ✅ Завершено — модулі справді існують, але статус у тексті формально неузгоджений (актуалізовано в цьому оновленні).
+4. **Неповне покриття тестами GUI Automation:**
+   - ✅ Є: `test_tools_mouse_keyboard.py`, `test_tools_window_manager.py`, `test_tools_ocr.py`
+   - ❌ Немає: `test_tools_screen_capture.py`, `test_tools_ui_detector.py`, `test_tools_app_recognizer.py`, `test_tools_visual_diff.py`, `test_logic_ui_navigator.py`, `test_logic_scenario_runner.py`, `test_logic_context_analyzer.py`, `test_core_action_recorder.py`, `test_core_undo_manager.py`, `test_core_gui_guardian.py`
+5. **CI / lint-інфраструктура відсутні** — немає `.github/workflows/*`, `.pre-commit-config.yaml`, `pyproject.toml`, `ruff`/`flake8`/`black` конфігів.
+6. **Застарілі / неактивні артефакти:**
+   - `aaa_kill_process_by_name.py_off`, `aaa_open_program.py_old` — потрібно або повернути, або видалити
+   - `cache_data.json`, `user_settings.json` лежать у `functions/` — краще винести в runtime-папку
+7. **Архітектурна діаграма (секція 4)** не містить: `logic_core`, `logic_continuous_listener`, `logic_scenario_runner`, `logic_ui_navigator`, `logic_context_analyzer`, `core_streaming`, `core_dispatcher`, `core_action_recorder`, `core_undo_manager`, `core_gui_guardian`, `core_safety_sandbox`, `tools_*`, `aaa_architect`, `aaa_debug_code`, `aaa_voice_input` (виправлено нижче).
 
 ### Не дороблено / В процесі
 
 - Голосове введення — індикатор мікрофона в GUI (відкладено через STT)
 - Planner не робить повне перепланування дерева
-- **Phase 4-7 GUI Automation** — Computer Vision, Smart UI Navigation, Safety, Learning (детальний план нижче)
+- **Phase 7 GUI Automation** — Learning & Profiles (профілі програм, запис макросів, адаптивне навчання) — не розпочато
+- **Покриття тестами Phase 2/4/5/6** — модулі є, автотестів немає (див. перелік вище)
+- **Регулярний CI** (GitHub Actions, linters, coverage) — відсутній
 
 ---
 
@@ -87,19 +111,61 @@
 ```
 run_assistant.py          ← точка входу (GUI + core)
 main.py                   ← AssistantCore (ініціалізація, LLM, TTS, STT)
+smart_patch_gui.py        ← окремий GUI для керованого редагування коду (патчі)
 functions/
-  config.py               ← глобальні налаштування
-  core_settings.py        ← SettingsManager (user_settings.json)
-  core_planner.py         ← Planner (Plan → Act → Verify → Repair)
-  core_executor.py        ← TaskExecutor (async виконання плану)
-  core_tool_runtime.py    ← TOOL_POLICIES, безпека, AuditLog
-  core_memory.py          ← MemoryManager (3 рівні)
-  core_cache.py           ← кеш команд
-  logic_commands.py       ← VoiceAssistant (маршрутизація команд)
-  logic_llm.py            ← LLM виклики, JSON парсинг
-  logic_tts.py            ← TTS двигун
-  logic_audio.py          ← аудіо фільтрація
-  aaa_*.py                ← інструменти агента
+  # --- конфігурація / сховище ---
+  config.py                    ← глобальні налаштування
+  core_settings.py             ← SettingsManager (user_settings.json)
+  safety_config.json           ← конфіг sandbox
+  # --- планер / виконавець / runtime ---
+  core_planner.py              ← Planner (Plan → Act → Verify → Repair)
+  core_executor.py             ← TaskExecutor (async виконання плану)
+  core_tool_runtime.py         ← TOOL_POLICIES, безпека, AuditLog
+  core_dispatcher.py           ← маршрутизація викликів інструментів
+  core_streaming.py            ← стрімінг відповідей LLM
+  # --- пам'ять / кеш ---
+  core_memory.py               ← MemoryManager (3 рівні)
+  core_cache.py                ← кеш команд
+  # --- безпека ---
+  core_safety_sandbox.py       ← пісочниця виконання
+  safety_sandbox.py            ← утиліти перевірок
+  core_gui_guardian.py         ← Guardian для GUI-дій (risk levels, sandbox, preview)
+  core_undo_manager.py         ← snapshots + undo для GUI-дій
+  core_action_recorder.py      ← журнал GUI-дій (logs/gui_actions.jsonl)
+  # --- LLM / логіка ---
+  logic_core.py                ← спільна core-логіка
+  logic_commands.py            ← VoiceAssistant (маршрутизація команд)
+  logic_llm.py                 ← LLM виклики, JSON парсинг
+  logic_tts.py                 ← TTS двигун
+  logic_audio.py               ← аудіо фільтрація
+  logic_audio_filtering.py     ← додаткові фільтри
+  logic_stt.py                 ← STT (розпізнавання голосу)
+  logic_continuous_listener.py ← постійне слухання мікрофона
+  core_stt_listener.py         ← контролер STT-прослуховування
+  # --- GUI Automation (Phase 1–6) ---
+  tools_mouse_keyboard.py      ← миша + клавіатура + clipboard (Phase 1)
+  tools_window_manager.py      ← керування вікнами Windows (Phase 1)
+  tools_screen_capture.py      ← скріншоти, pixel, template matching (Phase 2)
+  tools_ocr.py                 ← OCR (pytesseract + easyocr) (Phase 3)
+  tools_ui_detector.py         ← UI елементи: кнопки, чекбокси, поля (Phase 4)
+  tools_app_recognizer.py      ← розпізнавання активної програми/діалогу (Phase 4)
+  tools_visual_diff.py         ← baselines + візуальне порівняння (Phase 4)
+  logic_ui_navigator.py        ← інтелектуальна навігація UI (Phase 5)
+  logic_scenario_runner.py     ← сценарії (save/open/find/print/...) (Phase 5)
+  logic_context_analyzer.py    ← контекст екрану, suggest_next_action (Phase 5)
+  # --- aaa_* інструменти агента ---
+  aaa_architect.py             ← coding agent: архітектурні правки
+  aaa_code_tools.py            ← читання/пошук/git
+  aaa_confirmation.py          ← підтвердження дій
+  aaa_create_file.py           ← створення файлу (Desktop)
+  aaa_debug_code.py            ← автодебаг Python
+  aaa_edit_file.py             ← редагування файлів (бекапи)
+  aaa_execute_python.py        ← Python sandbox
+  aaa_open_browser.py          ← відкриття URL
+  aaa_programs.py              ← запуск/закриття програм
+  aaa_system.py                ← системні команди
+  aaa_utility_tools.py         ← дрібні утиліти
+  aaa_voice_input.py           ← голосовий ввід
 core_gui/
   __init__.py             ← shim (AssistantGUI, run_gui)
   main_window.py          ← AssistantGUI (головне вікно)
@@ -110,6 +176,9 @@ core_gui/
   styles.py               ← ttk стилі
   constants.py            ← константи
   llm_endpoints_editor.py ← редактор LLM-ендпоїнтів
+tests/
+  test_core_planner.py           test_core_memory.py           test_core_executor.py
+  test_tools_mouse_keyboard.py   test_tools_window_manager.py  test_tools_ocr.py
 ```
 
 ---
@@ -128,7 +197,7 @@ core_gui/
 ## 6. Готовність до продакшну
 
 **~95% Core** — основні функції (планер, пам'ять, executor, кеш) працюють стабільно.
-**~0% GUI Automation** — новий масштабний напрямок (Phase 1–7), перетворить агента на універсального автоматизатора Windows.
+**~70% GUI Automation** — реалізовано 6 з 7 фаз (Phase 1–6), код є в `functions/tools_*.py` та `functions/logic_*_navigator/runner/analyzer.py`; залишається Phase 7 (Learning & Profiles) + повне покриття автотестами Phase 2/4/5/6.
 
 ---
 
@@ -165,68 +234,62 @@ core_gui/
 ### 1.1 Модуль `tools_mouse_keyboard.py` — Керування мишею та клавіатурою
 
 #### Миша
-- [ ] `mouse_click(x, y, button='left', clicks=1, interval=0.1)` — клік в координати (одиночний / подвійний / правий)
-- [ ] `mouse_move(x, y, duration=0.5)` — плавне переміщення курсора
-- [ ] `mouse_scroll(amount, direction='down', x=None, y=None)` — прокрутка (вертикальна / горизонтальна)
-- [ ] `mouse_drag(start_x, start_y, end_x, end_y, duration=0.5)` — перетягування (drag & drop)
-- [ ] `get_mouse_position()` → `{"x": int, "y": int}` — поточні координати курсора
-- [ ] `mouse_click_image(image_path, confidence=0.8)` — клік по зображенню (template matching)
+- [x] `mouse_click(x, y, button='left', clicks=1, interval=0.1)`
+- [x] `mouse_move(x, y, duration=0.5)`
+- [x] `mouse_scroll(amount, direction='down', x=None, y=None)`
+- [x] `mouse_drag(start_x, start_y, end_x, end_y, duration=0.5)`
+- [x] `get_mouse_position()` → `{"x": int, "y": int}`
+- [x] `mouse_click_image(image_path, confidence=0.8)` — template matching
 
 #### Клавіатура
-- [ ] `keyboard_press(key)` — одне натискання клавіші (Enter, Escape, Tab, F5, Delete, ...)
-- [ ] `keyboard_type(text, interval=0.02)` — введення тексту (посимвольно, з урахуванням кодування)
-- [ ] `keyboard_hotkey(*keys)` — комбінації клавіш (`Ctrl+C`, `Alt+F4`, `Win+D`, `Ctrl+Shift+T`)
-- [ ] `keyboard_hold(key, duration=1.0)` — утримання клавіші (для drag, select-all, ...)
-- [ ] `keyboard_send_special(key_name)` — спеціальні клавіші (`PrintScreen`, `NumLock`, `ScrollLock`)
+- [x] `keyboard_press(key)`
+- [x] `keyboard_type(text, interval=0.02)`
+- [x] `keyboard_hotkey(*keys)`
+- [x] `keyboard_hold(key, duration=1.0)`
+- [x] `keyboard_send_special(key_name)`
 
 #### Clipboard
-- [ ] `clipboard_copy_text(text)` — записати текст у буфер обміну
-- [ ] `clipboard_get_text()` → `str` — прочитати текст з буфера
-- [ ] `clipboard_copy_image(image_path)` — скопіювати зображення
+- [x] `clipboard_copy_text(text)`
+- [x] `clipboard_get_text()` → `str`
+- [x] `clipboard_copy_image(image_path)`
 
 ### 1.2 Модуль `tools_window_manager.py` — Керування вікнами Windows
 
 #### Пошук та список вікон
-- [ ] `list_windows(include_hidden=False)` → `[{hwnd, title, process_name, pid, rect}]`
-- [ ] `find_window_by_title(pattern, exact=False)` → `hwnd | None`
-- [ ] `find_window_by_process(process_name)` → `[hwnd]`
-- [ ] `find_window_by_class(class_name)` → `[hwnd]`
-- [ ] `get_active_window()` → `{hwnd, title, process_name, rect}`
+- [x] `list_windows(include_hidden=False)`
+- [x] `find_window_by_title(pattern, exact=False)`
+- [x] `find_window_by_process(process_name)`
+- [x] `find_window_by_class(class_name)`
+- [x] `get_active_window()`
 
 #### Керування станом вікон
-- [ ] `activate_window(hwnd)` — перевести вікно на передній план (SetForegroundWindow)
-- [ ] `minimize_window(hwnd)` — згорнути вікно
-- [ ] `maximize_window(hwnd)` — розгорнути на весь екран
-- [ ] `restore_window(hwnd)` — відновити з мінімізованого стану
-- [ ] `close_window(hwnd, force=False)` — закрити вікно (WM_CLOSE або TerminateProcess)
-- [ ] `hide_window(hwnd)` / `show_window(hwnd)` — приховати / показати
+- [x] `activate_window(hwnd)` (SetForegroundWindow)
+- [x] `minimize_window(hwnd)` / `maximize_window(hwnd)` / `restore_window(hwnd)`
+- [x] `close_window(hwnd, force=False)`
+- [x] `hide_window(hwnd)` / `show_window(hwnd)`
 
 #### Позиція та розмір
-- [ ] `move_window(hwnd, x, y)` — перемістити вікно
-- [ ] `resize_window(hwnd, width, height)` — змінити розмір
-- [ ] `move_resize_window(hwnd, x, y, width, height)` — одночасно
-- [ ] `get_window_rect(hwnd)` → `{"x": int, "y": int, "width": int, "height": int}`
-- [ ] `center_window(hwnd)` — відцентрувати вікно на екрані
+- [x] `move_window(hwnd, x, y)` / `resize_window(hwnd, w, h)` / `move_resize_window(...)`
+- [x] `get_window_rect(hwnd)`
+- [x] `center_window(hwnd)`
 
 #### Допоміжні функції
-- [ ] `is_window_visible(hwnd)` → `bool`
-- [ ] `is_window_minimized(hwnd)` → `bool`
-- [ ] `is_window_maximized(hwnd)` → `bool`
-- [ ] `wait_for_window(title_pattern, timeout=10)` → `hwnd | None`
-- [ ] `wait_window_close(hwnd, timeout=30)` → `bool`
-- [ ] `bring_all_to_top(process_name)` — підняти всі вікна процесу
+- [x] `is_window_visible` / `is_window_minimized` / `is_window_maximized`
+- [x] `wait_for_window(title_pattern, timeout=10)`
+- [x] `wait_window_close(hwnd, timeout=30)`
+- [x] `bring_all_to_top(process_name)`
 
 ### 1.3 Реєстрація в TOOL_POLICIES
 
-- [ ] Додати всі нові функції в `core_tool_runtime.py`
-- [ ] Рівні ризику: `mouse_click` → `SAFE`, `keyboard_hotkey` → `SAFE`, `close_window` → `CONFIRM_REQUIRED`
-- [ ] Аудит усіх GUI-дій у `logs/audit.jsonl`
+- [x] Всі функції зареєстровані в `core_tool_runtime.py` (категорія `CATEGORY_GUI`)
+- [x] Рівні ризику встановлені (`SAFE`/`CONFIRM_REQUIRED`)
+- [x] Аудит GUI-дій у `logs/audit.jsonl` (через `AuditLog`)
 
 ### 1.4 Тести Phase 1
 
-- [ ] `tests/test_tools_mouse_keyboard.py` — mock pyautogui, перевірка параметрів
-- [ ] `tests/test_tools_window_manager.py` — mock win32gui, перевірка логіки пошуку
-- [ ] Інтеграційний тест: відкрити notepad → ввести текст → зберегти → закрити
+- [x] `tests/test_tools_mouse_keyboard.py` (253 рядки, mock pyautogui)
+- [x] `tests/test_tools_window_manager.py` (460 рядків, mock win32gui)
+- [ ] Інтеграційний тест: відкрити notepad → ввести текст → зберегти → закрити (потребує Windows VM для CI)
 
 ---
 
@@ -240,51 +303,50 @@ core_gui/
 
 ### 2.1 Модуль `tools_screen_capture.py` — Захоплення екрану
 
-#### Основні функції
-- [ ] `take_screenshot(save_path=None)` → `PIL.Image` — повний скріншот (усі монітори)
-- [ ] `capture_monitor(monitor_index=0, save_path=None)` → `PIL.Image` — скріншот конкретного монітора
-- [ ] `capture_region(x, y, width, height, save_path=None)` → `PIL.Image` — захоплення прямокутної області
-- [ ] `capture_window(hwnd, save_path=None)` → `PIL.Image` — скріншот конкретного вікна (навіть якщо перекрите)
-- [ ] `capture_active_window(save_path=None)` → `PIL.Image` — скріншот активного вікна
+#### Основні функції (`functions/tools_screen_capture.py`, 608 рядків)
+- [x] `take_screenshot(save_path=None)` — повний скріншот (усі монітори)
+- [x] `capture_monitor(monitor_index=0, save_path=None)`
+- [x] `capture_region(x, y, width, height, save_path=None)`
+- [x] `capture_window(hwnd, save_path=None)` (PrintWindow)
+- [x] `capture_active_window(save_path=None)`
 
 #### Інформація про екран
-- [ ] `get_screen_size()` → `{"width": int, "height": int}` — роздільна здатність
-- [ ] `get_monitors_info()` → `[{index, x, y, width, height, primary}]` — всі монітори
-- [ ] `get_pixel_color(x, y)` → `{"r": int, "g": int, "b": int, "hex": str}` — колір пікселя
-- [ ] `get_region_color_histogram(x, y, w, h)` → розподіл кольорів в регіоні
+- [x] `get_screen_size()`
+- [x] `get_monitors_info()`
+- [x] `get_pixel_color(x, y)`
+- [x] `get_region_color_histogram(x, y, w, h)`
 
 #### Порівняння та пошук
-- [ ] `find_image_on_screen(template_path, confidence=0.8)` → `{"x": int, "y": int, "confidence": float} | None`
-- [ ] `find_all_images_on_screen(template_path, confidence=0.8)` → `[{x, y, confidence}]`
-- [ ] `wait_for_image(template_path, timeout=10, interval=0.5)` → `{x, y} | None`
-- [ ] `image_changed(region, threshold=0.05)` → `bool` — чи змінився регіон екрану
-- [ ] `wait_for_visual_change(region, timeout=10)` → `bool` — очікувати будь-яку зміну
-- [ ] `wait_for_visual_stable(region, stable_time=1.0, timeout=15)` → `bool` — очікувати стабільності
+- [x] `find_image_on_screen(template_path, confidence=0.8)`
+- [x] `find_all_images_on_screen(template_path, confidence=0.8)`
+- [x] `wait_for_image(template_path, timeout=10, interval=0.5)`
+- [x] `image_changed(region, threshold=0.05)`
+- [x] `wait_for_visual_change(region, timeout=10)` / `wait_for_visual_stable(...)`
 
 #### Аналіз кольорів та змін
-- [ ] `pixel_matches_color(x, y, color, tolerance=10)` → `bool`
-- [ ] `wait_for_color(x, y, color, timeout=10)` → `bool`
-- [ ] `detect_loading_indicator(region=None)` → `bool` — спінер / progress bar
-- [ ] `detect_modal_dialog()` → `bool` — чи є модальне вікно поверх основного
+- [x] `pixel_matches_color(x, y, color, tolerance=10)`
+- [x] `wait_for_color(x, y, color, timeout=10)`
+- [x] `detect_loading_indicator(region=None)`
+- [x] `detect_modal_dialog()`
 
-### 2.2 Кешування скріншотів
+### 2.2 Кешування скріншотів та аудит дій (`functions/core_action_recorder.py`, 521 рядок)
 
-- [ ] `ScreenCache` клас — зберігає останні N скріншотів у пам'яті
-- [ ] Автоматичний скріншот до/після кожної дії (зберігається у `logs/screenshots/`)
-- [ ] Запис у `logs/gui_actions.jsonl` (JSONL-формат для зручного парсингу)
-- [ ] Ліміт зберігання: налаштований у `config.py` (за замовчуванням 500 записів / 7 днів)
+- [x] `ActionRecorder` singleton з автозаписом
+- [x] Автоматичний скріншот до/після кожної дії через декоратор `@recordable`
+- [x] Запис у `logs/gui_actions.jsonl`
+- [x] Ліміт: 500 записів / 7 днів
 
 #### Перегляд та експорт
-- [ ] `get_recent_actions(count=10)` → `[ActionRecord]`
-- [ ] `export_session_log(format='json')` → `str` — повний лог сесії
-- [ ] `generate_action_report()` → `str` — читабельний звіт для користувача
-- [ ] `search_actions(filter_dict)` → `[ActionRecord]` — пошук за типом дії / часом / програмою
+- [x] `get_recent_actions(count)`
+- [x] `export_session_log(format)` — JSON або text
+- [x] `generate_action_report()` — статистика по діях
+- [x] `search_actions(filter)`
 
 ### 2.3 Тести Phase 2
 
-- [ ] `tests/test_tools_screen_capture.py` — mock mss, перевірка PIL операцій
-- [ ] Тест template matching з синтетичними зображеннями
-- [ ] Тест `capture_window` для мінімізованого вікна
+- [ ] `tests/test_tools_screen_capture.py` — mock mss, PIL операції (**ТРЕБА**)
+- [ ] Тест template matching з синтетичними зображеннями (**ТРЕБА**)
+- [ ] `tests/test_core_action_recorder.py` (**ТРЕБА**)
 
 ---
 
@@ -412,9 +474,9 @@ pip install easyocr
 
 ### 4.4 Тести Phase 4
 
-- `tests/test_tools_ui_detector.py` — синтетичні зображення UI-елементів
-- `tests/test_tools_app_recognizer.py` — mock скріншоти відомих програм
-- [ ] `tests/test_tools_visual_diff.py` — синтетичні "до/після" зображення
+- [ ] `tests/test_tools_ui_detector.py` — синтетичні зображення UI-елементів (**ТРЕБА**)
+- [ ] `tests/test_tools_app_recognizer.py` — mock скріншоти відомих програм (**ТРЕБА**)
+- [ ] `tests/test_tools_visual_diff.py` — синтетичні "до/після" зображення (**ТРЕБА**)
 
 ---
 
@@ -489,9 +551,10 @@ pip install easyocr
 
 ### 5.4 Тести Phase 5
 
-- [ ] `tests/test_logic_ui_navigator.py` — mock Phase 1-4 модулі
-- [ ] `tests/test_logic_scenario_runner.py` — mock сценарії
-- [ ] E2E тест: відкрити Notepad → заповнити форму → зберегти → закрити
+- [ ] `tests/test_logic_ui_navigator.py` — mock Phase 1-4 модулі (**ТРЕБА**)
+- [ ] `tests/test_logic_scenario_runner.py` — mock сценарії (**ТРЕБА**)
+- [ ] `tests/test_logic_context_analyzer.py` — mock поєднання OCR + UI detector (**ТРЕБА**)
+- [ ] E2E тест: відкрити Notepad → заповнити форму → зберегти → закрити (потребує Windows VM)
 
 ---
 
@@ -559,9 +622,9 @@ pip install easyocr
 
 ### 6.5 Тести Phase 6
 
-- [ ] `tests/test_core_action_recorder.py`
-- [ ] `tests/test_core_undo_manager.py` — тест undo для введення тексту, переміщення файлів
-- [ ] `tests/test_core_gui_guardian.py` — тест блокування небезпечних дій
+- [ ] `tests/test_core_action_recorder.py` (**ТРЕБА** — дублюється у 2.3)
+- [ ] `tests/test_core_undo_manager.py` — undo для введення тексту, переміщення файлів (**ТРЕБА**)
+- [ ] `tests/test_core_gui_guardian.py` — блокування небезпечних дій (**ТРЕБА**)
 
 ---
 
@@ -782,3 +845,151 @@ pip install pywin32  # вже є; використовуємо win32com.client
 
 *Стратегічний план GUI Automation оновлено: 20.04.2026*
 *Наступний крок: Phase 7 — Learning & Profiles (`core_app_profiles.py`, `tools_macro_recorder.py`, `logic_task_learner.py`))*
+
+---
+
+## 🧭 Пропозиції шляхів розвитку (квітень 2026)
+
+Нижче — пріоритезований список ініціатив за результатами аудиту коду (20.04.2026).
+Кожен пункт має: **P1** (критично / без цього не можна), **P2** (важливо), **P3** (бажано).
+
+### 🔧 Трек A. Інженерна гігієна та якість
+
+- **A1 [P1] Привести `requirements.txt` у відповідність з реальними імпортами.**
+  Додати: `pyautogui`, `pywin32`, `psutil`, `mss`, `Pillow`, `opencv-python`, `pytesseract`, `easyocr` (опційно), `requests`.
+  Розділити на `requirements.txt` (runtime) + `requirements-dev.txt` (`pytest`, `pytest-cov`, `ruff`, `black`, `mypy`).
+
+- **A2 [P1] Синхронізувати README.md з реальною структурою.**
+  - `gui/` → `core_gui/`
+  - `python agent.py` → `python run_assistant.py`
+  - Додати в перелік core-модулів `logic_scenario_runner`, `logic_ui_navigator`, `logic_context_analyzer`, `core_action_recorder`, `core_undo_manager`, `core_gui_guardian`, `tools_*`, `smart_patch_gui.py`.
+
+- **A3 [P1] Додати CI (GitHub Actions).**
+  Workflow: `lint` (`ruff check` + `black --check`), `tests` (`pytest tests/ --cov=functions`) на Windows-runner (для Phase 1/3) + Linux-runner (для core-логіки з моками).
+  Додати `coverage` badge у README.
+
+- **A4 [P2] Pre-commit hooks.**
+  `.pre-commit-config.yaml` з `ruff`, `black`, `trailing-whitespace`, `end-of-file-fixer`, `check-merge-conflict`, `check-yaml/json`.
+
+- **A5 [P2] `pyproject.toml` з налаштуваннями `ruff`/`black`/`pytest`.**
+  Замінити/доповнити `pytest.ini` → `[tool.pytest.ini_options]` у `pyproject.toml`.
+
+- **A6 [P2] Type hints + `mypy --strict` для `core_*` модулів.**
+  Планер, executor, memory, tool_runtime — мають стабільні сигнатури; підвищить надійність рефакторів.
+
+- **A7 [P3] Logging.** Перейти з `print(Fore.CYAN + "[DEBUG]...")` на `logging` з ротацією файлів (`logs/marc.log`).
+
+### 🧪 Трек B. Покриття тестами (Phase 2/4/5/6)
+
+- **B1 [P1] Обов'язкові unit-тести (всі з mock, без Windows залежностей):**
+  - `test_tools_screen_capture.py` — mock `mss`, `PIL.ImageGrab`, перевірка збереження/координат
+  - `test_tools_ui_detector.py` — синтетичні PIL-зображення (кнопка, checkbox)
+  - `test_tools_app_recognizer.py` — mock `psutil.Process`, `win32gui.GetWindowText`
+  - `test_tools_visual_diff.py` — синтетичні "до/після" PIL-зображення
+  - `test_logic_ui_navigator.py` — mock Phase 1–4
+  - `test_logic_scenario_runner.py` — JSON-сценарії + mock executor
+  - `test_logic_context_analyzer.py` — mock OCR + UI detector
+  - `test_core_action_recorder.py` — mock filesystem, перевірка JSONL
+  - `test_core_undo_manager.py` — snapshots + undo по history
+  - `test_core_gui_guardian.py` — ризик-рівні, sandbox region, preview_action
+
+- **B2 [P2] Integration tests на Windows VM (GitHub Actions `windows-latest`):**
+  - Сценарій Notepad (open → type → save → close)
+  - Сценарій File Explorer (знайти файл, скопіювати шлях)
+  - Маркери `@pytest.mark.windows` + `@pytest.mark.gui_integration`.
+
+- **B3 [P3] Regression snapshots** — зберігати "золоті" baselines скріншотів UI-елементів у `tests/fixtures/baselines/` для `visual_diff`.
+
+### 🧹 Трек C. Очищення кодової бази
+
+- **C1 [P1] Видалити / повернути файли з суфіксами `_off` / `_old`:**
+  - `functions/aaa_kill_process_by_name.py_off`
+  - `functions/aaa_open_program.py_old`
+  Рішення: або інтегрувати, або винести в `legacy/`.
+
+- **C2 [P2] Винести runtime-state з `functions/`:**
+  - `cache_data.json`, `user_settings.json`, `safety_config.json` → `./runtime/` або `~/.marc/`
+  - Не включати в package-path.
+
+- **C3 [P2] Обмежити розмір файлів.** Модулі `logic_ui_navigator.py` (860), `logic_context_analyzer.py` (854), `logic_scenario_runner.py` (807), `core_planner.py` (754), `main.py` (742) — рефакторити на підмодулі (напр. `planner/{prompt,retry,parser}.py`).
+
+- **C4 [P3] Єдина конвенція іменування.** Перемішане `aaa_*` (агентські інструменти) / `tools_*` (GUI) / `logic_*` / `core_*` — виписати правила в CONTRIBUTING.md та привести до єдиного стилю.
+
+### 🚀 Трек D. Phase 7 — Learning & Adaptation
+
+- **D1 [P2] `core_app_profiles.py` (мінімальний MVP):**
+  Dataclass `AppProfile` + JSON-збереження; 3 вбудованих профілі (Notepad, Explorer, Chrome) з `common_shortcuts` та `known_elements`.
+
+- **D2 [P2] `tools_macro_recorder.py`:**
+  Інтегрувати з існуючим `core_action_recorder` (recorder вже збирає `{action, params}`): додати лише `start/stop/play` API і зберігання у `macros/*.json`.
+
+- **D3 [P3] `logic_task_learner.py`:**
+  Починати з простого `detect_repeated_pattern` (N-gram по історії дій). Складніші ML-фічі — пізніше.
+
+- **D4 [P3] Планувальник задач (scheduling).**
+  Тригери по часу/подіях файловій системі (`watchdog`).
+
+### 🌐 Трек E. Розширення можливостей
+
+- **E1 [P2] Мультиплатформність (Linux/macOS).**
+  Абстрагувати `tools_window_manager` (зараз win32-only) — `xdotool`/`wmctrl` на Linux, AppleScript/Accessibility на macOS. Дозволить розробникам на не-Windows тестувати core.
+
+- **E2 [P2] Інтеграція з браузером.**
+  `tools_browser.py` через **Playwright** (кращий за Selenium у 2026): `open_url`, `find_by_role`, `screenshot`, `execute_js`. Покриває 50%+ щоденних задач без клікання по пікселях.
+
+- **E3 [P3] Office Integration (Word/Excel).**
+  Через `win32com.client`. Потрібно тільки якщо є реальний сценарій — інакше перегрів scope.
+
+- **E4 [P3] Tray-іконка + глобальні гарячі клавіші.**
+  `pystray` + `keyboard` для швидкого виклику агента без відкриття GUI.
+
+### 🧠 Трек F. LLM та планер
+
+- **F1 [P1] Структуровані виклики інструментів (function/tool calling).**
+  Замість самописного JSON-парсингу перейти на OpenAI-compatible `tools` параметр (LM Studio ≥ 0.3.x підтримує). Підвищить надійність планів на ~10–20%.
+
+- **F2 [P2] Tree-of-thoughts / повний replan.**
+  В статусі вже зазначено: «Planner не робить повне перепланування дерева». Додати `replan_from_step(N)` у `core_planner`.
+
+- **F3 [P2] Оцінка якості плану (self-critique).**
+  Перед виконанням LLM оцінює план (0–10) і за < 7 — переформовує.
+
+- **F4 [P3] Локальна fine-tuned модель для планів.**
+  Коли зберемо `~500 успішних (задача, план)` пар — спробувати LoRA на базі `deepseek-coder` або `Qwen2.5-Coder-7B` для швидшого плануючого двигуна.
+
+### 🛡️ Трек G. Безпека та надійність
+
+- **G1 [P1] Обмежити `execute_python` через `RestrictedPython` або окремий процес.**
+  Зараз sandbox — умовний; для real-world використання потрібна ізоляція (subprocess з обмеженням ресурсів, firejail/WSL на Linux, Win32 Job Objects на Windows).
+
+- **G2 [P2] Rate limiting для LLM-викликів.**
+  Запобігти нескінченним repair-циклам (вже є 3+1, але додати глобальний timeout на задачу).
+
+- **G3 [P2] Телеметрія (opt-in).**
+  Локальна DB `~/.marc/telemetry.sqlite` з подіями `task_started/completed/failed` + тривалістю — для аналітики, не надсилаючи нічого назовні.
+
+- **G4 [P3] Код-підпис `.exe` збірки (PyInstaller).**
+  Якщо планується розповсюдження бінарника — для антивірусів.
+
+### 📦 Трек H. Дистрибуція
+
+- **H1 [P2] PyInstaller збірка `.exe` + інсталятор (Inno Setup).**
+  Мета: одноклікова інсталяція на Windows для non-tech користувачів.
+
+- **H2 [P3] Оновлення через GitHub Releases.**
+  Авто-перевірка нових релізів, `update.bat` для заміни виконуваного файлу.
+
+---
+
+## 🗓 Рекомендована послідовність (4 спринти × 2 тижні)
+
+| Спринт | Пріоритети | Результат |
+|--------|-----------|-----------|
+| **S1 (тиждень 1–2)** | A1, A2, A3, C1 | Робочий CI, чистий requirements, актуальний README |
+| **S2 (тиждень 3–4)** | B1 (всі missing unit-тести з mock), A4, A5 | Покриття ≥ 70%, pre-commit |
+| **S3 (тиждень 5–6)** | F1 (tool calling), D1+D2 (профілі + макроси MVP), C3 | Міцніший планер + Phase 7 MVP |
+| **S4 (тиждень 7–8)** | E2 (Playwright), G1, B2 (Windows CI) | Браузерна автоматизація + безпечний sandbox + Windows integration тести |
+
+---
+
+*Пропозиції розвитку підготовлені Devin (сесія [43aa3b10](https://app.devin.ai/sessions/43aa3b103a6642db94c3afb6707a35be)) на основі аудиту репозиторію станом на 20.04.2026.*
