@@ -16,6 +16,7 @@ voices/
 *.rar
 *.bat
 *.diff
+functions/agent_memory.json
 smart_patch_gui.py
 core_gui_copy.py_бекап
 ДОСТУПНІ МІКРОФОНИ.txt
