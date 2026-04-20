@@ -18,14 +18,20 @@
 
 ```bash
 # Клонування репозиторію
-git clone <repo-url>
+git clone https://github.com/080user080/agent.git
 cd agent
 
 # Встановлення залежностей
 pip install -r requirements.txt
 
-# Запуск
-python agent.py
+# PyTorch встановити окремо (під вашу версію CUDA або CPU-only)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Запуск (GUI — основний спосіб)
+python run_assistant.py
+
+# Або консольний режим (без GUI)
+python main.py
 ```
 
 ### Перше налаштування
@@ -78,30 +84,67 @@ python agent.py
 
 ```
 agent/
-├── agent.py                 # Точка входу
-├── functions/               # Основна логіка
-│   ├── core_*.py           # Core модулі
-│   │   ├── core_planner.py      # Планер з retry
-│   │   ├── core_executor.py     # Виконавець планів
-│   │   ├── core_memory.py       # Пам'ять сесій
-│   │   ├── core_cache.py        # Безпечний кеш
-│   │   ├── core_tool_runtime.py # Реєстр інструментів
-│   │   └── core_settings.py     # Менеджер налаштувань
-│   ├── logic_*.py          # Логіка
-│   │   ├── logic_commands.py    # Обробка команд
-│   │   ├── logic_llm.py         # LLM взаємодія
-│   │   └── logic_parser.py      # Парсинг відповідей
-│   └── tools_*.py          # Інструменти
-├── gui/                     # GUI компоненти
-│   ├── main_gui.py         # Головне вікно
-│   └── settings/           # Налаштування
-├── tests/                   # Тести
+├── run_assistant.py            # Точка входу з GUI (основний запуск)
+├── main.py                     # Консольна точка входу (AssistantCore)
+├── smart_patch_gui.py          # Допоміжний GUI для редагування коду патчами
+├── functions/                  # Основна логіка (~40 модулів)
+│   ├── core_*.py                  # Core модулі (~11)
+│   │   ├── core_planner.py            # Планер з retry
+│   │   ├── core_executor.py           # Виконавець планів
+│   │   ├── core_memory.py             # Пам'ять сесій
+│   │   ├── core_cache.py              # Безпечний кеш
+│   │   ├── core_tool_runtime.py       # Реєстр інструментів
+│   │   ├── core_settings.py           # Менеджер налаштувань
+│   │   ├── core_dispatcher.py         # Диспетчер команд
+│   │   ├── core_streaming.py          # Стрімінг відповідей LLM
+│   │   ├── core_stt_listener.py       # STT-лістнер
+│   │   ├── core_safety_sandbox.py     # Сендбокс безпеки
+│   │   ├── core_action_recorder.py    # Аудит GUI-дій (Phase 2/6)
+│   │   ├── core_undo_manager.py       # Undo для GUI-дій (Phase 6)
+│   │   └── core_gui_guardian.py       # Захист GUI-дій (Phase 6)
+│   ├── logic_*.py                 # Логіка (~10)
+│   │   ├── logic_core.py              # FunctionRegistry
+│   │   ├── logic_commands.py          # Обробка команд
+│   │   ├── logic_llm.py               # LLM взаємодія
+│   │   ├── logic_tts.py / logic_stt.py / logic_audio.py / logic_audio_filtering.py
+│   │   ├── logic_continuous_listener.py
+│   │   ├── logic_context_analyzer.py  # Phase 5
+│   │   ├── logic_ui_navigator.py      # Phase 5
+│   │   └── logic_scenario_runner.py   # Phase 5
+│   ├── tools_*.py                 # GUI-інструменти (~7)
+│   │   ├── tools_mouse_keyboard.py    # Phase 1
+│   │   ├── tools_window_manager.py    # Phase 1
+│   │   ├── tools_screen_capture.py    # Phase 2
+│   │   ├── tools_ocr.py               # Phase 3 (pytesseract/easyocr)
+│   │   ├── tools_ui_detector.py       # Phase 4
+│   │   ├── tools_app_recognizer.py    # Phase 4
+│   │   └── tools_visual_diff.py       # Phase 4
+│   └── aaa_*.py                   # LLM-tool обгортки (~12)
+│       ├── aaa_architect.py / aaa_code_tools.py / aaa_debug_code.py
+│       ├── aaa_create_file.py / aaa_edit_file.py / aaa_execute_python.py
+│       ├── aaa_open_browser.py / aaa_programs.py / aaa_system.py
+│       └── aaa_voice_input.py / aaa_utility_tools.py / aaa_confirmation.py
+├── core_gui/                   # GUI компоненти (Tkinter)
+│   ├── main_window.py             # Головне вікно
+│   ├── chat_panel.py              # Панель чату
+│   ├── plan_panel.py              # Панель плану
+│   ├── settings_tab.py            # Вкладка налаштувань
+│   ├── confirmation.py            # Діалог підтверджень
+│   ├── llm_endpoints_editor.py    # Редактор LLM ендпойнтів
+│   ├── styles.py / constants.py
+├── tests/                      # Тести (pytest)
 │   ├── test_core_planner.py
 │   ├── test_core_memory.py
-│   └── test_core_executor.py
-├── requirements.txt         # Залежності
-├── status.md               # Статус розробки
-└── README.md               # Цей файл
+│   ├── test_core_executor.py
+│   ├── test_tools_mouse_keyboard.py
+│   ├── test_tools_window_manager.py
+│   └── test_tools_ocr.py
+├── requirements.txt            # Рантайм-залежності
+├── pytest.ini                  # Конфіг тестів
+├── status.md                   # Статус розробки + дорожня карта
+├── CONTRIBUTING.md             # Гайд для контриб'юторів
+├── tests.md                    # Специфікації тестів
+└── README.md                   # Цей файл
 ```
 
 ---
@@ -151,7 +194,20 @@ coverage report
 | `core_memory` | Зберігання історії, задач, summaries |
 | `core_cache` | Безпечне кешування idempotent операцій |
 | `core_settings` | Управління налаштуваннями |
-| `core_tool_runtime` | Реєстр та виконання інструментів |
+| `core_tool_runtime` | Реєстр та виконання інструментів + аудит |
+| `core_dispatcher` | Диспетчер команд між GUI / planner / інструментами |
+| `core_streaming` | Стрімінг відповідей LLM до GUI |
+| `core_stt_listener` | Прийом голосового вводу |
+| `core_safety_sandbox` | Сендбокс для `execute_python` та файлових дій |
+| `core_action_recorder` | Запис GUI-дій + скріншотів в `logs/gui_actions.jsonl` |
+| `core_undo_manager` | Undo для GUI-дій (введення тексту, переміщення файлів) |
+| `core_gui_guardian` | Перевірка ризиків та підтвердження небезпечних GUI-дій |
+
+### Logic та Tools (скорочено)
+
+- **`logic_*`** — `logic_core` (FunctionRegistry), `logic_commands`, `logic_llm`, `logic_tts`/`logic_stt`/`logic_audio*`, `logic_continuous_listener`, а також модулі Phase 5: `logic_context_analyzer`, `logic_ui_navigator`, `logic_scenario_runner`.
+- **`tools_*`** — GUI-інструменти Phase 1–4: `tools_mouse_keyboard`, `tools_window_manager`, `tools_screen_capture`, `tools_ocr`, `tools_ui_detector`, `tools_app_recognizer`, `tools_visual_diff`.
+- **`aaa_*`** — LLM-обгортки (tool wrappers), які викликаються з планів: `aaa_create_file`, `aaa_edit_file`, `aaa_execute_python`, `aaa_open_browser`, `aaa_programs`, `aaa_system`, тощо.
 
 ---
 
