@@ -59,7 +59,7 @@ jobs:
           # Ставимо лише легкі залежності, що реально потрібні для тестів.
           # Тяжкі пакети (torch, transformers, accelerate, pyautogui, pywin32)
           # не встановлюємо — вони замокані у tests/conftest.py.
-          pip install pytest pytest-cov numpy Pillow opencv-python requests colorama
+          pip install pytest pytest-cov numpy Pillow opencv-python requests colorama psutil
 
       - name: Run pytest
         run: pytest --cov=functions --cov-report=term-missing --cov-report=xml
