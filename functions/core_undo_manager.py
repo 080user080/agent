@@ -282,7 +282,7 @@ class UndoManager:
         """
         try:
             snapshots = []
-            for snapshot_id, snapshot in self._snapshots.items():
+            for _snapshot_id, snapshot in self._snapshots.items():
                 snapshots.append({
                     "id": snapshot.id,
                     "label": snapshot.label,

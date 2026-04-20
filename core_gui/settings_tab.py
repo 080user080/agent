@@ -261,7 +261,7 @@ class SettingsTabMixin:
         from functions.core_settings import SETTINGS_SCHEMA
         query = self._settings_search_var.get().strip().lower()
 
-        for group_name, info in self._group_headers.items():
+        for _group_name, info in self._group_headers.items():
             any_visible = False
             for key in info['keys']:
                 schema = SETTINGS_SCHEMA.get(key, {})

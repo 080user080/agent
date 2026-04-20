@@ -1,0 +1,82 @@
+# =============================================================================
+# МАРК (Agent Assistant) — проєктова конфігурація
+# =============================================================================
+# Мінімально-необхідний pyproject.toml: конфіги для ruff / pytest / coverage.
+# Пакетування (build-system / [project]) свідомо не описуємо, бо проєкт
+# запускається як скрипт, а не встановлюється через pip install.
+
+# -----------------------------------------------------------------------------
+# Ruff — лінтер + форматер
+# -----------------------------------------------------------------------------
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = [
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "logs",
+]
+
+[tool.ruff.lint]
+# На старті включаємо лише рівні, що відсіюють реальні баги:
+#   E9  — синтаксичні помилки
+#   F63 — некоректні булеві порівняння
+#   F7  — синтаксичні помилки верхнього рівня
+#   F82 — undefined-name
+#   B   — bugbear (ymmv, але дуже корисно)
+# Решта стилістики (E, W, I, UP, ...) вмикатиметься поступово у наступних PR,
+# коли буде час причесати кодову базу без ризиків.
+select = ["E9", "F63", "F7", "F82", "B"]
+# Явно ігноруємо правила, що дають дуже багато false-positive під Tkinter-GUI
+# (assert у тестах, f-string без placeholders — тимчасово).
+ignore = [
+    "B008",  # function-call-in-default-argument (часто legitimate для GUI)
+    "B904",  # raise-without-from-inside-except (поступово полагодимо)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["B", "E402"]  # у тестах дозволяємо sys.path хаки та асерти
+
+# -----------------------------------------------------------------------------
+# Pytest
+# -----------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+]
+markers = [
+    "windows: тест потребує Windows (pywin32, pyautogui з реальним display)",
+    "gui_integration: повноцінний інтеграційний тест з реальним GUI",
+    "slow: довготривалий тест (>1 сек)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+# -----------------------------------------------------------------------------
+# Coverage
+# -----------------------------------------------------------------------------
+[tool.coverage.run]
+branch = true
+source = ["functions", "core_gui"]
+omit = [
+    "tests/*",
+    ".venv/*",
+    "*/legacy/*",
+]
+
+[tool.coverage.report]
+skip_empty = true
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

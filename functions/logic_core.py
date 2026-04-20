@@ -86,7 +86,7 @@ class FunctionRegistry:
                 sys.modules[f"functions.{module_name}"] = module # Реєструємо в sys.modules
                 spec.loader.exec_module(module)
                 
-                for name, obj in inspect.getmembers(module):
+                for _name, obj in inspect.getmembers(module):
                     if inspect.isfunction(obj) and hasattr(obj, '_is_llm_function'):
                         func_info = {
                             'function': obj,
@@ -206,7 +206,7 @@ class FunctionRegistry:
 """
         if self.functions:
             prompt += "\n\nДОСТУПНІ ФУНКЦІЇ:\n"
-            for func_name, func_info in sorted(self.functions.items()):
+            for _func_name, func_info in sorted(self.functions.items()):
                 prompt += f"\n🔧 {func_info['name']}: {func_info['description']}\n"
                 if func_info['parameters']:
                     for pname, pdesc in func_info['parameters'].items():

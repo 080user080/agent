@@ -121,7 +121,7 @@ class UIDetector:
             offset_x = region[0] if region else 0
             offset_y = region[1] if region else 0
 
-            for pt in zip(*locations[::-1]):
+            for pt in zip(*locations[::-1], strict=False):
                 # Перевіряємо чи не занадто близько до інших знайдених
                 too_close = any(
                     abs(pt[0] + offset_x - m["x"]) < w // 2 and
