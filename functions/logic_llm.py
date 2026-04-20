@@ -153,10 +153,46 @@ def ask_llm(user_message, conversation_history, system_prompt):
         if response.status_code == 200:
             return response.json()['choices'][0]['message']['content']
         else:
-            error_msg = f"Помилка API {response.status_code}: {response.text}"
+            error_text = response.text
+            error_msg = f"Помилка API {response.status_code}: {error_text}"
             print(f"{Fore.RED}{error_msg}")
-            return f"Помилка: {response.status_code}"
-            
+
+            # Детекція специфічних помилок з корисними порадами
+            error_lower = error_text.lower()
+
+            if "no models loaded" in error_lower or "invalid_request_error" in error_lower:
+                user_msg = (
+                    "❌ **Модель не завантажена в LM Studio**\n\n"
+                    "Будь ласка:\n"
+                    "1. Відкрийте LM Studio\n"
+                    "2. Перейдіть на вкладку 'Developer'\n"
+                    "3. Завантажте модель (наприклад, через 'Load Model')\n"
+                    "4. Або виконайте в консолі: `lms load <model_name>`\n\n"
+                    "Потім спробуйте знову."
+                )
+                return user_msg
+
+            if "connection" in error_lower or "refused" in error_lower:
+                return (
+                    "❌ **Не вдається підключитися до LM Studio**\n\n"
+                    "Перевірте:\n"
+                    "1. Чи запущено LM Studio?\n"
+                    "2. Чи ввімкнено 'API Server' в налаштуваннях LM Studio?\n"
+                    "3. Чи правильний URL в Налаштуваннях агента?\n\n"
+                    f"Поточний URL: {LM_STUDIO_URL}"
+                )
+
+            return f"Помилка: {response.status_code} - {error_text[:200]}"
+
+    except requests.exceptions.ConnectionError:
+        return (
+            "❌ **LM Studio не відповідає**\n\n"
+            "Перевірте:\n"
+            "1. Чи запущено LM Studio?\n"
+            "2. Чи ввімкнено API Server (порт 1234)?\n\n"
+            f"URL: {LM_STUDIO_URL}"
+        )
+
     except Exception as e:
         return f"{Fore.RED}❌ Помилка з'єднання: {str(e)}"
 
@@ -173,7 +209,43 @@ def process_llm_response(response_text, registry):
         # Якщо це відповідь
         if "response" in response_json and "action" not in response_json:
             return response_json["response"]
-        
+
+        # Прості обчислення: {"result": 4} → повертаємо як текст
+        if "result" in response_json and "action" not in response_json and "actions" not in response_json:
+            return str(response_json["result"])
+
+        # Множинні дії: {"actions": [...]} → виконати по черзі
+        if "actions" in response_json and isinstance(response_json["actions"], list):
+            results = []
+            action_map = {
+                "execute_python": "execute_python",
+                "execute_python_code": "execute_python",
+                "run_python": "execute_python",
+                "debug_python_code": "debug_python_code",
+                "open_program": "open_program",
+                "close_program": "close_program",
+            }
+            for act_obj in response_json["actions"]:
+                if not isinstance(act_obj, dict):
+                    continue
+                act_copy = dict(act_obj)
+                act = act_copy.pop("action", None)
+                if not act:
+                    continue
+                fn = action_map.get(act, act)
+                # Підтримати вкладені args
+                if "args" in act_copy and isinstance(act_copy["args"], dict):
+                    params = act_copy["args"]
+                else:
+                    params = act_copy
+                print(f"{Fore.MAGENTA}⚡ [Дія {fn}]: {params}")
+                try:
+                    r = registry.execute_function(fn, params)
+                    results.append(f"• {fn}: {r}")
+                except Exception as e:
+                    results.append(f"• {fn}: ❌ {e}")
+            return "\n".join(results) if results else "❌ Порожній список дій"
+
         # 🔥 ВИПРАВЛЕННЯ: Додано execute_python
         if "action" in response_json:
             action = response_json.pop("action")

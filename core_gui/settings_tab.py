@@ -34,6 +34,17 @@ class SettingsTabMixin:
 
         settings = get_settings()
         self._settings_vars = {}  # key → tk.Variable
+        self._settings_rows = {}  # key → list[tk.Widget] (для фільтрації/згортання)
+        self._group_headers = {}  # group_name → dict(btn, items, expanded)
+
+        # --- Панель пошуку (зверху, поза scroll) ---
+        search_frame = ttk.Frame(self.settings_frame)
+        search_frame.pack(side='top', fill='x', padx=5, pady=(5, 2))
+        ttk.Label(search_frame, text="🔍", font=('Segoe UI', 10)).pack(side='left', padx=(2, 4))
+        self._settings_search_var = tk.StringVar()
+        search_entry = ttk.Entry(search_frame, textvariable=self._settings_search_var)
+        search_entry.pack(side='left', fill='x', expand=True)
+        self._settings_search_var.trace_add('write', lambda *_: self._apply_settings_filter())
 
         # Scrollable container
         canvas = tk.Canvas(self.settings_frame, bg='#fafafa', highlightthickness=0)
@@ -59,29 +70,53 @@ class SettingsTabMixin:
             canvas.yview_scroll(int(-1 * (event.delta / 120)), 'units')
         canvas.bind_all('<MouseWheel>', _on_mousewheel)
 
-        # --- Згрупувати по "group" ---
+        # --- Згрупувати по "group" (прихованих пропускаємо) ---
         groups: dict[str, list[tuple[str, dict]]] = {}
         for key, schema in SETTINGS_SCHEMA.items():
+            if schema.get('hidden') or schema.get('group') == '_hidden':
+                continue
             group = schema.get('group', 'Інше')
             groups.setdefault(group, []).append((key, schema))
 
-        # Рендер груп
+        # Рендер груп (із згортанням)
         row_idx = 0
+        first_group = True
         for group_name, items in groups.items():
-            header = ttk.Label(
+            # Перша група відкрита, інші згорнуті за замовчуванням
+            expanded = first_group
+            arrow = "▼" if expanded else "▶"
+            header_btn = ttk.Label(
                 inner,
-                text=f"▸ {group_name}",
+                text=f"{arrow} {group_name}",
                 font=('Segoe UI', 11, 'bold'),
                 foreground='#1976d2',
+                cursor='hand2',
             )
-            header.grid(row=row_idx, column=0, columnspan=3, sticky='w', padx=5, pady=(12, 4))
+            header_btn.grid(row=row_idx, column=0, columnspan=3, sticky='w', padx=5, pady=(12, 4))
+            self._group_headers[group_name] = {
+                'btn': header_btn,
+                'keys': [k for k, _ in items],
+                'expanded': expanded,
+            }
+            header_btn.bind('<Button-1>', lambda e, g=group_name: self._toggle_group(g))
             row_idx += 1
+            first_group = False
 
             for key, schema in items:
                 current_value = settings.get(key)
-                var = self._create_settings_widget(inner, key, schema, current_value, row_idx)
+                row_widgets = []
+                var = self._create_settings_widget(inner, key, schema, current_value, row_idx, row_widgets)
                 self._settings_vars[key] = var
-                row_idx += 1
+                self._settings_rows[key] = row_widgets
+                # Якщо група згорнута — приховати віджети
+                if not expanded:
+                    for w in row_widgets:
+                        try:
+                            w.grid_remove()
+                        except tk.TclError:
+                            pass
+                # llm_endpoints займає 2 рядки
+                row_idx += 2 if schema.get('type') == 'llm_endpoints' else 1
 
         # Кнопки знизу
         btn_frame = ttk.Frame(inner)
@@ -129,8 +164,14 @@ class SettingsTabMixin:
 
         inner.columnconfigure(1, weight=1)
 
-    def _create_settings_widget(self, parent, key: str, schema: dict, value, row: int):
-        """Створити один віджет для одного налаштування. Повертає tk.Variable."""
+    def _create_settings_widget(self, parent, key: str, schema: dict, value, row: int, row_widgets: list = None):
+        """Створити один віджет для одного налаштування. Повертає tk.Variable.
+
+        Якщо row_widgets передано — додає туди всі створені віджети для
+        подальшого приховування/фільтрації.
+        """
+        if row_widgets is None:
+            row_widgets = []
         label_text = schema.get('label', key)
         desc = schema.get('desc', '')
         wtype = schema.get('type', 'str')
@@ -138,6 +179,7 @@ class SettingsTabMixin:
         # Label (назва)
         lbl = ttk.Label(parent, text=label_text, font=('Segoe UI', 9, 'bold'))
         lbl.grid(row=row, column=0, sticky='nw', padx=(20, 8), pady=4)
+        row_widgets.append(lbl)
 
         # Widget за типом
         var = None
@@ -161,6 +203,8 @@ class SettingsTabMixin:
         elif wtype == 'llm_endpoints':
             # Спеціальний редактор списку LLM-моделей
             var = LLMEndpointsEditor(parent, value or [], row=row)
+            # Для grid-операцій використовуємо container (не сам editor)
+            row_widgets.append(var.container)
             if desc:
                 desc_lbl = ttk.Label(
                     parent,
@@ -170,11 +214,13 @@ class SettingsTabMixin:
                     wraplength=600,
                 )
                 desc_lbl.grid(row=row + 1, column=0, columnspan=3, sticky='w', padx=20, pady=(0, 4))
+                row_widgets.append(desc_lbl)
             return var
         else:  # str
             var = tk.StringVar(value=str(value) if value is not None else '')
             widget = ttk.Entry(parent, textvariable=var, width=40)
             widget.grid(row=row, column=1, sticky='ew', padx=4, pady=4)
+        row_widgets.append(widget)
 
         # Desc (пояснення)
         if desc:
@@ -186,8 +232,67 @@ class SettingsTabMixin:
                 wraplength=350,
             )
             desc_lbl.grid(row=row, column=2, sticky='w', padx=4, pady=4)
+            row_widgets.append(desc_lbl)
 
         return var
+
+    # ---------- Згортання груп і пошук ----------
+
+    def _toggle_group(self, group_name: str):
+        """Згорнути/розгорнути групу налаштувань."""
+        info = self._group_headers.get(group_name)
+        if not info:
+            return
+        info['expanded'] = not info['expanded']
+        arrow = "▼" if info['expanded'] else "▶"
+        info['btn'].configure(text=f"{arrow} {group_name}")
+        for key in info['keys']:
+            for w in self._settings_rows.get(key, []):
+                try:
+                    if info['expanded']:
+                        w.grid()
+                    else:
+                        w.grid_remove()
+                except tk.TclError:
+                    pass
+
+    def _apply_settings_filter(self):
+        """Фільтрувати налаштування за рядком пошуку (по label/key/desc)."""
+        from functions.core_settings import SETTINGS_SCHEMA
+        query = self._settings_search_var.get().strip().lower()
+
+        for group_name, info in self._group_headers.items():
+            any_visible = False
+            for key in info['keys']:
+                schema = SETTINGS_SCHEMA.get(key, {})
+                haystack = " ".join([
+                    key.lower(),
+                    str(schema.get('label', '')).lower(),
+                    str(schema.get('desc', '')).lower(),
+                ])
+                match = (not query) or (query in haystack)
+                for w in self._settings_rows.get(key, []):
+                    try:
+                        if match and info['expanded']:
+                            w.grid()
+                        elif match and not info['expanded']:
+                            # не показуємо рядки згорнутої групи, але заголовок підсвічуємо
+                            w.grid_remove()
+                        else:
+                            w.grid_remove()
+                    except tk.TclError:
+                        pass
+                if match:
+                    any_visible = True
+
+            # Приховуємо заголовок групи, якщо в ній нема збігів
+            try:
+                if any_visible or not query:
+                    info['btn'].grid()
+                else:
+                    info['btn'].grid_remove()
+            except tk.TclError:
+                pass
 
     def _save_all_settings(self):
         """Зберегти всі значення з віджетів у SettingsManager."""

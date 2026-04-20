@@ -255,44 +255,52 @@ class AssistantCore:
             return np.array([])
     
     def check_lm_studio(self):
-        """Перевірити та автоматично завантажити потрібну модель"""
+        """Перевірити та автоматично завантажити потрібну модель з LLM_ENDPOINTS"""
         import subprocess
         import os
-        
-        DESIRED_MODEL = "openai/gpt-oss-20b"
+
         LMS_PATH = os.path.expanduser(r"~\.lmstudio\bin\lms.exe")
         BASE_URL = "http://localhost:1234"
-        
-        def get_current_model():
+
+        # Отримати primary модель з налаштувань
+        def get_desired_model():
             try:
-                response = requests.get(f"{BASE_URL}/v1/models", timeout=3)
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get('data') and len(data['data']) > 0:
-                        return data['data'][0]['id']
+                from functions.core_settings import get_setting
+                endpoints = get_setting("LLM_ENDPOINTS", [])
+                for ep in endpoints:
+                    if ep.get("enabled") and ep.get("role") == "primary":
+                        return ep.get("model")
             except:
                 pass
             return None
-        
+
         print(f"{Fore.CYAN}🔌 Перевірка LM Studio...")
-        
-        current_model = get_current_model()
-        
-        if current_model == DESIRED_MODEL:
-            print(f"{Fore.GREEN}✅ Підключено до LM Studio")
-            print(f"{Fore.YELLOW}   📝 Модель: {current_model}")
-            return True
-        
-        if current_model:
-            print(f"{Fore.YELLOW}⚠️  Поточна модель: {current_model}")
-            print(f"{Fore.YELLOW}   Потрібна: {DESIRED_MODEL}")
-        else:
-            print(f"{Fore.YELLOW}⚠️  Жодної моделі не завантажено")
-        
-        # Автозавантаження
-        print(f"{Fore.CYAN}🤖 Автоматичне завантаження моделі...")
-        
+
+        DESIRED_MODEL = get_desired_model()
+
+        if not DESIRED_MODEL:
+            print(f"{Fore.YELLOW}⚠️  Primary модель не налаштована")
+            print(f"{Fore.YELLOW}💡 Налаштуйте модель в GUI: Налаштування → LLM Моделі")
+            return False
+
+        print(f"{Fore.CYAN}   Primary модель: {DESIRED_MODEL}")
+
+        # Перевірити чи модель вже завантажена
         try:
+            response = requests.get(f"{BASE_URL}/v1/models", timeout=2)
+            if response.status_code == 200:
+                data = response.json()
+                models = [m['id'] for m in data.get('data', [])]
+                if DESIRED_MODEL in models:
+                    print(f"{Fore.GREEN}✅ Модель вже завантажена: {DESIRED_MODEL}")
+                    return True
+        except:
+            pass
+
+        print(f"{Fore.CYAN}🤖 Завантаження {DESIRED_MODEL}...")
+
+        try:
+            # Завантажити модель через lms.exe
             process = subprocess.Popen(
                 [LMS_PATH, "load", DESIRED_MODEL],
                 stdout=subprocess.PIPE,
@@ -300,31 +308,45 @@ class AssistantCore:
                 text=True,
                 encoding='utf-8'
             )
-            
+
             print(f"{Fore.CYAN}⏳ Очікування завантаження (до 20с)...")
-            
+
+            # Перевіряти чи модель завантажена через тестовий запит
             for i in range(20):
                 time.sleep(1)
-                
-                current = get_current_model()
-                if current == DESIRED_MODEL:
-                    print(f"{Fore.GREEN}✅ Модель завантажена за {i+1}с!")
-                    return True
-                
+                try:
+                    response = requests.get(f"{BASE_URL}/v1/models", timeout=1)
+                    if response.status_code == 200:
+                        data = response.json()
+                        # Перевіряємо чи модель в списку доступних (вона завантажена якщо є в списку)
+                        models = [m['id'] for m in data.get('data', [])]
+                        if DESIRED_MODEL in models:
+                            print(f"{Fore.GREEN}✅ Модель завантажена за {i+1}с!")
+                            return True
+                except:
+                    pass
+
                 if i % 3 == 0:
                     print(f"{Fore.LIGHTBLACK_EX}   {i}с...")
-            
-            current = get_current_model()
-            if current == DESIRED_MODEL:
-                print(f"{Fore.GREEN}✅ Модель завантажена!")
-                return True
-            
+
+            # Фінальна перевірка
+            try:
+                response = requests.get(f"{BASE_URL}/v1/models", timeout=1)
+                if response.status_code == 200:
+                    data = response.json()
+                    models = [m['id'] for m in data.get('data', [])]
+                    if DESIRED_MODEL in models:
+                        print(f"{Fore.GREEN}✅ Модель завантажена!")
+                        return True
+            except:
+                pass
+
             print(f"{Fore.YELLOW}⚠️  Завантаження триває довше")
             return True
-            
+
         except Exception as e:
             print(f"{Fore.RED}❌ Помилка автозавантаження: {e}")
-            print(f"{Fore.YELLOW}💡 Завантажте модель вручну")
+            print(f"{Fore.YELLOW}💡 Завантажте модель вручну в LM Studio")
             return False
     
     def process_text_command(self, text):
@@ -370,19 +392,27 @@ class AssistantCore:
 
         print_audio_diagnostics()
         run_audio_smoke_test()
-        
-        print(f"\n{Fore.CYAN}🔊 Завантаження STT моделей...")
-        start_time = time.time()
-        
-        try:
-            self.stt_engine = self.load_stt_model()
-            stt_time = time.time() - start_time
-            print(f"{Fore.LIGHTBLACK_EX}⏱️  {stt_time:.2f}с")
-                
-        except Exception as e:
-            print(f"{Fore.RED}❌ Не вдалося завантажити модель розпізнавання мови")
-            print(f"{Fore.RED}   Деталі: {e}")
-            return False
+
+        # Перевірка чи увімкнено STT
+        from functions.core_settings import get_setting
+        stt_enabled = get_setting("STT_ENABLED", False)
+
+        if stt_enabled:
+            print(f"\n{Fore.CYAN}🔊 Завантаження STT моделей...")
+            start_time = time.time()
+
+            try:
+                self.stt_engine = self.load_stt_model()
+                stt_time = time.time() - start_time
+                print(f"{Fore.LIGHTBLACK_EX}⏱️  {stt_time:.2f}с")
+
+            except Exception as e:
+                print(f"{Fore.RED}❌ Не вдалося завантажити модель розпізнавання мови")
+                print(f"{Fore.RED}   Деталі: {e}")
+                return False
+        else:
+            print(f"\n{Fore.YELLOW}⏭️  STT вимкнено в налаштуваннях")
+            self.stt_engine = None
         
         # Ініціалізація аудіо фільтра
         print(f"\n{Fore.CYAN}🎛️  Ініціалізація аудіо фільтрів...")
@@ -493,10 +523,21 @@ class AssistantCore:
         print(f"{Fore.CYAN}🔧 Завантаження функцій...")
         self.registry = FunctionRegistry()
 
-        # STT тимчасово вимкнено для швидкого старту GUI
-        self.stt_engine = None
-        print(f"\n{Fore.YELLOW}⏭️  Автозапуск STT вимкнено для текстового режиму")
-        print(f"{Fore.YELLOW}   voice_input буде недоступний, доки STT не допрацюємо окремо")
+        # Перевірка STT
+        from functions.core_settings import get_setting
+        stt_enabled = get_setting("STT_ENABLED", False)
+
+        if stt_enabled:
+            print(f"\n{Fore.CYAN}🔊 Завантаження STT...")
+            try:
+                self.stt_engine = self.load_stt_model()
+                print(f"{Fore.GREEN}✅ STT готовий")
+            except Exception as e:
+                print(f"{Fore.YELLOW}⚠️  STT недоступний: {e}")
+                self.stt_engine = None
+        else:
+            self.stt_engine = None
+            print(f"\n{Fore.YELLOW}⏭️  Автозапуск STT вимкнено в налаштуваннях")
 
         # Аудіо фільтр
         self.audio_filter = get_audio_filter(SAMPLE_RATE)

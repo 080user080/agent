@@ -168,9 +168,23 @@ class VoiceAssistant:
                 self._history_already_added = True
 
             # --- Planner branch --- #GPT
-            if hasattr(self, "planner") and self.planner and self.planner.should_plan(command_text):
+            has_planner = hasattr(self, "planner") and self.planner is not None
+            should_plan_flag = self.planner.should_plan(command_text) if has_planner else False
+            print(f"{Fore.CYAN}🔍 [DEBUG] planner exists: {has_planner}, should_plan: {should_plan_flag}, text: '{command_text[:50]}...'")
+            if has_planner and should_plan_flag:
                 plan = self.planner.create_plan(command_text)
-                if plan:
+                if not plan:
+                    # LLM не повернув валідний план — можливо помилка API
+                    # Примітка: детальна помилка вже залогована в _detect_llm_error
+                    print(f"{Fore.YELLOW}⚠️  Виконую напряму без планування...")
+                    if self.gui_log_callback:
+                        self.gui_log_callback("add_message", (
+                            "assistant",
+                            "⚠️ **Планер недоступний** — виконую без структурованого плану.\n\n"
+                            "_Перевірте налаштування LLM у вкладці 'Налаштування' → 'LLM Ендпоінти'_"
+                        ))
+                    # Продовжуємо до звичайного LLM блоку нижче (не return!)
+                elif plan:
                     is_safe, explanation = self.planner.validate_plan_safety(plan, command_text)
                     if not is_safe:
                         warning_msg = f"⚠️ План може бути небезпечним: {explanation}"
@@ -259,9 +273,10 @@ class VoiceAssistant:
                         final_action = action
                         final_args = args
 
-                        MAX_REPAIR_ATTEMPTS = 2
+                        MAX_REPAIR_ATTEMPTS = 3  # Збільшено до 3
                         MAX_REPLAN_ATTEMPTS = 1
 
+                        # === Багатоетапний repair цикл ===
                         if not success and not self.executor.stop_requested:
                             if tool_meta and tool_meta.get("needs_confirmation"):
                                 return {
@@ -273,43 +288,70 @@ class VoiceAssistant:
                                     "context": context.copy(),
                                 }
 
-                            # Ліміт на repair-спроби, щоб уникнути нескінченного циклу
-                            repair_attempts = context.get("repair_attempts", 0)
-                            if repair_attempts >= MAX_REPAIR_ATTEMPTS:
-                                print(f"{Fore.RED}❌ Досягнуто ліміту repair-спроб ({MAX_REPAIR_ATTEMPTS}) для '{action}'. Завершую крок з помилкою.{Fore.RESET}")
-                            else:
-                                # Консоль - детально, GUI - через панель плану
-                                print(f"{Fore.YELLOW}⚠️ Крок '{action}' не пройшов перевірку. Пробую виправити (спроба {repair_attempts + 1}/{MAX_REPAIR_ATTEMPTS}).{Fore.RESET}")
-                                context["repair_attempts"] = repair_attempts + 1
-                                repair_step = self.planner.propose_repair_step(command_text, prepared_step, result, context)
+                            repair_attempts = 0
+                            current_action = action
+                            current_args = args
+                            current_result = result
+                            current_step = prepared_step
 
-                                if repair_step:
-                                    repaired = self.planner.prepare_step(repair_step, context)
-                                    final_action = repaired.get("action")
-                                    final_args = repaired.get("args", {})
-                                    # Не повторюємо той самий action з тими ж args (антициклічна перевірка)
-                                    if final_action == action and final_args == args:
-                                        print(f"{Fore.YELLOW}⚠️ Repair пропонує ідентичний крок — пропускаю.{Fore.RESET}")
+                            while not success and repair_attempts < MAX_REPAIR_ATTEMPTS:
+                                repair_attempts += 1
+                                print(f"{Fore.YELLOW}⚠️ Крок не пройшов перевірку. Repair спроба {repair_attempts}/{MAX_REPAIR_ATTEMPTS}{Fore.RESET}")
+
+                                # Запитуємо repair-стратегію у планера
+                                repair_step = self.planner.propose_repair_step(
+                                    command_text, current_step, current_result, context
+                                )
+
+                                if not repair_step:
+                                    print(f"{Fore.YELLOW}⚠️ Планер не запропонував repair-стратегію{Fore.RESET}")
+                                    break
+
+                                repaired = self.planner.prepare_step(repair_step, context)
+                                new_action = repaired.get("action")
+                                new_args = repaired.get("args", {})
+
+                                # Антициклічна перевірка: не повторюємо ідентичний крок
+                                if new_action == current_action and new_args == current_args:
+                                    print(f"{Fore.YELLOW}⚠️ Repair пропонує ідентичний крок — зупиняю repair{Fore.RESET}")
+                                    break
+
+                                # Виконуємо repair-крок
+                                print(f"{Fore.CYAN}🔁 Repair-крок: {new_action}{Fore.RESET}")
+                                current_action = new_action
+                                current_args = new_args
+                                current_result = self.registry.execute_function(new_action, new_args)
+                                current_step = repaired
+                                repair_step = repaired  # Зберігаємо для логу
+
+                                # Перевіряємо результат
+                                success, validation_message = self.planner._validate_step(
+                                    new_action, new_args, current_result, context
+                                )
+
+                                if success:
+                                    print(f"{Fore.GREEN}✅ Repair успішний на спробі {repair_attempts}{Fore.RESET}")
+                                    break
+
+                            # Оновлюємо фінальні значення після циклу repair
+                            final_action = current_action
+                            final_args = current_args
+                            final_result = current_result
+                            prepared_step = current_step
+
+                            # Якщо repair не допоміг — пробуємо replan (один раз)
+                            if not success:
+                                replan_attempts = context.get("replan_attempts", 0)
+                                if replan_attempts < MAX_REPLAN_ATTEMPTS:
+                                    context["replan_attempts"] = replan_attempts + 1
+                                    print(f"{Fore.MAGENTA}🧭 Repair не вдався, пробую перепланування...{Fore.RESET}")
+                                    replanned_steps = self.planner.propose_replan(
+                                        command_text, prepared_step, final_result, context, []
+                                    )
+                                    if replanned_steps:
+                                        print(f"{Fore.MAGENTA}✅ Переплановано: додано {len(replanned_steps)} кроків{Fore.RESET}")
                                     else:
-                                        print(f"{Fore.CYAN}🔁 Repair-крок: {final_action}{Fore.RESET}")
-                                        final_result = self.registry.execute_function(final_action, final_args)
-                                        success, validation_message = self.planner._validate_step(final_action, final_args, final_result, context)
-                                        prepared_step = repaired
-
-                                        replan_attempts = context.get("replan_attempts", 0)
-                                        if not success and replan_attempts < MAX_REPLAN_ATTEMPTS:
-                                            context["replan_attempts"] = replan_attempts + 1
-                                            replanned_steps = self.planner.propose_replan(
-                                                command_text,
-                                                prepared_step,
-                                                final_result,
-                                                context,
-                                                [],
-                                            )
-                                            if replanned_steps:
-                                                print(f"{Fore.MAGENTA}🧭 Переплановую задачу: додано {len(replanned_steps)} нових кроків.{Fore.RESET}")
-                                            else:
-                                                print(f"{Fore.YELLOW}⚠️ Перепланування не дало безпечного продовження.{Fore.RESET}")
+                                        print(f"{Fore.YELLOW}⚠️ Перепланування не дало результату{Fore.RESET}")
 
                         self.planner.update_context_from_result(
                             {"action": final_action, "args": final_args},
@@ -394,11 +436,11 @@ class VoiceAssistant:
 
             # Перевірка кешу (тільки якщо увімкнено в налаштуваннях)
             if self._is_cache_enabled() and not skip_cache:
-                cached_response, action_info = self.cache_manager.get(command_text)
-                if cached_response:
-                    print(f"{Fore.YELLOW}⚡ [Кеш]")
+                cached_response, is_cached = self.cache_manager.get(command_text)
+                if is_cached and cached_response:
+                    print(f"{Fore.CYAN}💾 [Кеш] Використано кешовану відповідь")
                     self.log_to_gui("assistant", cached_response)
-                    
+
                     if self.should_speak_response(cached_response):
                         speakable_text = self.extract_speakable_text(cached_response)
                         if speakable_text:
@@ -407,15 +449,6 @@ class VoiceAssistant:
                                 args=(speakable_text,),
                                 daemon=True
                             ).start()
-                    
-                    if action_info:
-                        print(f"{Fore.MAGENTA}🔄 Виконую дію з кешу...")
-                        execution_result = self.cache_manager.execute_cached_action(action_info)
-                        if execution_result:
-                            print(f"{Fore.GREEN}✅ Дія виконана: {execution_result}")
-                            self.log_to_gui("assistant", execution_result)
-                        else:
-                            print(f"{Fore.YELLOW}⚠️  Дію не виконано")
                     
                     print(f"{Fore.LIGHTBLACK_EX}⏱️  0.00с")
                     return
@@ -440,7 +473,7 @@ class VoiceAssistant:
                     print(f"{Fore.LIGHTBLACK_EX}⏱️  {elapsed:.2f}с")
                     
                     if self._is_cache_enabled():
-                        self.cache_manager.set(command_text, quick_result)
+                        self.cache_manager.set(command_text, quick_result)  # Кешує тільки idempotent
                     return
             
             # LLM маршрут
@@ -459,21 +492,55 @@ class VoiceAssistant:
                     print(f"{Fore.MAGENTA}🤔 [Думаю (стрімінг)...]")
                     start_llm = time.time()
 
-                    # Лічильник отриманих токенів для статусу (у чат не ллємо сирий текст)
-                    chunk_count = {"n": 0}
+                    # Почати streaming в GUI
+                    if self.gui_log_callback:
+                        self.gui_log_callback("stream_start", None)
+
+                    # Буфер для накопичення тексту перед виведенням
+                    buffer_data = {"text": "", "displayed": "", "count": 0}
+                    MIN_BUFFER = 180  # ~2-3 речення перед виведенням
+                    SENTENCE_END = ('. ', '! ', '? ', '\n')  # Кінці речень (з пробілом)
+
+                    def flush_buffer():
+                        """Вивести накопичений буфер в чат."""
+                        if buffer_data["text"] and self.gui_log_callback:
+                            # Виводимо тільки нову частину
+                            new_part = buffer_data["text"][len(buffer_data["displayed"]):]
+                            if new_part:
+                                self.gui_log_callback("stream_chunk", new_part)
+                                buffer_data["displayed"] = buffer_data["text"]
 
                     def on_chunk(chunk_text: str):
                         nonlocal full_response
                         full_response += chunk_text
-                        chunk_count["n"] += 1
-                        # Оновлюємо статус-бар (НЕ чат) — подія 'update_status' обробляється окремо
-                        if self.gui_log_callback and chunk_count["n"] % 5 == 0:
+                        buffer_data["text"] += chunk_text
+                        buffer_data["count"] += 1
+
+                        # Перевіряємо чи треба flush (кінець речення або накопичено достатньо)
+                        should_flush = (
+                            buffer_data["text"].rstrip().endswith(SENTENCE_END) or
+                            len(buffer_data["text"]) - len(buffer_data["displayed"]) >= MIN_BUFFER
+                        )
+
+                        if should_flush and self.gui_log_callback:
+                            flush_buffer()
+
+                        # Оновлюємо статус-бар (кожні 10 токенів)
+                        if self.gui_log_callback and buffer_data["count"] % 10 == 0:
                             self.gui_log_callback(
                                 "update_status",
-                                f"💭 Генерую відповідь... ({chunk_count['n']} токенів)",
+                                f"💭 Генерую... ({buffer_data['count']} токенів)",
                             )
 
                     self.streaming_handler.stream_response_with_callback(messages, on_chunk)
+
+                    # Фінальний flush залишку
+                    if buffer_data["text"] and len(buffer_data["text"]) > len(buffer_data["displayed"]):
+                        flush_buffer()
+
+                    # Завершити streaming в GUI
+                    if self.gui_log_callback:
+                        self.gui_log_callback("stream_end", None)
 
                     llm_time = time.time() - start_llm
                 except Exception as e:
@@ -509,9 +576,11 @@ class VoiceAssistant:
                         daemon=True
                     ).start()
             
-            # Зберегти в кеш (крім planner-команд, і тільки якщо увімкнено)
+            # Зберегти в кеш (крім planner-команд, і тільки idempotent)
             if self._is_cache_enabled() and not skip_cache:
-                self.cache_manager.set(command_text, final_answer)
+                cached = self.cache_manager.set(command_text, final_answer)
+                if not cached:
+                    print(f"{Fore.LIGHTBLACK_EX}💾 [Кеш] Пропущено (не idempotent)")
             
             elapsed = time.time() - start_total
             print(f"{Fore.LIGHTBLACK_EX}⏱️  {elapsed:.2f}с (LLM: {llm_time:.2f}с)")

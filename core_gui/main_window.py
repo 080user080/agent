@@ -39,13 +39,20 @@ class AssistantGUI(
         self.idle_timeout = 300  # 5 хвилин
         self.last_input_time = time.time()
 
-        # Налаштування вікна
-        self.root.geometry("500x400")
+        # Налаштування вікна (збережена геометрія або дефолт)
+        try:
+            from functions.core_settings import get_setting
+            saved_geom = get_setting("WINDOW_GEOMETRY", None)
+        except Exception:
+            saved_geom = None
+        self.root.geometry(saved_geom if saved_geom else "500x400")
         self.root.configure(bg='#f0f0f0')
         self.root.resizable(True, True)
         # Прозорість вимкнена — повна непрозорість
         self.root.attributes('-alpha', 1.0)
         self.root.minsize(450, 550)  # Мінімальний розмір
+        # Зберегти геометрію при закритті
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         # Стилі
         self.style = ttk.Style()
@@ -111,8 +118,8 @@ class AssistantGUI(
         self._settings_built = False
         self.notebook.bind('<<NotebookTabChanged>>', self._on_tab_changed)
 
-        # --- Панель плану виконання (прихована за замовчуванням) ---
-        self.plan_frame = ttk.Frame(main_container, relief='solid', borderwidth=1)
+        # --- Панель плану виконання (всередині вкладки Чат, під чатом) ---
+        self.plan_frame = ttk.Frame(chat_frame, relief='solid', borderwidth=1)
 
         plan_header = ttk.Frame(self.plan_frame)
         plan_header.pack(fill='x', padx=5, pady=(5, 2))
@@ -134,9 +141,20 @@ class AssistantGUI(
         )
         self.plan_collapse_btn.pack(side='right')
 
-        # Контейнер для списку кроків
-        self.plan_steps_container = ttk.Frame(self.plan_frame)
-        self.plan_steps_container.pack(fill='x', padx=5, pady=(0, 5))
+        # Контейнер для списку кроків з обмеженою висотою і прокруткою
+        plan_scroll_frame = ttk.Frame(self.plan_frame)
+        plan_scroll_frame.pack(fill='x', padx=5, pady=(0, 5))
+
+        plan_canvas = tk.Canvas(plan_scroll_frame, height=150, highlightthickness=0)
+        plan_scrollbar = ttk.Scrollbar(plan_scroll_frame, orient='vertical', command=plan_canvas.yview)
+        self.plan_steps_container = ttk.Frame(plan_canvas)
+
+        plan_canvas.configure(yscrollcommand=plan_scrollbar.set)
+        plan_canvas.pack(side='left', fill='x', expand=True)
+        plan_scrollbar.pack(side='right', fill='y')
+
+        plan_canvas.create_window((0, 0), window=self.plan_steps_container, anchor='nw')
+        self.plan_steps_container.bind('<Configure>', lambda e: plan_canvas.configure(scrollregion=plan_canvas.bbox('all')))
 
         # Прогрес-бар у панелі плану
         self.plan_progress_var = tk.IntVar()
@@ -386,6 +404,16 @@ class AssistantGUI(
     # ============================================================
     # ЗАПУСК
     # ============================================================
+
+    def _on_close(self):
+        """Зберегти геометрію вікна перед закриттям."""
+        try:
+            from functions.core_settings import get_settings
+            geom = self.root.geometry()
+            get_settings().set("WINDOW_GEOMETRY", geom, persist=True)
+        except Exception:
+            pass
+        self.root.destroy()
 
     def run(self):
         """Запустити GUI (mainloop)."""

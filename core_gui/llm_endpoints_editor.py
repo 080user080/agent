@@ -38,12 +38,12 @@ class LLMEndpointsEditor:
         self._vars: list[dict] = []  # [{field_key: tk.Variable, ...}, ...]
 
         # Контейнер для всіх моделей
-        container = ttk.Frame(parent)
-        container.grid(row=row, column=0, columnspan=3, sticky='ew', padx=20, pady=8)
-        container.columnconfigure(0, weight=1)
+        self.container = ttk.Frame(parent)
+        self.container.grid(row=row, column=0, columnspan=3, sticky='ew', padx=20, pady=8)
+        self.container.columnconfigure(0, weight=1)
 
         for idx, ep in enumerate(endpoints):
-            self._render_endpoint(container, idx, ep)
+            self._render_endpoint(self.container, idx, ep)
 
     def _render_endpoint(self, parent, idx: int, ep: dict):
         """Намалювати один ендпоїнт у LabelFrame з grid-розкладкою полів."""

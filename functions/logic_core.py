@@ -260,12 +260,32 @@ class FunctionRegistry:
         
         return prompt
     
-    def execute_function(self, action, params):
-        """Виконати функцію за назвою з аудитом"""
+    def execute_function(self, action, params, auto_create=True):
+        """Виконати функцію за назвою з аудитом.
+
+        Якщо функція не знайдена і auto_create=True — спробувати створити її
+        через Архітектор (create_skill).
+        """
         audit = get_audit_log()
         risk = get_tool_risk(action)
 
         if action not in self.functions:
+            # Автоматичне створення функції через Архітектор
+            if auto_create and action != "create_skill" and "create_skill" in self.functions:
+                print(f"{Fore.YELLOW}🏗️  Функція '{action}' не знайдена — створюю через Архітектор...")
+                try:
+                    create_fn = self.functions["create_skill"]["function"]
+                    task_desc = f"Функція з назвою '{action}' приймає параметри: {params}"
+                    create_fn(task_description=task_desc)
+                    # Після refresh() функції перезавантажуються
+                    if action in self.functions:
+                        print(f"{Fore.GREEN}✅ Функція '{action}' створена, виконую...")
+                        return self.execute_function(action, params, auto_create=False)
+                    else:
+                        print(f"{Fore.YELLOW}⚠️  Архітектор не створив функцію з точною назвою '{action}'")
+                except Exception as e:
+                    print(f"{Fore.RED}❌ Помилка Архітектора: {e}")
+
             result = normalize_tool_result(f"{Fore.RED}❌ Функція {action} не знайдена")
             self.last_tool_result = result
             audit.log(action, params, result, risk)

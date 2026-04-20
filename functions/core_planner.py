@@ -20,6 +20,36 @@ class Planner:
             return self.assistant.ask_llm(prompt)
         return ""
 
+    def _detect_llm_error(self, response: str, task: str) -> bool:
+        """Детектувати помилки моделі або з'єднання.
+
+        Args:
+            response: Відповідь від LLM
+            task: Оригінальна задача
+
+        Returns:
+            True якщо це помилка (помилка вже залогована)
+        """
+        response_lower = response.lower()
+
+        # Помилка: модель не завантажена
+        if "модель не завантажена" in response_lower or "no models loaded" in response_lower:
+            print(f"{Fore.RED}❌ Планер: Модель LM Studio не завантажена{Fore.RESET}")
+            print(f"{Fore.YELLOW}⚠️  Перейдіть у вкладку 'Налаштування' → 'LLM Ендпоінти' для налаштування{Fore.RESET}")
+            return True
+
+        # Помилка: не вдається підключитися
+        if "не відповідає" in response_lower or "не вдається підключитися" in response_lower:
+            print(f"{Fore.RED}❌ Планер: Немає з'єднання з LM Studio{Fore.RESET}")
+            return True
+
+        # Інші API помилки (починаються з "❌" або "Помилка:")
+        if response.startswith("❌") or response.startswith("Помилка:"):
+            print(f"{Fore.RED}❌ Планер: Помилка LLM API — виконую без планування{Fore.RESET}")
+            return True
+
+        return False
+
     def should_plan(self, task: str) -> bool:
         """Чи схожа задача на багатокрокову."""
         normalized = task.lower().strip()
@@ -203,30 +233,57 @@ class Planner:
 ВАЖЛИВО: завжди читай файл (`read_code_file`) перед тим як його редагувати.
 """
 
-        prompt = f"""
-Ти planner локального асистента. Розбий задачу на безпечні послідовні кроки.
+        prompt = f"""ТИ — PLANNER (планувальник). Твоя задача: розбити запит користувача на послідовність дій.
 
-ВИКОРИСТОВУЙ ЛИШЕ ЦІ ФУНКЦІЇ:
+ВАЖЛИВО: відповідай ТІЛЬКИ JSON-масивом. БЕЗ пояснень, БЕЗ вступів, БЕЗ привітань.
+
+ДОСТУПНІ ФУНКЦІЇ:
 {available_actions}
 {history_section}{context_section}{coding_section}
-ПРАВИЛА:
-- Поверни ТІЛЬКИ JSON-масив: [{{...}}, {{...}}, ...]  ОБОВ'ЯЗКОВО з квадратними дужками!
-- Кожен елемент має формат:
-  {{"action":"назва_функції","args":{{...}},"goal":"що має статись","validation":"як зрозуміти що крок успішний"}}
-- Якщо користувач посилається на "його"/"цей файл"/"той скрипт" — використовуй інформацію з діалогу вище.
-- Використовуй placeholder-и для посилання на файли з попередніх кроків (див. вище).
-- Не вигадуй функцій, яких немає у списку.
-- Не додавай небезпечні або зайві дії.
-- БЕЗ службових токенів типу <|channel|>, <|message|>, тільки чистий JSON.
+ФОРМАТ ВІДПОВІДІ (строго JSON-масив):
+[
+  {{"action":"назва_функції","args":{{...}},"goal":"що має статись","validation":"як зрозуміти що успіх"}},
+  {{"action":"назва_функції","args":{{...}},"goal":"...","validation":"..."}}
+]
 
-Задача користувача:
-{task}
-"""
+ПРИКЛАД правильної відповіді:
+Задача: "Створи файл test.txt з текстом 'hello'"
+Відповідь: [{{"action":"create_file","filename":"test.txt","content":"hello"}}]
+
+Задача користувача: {task}
+
+Відповідай тільки JSON, без жодного іншого тексту:"""
+        # Спроба 1: звичайний промпт
         response = self._ask_llm(prompt)
-        print(f"{Fore.YELLOW}📋 [Planner{'/coding' if is_coding else ''}] Відповідь LLM:\n{response}{Fore.RESET}")
+        print(f"{Fore.YELLOW}📋 [Planner{'/coding' if is_coding else ''}] Відповідь LLM:\n{response[:200]}...{Fore.RESET}")
+
+        # Перевірка на помилки з'єднання/моделі
+        if self._detect_llm_error(response, task):
+            # Помилка вже залогована, повертаємо None для fallback на прямий LLM
+            return None
 
         parsed = self._extract_json(response)
         plan = self.normalize_plan(parsed)
+
+        # Спроба 2: якщо не вдалося — ще раз з жорсткішим промптом
+        if not plan:
+            print(f"{Fore.YELLOW}⚠️ Планер: перша спроба не вдалася, повторюю...{Fore.RESET}")
+            retry_prompt = f"""ТИ — PLANNER. Розбий задачу на кроки.
+
+ПОПЕРЕДЖЕННЯ: Попередня відповідь була неправильною. Відповідай ТІЛЬКИ JSON.
+
+ФУНКЦІЇ: {available_actions}
+
+ФОРМАТ: [{{"action":"...","args":{{...}},"goal":"..."}}]
+
+Задача: {task}
+
+JSON:"""
+            response2 = self._ask_llm(retry_prompt)
+            print(f"{Fore.YELLOW}📋 [Planner retry] Відповідь:\n{response2[:200]}...{Fore.RESET}")
+            parsed2 = self._extract_json(response2)
+            plan = self.normalize_plan(parsed2)
+
         return plan
 
     def validate_plan_safety(self, plan: List[Dict[str, Any]], task: str) -> Tuple[bool, str]:

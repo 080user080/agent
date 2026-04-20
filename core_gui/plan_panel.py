@@ -28,45 +28,56 @@ class PlanPanelMixin:
         # Очистити попередню панель
         for child in self.plan_steps_container.winfo_children():
             child.destroy()
-        self._plan_step_labels = []
-        self._plan_steps = list(steps_info) if steps_info else []
+        self._plan_steps = []
 
-        total = len(self._plan_steps)
-        self.plan_title_var.set(f"📋 План виконання  (0/{total})")
-        self.plan_progress_var.set(0)
+        for idx, step_info in enumerate(steps_info):
+            action = step_info.get('action', 'unknown')
+            goal = step_info.get('goal', '')
 
-        # Якщо тут нема кроків - не показувати
-        if total == 0:
-            return
+            step_frame = ttk.Frame(self.plan_steps_container)
+            step_frame.pack(fill='x', pady=1)
 
-        # Створити рядки для кожного кроку
-        for step in self._plan_steps:
-            row = ttk.Frame(self.plan_steps_container)
-            row.pack(fill='x', pady=1)
-            icon, color = self._STATUS_ICONS["pending"]
-            label = tk.Label(
-                row,
-                text=f"  {icon}  {step.get('index', 0) + 1}. {step.get('action', '')}"
-                     + (f" — {step.get('goal', '')}" if step.get('goal') else ""),
+            status_icon = "⏳"
+            status_color = "#ffa726"
+
+            status_label = ttk.Label(
+                step_frame,
+                text=status_icon,
                 font=('Segoe UI', 9),
-                fg=color,
-                anchor='w',
-                justify='left',
-                bg='#f5f5f5',
-                padx=5,
-                pady=2,
+                foreground=status_color,
             )
-            label.pack(fill='x')
-            self._plan_step_labels.append(label)
+            status_label.pack(side='left', padx=(0, 5))
 
-        # Показати панель перед confirmation_frame/input_container
-        if not self.plan_frame.winfo_ismapped():
-            self.plan_frame.pack(
-                fill='x', side='bottom', pady=(5, 5), before=self.input_container
+            action_label = ttk.Label(
+                step_frame,
+                text=f"{idx + 1}. {action}",
+                font=('Segoe UI', 9, 'bold'),
+                foreground='#333333',
             )
+            action_label.pack(side='left')
+
+            if goal:
+                goal_label = ttk.Label(
+                    step_frame,
+                    text=f" — {goal}",
+                    font=('Segoe UI', 8),
+                    foreground='#666666',
+                )
+                goal_label.pack(side='left')
+
+            self._plan_steps.append({
+                'frame': step_frame,
+                'status_label': status_label,
+                'action': action,
+                'goal': goal,
+            })
+            self._plan_step_labels.append(status_label)
+
+        # Показати панель в chat_frame під чатом (bottom)
+        if not self.plan_frame.winfo_ismapped():
+            self.plan_frame.pack(fill='x', side='bottom', pady=(5, 5))
         self._plan_expanded = True
         self.plan_collapse_btn.config(text="▼")
-        self.plan_steps_container.pack(fill='x', padx=5, pady=(0, 5))
 
     def update_plan_step(self, data: dict):
         """Оновити статус конкретного кроку."""

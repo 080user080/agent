@@ -79,6 +79,10 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
     },
 
     # --- STT ---
+    "STT_ENABLED": {
+        "type": "bool", "group": "Розпізнавання мови", "label": "Увімкнути STT",
+        "desc": "Голосове розпізнавання мови (мікрофон). Вимкніть для текстового режиму.",
+    },
     "STT_MODEL_TYPE": {
         "type": "choice", "group": "Розпізнавання мови", "label": "Тип STT-моделі",
         "choices": ["whisper", "w2v-bert", "both"],
@@ -167,6 +171,13 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
     "RNNOISE_ENABLED": {
         "type": "bool", "group": "Аудіо-фільтри", "label": "RNNoise шумодав",
         "desc": "Придушення шуму нейромережею.",
+    },
+
+    # --- Прихований stateful (не рендериться в UI) ---
+    "WINDOW_GEOMETRY": {
+        "type": "str", "group": "_hidden", "label": "Розмір і позиція вікна",
+        "desc": "Формат WxH+X+Y. Зберігається автоматично при закритті.",
+        "user_only": True, "hidden": True,
     },
 }
 

@@ -91,12 +91,9 @@ class ChatPanelMixin:
 
         # Прокручуємо до кінця
         self.chat_history.see(tk.END)
+        # Галочка тільки в статус-барі, не в чаті
         if sender == "assistant":
             import time as _time
-            self.chat_history.configure(state='normal')
-            self.chat_history.tag_configure('done_mark', foreground='#4CAF50', font=('Segoe UI', 9))
-            self.chat_history.insert(tk.END, "  ✅\n", ('done_mark',))
-            self.chat_history.see(tk.END)
             ts = _time.strftime('%H:%M:%S')
             if hasattr(self, 'status_var'):
                 self.status_var.set(f"✅ Відповідь готова | {ts}")
@@ -181,11 +178,10 @@ class ChatPanelMixin:
         self.chat_history.configure(state='disabled')
 
     def end_stream_message(self):
-        """Завершити стрімінг (додати новий рядок і мітку готовності)."""
+        """Завершити стрімінг (додати новий рядок і оновити статус)."""
         import time as _time
         self.chat_history.configure(state='normal')
-        self.chat_history.tag_configure('done_mark', foreground='#4CAF50', font=('Segoe UI', 9))
-        self.chat_history.insert(self.stream_insert_pos, "  ✅\n", ('done_mark',))
+        self.chat_history.insert(self.stream_insert_pos, "\n")
         self.chat_history.see(tk.END)
         self.chat_history.configure(state='disabled')
         ts = _time.strftime('%H:%M:%S')

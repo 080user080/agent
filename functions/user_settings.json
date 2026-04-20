@@ -3,6 +3,7 @@
   "ACTIVE_MODE": "normal",
   "AGENT_MODE": "coding",
   "LM_STUDIO_URL": "http://localhost:1234/v1/chat/completions",
+  "STT_ENABLED": false,
   "STT_MODEL_TYPE": "whisper",
   "STT_MODEL_ID": "large-v3",
   "STT_LANGUAGE": "uk",
@@ -25,12 +26,12 @@
   "LLM_ENDPOINTS": [
     {
       "id": "llm1",
-      "name": "LM Studio (локальна)",
+      "name": "DeepSeek Coder",
       "enabled": true,
       "role": "primary",
       "type": "openai_compatible",
       "url": "http://localhost:1234/v1/chat/completions",
-      "model": "local-model",
+      "model": "deepseek-coder-v2-lite-instruct",
       "api_key": "",
       "temperature": 0.1,
       "max_tokens": 1024,
@@ -43,12 +44,12 @@
     },
     {
       "id": "llm2",
-      "name": "Додаткова модель #2",
-      "enabled": false,
+      "name": "GPT-OSS-20B",
+      "enabled": true,
       "role": "secondary",
       "type": "openai_compatible",
-      "url": "",
-      "model": "",
+      "url": "http://localhost:1234/v1/chat/completions",
+      "model": "openai/gpt-oss-20b",
       "api_key": "",
       "temperature": 0.1,
       "max_tokens": 1024,
@@ -113,5 +114,6 @@
       "rate_limit_rpm": 60,
       "rate_limit_total": 1000
     }
-  ]
+  ],
+  "WINDOW_GEOMETRY": "590x691+1290+187"
 }

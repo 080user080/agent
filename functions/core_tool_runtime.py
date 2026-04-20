@@ -22,30 +22,35 @@ CATEGORY_META = "meta"
 
 TOOL_POLICIES: Dict[str, Dict[str, Any]] = {
     # --- Безпечні файлові операції (тільки Desktop) ---
+    # idempotent=True — функції, які можна кешувати (чисті обчислення/читання)
     "create_file": {"risk": SAFE, "category": CATEGORY_FILE, "description": "Створення txt файлу на Desktop"},
     "edit_file": {"risk": SAFE, "category": CATEGORY_FILE, "description": "Редагування файлу з бекапом"},
+    "create_folder": {"risk": SAFE, "category": CATEGORY_FILE, "description": "Створення папки"},
+    "search_in_text": {"risk": SAFE, "category": CATEGORY_META, "description": "Пошук у тексті", "idempotent": True},
+    "count_words": {"risk": SAFE, "category": CATEGORY_META, "description": "Підрахунок слів", "idempotent": True},
 
     # --- Python sandbox (безпечний) ---
-    "execute_python": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Виконання Python в пісочниці"},
-    "execute_python_code": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Alias для execute_python"},
+    # execute_python ідемпотентний тільки без побічних ефектів
+    "execute_python": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Виконання Python в пісочниці", "idempotent": True},
+    "execute_python_code": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Alias для execute_python", "idempotent": True},
     "execute_python_file": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Виконання файлу з пісочниці"},
     "debug_python_code": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Автовиправлення Python коду"},
-    "list_sandbox_scripts": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Список скриптів пісочниці"},
+    "list_sandbox_scripts": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Список скриптів пісочниці", "idempotent": True},
 
     # --- Браузер і медіа ---
     "open_browser": {"risk": SAFE, "category": CATEGORY_BROWSER, "description": "Відкриття URL у браузері"},
     "voice_input": {"risk": SAFE, "category": CATEGORY_MEDIA, "description": "Голосовий ввід"},
 
     # --- Мета-дії ---
-    "show_sandbox_status": {"risk": SAFE, "category": CATEGORY_META, "description": "Показати стан пісочниці"},
+    "show_sandbox_status": {"risk": SAFE, "category": CATEGORY_META, "description": "Показати стан пісочниці", "idempotent": True},
     "confirm_action": {"risk": SAFE, "category": CATEGORY_META, "description": "Запит підтвердження"},
 
-    # --- Code tools (читання безпечно, git-операції також) ---
-    "read_code_file": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Читання файлу з кодом"},
-    "search_in_code": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Пошук у файлах"},
-    "list_directory": {"risk": SAFE, "category": CATEGORY_FILE, "description": "Вміст директорії"},
-    "git_status": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Git status"},
-    "git_diff": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Git diff"},
+    # --- Code tools (читання безпечно) ---
+    "read_code_file": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Читання файлу з кодом", "idempotent": True},
+    "search_in_code": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Пошук у файлах", "idempotent": True},
+    "list_directory": {"risk": SAFE, "category": CATEGORY_FILE, "description": "Вміст директорії", "idempotent": True},
+    "git_status": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Git status", "idempotent": True},
+    "git_diff": {"risk": SAFE, "category": CATEGORY_CODE, "description": "Git diff", "idempotent": True},
 
     # --- Системні дії (потрібне підтвердження) ---
     "open_program": {"risk": CONFIRM_REQUIRED, "category": CATEGORY_SYSTEM, "description": "Відкрити програму"},
