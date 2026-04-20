@@ -25,11 +25,13 @@ class TestOCREngine:
 
     @pytest.fixture
     def mock_pil_image(self):
-        """Фікстура для mock PIL Image."""
-        img = MagicMock()
-        img.mode = 'RGB'
-        img.size = (100, 30)
-        return img
+        """Фікстура для реального PIL Image (маленький білий 100x30).
+
+        Використовуємо справжній Image, бо recognize() робить isinstance-перевірку
+        на PIL.Image.Image, і MagicMock не проходить.
+        """
+        from PIL import Image
+        return Image.new('RGB', (100, 30), color='white')
 
     @patch('functions.tools_ocr.PYTESSERACT_AVAILABLE', True)
     @patch('functions.tools_ocr.pytesseract')
@@ -255,7 +257,7 @@ class TestOCRIntegration:
         result = ocr_region(100, 100, 200, 100)
 
         assert result['success'] is True
-        mock_ocr.ocr_region.assert_called_once_with(100, 100, 200, 100, save_screenshot=None)
+        mock_ocr.ocr_region.assert_called_once_with(100, 100, 200, 100, None)
 
     @patch('functions.tools_ocr._get_screen_ocr')
     def test_find_text_on_screen_integration(self, mock_get_ocr):

@@ -19,43 +19,49 @@ class TestSessionMemory:
     def test_init_creates_empty_session(self):
         """Сесія створюється порожньою."""
         session = SessionMemory()
-        assert session.command_count == 0
-        assert session.error_count == 0
-        assert session.file_paths == []
+        assert session.counters["commands"] == 0
+        assert session.counters["errors"] == 0
+        assert session.counters["plans"] == 0
+        assert session.active_files == []
+        assert session.current_task is None
 
     def test_track_command_increments_count(self):
         """track_command збільшує лічильник."""
         session = SessionMemory()
         session.track_command()
         session.track_command()
-        assert session.command_count == 2
+        assert session.counters["commands"] == 2
 
     def test_track_error_increments_count(self):
         """track_error збільшує лічильник помилок."""
         session = SessionMemory()
         session.track_error()
-        assert session.error_count == 1
+        assert session.counters["errors"] == 1
 
-    def test_add_file_path_tracks_unique(self):
-        """add_file_path відстежує унікальні шляхи."""
+    def test_add_active_file_tracks_unique(self):
+        """add_active_file відстежує унікальні шляхи."""
         session = SessionMemory()
-        session.add_file_path("/path/to/file1.txt")
-        session.add_file_path("/path/to/file2.txt")
-        session.add_file_path("/path/to/file1.txt")  # Дублікат
-        assert len(session.file_paths) == 2
+        session.add_active_file("/path/to/file1.txt")
+        session.add_active_file("/path/to/file2.txt")
+        session.add_active_file("/path/to/file1.txt")  # Дублікат
+        assert len(session.active_files) == 2
 
-    def test_session_stats(self):
-        """get_stats повертає правильну статистику."""
+    def test_snapshot_returns_full_state(self):
+        """snapshot() повертає повний стан сесії."""
         session = SessionMemory()
         session.track_command()
         session.track_command()
         session.track_error()
-        session.add_file_path("test.txt")
+        session.add_active_file("test.txt")
+        session.set_current_task("Тестова задача")
 
-        stats = session.get_stats()
-        assert stats["commands"] == 2
-        assert stats["errors"] == 1
-        assert len(stats["files_created"]) == 1
+        snap = session.snapshot()
+        assert snap["counters"]["commands"] == 2
+        assert snap["counters"]["errors"] == 1
+        assert snap["active_files"] == ["test.txt"]
+        assert snap["current_task"] == "Тестова задача"
+        assert "session_id" in snap
+        assert "started_at" in snap
 
 
 class TestTaskMemory:
@@ -91,24 +97,24 @@ class TestTaskMemory:
 class TestMemoryManager:
     """Тести для MemoryManager."""
 
-    def test_init_creates_memory(self):
+    def test_init_creates_memory(self, tmp_path):
         """Ініціалізація створює структуру пам'яті."""
-        mm = MemoryManager()
+        mm = MemoryManager(storage_path=tmp_path / "memory.json")
         assert mm.memory is not None
         assert "history" in mm.memory
         assert "task_summaries" in mm.memory
 
-    def test_start_task_creates_task(self):
+    def test_start_task_creates_task(self, tmp_path):
         """start_task створює TaskMemory."""
-        mm = MemoryManager()
+        mm = MemoryManager(storage_path=tmp_path / "memory.json")
         task_id = mm.start_task("Створи файл")
         assert task_id in mm.tasks
         assert mm.current_task_id == task_id
 
-    def test_finish_task_without_llm(self):
+    def test_finish_task_without_llm(self, tmp_path):
         """finish_task працює без LLM caller."""
-        mm = MemoryManager()
-        task_id = mm.start_task("Тестова задача")
+        mm = MemoryManager(storage_path=tmp_path / "memory.json")
+        mm.start_task("Тестова задача")
         mm.record_task_plan([{"action": "test", "args": {}}])
         mm.record_task_step({
             "action": "test",
@@ -120,26 +126,33 @@ class TestMemoryManager:
         assert finished is not None
         assert finished.status == "success"
 
-    def test_get_recent_history_empty(self):
-        """get_recent_history повертає порожній список без історії."""
-        mm = MemoryManager()
-        recent = mm.get_recent_history()
-        assert recent == []
+    def test_history_empty_by_default(self, tmp_path):
+        """Без update_task історія порожня."""
+        mm = MemoryManager(storage_path=tmp_path / "memory.json")
+        assert mm.memory["history"] == []
 
-    def test_get_recent_history_with_items(self):
-        """get_recent_history повертає останні items."""
-        mm = MemoryManager()
-        mm.record_to_history("user", "команда 1")
-        mm.record_to_history("assistant", "відповідь 1")
-        mm.record_to_history("user", "команда 2")
+    def test_update_task_appends_to_history(self, tmp_path):
+        """update_task додає запис до history."""
+        mm = MemoryManager(storage_path=tmp_path / "memory.json")
+        mm.update_task("задача 1", [{"action": "a"}], [{"status": "ok"}])
+        mm.update_task("задача 2", [{"action": "b"}], [{"status": "ok"}])
 
-        recent = mm.get_recent_history(count=2)
-        assert len(recent) == 2
-        assert recent[0]["role"] == "assistant"
+        history = mm.memory["history"]
+        assert len(history) == 2
+        assert history[-1]["task"] == "задача 2"
+        assert mm.memory["last_task"] == "задача 2"
 
-    def test_fallback_summary(self):
+    def test_history_capped_at_20(self, tmp_path):
+        """History обмежена 20 елементами."""
+        mm = MemoryManager(storage_path=tmp_path / "memory.json")
+        for i in range(25):
+            mm.update_task(f"задача {i}", [], [])
+        assert len(mm.memory["history"]) == 20
+        assert mm.memory["history"][-1]["task"] == "задача 24"
+
+    def test_fallback_summary(self, tmp_path):
         """fallback summary працює без LLM."""
-        mm = MemoryManager()
+        mm = MemoryManager(storage_path=tmp_path / "memory.json")
         task = TaskMemory("task1", "Тест")
         task.step_results = [
             {"action": "step1", "status": "ok"},
@@ -185,8 +198,9 @@ class TestMemoryIntegration:
         task = mm.finish_task("success")
         assert task.status == "success"
 
-        # Перевірка сесії
-        assert mm.session.command_count >= 1
+        # Перевірка сесії: start_task збільшує лічильник планів
+        assert mm.session.counters["plans"] >= 1
+        assert mm.session.current_task == "Створи калькулятор"
 
 
 if __name__ == "__main__":
