@@ -251,9 +251,10 @@ tests/
 | 5 | Розумна навігація по UI | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
 | 6 | Безпека та журнал дій | ✅ **Завершено** | ✅ Готово | 20.04.2026 |
 | 7 | Навчання, адаптація, профілі, макроси | 🟡 Фундамент у роботі | 🟡 Середній | 4–6 тижнів |
-| 8 | **Автономія (Watcher, довгі сесії)** | 🔴 Не розпочато | 🔴 Високий | 4–6 тижнів |
-| 9 | **Оркестрація інших ШІ** (API + браузер) | 🔴 Не розпочато | 🔴 Високий | 6–8 тижнів |
+| 8 | **Автономія (Watcher, довгі сесії)** | 🟢 Скелет готовий (I1+I2+I3) | 🔴 Високий | 4–6 тижнів |
+| 9 | **Оркестрація інших ШІ** (API + браузер) | 🟢 Скелет готовий (J1+J2+J3) | 🔴 Високий | 6–8 тижнів |
 | 10 | Універсальні домени (фото/відео/ComfyUI/офіс/браузер) | 🔴 Не розпочато | 🟡 Середній | постійно |
+| 11 | **Autonomous Task Orchestrator** (TaskRunner + PermissionGate + ExecutionReport) | 🔴 Не розпочато | 🔴 **Критичний** | 1-й спринт |
 
 ---
 
@@ -852,6 +853,107 @@ pip install easyocr
 ### 10.6 Тести Phase 10
 
 - [ ] По-доменні, drip-in: додаємо разом із кожним новим інструментом.
+
+---
+
+## 🚀 Phase 11: Autonomous Task Orchestrator (верхній рівень автономії)
+
+**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔴 Критичний | **Термін:** 1-й спринт
+
+**Мета:** Дати **єдиний верхній рівень**, який дозволяє сказати агенту «виконай усі задачі з цього файлу й дай звіт» — і він реально їх виконує, використовуючи всі примітиви з Phase 1–10. Це те, що перетворює набір модулів на `autopilot`.
+
+**Ключовий сценарій (приклад користувача):**
+> «Виконай усі задачі по файлу status.md. На питання про запуск команд давай дозвіл, якщо це стосується поточного проекту й не шкодить ПК. По закінченні задай в Windsurf рефакторинг пройти 3 рази. По пунктах створиш звіт по кожному виконанню тезисно із часом виконання.»
+
+Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат плану + інтеграція з усім, що вже побудовано.
+
+### 11.1 `functions/logic_task_runner.py` — TaskRunner
+
+- [ ] **Типи:** `Task` (dataclass з `id`, `name`, `kind`, `params`, `on_error`, `depends_on`), `Plan` (упорядкований список `Task`-ів + метадані), `StepResult`.
+- [ ] **`TaskRunner.run(plan, budget=None, gate=None, report=None)`** — послідовне виконання; на `on_error=stop/skip/retry`, на watcher-like умовах — чекання; автоматичне оновлення `SessionBudget`/`ExecutionReport`.
+- [ ] **Kind-и (handler-реєстр):**
+  - `run_command` — subprocess з PermissionGate.
+  - `edit_file` / `write_file` / `read_file` — файлові операції.
+  - `call_provider` — `ProviderRegistry.chat()` з промптом.
+  - `delegate_to_windsurf` / `delegate_to_cursor` — через J4 (browser-адаптер).
+  - `watch_until` — крутить `Watcher` з конкретним condition'ом, блокується до спрацьовування або budget-ліміту.
+  - `sub_plan` — рекурсивний `TaskRunner` (ієрархія підзадач).
+  - `sleep` / `noop` / `log` — службові.
+- [ ] **Формат плану (JSON за замовчуванням):**
+  ```json
+  {
+    "name": "refactor-and-delegate",
+    "tasks": [
+      {"id": "t1", "kind": "run_command", "params": {"cmd": "pytest -q"}},
+      {"id": "t2", "kind": "call_provider", "params": {"prompt": "Підсумуй результат t1", "registry": "default"}, "depends_on": ["t1"]},
+      {"id": "t3", "kind": "delegate_to_windsurf", "params": {"prompt": "Refactor as discussed", "times": 3}},
+      {"id": "t4", "kind": "noop", "params": {"note": "done"}}
+    ]
+  }
+  ```
+- [ ] **markdown-план** (через окремий `logic_plan_parser.py`): секції `### N. Назва` → `run_command`-crud із блоків ` ```bash … ``` `.
+- [ ] **Дефолти:** `on_error="stop"`; `project_root` = cwd; звіт у `logs/reports/run_{timestamp}.md`.
+
+### 11.2 `functions/logic_permission_gate.py` — PermissionGate
+
+- [ ] **`PermissionRequest(action, resource, reason, metadata)`** + `Decision(allow, persist, note)`.
+- [ ] **Policy stack (виконується в порядку):**
+  1. **Always-deny** (regex / patterns): `rm -rf /`, `sudo *`, `:(){:|:&};:`, запис у `/etc`, `/System`, `C:\Windows\System32\...`, мережеве з'єднання з привілейованих портів.
+  2. **Always-allow whitelist:** git status/diff/log/branch, `ls`, `cat`, `python -m pytest`, `ruff check`, і будь-що повністю в `project_root`.
+  3. **Per-session-allow cache:** користувач уже дозволив цю дію в цій сесії → повторно не питати.
+  4. **Ask-user** через callback `ask_fn(request) -> Decision`. У тестах — мок. У прод — GUI-попап (core_gui-тред).
+- [ ] **Persistent allow-list** (опційно): JSON-файл `~/.marc/permissions.json` з записами, які юзер погодив «назавжди для цього типу дії».
+- [ ] **`check(action, resource)`** повертає `Decision` без викликів зовнішніх систем (чистий helper).
+
+### 11.3 `functions/logic_execution_report.py` — ExecutionReport
+
+- [ ] **`StepReport`** (`task_id, task_name, status, started_at, finished_at, duration_s, summary, stdout_tail, error, cost_usd, tokens`).
+- [ ] **`ExecutionReport`:** `record(step)`, `add_event(msg)`, `to_markdown()`, `to_json()`, `to_text()` (компактний формат тезами з таймінгами), `save(path)`.
+- [ ] **Формат markdown за замовчуванням:**
+  ```markdown
+  # Звіт виконання: refactor-and-delegate
+  Початок: 2026-04-20 21:00:00 | Кінець: 2026-04-20 23:15:42 | Тривалість: 2h 15m 42s
+
+  ## 1. Запуск тестів (run_command) ✅
+  - Час: 21:00:00 → 21:03:20 (3m 20s)
+  - `pytest -q`: 270 passed
+  - ---
+  ## 2. Підсумок від LM Studio (call_provider) ✅
+  - Час: 21:03:22 → 21:03:45 (23s)
+  - Tokens: 1450 prompt / 320 completion | Cost: $0.00
+  - Summary: «Усі тести пройшли, лишились 2 DeprecationWarning в tests/test_core_memory.py»
+  - ---
+  ## 3. Windsurf — рефакторинг × 3 (delegate_to_windsurf) ⚠️
+  - Спроба 1: 21:04 → 21:42 (38m) — виконано
+  - Спроба 2: 21:45 → 22:18 (33m) — виконано
+  - Спроба 3: 22:20 → 23:15 (55m) — **timeout** (budget exhausted)
+  ```
+- [ ] Автоматичне додавання `SessionBudget.snapshot()` та `ProviderRegistry.describe_all()` у `footer`.
+
+### 11.4 Інтеграція з існуючими примітивами
+
+- [ ] `Task.kind="watch_until"` викликає `Watcher` (Phase 8 / I1).
+- [ ] `Task.kind="call_provider"` викликає `ProviderRegistry.chat()` (Phase 9 / J2).
+- [ ] Усі task-и інкрементують лічильники `SessionBudget` (Phase 8 / I2) — kill-switch на 3–6 год працює *весь plan*, не окремі кроки.
+- [ ] `PermissionGate` — прошарок ПЕРЕД subprocess / writefile / HTTP, незалежно від того, хто його викликав.
+- [ ] GUI (Phase 7+): вкладка «План» для перегляду прогресу `ExecutionReport` у реальному часі — буде в окремому PR після MVP.
+
+### 11.5 Тести Phase 11
+
+- [ ] `tests/test_logic_task_runner.py` — виконання простих плану (10+ тестів).
+- [ ] `tests/test_logic_permission_gate.py` — allow/deny/ask-cache (15+ тестів, всі з mock `ask_fn`).
+- [ ] `tests/test_logic_execution_report.py` — запис / markdown-форматування / save (10+ тестів).
+
+### 11.6 Поведінкові гарантії
+
+| Гарантія | Механізм |
+|---|---|
+| Небезпечна команда → ВІДМОВА | `PermissionGate.always_deny` патерни |
+| Локальна безпечна команда → без питань | `PermissionGate.always_allow` + `project_root` |
+| Невідома команда → питаєм юзера | `ask_fn(request)` callback |
+| План падає на одному кроці → не губимо звіт | `ExecutionReport` автосейв після кожного step-а |
+| Budget вичерпано → негайна зупинка | `SessionBudget.should_stop()` перед кожним task-ом |
+| Результат делегації (Windsurf × 3) → структурований лог | `StepReport` містить метадані кожної спроби |
 
 ---
 
