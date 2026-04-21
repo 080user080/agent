@@ -75,6 +75,11 @@ class LLMEndpointsEditor:
                 var = tk.StringVar(value=str(val) if val is not None else "")
                 show = "*" if field_key == "api_key" and val else None
                 w = ttk.Entry(frame, textvariable=var, width=width or 20, show=show)
+                # Підтримка вставки з буферу обміну (Ctrl+V та Shift+Insert)
+                w.bind('<Control-v>', lambda e, widget=w: self._paste_from_clipboard(widget))
+                w.bind('<Shift-Insert>', lambda e, widget=w: self._paste_from_clipboard(widget))
+                # Контекстне меню (права кнопка миші)
+                w.bind('<Button-3>', lambda e, widget=w: self._show_context_menu(e, widget))
 
             w.grid(row=row, column=col * 2 + 1, sticky='ew', padx=(0, 12), pady=2)
             ep_vars[field_key] = var
@@ -86,6 +91,22 @@ class LLMEndpointsEditor:
                 row += 1
 
         self._vars.append(ep_vars)
+
+    def _paste_from_clipboard(self, widget):
+        """Вставити текст з буферу обміну у віджет."""
+        try:
+            text = widget.clipboard_get()
+            if text:
+                widget.insert(tk.INSERT, text)
+        except tk.TclError:
+            pass  # Буфер обміну порожній або недоступний
+        return 'break'  # Запобігає стандартній обробці
+
+    def _show_context_menu(self, event, widget):
+        """Показати контекстне меню з опцією вставки."""
+        menu = tk.Menu(widget, tearoff=0)
+        menu.add_command(label="Вставити", command=lambda: self._paste_from_clipboard(widget))
+        menu.post(event.x_root, event.y_root)
 
     def get(self) -> list:
         """Зібрати значення з усіх віджетів у список словників."""

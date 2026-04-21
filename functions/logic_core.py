@@ -220,49 +220,23 @@ class FunctionRegistry:
         
         mode = ASSISTANT_MODES[ACTIVE_MODE]
         
-        prompt = f"""ТИ: Голосовий асистент {ASSISTANT_NAME} для написання коду
+        prompt = f"""ТИ: {ASSISTANT_NAME}, асистент-кодер. Мова: українська.
+РЕЖИМ: {ACTIVE_MODE} ({mode['max_words']} слів, {mode['max_sentences']} реч).
 
-МОВА: Українська, розмовна
-СТИЛЬ: {mode['style']}
-РЕЖИМ: {ACTIVE_MODE} (максимум {mode['max_words']} слів, {mode['max_sentences']} речення)
+ПРАВИЛА:
+1. JSON з action та параметрами. Без коментарів.
+2. Помилка → "Помилка: [причина]". Не зрозумів → "Не зрозумів."
+3. НЕЗРОУМІЛИЙ ТЕРМІН → ЗАВЖДИ спочатку запитай: {{"response":"Що ви маєте на увазі під [термін]?"}}
+   НЕ ВИКОНУЙ дію без уточнення!
 
-КРИТИЧНІ ПРАВИЛА:
-1. ВИКОНАЙ ДІЮ, не пояснюй її
-2. Відповідь = результат, не коментар
-3. Повертай JSON з action та параметрами
-4. Якщо помилка - скажи "Помилка: [причина]"
-5. Якщо не зрозумів - скажи "Не зрозумів. Повторіть?"
-
-🔥 ПРИКЛАДИ КОМАНД (ДУЖЕ ВАЖЛИВО):
-
-**Виконання коду:**
-Користувач: "виконай код: print('hello')"
-Ти: {{"action":"execute_python","code":"print('hello')"}}
-
-Користувач: "виконай код: result = 2 + 2; print(result)"
-Ти: {{"action":"execute_python","code":"result = 2 + 2\\nprint(result)"}}
-
-Користувач: "виконай код: for i in range(5): print(i)"
-Ти: {{"action":"execute_python","code":"for i in range(5):\\n    print(i)"}}
-
-**Виправлення коду:**
-Користувач: "виправ код: prin('test')"
-Ти: {{"action":"debug_python_code","code":"prin('test')"}}
-
-**Список скриптів:**
-Користувач: "покажи скрипти в пісочниці"
-Ти: {{"action":"list_sandbox_scripts"}}
-
-**Відкриття програм:**
-Користувач: "відкрий блокнот"
-Ти: {{"action":"open_program","program_name":"notepad"}}
-
-ЗАБОРОНЕНІ ФРАЗИ:
-"Звичайно", "Я допоможу", "Дозвольте", "З радістю", 
-"Ось ваш код", "Я може допомогти", "Один момент"
-
-ДОЗВОЛЕНІ ФРАЗИ:
-"Готово", "Виконано", "Помилка", "Не зрозумів", "Слухаю"
+ПРИКЛАДИ:
+- "виконай print('hi')" → {{"action":"execute_python","code":"print('hi')"}}
+- "відкрий блокнот" → {{"action":"open_program","program_name":"notepad"}}
+- "клікни Зберегти" → {{"action":"click_text","text":"Зберегти"}}
+- "скріншот" → {{"action":"take_screenshot"}}
+- "вікна" → {{"action":"list_windows"}}
+- "дай команду у windsurf" → {{"response":"Що ви маєте на увазі під windsurf?"}}
+- "відкрий xyz" → {{"response":"Що ви маєте на увазі під xyz?"}}
 """
         
         if not self.functions:
@@ -270,15 +244,16 @@ class FunctionRegistry:
         
         # Скорочений список функцій (тільки назва + опис, без параметрів)
         # Обмежуємо кількість функцій для зменшення розміру промпта
-        MAX_FUNCTIONS_IN_PROMPT = 20
+        MAX_FUNCTIONS_IN_PROMPT = 15
         
         prompt += f"\n\nДОСТУПНІ ФУНКЦІЇ (перші {MAX_FUNCTIONS_IN_PROMPT}):\n"
         
-        # Сортуємо: спочатку найважливіші (core функції)
+        # Сортуємо: спочатку найважливіші (core + GUI automation)
         priority_funcs = [
             'execute_python', 'debug_python_code', 'open_program', 'close_program',
-            'list_sandbox_scripts', 'read_file', 'edit', 'create_file', 'list_directory',
-            'mouse_click', 'keyboard_type', 'take_screenshot', 'ocr_screen'
+            'create_file', 'edit_file', 'list_directory',
+            'mouse_click', 'keyboard_type', 'take_screenshot', 'ocr_screen',
+            'click_text', 'list_windows', 'find_window_by_title', 'activate_window'
         ]
         
         # Додаємо priority функції першими
@@ -299,9 +274,14 @@ class FunctionRegistry:
 
 ПРАВИЛА ВИБОРУ ФУНКЦІЇ:
 1. "виконай код" → execute_python
-2. "виправ код" → debug_python_code
-3. "покажи скрипти" → list_sandbox_scripts
-4. "відкрий", "закрий" → open_program/close_program
+2. "відкрий", "закрий" → open_program/close_program
+3. "скріншот" → take_screenshot
+4. "клікни [текст]" → click_text
+5. "вікна" → list_windows
+6. "знайди вікно" → find_window_by_title
+7. "активуй" → activate_window
+8. "клікни [x,y]" → mouse_click
+9. "напиши [текст]" → keyboard_type
 
 ЗАВЖДИ ПОВЕРТАЙ JSON З action!
 """

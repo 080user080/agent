@@ -371,7 +371,7 @@ class AssistantGUI(
                     self.root.after(0, self.end_stream_message)
                 elif msg_type == 'update_status':
                     status = data
-                    self.root.after(0, self.status_var.set, status)
+                    self.root.after(0, self.update_progress, 0, status)
                 elif msg_type == 'update_progress':
                     progress, status_text = data
                     self.root.after(0, self.update_progress, progress, status_text)
@@ -408,6 +408,9 @@ class AssistantGUI(
                 self._start_thinking_animation()
             else:
                 self._stop_thinking_animation()
+        else:
+            self._stop_thinking_animation()
+            self.status_var.set("")
         self.root.update_idletasks()
 
     def _start_thinking_animation(self):

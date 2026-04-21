@@ -255,35 +255,45 @@ class AssistantCore:
             return np.array([])
     
     def check_lm_studio(self):
-        """Перевірити та автоматично завантажити потрібну модель з LLM_ENDPOINTS"""
+        """Перевірити primary endpoint. Для локального LM Studio — автозавантаження моделі."""
         import subprocess
         import os
 
         LMS_PATH = os.path.expanduser(r"~\.lmstudio\bin\lms.exe")
         BASE_URL = "http://localhost:1234"
 
-        # Отримати primary модель з налаштувань
-        def get_desired_model():
+        # Отримати primary endpoint з налаштувань
+        def get_primary_endpoint():
             try:
                 from functions.core_settings import get_setting
                 endpoints = get_setting("LLM_ENDPOINTS", [])
                 for ep in endpoints:
-                    if ep.get("enabled") and ep.get("role") == "primary":
-                        return ep.get("model")
+                    if (ep.get("enabled") and ep.get("role") == "primary"
+                        and ep.get("model") and ep.get("url")):
+                        return ep
             except:
                 pass
             return None
 
-        print(f"{Fore.CYAN}🔌 Перевірка LM Studio...")
+        print(f"{Fore.CYAN}🔌 Перевірка primary LLM endpoint...")
 
-        DESIRED_MODEL = get_desired_model()
+        primary_ep = get_primary_endpoint()
 
-        if not DESIRED_MODEL:
+        if not primary_ep:
             print(f"{Fore.YELLOW}⚠️  Primary модель не налаштована")
             print(f"{Fore.YELLOW}💡 Налаштуйте модель в GUI: Налаштування → LLM Моделі")
             return False
 
+        DESIRED_MODEL = primary_ep.get("model")
+        PRIMARY_URL = primary_ep.get("url", "")
+        
         print(f"{Fore.CYAN}   Primary модель: {DESIRED_MODEL}")
+        print(f"{Fore.CYAN}   URL: {PRIMARY_URL}")
+
+        # Якщо URL НЕ локальний LM Studio — пропускаємо автозавантаження
+        if "localhost" not in PRIMARY_URL and "127.0.0.1" not in PRIMARY_URL:
+            print(f"{Fore.GREEN}✅ Віддалений API (Gemini/OpenAI/etc) — LM Studio не потрібен")
+            return True
 
         # Допоміжна функція: перевірити чи модель РЕАЛЬНО відповідає на запит
         def is_model_ready():

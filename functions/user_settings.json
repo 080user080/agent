@@ -27,8 +27,8 @@
     {
       "id": "llm1",
       "name": "DeepSeek Coder",
-      "enabled": true,
-      "role": "primary",
+      "enabled": false,
+      "role": "secondary",
       "type": "openai_compatible",
       "url": "http://localhost:1234/v1/chat/completions",
       "model": "deepseek-coder-v2-lite-instruct",
@@ -45,7 +45,7 @@
     {
       "id": "llm2",
       "name": "GPT-OSS-20B",
-      "enabled": true,
+      "enabled": false,
       "role": "secondary",
       "type": "openai_compatible",
       "url": "http://localhost:1234/v1/chat/completions",
@@ -62,21 +62,21 @@
     },
     {
       "id": "llm3",
-      "name": "Додаткова модель #3",
-      "enabled": false,
-      "role": "fallback",
+      "name": "Gemini 2.5 Flash",
+      "enabled": true,
+      "role": "primary",
       "type": "openai_compatible",
-      "url": "",
-      "model": "",
-      "api_key": "",
+      "url": "https://generativelanguage.googleapis.com/v1beta/openai",
+      "model": "gemini-2.5-flash",
+      "api_key": "AIzaSyAzTmRM6bkqxNyfEdqwve1VupoSxitdFNg",
       "temperature": 0.1,
-      "max_tokens": 1024,
+      "max_tokens": 4096,
       "timeout": 60,
       "script_command": "",
       "script_output_file": "альтернатива.txt",
-      "rate_limit_mode": "total",
-      "rate_limit_rpm": 20,
-      "rate_limit_total": 500
+      "rate_limit_mode": "rpm",
+      "rate_limit_rpm": 15,
+      "rate_limit_total": 1000
     },
     {
       "id": "llm4",
@@ -115,5 +115,5 @@
       "rate_limit_total": 1000
     }
   ],
-  "WINDOW_GEOMETRY": "590x862+1290+76"
+  "WINDOW_GEOMETRY": "837x812+1045+52"
 }

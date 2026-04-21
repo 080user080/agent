@@ -7,6 +7,43 @@ from colorama import Fore
 from .config import LM_STUDIO_URL
 
 
+def get_primary_endpoint():
+    """Отримати активний primary LLM endpoint з налаштувань.
+    
+    Повертає dict з url, model, api_key, temperature, max_tokens, timeout.
+    Якщо primary не налаштовано — повертає дефолт (LM Studio).
+    """
+    try:
+        from .core_settings import get_setting
+        endpoints = get_setting("LLM_ENDPOINTS", [])
+        for ep in endpoints:
+            if (ep.get("enabled") and ep.get("role") == "primary"
+                and ep.get("model") and ep.get("url")):
+                url = ep.get("url", "").rstrip("/")
+                # Нормалізуємо URL: додаємо /chat/completions якщо його немає
+                if not url.endswith("/chat/completions"):
+                    url = url + "/chat/completions"
+                return {
+                    "url": url,
+                    "model": ep.get("model"),
+                    "api_key": ep.get("api_key", ""),
+                    "temperature": ep.get("temperature", 0.1),
+                    "max_tokens": ep.get("max_tokens", 1024),
+                    "timeout": ep.get("timeout", 60),
+                }
+    except Exception:
+        pass
+    # Дефолт: legacy LM Studio
+    return {
+        "url": LM_STUDIO_URL,
+        "model": "local-model",
+        "api_key": "",
+        "temperature": 0.1,
+        "max_tokens": 1024,
+        "timeout": 60,
+    }
+
+
 def sanitize_json_string(text: str) -> str:
     """Екранувати сирі переноси рядка/табуляції всередині JSON string-значень.
 
@@ -130,8 +167,10 @@ def extract_json_from_text(text):
     return json.dumps({"response": clean_text}, ensure_ascii=False)
 
 def ask_llm(user_message, conversation_history, system_prompt):
-    """Відправити запит до LM Studio"""
+    """Відправити запит до активного LLM endpoint (primary)."""
     try:
+        endpoint = get_primary_endpoint()
+        
         messages = [{"role": "system", "content": system_prompt}]
         messages.extend(conversation_history)
         # Уникнути дублювання: якщо останнє повідомлення вже == user_message, не додаємо ще раз
@@ -139,15 +178,21 @@ def ask_llm(user_message, conversation_history, system_prompt):
         if not (last and last.get("role") == "user" and last.get("content") == user_message):
             messages.append({"role": "user", "content": user_message})
         
-        response = requests.post(LM_STUDIO_URL, 
+        headers = {"Content-Type": "application/json"}
+        if endpoint["api_key"]:
+            headers["Authorization"] = f"Bearer {endpoint['api_key']}"
+        
+        response = requests.post(
+            endpoint["url"],
+            headers=headers,
             json={
-                "model": "local-model",
+                "model": endpoint["model"],
                 "messages": messages,
-                "temperature": 0.1,
-                "max_tokens": 1024,
+                "temperature": endpoint["temperature"],
+                "max_tokens": endpoint["max_tokens"],
                 "stream": False
             },
-            timeout=60
+            timeout=endpoint["timeout"]
         )
         
         if response.status_code == 200:

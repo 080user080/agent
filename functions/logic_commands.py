@@ -496,10 +496,14 @@ class VoiceAssistant:
             
             # Використовуємо стрімінг, якщо доступний
             full_response = ""
+            used_streaming = False
             if self.streaming_handler:
                 try:
                     print(f"{Fore.MAGENTA}🤔 [Думаю (стрімінг)...]")
+                    if self.gui_log_callback:
+                        self.gui_log_callback("update_status", "🤔 Думаю...")
                     start_llm = time.time()
+                    used_streaming = True
 
                     # Почати streaming в GUI
                     if self.gui_log_callback:
@@ -550,6 +554,7 @@ class VoiceAssistant:
                     # Завершити streaming в GUI
                     if self.gui_log_callback:
                         self.gui_log_callback("stream_end", None)
+                        self.gui_log_callback("update_status", "")
 
                     llm_time = time.time() - start_llm
                 except Exception as e:
@@ -566,12 +571,14 @@ class VoiceAssistant:
                 answer = ask_llm(command_text, self.conversation_history, self.system_prompt)
                 full_response = answer
                 llm_time = time.time() - start_llm
+                if self.gui_log_callback:
+                    self.gui_log_callback("update_status", "")
 
             # Обробка відповіді та виконання функцій
             final_answer = process_llm_response(full_response, self.registry)
 
-            # У чат виводимо ТІЛЬКИ чисту фінальну відповідь (без raw-токенів LLM)
-            if final_answer:
+            # У чат виводимо ТІЛЬКИ якщо НЕ використовувався стрімінг (стрімінг вже вивів)
+            if final_answer and not used_streaming:
                 self.log_to_gui("assistant", final_answer)
                 
             # Додаємо відповідь до історії
