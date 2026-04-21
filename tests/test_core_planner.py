@@ -160,27 +160,51 @@ class TestCreatePlan:
 class TestValidateStep:
     """Тести для валідації кроків."""
 
-    def test_validate_successful_step(self, planner):
-        """Валідує успішний крок."""
+    def test_validate_successful_step(self, planner, tmp_path):
+        """Валідує успішний крок create_file: файл існує на диску → success."""
+        target = tmp_path / "test.txt"
+        target.write_text("hello", encoding="utf-8")
+
         success, message = planner._validate_step(
             "create_file",
             {"filename": "test.txt"},
-            {"success": True, "message": "✅ Файл створено"},
+            f"✅ Файл створено: {target}",
             {},
         )
         assert success is True
-        assert "✅" in message
+        assert "Файл створено" in message
 
     def test_validate_failed_step(self, planner):
-        """Валідує провалений крок."""
+        """Валідує провалений крок: результат містить '❌' / 'помилка'."""
         success, message = planner._validate_step(
             "create_file",
             {"filename": "test.txt"},
-            {"success": False, "error": "❌ Помилка"},
+            "❌ Помилка: файл не знайдено",
             {},
         )
         assert success is False
-        assert "❌" in message or "⚠️" in message
+        assert "❌" in message or "помилка" in message.lower()
+
+    def test_validate_non_string_result(self, planner):
+        """Нестроковий результат → провал із явним повідомленням."""
+        success, message = planner._validate_step(
+            "create_file",
+            {"filename": "test.txt"},
+            {"success": True},  # dict замість str
+            {},
+        )
+        assert success is False
+        assert "не є текстом" in message
+
+    def test_validate_unknown_action_defaults_to_true(self, planner):
+        """Дії без спец-обробки (без 'помилка' в результаті) → True."""
+        success, message = planner._validate_step(
+            "some_random_action",
+            {},
+            "Виконано успішно",
+            {},
+        )
+        assert success is True
 
 
 if __name__ == "__main__":

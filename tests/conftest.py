@@ -52,6 +52,23 @@ for _win_mod in (
 ):
     _install_stub(_win_mod)
 
+# Реальні числові значення win32con-констант, які використовуються у
+# functions/tools_window_manager.py. Тести перевіряють конкретні коди
+# (наприклад `ShowWindow(hwnd, 6)` для SW_MINIMIZE) — якщо лишити
+# MagicMock-заглушки, `assert_called_once_with(..., 6)` не пройде.
+_win32con = sys.modules["win32con"]
+_win32con.SW_HIDE = 0
+_win32con.SW_SHOWNORMAL = 1
+_win32con.SW_SHOWMINIMIZED = 2
+_win32con.SW_MAXIMIZE = 3
+_win32con.SW_SHOWMAXIMIZED = 3
+_win32con.SW_SHOW = 5
+_win32con.SW_MINIMIZE = 6
+_win32con.SW_SHOWMINNOACTIVE = 7
+_win32con.SW_SHOWNA = 8
+_win32con.SW_RESTORE = 9
+_win32con.WM_CLOSE = 0x0010  # 16
+
 # --- pyautogui / mouseinfo (потребують tkinter/display на Linux) ---
 _install_stub("pyautogui")
 _install_stub("mouseinfo")
@@ -70,68 +87,11 @@ for _mod in (
 
 
 # ============================================================
-# Quarantine для застарілих тестів
-# ============================================================
-# Ці тести фейляться на поточному main і перевіряють API, що вже змінився
-# (рефакторинг SessionMemory / MemoryManager / TaskExecutor / OCREngine тощо).
-# Вони не видаляються — щоб зберегти historical intent, — але виключаються з
-# CI-прогону через `pytest.mark.skip`, поки не будуть переписані під актуальну
-# поверхню коду у наступному PR (пункт B1 у status.md).
+# Історична довідка: раніше цей файл карантинив 22 «застарілі» тести, які
+# посилалися на рефакторену поверхню SessionMemory / MemoryManager /
+# TaskExecutor / OCREngine / WindowManager. Їх оживили у PR B1 під актуальне
+# API, тож механізм skip-списку більше не потрібен.
 #
-# Не додавайте сюди нові тести просто тому, що вони не проходять — спочатку
-# з'ясуйте причину.
+# Якщо в майбутньому з'являться тимчасово зламані тести — краще виправити
+# причину, а не додавати сюди ще один skip-фільтр.
 # ============================================================
-import pytest  # noqa: E402
-
-
-STALE_TESTS: frozenset[str] = frozenset({
-    # core_executor: стара англомовна статусна строка ('Ready' → 'Готовий')
-    "tests/test_core_executor.py::TestTaskExecutorInit::test_executor_init",
-
-    # core_memory: тестує методи/атрибути, яких немає у поточному SessionMemory /
-    # MemoryManager (command_count, error_count, add_file_path,
-    # get_recent_history, record_to_history)
-    "tests/test_core_memory.py::TestSessionMemory::test_init_creates_empty_session",
-    "tests/test_core_memory.py::TestSessionMemory::test_track_command_increments_count",
-    "tests/test_core_memory.py::TestSessionMemory::test_track_error_increments_count",
-    "tests/test_core_memory.py::TestSessionMemory::test_add_file_path_tracks_unique",
-    "tests/test_core_memory.py::TestSessionMemory::test_session_stats",
-    "tests/test_core_memory.py::TestMemoryManager::test_get_recent_history_empty",
-    "tests/test_core_memory.py::TestMemoryManager::test_get_recent_history_with_items",
-    "tests/test_core_memory.py::TestMemoryIntegration::test_full_task_lifecycle",
-
-    # core_planner: validate_step змінив формат повернення
-    "tests/test_core_planner.py::TestValidateStep::test_validate_successful_step",
-    "tests/test_core_planner.py::TestValidateStep::test_validate_failed_step",
-
-    # tools_ocr: очікує іншу структуру відповіді pytesseract / OCREngine API
-    "tests/test_tools_ocr.py::TestOCREngine::test_recognize_pytesseract_success",
-    "tests/test_tools_ocr.py::TestOCREngine::test_recognize_pytesseract_empty",
-    "tests/test_tools_ocr.py::TestOCRIntegration::test_ocr_region_integration",
-
-    # tools_window_manager: очікує старі сигнатури win32gui-викликів
-    "tests/test_tools_window_manager.py::TestWindowManager::test_list_windows_visible_only",
-    "tests/test_tools_window_manager.py::TestWindowManager::test_activate_window_minimized",
-    "tests/test_tools_window_manager.py::TestWindowManager::test_minimize_window_success",
-    "tests/test_tools_window_manager.py::TestWindowManager::test_maximize_window_success",
-    "tests/test_tools_window_manager.py::TestWindowManager::test_restore_window_success",
-    "tests/test_tools_window_manager.py::TestWindowManager::test_close_window_soft",
-    "tests/test_tools_window_manager.py::TestWindowManager::test_is_window_maximized_true",
-    "tests/test_tools_window_manager.py::test_list_windows_wrapper",
-})
-
-
-def _nodeid_relative(nodeid: str) -> str:
-    """Нормалізація nodeid до шляху від кореня репо (без rootdir)."""
-    return nodeid.replace("\\", "/")
-
-
-def pytest_collection_modifyitems(config, items):  # noqa: D401
-    """Позначити застарілі тести як skip із зрозумілою причиною."""
-    skip_marker = pytest.mark.skip(
-        reason="stale test (testing obsolete API); quarantined in tests/conftest.py — "
-               "to be rewritten in B1 follow-up PR"
-    )
-    for item in items:
-        if _nodeid_relative(item.nodeid) in STALE_TESTS:
-            item.add_marker(skip_marker)

@@ -42,7 +42,10 @@ class TestWindowManager:
             callback(67890, None)  # Приховане вікно
 
         mock_enum.side_effect = fake_enum
-        mock_visible.side_effect = [True, False]  # Перше видиме, друге ні
+        # IsWindowVisible викликається двічі на кожне вікно (filter + field),
+        # тому віддаємо значення за hwnd, а не почергово.
+        visible_by_hwnd = {12345: True, 67890: False}
+        mock_visible.side_effect = lambda hwnd: visible_by_hwnd[hwnd]
         mock_text.return_value = "Test Window"
         mock_rect.return_value = (100, 100, 500, 400)
 
@@ -362,7 +365,7 @@ class TestWindowManager:
 @patch('functions.tools_window_manager.win32gui.GetWindowText')
 @patch('functions.tools_window_manager.win32gui.GetWindowRect')
 def test_list_windows_wrapper(mock_rect, mock_text, mock_visible, mock_enum):
-    """Тест функції-обгортки list_windows."""
+    """Функція-обгортка повертає форматований str (для LLM)."""
     def fake_enum(callback, _):
         callback(12345, None)
 
@@ -375,7 +378,9 @@ def test_list_windows_wrapper(mock_rect, mock_text, mock_visible, mock_enum):
         with patch('functions.tools_window_manager.WindowManager._get_process_name', return_value='test.exe'):
             result = list_windows()
 
-    assert isinstance(result, list)
+    assert isinstance(result, str)
+    assert "Test" in result
+    assert "test.exe" in result
 
 
 @patch('functions.tools_window_manager.win32gui.EnumWindows')

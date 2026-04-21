@@ -21,7 +21,7 @@ class TestTaskExecutorInit:
         executor = TaskExecutor()
         assert executor.is_running is False
         assert executor.progress == 0
-        assert executor.status == "Ready"
+        assert executor.status == "Готовий"
 
     def test_executor_with_callback(self):
         """Executor приймає callback."""
