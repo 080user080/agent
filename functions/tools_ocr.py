@@ -90,10 +90,12 @@ class OCREngine:
         if self._easyocr_reader is None:
             print(f"⏳ Завантаження EasyOCR моделей...")
             start_time = time.time()
-            self._easyocr_reader = easyocr.Reader(
-                self.languages,
-                gpu=torch.cuda.is_available() if 'torch' in dir() else False
-            )
+            try:
+                import torch  # noqa: PLC0415 — ліниве завантаження тяжкої залежності
+                _gpu = bool(torch.cuda.is_available())
+            except Exception:
+                _gpu = False
+            self._easyocr_reader = easyocr.Reader(self.languages, gpu=_gpu)
             print(f"✅ EasyOCR готовий ({time.time() - start_time:.1f}с)")
         return self._easyocr_reader
 
