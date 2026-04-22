@@ -51,7 +51,7 @@
 
 ---
 
-## 2. Поточний стан (20.04.2026)
+## 2. Поточний стан (21.04.2026)
 
 ### ✅ Реалізовано (ядро)
 
@@ -85,7 +85,8 @@
 - **Утиліти** — `create_folder`, `search_in_text`, `count_words`
 - **Safety sandbox** — `core_safety_sandbox.py` + `safety_config.json` (whitelist/blacklist)
 - **Smart Patch GUI** — допоміжний GUI `smart_patch_gui.py` (642 рядки) для редагування коду
-- **Тести** — pytest suite для `core_planner`, `core_memory`, `core_executor`, `tools_mouse_keyboard`, `tools_window_manager`, `tools_ocr` (6 файлів, ~1.6k рядків)
+- **Phase 11 стек (новий, не підключений до GUI):** `TaskRunner` + `PermissionGate` + `ExecutionReport` + `SessionBudget` + `Watcher` + `ProviderRegistry` (LM Studio + fallback) + `PlanCritic` (meta-оцінка плану) + `Task.precheck` / `Task.expect` (Step-Check / Actor-Critic) + `ask_llm_with_tools` (OpenAI-compatible tool-calling) + `core_planner_critic` (bridge для legacy-плану у PlanCritic)
+- **Тести** — pytest suite для `core_planner`, `core_memory`, `core_executor`, `tools_mouse_keyboard`, `tools_window_manager`, `tools_ocr` (6 файлів, ~1.6k рядків); **нові тести Phase 11+:** `test_logic_task_runner`, `test_logic_plan_critic`, `test_logic_expectations`, `test_logic_llm_tools`, `test_logic_watcher`, `test_core_session_budget`, `test_core_planner_critic` (+29) — разом **584 passed** на main
 - **Документація** — README.md + CONTRIBUTING.md + tests.md
 
 ### ⚠️ Виявлено під час аудиту (20.04.2026)
@@ -256,8 +257,57 @@ tests/
 | 10 | Універсальні домени (фото/відео/ComfyUI/офіс/браузер) | 🔴 Не розпочато | 🟡 Середній | постійно |
 | 11 | **Autonomous Task Orchestrator** (TaskRunner + PermissionGate + ExecutionReport) | ✅ **Скелет готовий** (PR #13) | 🔴 **Критичний** | 20.04.2026 |
 | 11.5 | **Plan-critic LLM** (самокритика плану перед виконанням) | ✅ Злито (PR #18) | 🔴 Високий | 20.04.2026 |
+| 11.5a | **Bridge PlanCritic ↔ legacy Planner** (`core_planner_critic`) | ✅ Злито (PR #21) | 🔴 Високий | 21.04.2026 |
+| 11.6 | **Bridge Planner → TaskRunner** (`core_planner_runner`: legacy-tools як `kind`-и + `run_legacy_plan_via_runner`) | 🟢 У PR | 🔴 Високий | 21.04.2026 |
 | 12.1 | **Step-Check / Actor-Critic MVP** (`Task.precheck` / `Task.expect`) | ✅ Злито (PR #18) | 🔴 Високий | 20.04.2026 |
+| F1 | **LM Studio tool-calling + JSON mode** (`logic_llm_tools.ask_llm_with_tools`) | ✅ Злито (PR #19) | 🔴 Високий | 20.04.2026 |
 | 12.2 | **LLM repair loop на `expect_failed`** (повний Actor-Critic цикл) | 🔴 Не розпочато | 🟡 Середній | наступний спринт |
+| 12.3 | **GUI-інтеграція TaskRunner** (кнопка «Виконати план», live-progress, kill-switch) | 🔴 Не розпочато | 🔴 Високий (блокер для 3–6 год автономії) | наступний спринт |
+| 12.4 | **Checkpoint + resume** (persist `StepReport[]` + `context`, відновлення після крашу) | 🔴 Не розпочато | 🟡 Середній (потрібно для 3–6 год автономії) | +1 спринт |
+
+---
+
+## 🧍 Пробіли до «як людина»
+
+> **Мета цього розділу:** чесно зафіксувати, що саме бракує MARK, щоб діяти з ПК **як людина** — тобто бачити екран, розуміти UI, взаємодіяти з будь-якою програмою надійно і довго. Це **не окремі фази**, а **перехресні треки**, які покривають зазори між існуючими фазами.
+
+### 🔴 Блокери (без них «як людина» неможливо)
+
+| ID | Трек | Проблема | Пропозиція |
+|----|------|----------|------------|
+| **V1** | **Accessibility API (UIA)** | Агент «бачить» лише через OCR + template matching — це крихко до DPI, локалізації, тем оформлення. Людина «бачить» структуру UI (кнопка, поле вводу) через accessibility-дерево. | Інтегрувати `uiautomation` (Windows `UIAutomationCore`) або `pywinauto` як новий `tools_ui_accessibility.py`. Повертати список елементів (role, name, bounds, enabled) поточного вікна. Це фундамент для решти. |
+| **V2** | **Vision-LM** | Без vision-моделі агент не може «подивитись на скрін і зрозуміти що тут треба натиснути». `tools_ocr` / `tools_ui_detector` дають сирі дані — не розуміння. | Додати `providers_vision.py` (pluggable: GPT-4V / Claude Vision / LLaVA локально). Новий tool `describe_screen(image)` → текст-опис або `plan_next_action(screenshot, goal)`. Не обовʼязково GPT-4V — локальна LLaVA через Ollama достатня для MVP. |
+| **V3** | **Real browser automation** | `aaa_open_browser.py` = `webbrowser.open(url)` і більше нічого. Не може клікати, вводити текст, витягти дані зі сторінки. Без цього задачі типу «зайди на Gemini, спитай щось» — неможливі. | Підключити **Playwright** через CDP на існуючому Chrome-профілі юзера (залогінений). Новий `tools_browser.py`: `open_url`, `click_by_role`, `fill`, `screenshot`, `extract_text`, `wait_for`. Див. трек **E2** / **J3**. |
+| **V4** | **GUI-інтеграція нового стеку** | Phase 11 стек (`TaskRunner`, `PlanCritic`, `Task.expect`, `SessionBudget`, `PermissionGate`) повністю відʼєднаний від `run_assistant.py`. Коли юзер натискає «Виконати» — йде по legacy-потоку **без** цих покращень. | Phase 12.3 (див. вище) — кнопка «Виконати план» у `core_gui/` + live `StepReport` + kill-switch. |
+
+### 🟡 Важливе (робить агента значно надійнішим)
+
+| ID | Трек | Проблема | Пропозиція |
+|----|------|----------|------------|
+| **V5** | **DPI & multi-monitor координати** | `pyautogui.click(x, y)` використовує абсолютні екранні координати. При зміні DPI, позиції вікна, переносі на другий монітор — кліки промахуються. | Координати **відносно вікна** (`RECT` з `pywin32`), нормалізовані за DPI (`GetDpiForWindow`). Новий helper `click_in_window(hwnd, rel_x, rel_y)` у `tools_mouse_keyboard.py`. |
+| **V6** | **Людяний input** | Лінійний рух миші + фіксовані затримки легко детектяться анти-ботами, і виглядають нереалістично в рекордингах. | `human_move(x, y)` з Bezier-кривою + варіабельна швидкість. `human_type(text)` з варіацією pause distribution (30–120ms). Опційно: не вмикати за замовчанням — тільки для «realistic mode». |
+| **V7** | **Repair loop на `expect_failed`** | Якщо очікуваний стан не досягнуто (`Task.expect` fail), агент зупиняється або retry-ить той самий крок. Людина ж адаптує подальші дії. | Phase 12.2 (див. вище) — LLM бачить `metadata.expect_results` + решту плану і переписує наступні кроки. |
+| **V8** | **Windsurf / Cursor делегування** | Для важких задач (написати компонент, відрефакторити модуль) логічно делегувати спеціалізованим агентам. Зараз нема. | Трек **J4** — `delegate_to_windsurf(task)` / `delegate_to_cursor(task)` через Playwright CDP (заздалегідь залогінений профіль). |
+
+### 🟢 Дрібне (якість життя)
+
+| ID | Трек | Проблема |
+|----|------|----------|
+| **V9** | **Checkpoint + resume** | При крашу 3-годинної сесії все втрачено. Phase 12.4 (див. вище). |
+| **V10** | **Drag-n-drop файлів у програму** | Базова підтримка є, не тестовано на всіх типах (Explorer → app, app → app). |
+| **V11** | **Global hotkeys / tray icon** | Нема способу «розбудити» агента глобальним hotkey без перемикання вікна. |
+| **V12** | **Мікрофон/камера/аудіо-вихід як інпути для vision-LM** | STT опційно. Вебкамера не підʼєднана. Голосове керування «по ходу роботи» — нема. |
+
+### Пріоритет реалізації (рекомендація)
+
+1. **V4 (GUI-інтеграція)** — найдешевший шлях отримати реальну користь від Phase 11 стеку.
+2. **V3 (Playwright)** — розблоковує весь клас «веб-задач», які зараз просто неможливі.
+3. **V1 (UIA)** — робить GUI-кліки стійкими до DPI/локалізації/тем.
+4. **V2 (Vision-LM)** — робить агента здатним «зрозуміти незнайомий UI».
+5. **V7 (repair loop)** — замикає Actor-Critic.
+6. Решта — коли буде час.
+
+> **Оцінка чесного stage:** без V1–V4 агент — це **набір ізольованих інструментів з планером**, а не «користувач ПК». З V1–V4 — вже реальний GUI-агент рівня ранніх версій OpenAI Operator / Claude Computer Use.
 
 ---
 
