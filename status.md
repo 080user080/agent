@@ -1370,6 +1370,12 @@ pip install pywin32  # вже є; використовуємо win32com.client
 
 - **F1 [P1] Структуровані виклики інструментів (function/tool calling).**
   Замість самописного JSON-парсингу перейти на OpenAI-compatible `tools` параметр (LM Studio ≥ 0.3.x підтримує). Підвищить надійність планів на ~10–20%.
+  ✅ **Злито в PR #19:** `functions/logic_llm_tools.py` — адитивний шар
+  поверх legacy `logic_llm` з `ask_llm_with_tools`, `ChatToolsResponse`, `ToolCall`,
+  `build_tool_spec`, `functions_to_tools`, `parse_tool_calls_from_body`,
+  `execute_tool_calls`, `tool_results_to_messages`. 54 тести, 100% backward-compatible.
+  Лишається окремим PR-ом: інтегрувати `ask_llm_with_tools` у `core_planner`,
+  щоб замінити `extract_json_from_text` на структуровані `tool_calls`.
 
 - **F2 [P2] Tree-of-thoughts / повний replan.**
   В статусі вже зазначено: «Planner не робить повне перепланування дерева». Додати `replan_from_step(N)` у `core_planner`.
@@ -1413,7 +1419,7 @@ pip install pywin32  # вже є; використовуємо win32com.client
 |--------|-----------|-----------|
 | **S1 (✅ done)** | A1, A2, A3, C1, B1 | Робочий CI, чистий requirements, актуальний README, 147 тестів, 0 skipped |
 | **S2 (in progress)** | D1 (Phase 7 фундамент), A4, A5 | `core_app_profile` + `core_macro` MVP, pre-commit, pyproject.toml повністю |
-| **S3** | I1+I2+I3 ✅ (Phase 8 Watcher + бюджети + conditions), F1 (tool calling, PR #19), C3 | Довгі автономні сесії можливі + міцніший планер |
+| **S3 (✅ done)** | I1+I2+I3 ✅ (Phase 8 Watcher + бюджети + conditions), F1 ✅ (tool calling, PR #19 злито), C3 | Довгі автономні сесії можливі + міцніший планер |
 | **S4** | J1+J2+J3 ✅ (Phase 9 адаптери + registry + OpenAI-compatible), Phase 11 ✅ (PR #13), G1, B2 | Оркестрація через HTTP API + Autonomous Task Orchestrator + безпечний sandbox + Windows CI |
 | **S4.5 (✅ done)** | **Phase 11.5 (Plan-critic)** + **Phase 12.1 (Step-Check / Actor-Critic)** — PR #18 злито | Якість прийняття рішень: +20-30% успішність планів; `precheck`/`expect` на кожному кроці |
 | **S5** | J4 (browser-адаптери для Windsurf/Cursor), E2 (Playwright), **Phase 12.2** (LLM repair loop на `expect_failed`) | Windsurf/Cursor через браузер, паралельне делегування, повний Actor-Critic цикл |
