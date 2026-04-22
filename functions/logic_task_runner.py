@@ -32,10 +32,21 @@ from typing import Any, Callable, Dict, List, Optional
 from .logic_execution_report import (
     STATUS_DENIED,
     STATUS_ERROR,
+    STATUS_EXPECT_FAILED,
     STATUS_OK,
+    STATUS_PRECHECK_FAILED,
     STATUS_SKIPPED,
     ExecutionReport,
     StepReport,
+)
+from .logic_expectations import (
+    ExpectContext,
+    ExpectRegistry,
+    ExpectSpec,
+    ExpectationResult,
+    all_ok,
+    failures,
+    parse_expect_list,
 )
 from .logic_permission_gate import (
     ACTION_READ_FILE,
@@ -63,6 +74,8 @@ class Task:
     max_retries: int = 2
     retry_delay_s: float = 1.0
     depends_on: List[str] = field(default_factory=list)
+    precheck: List[ExpectSpec] = field(default_factory=list)
+    expect: List[ExpectSpec] = field(default_factory=list)
 
     def display(self) -> str:
         return self.name or self.id
@@ -97,6 +110,8 @@ class Plan:
                     max_retries=int(entry.get("max_retries", 2)),
                     retry_delay_s=float(entry.get("retry_delay_s", 1.0)),
                     depends_on=list(entry.get("depends_on") or []),
+                    precheck=parse_expect_list(entry.get("precheck")),
+                    expect=parse_expect_list(entry.get("expect")),
                 )
             )
         return cls(
@@ -151,6 +166,8 @@ class TaskRunner:
         should_stop_fn: Optional[Callable[[], bool]] = None,
         budget: Any = None,
         registry: Any = None,
+        expect_registry: Optional[ExpectRegistry] = None,
+        cwd: Optional[str] = None,
     ):
         self.gate = gate or PermissionGate()
         self.handlers: Dict[str, HandlerFn] = {}
@@ -160,6 +177,8 @@ class TaskRunner:
         self._should_stop = should_stop_fn
         self.budget = budget
         self.registry = registry
+        self.expect_registry = expect_registry or ExpectRegistry()
+        self.cwd = cwd
         self._lock = threading.Lock()
 
         self._install_builtin_handlers()
@@ -277,6 +296,32 @@ class TaskRunner:
         if task.on_error == ON_ERROR_RETRY:
             attempts = max(1, task.max_retries + 1)
 
+        # ----- Step-Check: precheck (pre-handler). Якщо хоч одне не ok —
+        # handler не запускаємо взагалі.
+        if task.precheck:
+            pre_results = self._evaluate_expectations(
+                task.precheck, task=task, report=report,
+                previous=previous, handler_result={},
+            )
+            if not all_ok(pre_results):
+                now = self._time()
+                failed = failures(pre_results)
+                reasons = "; ".join(f"{r.kind}: {r.reason}" for r in failed)
+                return StepReport(
+                    task_id=task.id,
+                    task_name=task.display(),
+                    kind=task.kind,
+                    status=STATUS_PRECHECK_FAILED,
+                    started_at=now,
+                    finished_at=now,
+                    duration_s=0.0,
+                    summary=f"precheck failed: {reasons}",
+                    error=reasons,
+                    metadata={
+                        "precheck_results": [r.to_dict() for r in pre_results],
+                    },
+                )
+
         last_step: Optional[StepReport] = None
         for attempt in range(attempts):
             started = self._time()
@@ -299,6 +344,33 @@ class TaskRunner:
 
             finished = self._time()
             status = str(result.get("status") or STATUS_OK)
+            metadata = dict(result.get("metadata") or {})
+
+            # ----- Actor-Critic MVP: expect (post-handler). Лише якщо
+            # handler сам не впав і є що перевіряти.
+            expect_results: List[ExpectationResult] = []
+            if task.expect and status == STATUS_OK:
+                expect_results = self._evaluate_expectations(
+                    task.expect, task=task, report=report,
+                    previous=previous, handler_result=result,
+                )
+                if not all_ok(expect_results):
+                    failed = failures(expect_results)
+                    reasons = "; ".join(
+                        f"{r.kind}: {r.reason}" for r in failed
+                    )
+                    status = STATUS_EXPECT_FAILED
+                    result["summary"] = (
+                        (result.get("summary") or "")
+                        + ("; " if result.get("summary") else "")
+                        + f"expect failed: {reasons}"
+                    )
+                    result["error"] = reasons
+            if expect_results:
+                metadata["expect_results"] = [
+                    r.to_dict() for r in expect_results
+                ]
+
             step = StepReport(
                 task_id=task.id,
                 task_name=task.display(),
@@ -313,7 +385,7 @@ class TaskRunner:
                 cost_usd=float(result.get("cost_usd") or 0.0),
                 prompt_tokens=int(result.get("prompt_tokens") or 0),
                 completion_tokens=int(result.get("completion_tokens") or 0),
-                metadata=dict(result.get("metadata") or {}),
+                metadata=metadata,
             )
             last_step = step
             if status == STATUS_OK or task.on_error != ON_ERROR_RETRY:
@@ -323,6 +395,31 @@ class TaskRunner:
 
         assert last_step is not None
         return last_step
+
+    def _evaluate_expectations(
+        self,
+        specs: List[ExpectSpec],
+        *,
+        task: Task,
+        report: ExecutionReport,
+        previous: Dict[str, Dict[str, Any]],
+        handler_result: Dict[str, Any],
+    ) -> List[ExpectationResult]:
+        totals = report.totals() if report is not None else {}
+        by_status = dict(totals.get("by_status") or {})
+        ctx = ExpectContext(
+            task_id=task.id,
+            task_kind=task.kind,
+            handler_result=handler_result,
+            report_totals={
+                **by_status,
+                "steps_total": int(totals.get("steps_total", 0) or 0),
+            },
+            previous_results=previous,
+            cwd=self.cwd,
+            extras={"plan_metadata": {}},
+        )
+        return self.expect_registry.evaluate_all(specs, ctx)
 
     # ----- Budget -----
 
