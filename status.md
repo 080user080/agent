@@ -254,7 +254,10 @@ tests/
 | 8 | **Автономія (Watcher, довгі сесії)** | 🟢 Скелет готовий (I1+I2+I3) | 🔴 Високий | 4–6 тижнів |
 | 9 | **Оркестрація інших ШІ** (API + браузер) | 🟢 Скелет готовий (J1+J2+J3) | 🔴 Високий | 6–8 тижнів |
 | 10 | Універсальні домени (фото/відео/ComfyUI/офіс/браузер) | 🔴 Не розпочато | 🟡 Середній | постійно |
-| 11 | **Autonomous Task Orchestrator** (TaskRunner + PermissionGate + ExecutionReport) | 🔴 Не розпочато | 🔴 **Критичний** | 1-й спринт |
+| 11 | **Autonomous Task Orchestrator** (TaskRunner + PermissionGate + ExecutionReport) | ✅ **Скелет готовий** (PR #13) | 🔴 **Критичний** | 20.04.2026 |
+| 11.5 | **Plan-critic LLM** (самокритика плану перед виконанням) | ✅ Злито (PR #18) | 🔴 Високий | 20.04.2026 |
+| 12.1 | **Step-Check / Actor-Critic MVP** (`Task.precheck` / `Task.expect`) | ✅ Злито (PR #18) | 🔴 Високий | 20.04.2026 |
+| 12.2 | **LLM repair loop на `expect_failed`** (повний Actor-Critic цикл) | 🔴 Не розпочато | 🟡 Середній | наступний спринт |
 
 ---
 
@@ -858,7 +861,7 @@ pip install easyocr
 
 ## 🚀 Phase 11: Autonomous Task Orchestrator (верхній рівень автономії)
 
-**Статус:** 🔴 Не розпочато | **Пріоритет:** 🔴 Критичний | **Термін:** 1-й спринт
+**Статус:** ✅ **Скелет готовий** (PR #13) | **Пріоритет:** 🔴 Критичний | **Термін:** 20.04.2026
 
 **Мета:** Дати **єдиний верхній рівень**, який дозволяє сказати агенту «виконай усі задачі з цього файлу й дай звіт» — і він реально їх виконує, використовуючи всі примітиви з Phase 1–10. Це те, що перетворює набір модулів на `autopilot`.
 
@@ -954,6 +957,119 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 | План падає на одному кроці → не губимо звіт | `ExecutionReport` автосейв після кожного step-а |
 | Budget вичерпано → негайна зупинка | `SessionBudget.should_stop()` перед кожним task-ом |
 | Результат делегації (Windsurf × 3) → структурований лог | `StepReport` містить метадані кожної спроби |
+
+---
+
+## 🧠 Phase 11.5: Plan-critic LLM (самокритика плану перед виконанням)
+
+**Статус:** ✅ **Злито** (PR #18) | **Пріоритет:** 🔴 Високий | **Термін:** 20.04.2026
+
+**Мета:** Додати **meta-рівень оцінки плану в цілому**, а не лише per-call
+через `TOOL_POLICIES` / `PermissionGate`. Це той «другий LLM-голос», який
+дивиться на весь план і каже:
+
+- `approve` — план виглядає безпечним і розумним,
+- `concerns` — є ризики (список з `severity: info/warn/block`), але план можна виконати з обережністю,
+- `redo` — план треба переписати; повертається `suggested_changes` для репланера.
+
+Підвищує успішність планів на ~20–30% (за вимірюваннями Plan-Critic агентів у GUI-Thinker / UFO).
+
+### 11.5.1 `functions/logic_plan_critic.py` — PlanCritic
+
+- [x] **`PlanCritic(provider_registry)`** — тонкий wrapper над `ProviderRegistry.chat()`
+  з dedicated `critic_system_prompt` і JSON-parser відповіді.
+- [x] **`review(plan) -> CritiqueResult(verdict, concerns[], usage, raw_text)`**,
+  де `verdict ∈ {"approve", "concerns", "redo"}`.
+- [x] **Stability guard:** якщо `verdict=approve`, але серед `concerns` є
+  `severity=block` — автоматично перетворюється на `redo` (не довіряємо LLM,
+  який сам себе суперечить).
+- [x] **Парсер стійкий до fenced ```json, prose-вкраплень, invalid JSON**
+  (fallback → `verdict=concerns` з оригінальним текстом у `concerns[0]`).
+
+### 11.5.2 `review_and_run_plan(plan, runner, critic, replan_fn=None)` — full-cycle helper
+
+- [x] Крок 1: `critic.review(plan)`.
+- [x] Крок 2: якщо `verdict="redo"` і є `replan_fn` → викликати `replan_fn(plan, concerns)` →
+  отримати новий `plan` → **повторити review** (один раз, без infinite loop).
+- [x] Крок 3: після фінального `approve` / `concerns` → `runner.run(plan)`.
+- [x] Крок 4: у звіт додається блок `plan_critic` з verdict-ом і concerns-ами.
+
+### 11.5.3 Інтеграція
+
+- [x] Підключається **опційно** (`TaskRunner.run(plan, critic=None)`) —
+  не ламає існуючий потік, коли critic не переданий.
+- [ ] Інтеграція в `core_planner` — щоб кожен згенерований planner-ом план
+  автоматично проходив через PlanCritic перед `core_executor`. **Заплановано в окремому PR.**
+
+### 11.5.4 Тести
+
+- [x] `tests/test_logic_plan_critic.py` — 38 тестів: парсер, stability guard, happy path,
+  network error, malformed JSON, `review_and_run_plan` з/без `replan_fn`, autoescalate block-severity.
+
+---
+
+## 🎯 Phase 12.1: Step-Check / Actor-Critic MVP (`Task.precheck` / `Task.expect`)
+
+**Статус:** ✅ **Злито** (PR #18) | **Пріоритет:** 🔴 Високий | **Термін:** 20.04.2026
+
+**Мета:** Зробити кожен крок `Task`-а **перевіряємим**: до запуску (`precheck`)
+та після (`expect`). Це переносить MARK з моделі «виконав — повірили» у
+модель **Actor-Critic** (запозичена з GUI-Thinker / UFO):
+
+- **Step-Check (before):** «якщо стан світу не той, який потрібен — не запускаємо handler взагалі, це заощаджує час і ресурси». `precheck_failed`.
+- **Actor-Critic (after):** «handler може кричати *я успішний!*, але якщо очікуваний стан не досягнуто — це провал». `expect_failed`.
+
+Обидва поля — **опційні** (backward-compatible: без них Task поводиться як раніше).
+
+### 12.1.1 `functions/logic_expectations.py` — Evaluator-registry
+
+- [x] **10 вбудованих evaluator-ів:**
+  `file_exists`, `file_missing`, `stdout_contains`, `stderr_contains`,
+  `return_code`, `window_title_contains`, `process_running`,
+  `process_not_running`, `no_error_in_report`, `ok_count_at_least`.
+- [x] **Розширюваний registry:** `runner.expect_registry.register(kind, fn)`.
+- [x] **Evaluator-результат:** `ExpectResult(kind, ok, details, elapsed_s)`.
+
+### 12.1.2 Розширення `Task` (у `logic_task_runner.py`)
+
+- [x] **`Task.precheck`** (`Expectation | list[Expectation] | None`) — обчислюється **до** handler-а.
+- [x] **`Task.expect`** (`Expectation | list[Expectation] | None`) — обчислюється **після** handler-а.
+- [x] **Нові статуси в `ExecutionReport`:**
+  `STATUS_PRECHECK_FAILED`, `STATUS_EXPECT_FAILED`.
+- [x] **`metadata.expect_results`:** повний лог перевірок у `StepReport`
+  (для майбутнього repair loop у 12.2).
+
+### 12.1.3 Поведінка з `on_error="retry"`
+
+- [x] Невдала перевірка **автоматично тригерить retry** (handler запускається знову).
+  Тест `test_expect_with_retry_succeeds_second_attempt`: файл зʼявляється лише
+  на 2-й спробі → task завершується `ok` на 2-му циклі.
+
+### 12.1.4 Тести
+
+- [x] `tests/test_logic_expectations.py` — 27 тестів evaluator-ів (per-kind + registry).
+- [x] `tests/test_logic_task_runner_expect.py` — 12 тестів інтеграції
+  (precheck blocking, expect failure, retry-loop, multi-expectation AND-логіка).
+
+---
+
+## 🔧 Phase 12.2: LLM repair loop на `expect_failed` (повний Actor-Critic цикл)
+
+**Статус:** 🔴 Не розпочато | **Пріоритет:** 🟡 Середній | **Термін:** наступний спринт
+
+**Мета:** Коли `expect` не пройшов — замість механічного retry, запустити
+**LLM-repair**: планер дивиться на `metadata.expect_results` (який саме очікуваний
+стан не досягнуто), на `stdout_tail`, на попередні кроки — і **переписує наступні
+кроки плану**, щоб досягти мети.
+
+### План
+
+- [ ] **`TaskRunner.on_expect_failed_hook`** — callback, який отримує `(plan, failed_step, expect_results)` і повертає `Plan` (новий план починаючи з поточного step-а).
+- [ ] **`logic_step_repair.py`** — дефолтна реалізація hook-а: формує промпт із попереднього плану + помилки + результатів перевірок → `ProviderRegistry.chat()` → `safe_json_loads` → новий `Plan`.
+- [ ] **Budget guard:** `SessionBudget.repair_attempts_left` — щоб уникнути нескінченного циклу «план → провал → LLM-repair → новий план → провал → ...».
+- [ ] **Тести:** `test_step_repair.py` — happy path, network error, malformed plan, budget exhausted.
+
+Залежить від Phase 12.1 (метадані `expect_results` у `StepReport`).
 
 ---
 
@@ -1254,12 +1370,21 @@ pip install pywin32  # вже є; використовуємо win32com.client
 
 - **F1 [P1] Структуровані виклики інструментів (function/tool calling).**
   Замість самописного JSON-парсингу перейти на OpenAI-compatible `tools` параметр (LM Studio ≥ 0.3.x підтримує). Підвищить надійність планів на ~10–20%.
+  ✅ **Злито в PR #19:** `functions/logic_llm_tools.py` — адитивний шар
+  поверх legacy `logic_llm` з `ask_llm_with_tools`, `ChatToolsResponse`, `ToolCall`,
+  `build_tool_spec`, `functions_to_tools`, `parse_tool_calls_from_body`,
+  `execute_tool_calls`, `tool_results_to_messages`. 54 тести, 100% backward-compatible.
+  Лишається окремим PR-ом: інтегрувати `ask_llm_with_tools` у `core_planner`,
+  щоб замінити `extract_json_from_text` на структуровані `tool_calls`.
 
 - **F2 [P2] Tree-of-thoughts / повний replan.**
   В статусі вже зазначено: «Planner не робить повне перепланування дерева». Додати `replan_from_step(N)` у `core_planner`.
 
 - **F3 [P2] Оцінка якості плану (self-critique).**
   Перед виконанням LLM оцінює план (0–10) і за < 7 — переформовує.
+  ✅ **Злито:** див. Phase 11.5 (`logic_plan_critic.py`, PR #18) —
+  verdict `approve` / `concerns` / `redo` + stability guard + `review_and_run_plan` helper.
+  Лишається інтегрувати в `core_planner` як обовʼязковий крок між `plan()` і `execute()`.
 
 - **F4 [P3] Локальна fine-tuned модель для планів.**
   Коли зберемо `~500 успішних (задача, план)` пар — спробувати LoRA на базі `deepseek-coder` або `Qwen2.5-Coder-7B` для швидшого плануючого двигуна.
@@ -1294,9 +1419,10 @@ pip install pywin32  # вже є; використовуємо win32com.client
 |--------|-----------|-----------|
 | **S1 (✅ done)** | A1, A2, A3, C1, B1 | Робочий CI, чистий requirements, актуальний README, 147 тестів, 0 skipped |
 | **S2 (in progress)** | D1 (Phase 7 фундамент), A4, A5 | `core_app_profile` + `core_macro` MVP, pre-commit, pyproject.toml повністю |
-| **S3** | I1+I2 (Phase 8 Watcher + бюджети), F1 (tool calling), C3 | Довгі автономні сесії можливі + міцніший планер |
-| **S4** | J1+J2 (Phase 9 адаптери + registry), G1, B2 | Оркестрація через HTTP API + безпечний sandbox + Windows CI |
-| **S5** | J3+J4 (browser-адаптери, orchestrator), E2 (Playwright) | Windsurf/Cursor через браузер, паралельне делегування |
+| **S3 (✅ done)** | I1+I2+I3 ✅ (Phase 8 Watcher + бюджети + conditions), F1 ✅ (tool calling, PR #19 злито), C3 | Довгі автономні сесії можливі + міцніший планер |
+| **S4** | J1+J2+J3 ✅ (Phase 9 адаптери + registry + OpenAI-compatible), Phase 11 ✅ (PR #13), G1, B2 | Оркестрація через HTTP API + Autonomous Task Orchestrator + безпечний sandbox + Windows CI |
+| **S4.5 (✅ done)** | **Phase 11.5 (Plan-critic)** + **Phase 12.1 (Step-Check / Actor-Critic)** — PR #18 злито | Якість прийняття рішень: +20-30% успішність планів; `precheck`/`expect` на кожному кроці |
+| **S5** | J4 (browser-адаптери для Windsurf/Cursor), E2 (Playwright), **Phase 12.2** (LLM repair loop на `expect_failed`) | Windsurf/Cursor через браузер, паралельне делегування, повний Actor-Critic цикл |
 | **S6** | K1–K4 (Phase 10 домени, drip-in), H1 | Фото/ComfyUI/офіс-інструменти, PyInstaller-інсталятор |
 
 ---
