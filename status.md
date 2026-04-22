@@ -255,8 +255,8 @@ tests/
 | 9 | **Оркестрація інших ШІ** (API + браузер) | 🟢 Скелет готовий (J1+J2+J3) | 🔴 Високий | 6–8 тижнів |
 | 10 | Універсальні домени (фото/відео/ComfyUI/офіс/браузер) | 🔴 Не розпочато | 🟡 Середній | постійно |
 | 11 | **Autonomous Task Orchestrator** (TaskRunner + PermissionGate + ExecutionReport) | ✅ **Скелет готовий** (PR #13) | 🔴 **Критичний** | 20.04.2026 |
-| 11.5 | **Plan-critic LLM** (самокритика плану перед виконанням) | 🟢 Скелет (PR #18) | 🔴 Високий | 20.04.2026 |
-| 12.1 | **Step-Check / Actor-Critic MVP** (`Task.precheck` / `Task.expect`) | 🟢 Скелет (PR #18) | 🔴 Високий | 20.04.2026 |
+| 11.5 | **Plan-critic LLM** (самокритика плану перед виконанням) | ✅ Злито (PR #18) | 🔴 Високий | 20.04.2026 |
+| 12.1 | **Step-Check / Actor-Critic MVP** (`Task.precheck` / `Task.expect`) | ✅ Злито (PR #18) | 🔴 Високий | 20.04.2026 |
 | 12.2 | **LLM repair loop на `expect_failed`** (повний Actor-Critic цикл) | 🔴 Не розпочато | 🟡 Середній | наступний спринт |
 
 ---
@@ -962,7 +962,7 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 
 ## 🧠 Phase 11.5: Plan-critic LLM (самокритика плану перед виконанням)
 
-**Статус:** 🟢 Скелет у PR #18 | **Пріоритет:** 🔴 Високий | **Термін:** 20.04.2026
+**Статус:** ✅ **Злито** (PR #18) | **Пріоритет:** 🔴 Високий | **Термін:** 20.04.2026
 
 **Мета:** Додати **meta-рівень оцінки плану в цілому**, а не лише per-call
 через `TOOL_POLICIES` / `PermissionGate`. Це той «другий LLM-голос», який
@@ -1010,7 +1010,7 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 
 ## 🎯 Phase 12.1: Step-Check / Actor-Critic MVP (`Task.precheck` / `Task.expect`)
 
-**Статус:** 🟢 Скелет у PR #18 | **Пріоритет:** 🔴 Високий | **Термін:** 20.04.2026
+**Статус:** ✅ **Злито** (PR #18) | **Пріоритет:** 🔴 Високий | **Термін:** 20.04.2026
 
 **Мета:** Зробити кожен крок `Task`-а **перевіряємим**: до запуску (`precheck`)
 та після (`expect`). Це переносить MARK з моделі «виконав — повірили» у
@@ -1376,7 +1376,7 @@ pip install pywin32  # вже є; використовуємо win32com.client
 
 - **F3 [P2] Оцінка якості плану (self-critique).**
   Перед виконанням LLM оцінює план (0–10) і за < 7 — переформовує.
-  🟢 **Скелет реалізовано:** див. Phase 11.5 (`logic_plan_critic.py`, PR #18) —
+  ✅ **Злито:** див. Phase 11.5 (`logic_plan_critic.py`, PR #18) —
   verdict `approve` / `concerns` / `redo` + stability guard + `review_and_run_plan` helper.
   Лишається інтегрувати в `core_planner` як обовʼязковий крок між `plan()` і `execute()`.
 
@@ -1415,7 +1415,7 @@ pip install pywin32  # вже є; використовуємо win32com.client
 | **S2 (in progress)** | D1 (Phase 7 фундамент), A4, A5 | `core_app_profile` + `core_macro` MVP, pre-commit, pyproject.toml повністю |
 | **S3** | I1+I2+I3 ✅ (Phase 8 Watcher + бюджети + conditions), F1 (tool calling, PR #19), C3 | Довгі автономні сесії можливі + міцніший планер |
 | **S4** | J1+J2+J3 ✅ (Phase 9 адаптери + registry + OpenAI-compatible), Phase 11 ✅ (PR #13), G1, B2 | Оркестрація через HTTP API + Autonomous Task Orchestrator + безпечний sandbox + Windows CI |
-| **S4.5** | **Phase 11.5 (Plan-critic)** + **Phase 12.1 (Step-Check / Actor-Critic)** — PR #18 | Якість прийняття рішень: +20-30% успішність планів; `precheck`/`expect` на кожному кроці |
+| **S4.5 (✅ done)** | **Phase 11.5 (Plan-critic)** + **Phase 12.1 (Step-Check / Actor-Critic)** — PR #18 злито | Якість прийняття рішень: +20-30% успішність планів; `precheck`/`expect` на кожному кроці |
 | **S5** | J4 (browser-адаптери для Windsurf/Cursor), E2 (Playwright), **Phase 12.2** (LLM repair loop на `expect_failed`) | Windsurf/Cursor через браузер, паралельне делегування, повний Actor-Critic цикл |
 | **S6** | K1–K4 (Phase 10 домени, drip-in), H1 | Фото/ComfyUI/офіс-інструменти, PyInstaller-інсталятор |
 
