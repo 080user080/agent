@@ -25,6 +25,8 @@ STATUS_SKIPPED = "skipped"
 STATUS_ERROR = "error"
 STATUS_DENIED = "denied"
 STATUS_TIMEOUT = "timeout"
+STATUS_PRECHECK_FAILED = "precheck_failed"
+STATUS_EXPECT_FAILED = "expect_failed"
 
 
 @dataclass
