@@ -42,6 +42,15 @@ EXPECT_PROCESS_NOT_RUNNING = "process_not_running"
 EXPECT_NO_ERROR_IN_REPORT = "no_error_in_report"
 EXPECT_OK_COUNT_AT_LEAST = "ok_count_at_least"
 
+# Phase 13 S10 — universal (domain-agnostic) validators
+EXPECT_FILE_SIZE_BETWEEN = "file_size_between"
+EXPECT_FILE_LINES_AT_LEAST = "file_lines_at_least"
+EXPECT_FILE_CONTAINS = "file_contains"
+EXPECT_FILE_NOT_CONTAINS = "file_not_contains"
+EXPECT_REGEX_MATCH = "regex_match"
+EXPECT_JSON_VALID = "json_valid"
+EXPECT_PYTHON_PARSEABLE = "python_parseable"
+
 
 # ---------------------------------------------------------------------------
 # Data types
@@ -307,6 +316,285 @@ def _eval_ok_count_at_least(
 
 
 # ---------------------------------------------------------------------------
+# Phase 13 S10 — universal validators (domain-agnostic)
+# ---------------------------------------------------------------------------
+
+
+def _read_file_text(
+    spec: ExpectSpec, ctx: ExpectContext, default_encoding: str = "utf-8"
+) -> Optional[str]:
+    """Helper: завантажує файл як текст або повертає None з reason у caller."""
+    path_raw = spec.params.get("path")
+    if not path_raw:
+        return None
+    path = _resolve_path(str(path_raw), ctx.cwd)
+    if not path.exists():
+        return None
+    encoding = str(spec.params.get("encoding") or default_encoding)
+    try:
+        return path.read_text(encoding=encoding, errors="replace")
+    except OSError:
+        return None
+
+
+def _eval_file_size_between(
+    spec: ExpectSpec, ctx: ExpectContext
+) -> ExpectationResult:
+    """Перевірка, що розмір файлу у межах [min_bytes, max_bytes]. Обидва опційні."""
+    path_raw = spec.params.get("path")
+    if not path_raw:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason="missing 'path' in expect"
+        )
+    path = _resolve_path(str(path_raw), ctx.cwd)
+    if not path.exists():
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason=f"file not found: {path}"
+        )
+    try:
+        size = path.stat().st_size
+    except OSError as exc:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason=f"stat failed: {exc}"
+        )
+    min_b = spec.params.get("min_bytes")
+    max_b = spec.params.get("max_bytes")
+    if min_b is not None and size < int(min_b):
+        return ExpectationResult(
+            kind=spec.kind,
+            ok=False,
+            reason=f"file size {size} < min_bytes {min_b}",
+            details={"size": size, "min_bytes": min_b, "max_bytes": max_b},
+        )
+    if max_b is not None and size > int(max_b):
+        return ExpectationResult(
+            kind=spec.kind,
+            ok=False,
+            reason=f"file size {size} > max_bytes {max_b}",
+            details={"size": size, "min_bytes": min_b, "max_bytes": max_b},
+        )
+    return ExpectationResult(
+        kind=spec.kind,
+        ok=True,
+        details={"size": size, "min_bytes": min_b, "max_bytes": max_b},
+    )
+
+
+def _eval_file_lines_at_least(
+    spec: ExpectSpec, ctx: ExpectContext
+) -> ExpectationResult:
+    """Перевірка що файл має принаймні N не-порожніх рядків."""
+    threshold = int(spec.params.get("value", 1))
+    text = _read_file_text(spec, ctx)
+    if text is None:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason="file missing or unreadable"
+        )
+    count_non_empty = sum(1 for line in text.splitlines() if line.strip())
+    ok = count_non_empty >= threshold
+    return ExpectationResult(
+        kind=spec.kind,
+        ok=ok,
+        reason=(
+            ""
+            if ok
+            else f"only {count_non_empty} non-empty lines, need >= {threshold}"
+        ),
+        details={"lines": count_non_empty, "threshold": threshold},
+    )
+
+
+def _eval_file_contains(
+    spec: ExpectSpec, ctx: ExpectContext
+) -> ExpectationResult:
+    """Перевірка що файл містить підрядок (опційно case-insensitive)."""
+    needle = spec.params.get("substring") or spec.params.get("value")
+    if not needle:
+        return ExpectationResult(
+            kind=spec.kind,
+            ok=False,
+            reason="missing 'substring' (or 'value') in expect",
+        )
+    text = _read_file_text(spec, ctx)
+    if text is None:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason="file missing or unreadable"
+        )
+    case_insensitive = bool(spec.params.get("case_insensitive"))
+    hay = text.lower() if case_insensitive else text
+    probe = str(needle).lower() if case_insensitive else str(needle)
+    ok = probe in hay
+    return ExpectationResult(
+        kind=spec.kind,
+        ok=ok,
+        reason="" if ok else f"substring {needle!r} not found in file",
+        details={"substring": str(needle)},
+    )
+
+
+def _eval_file_not_contains(
+    spec: ExpectSpec, ctx: ExpectContext
+) -> ExpectationResult:
+    """Перевірка що файл НЕ містить жодного з перелічених підрядків (typic:
+    'TODO', 'FIXME', 'XXX' у згенерованому коді; або секрети у конфізі).
+    """
+    raw = spec.params.get("substrings")
+    if raw is None:
+        single = spec.params.get("substring") or spec.params.get("value")
+        raw = [single] if single else []
+    if not raw or not isinstance(raw, list):
+        return ExpectationResult(
+            kind=spec.kind,
+            ok=False,
+            reason="missing non-empty 'substrings' list in expect",
+        )
+    text = _read_file_text(spec, ctx)
+    if text is None:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason="file missing or unreadable"
+        )
+    case_insensitive = bool(spec.params.get("case_insensitive"))
+    hay = text.lower() if case_insensitive else text
+    hits: List[str] = []
+    for needle in raw:
+        if not needle:
+            continue
+        probe = str(needle).lower() if case_insensitive else str(needle)
+        if probe in hay:
+            hits.append(str(needle))
+    ok = not hits
+    return ExpectationResult(
+        kind=spec.kind,
+        ok=ok,
+        reason="" if ok else f"forbidden substring(s) present: {hits}",
+        details={"hits": hits, "checked": list(raw)},
+    )
+
+
+def _eval_regex_match(
+    spec: ExpectSpec, ctx: ExpectContext
+) -> ExpectationResult:
+    """Універсальна regex-перевірка: `where` = stdout / stderr / file.
+
+    params:
+      pattern: str (required) — regex.
+      where: "stdout" | "stderr" | "file" (default: "stdout").
+      path: str — обовʼязково якщо where="file".
+      flags: "i" | "m" | "s" | "im" ... — комбінація (default: "").
+      invert: bool — якщо true, очікуємо що pattern НЕ матчиться.
+    """
+    import re
+
+    pattern = spec.params.get("pattern")
+    if not pattern:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason="missing 'pattern' in expect"
+        )
+    where = str(spec.params.get("where", "stdout")).lower()
+    flags_str = str(spec.params.get("flags", ""))
+    re_flags = 0
+    flag_map = {"i": re.IGNORECASE, "m": re.MULTILINE, "s": re.DOTALL, "x": re.VERBOSE}
+    for ch in flags_str.lower():
+        re_flags |= flag_map.get(ch, 0)
+
+    if where == "file":
+        text = _read_file_text(spec, ctx)
+        if text is None:
+            return ExpectationResult(
+                kind=spec.kind, ok=False, reason="file missing or unreadable"
+            )
+    elif where == "stderr":
+        text = str(ctx.handler_result.get("stderr", ""))
+    else:
+        text = str(ctx.handler_result.get("stdout", ""))
+
+    try:
+        matched = re.search(str(pattern), text, flags=re_flags) is not None
+    except re.error as exc:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason=f"invalid regex: {exc}"
+        )
+
+    invert = bool(spec.params.get("invert"))
+    ok = (not matched) if invert else matched
+    if ok:
+        return ExpectationResult(
+            kind=spec.kind,
+            ok=True,
+            details={"where": where, "pattern": str(pattern), "invert": invert},
+        )
+    reason = (
+        f"regex {pattern!r} matched in {where} (expected no match)"
+        if invert
+        else f"regex {pattern!r} did not match in {where}"
+    )
+    return ExpectationResult(
+        kind=spec.kind,
+        ok=False,
+        reason=reason,
+        details={"where": where, "pattern": str(pattern), "invert": invert},
+    )
+
+
+def _eval_json_valid(
+    spec: ExpectSpec, ctx: ExpectContext
+) -> ExpectationResult:
+    """Перевірка що JSON-файл валідний. Опційно — тип root-елемента."""
+    import json
+
+    text = _read_file_text(spec, ctx)
+    if text is None:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason="file missing or unreadable"
+        )
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason=f"JSON parse error: {exc.msg} at line {exc.lineno}"
+        )
+    expect_root = spec.params.get("root_type")
+    if expect_root:
+        type_map = {
+            "object": dict, "dict": dict,
+            "array": list, "list": list,
+            "string": str, "number": (int, float),
+            "bool": bool, "null": type(None),
+        }
+        want = type_map.get(str(expect_root).lower())
+        if want and not isinstance(data, want):
+            return ExpectationResult(
+                kind=spec.kind,
+                ok=False,
+                reason=f"JSON root is {type(data).__name__}, expected {expect_root}",
+            )
+    return ExpectationResult(kind=spec.kind, ok=True)
+
+
+def _eval_python_parseable(
+    spec: ExpectSpec, ctx: ExpectContext
+) -> ExpectationResult:
+    """Перевірка що .py файл синтаксично коректний (без виконання)."""
+    import ast
+
+    text = _read_file_text(spec, ctx)
+    if text is None:
+        return ExpectationResult(
+            kind=spec.kind, ok=False, reason="file missing or unreadable"
+        )
+    try:
+        ast.parse(text)
+    except SyntaxError as exc:
+        return ExpectationResult(
+            kind=spec.kind,
+            ok=False,
+            reason=f"SyntaxError at line {exc.lineno}: {exc.msg}",
+            details={"lineno": exc.lineno, "offset": exc.offset},
+        )
+    return ExpectationResult(kind=spec.kind, ok=True)
+
+
+# ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
 
@@ -367,6 +655,14 @@ class ExpectRegistry:
         self.register(EXPECT_PROCESS_NOT_RUNNING, _eval_process_not_running)
         self.register(EXPECT_NO_ERROR_IN_REPORT, _eval_no_error_in_report)
         self.register(EXPECT_OK_COUNT_AT_LEAST, _eval_ok_count_at_least)
+        # Phase 13 S10 — universal validators
+        self.register(EXPECT_FILE_SIZE_BETWEEN, _eval_file_size_between)
+        self.register(EXPECT_FILE_LINES_AT_LEAST, _eval_file_lines_at_least)
+        self.register(EXPECT_FILE_CONTAINS, _eval_file_contains)
+        self.register(EXPECT_FILE_NOT_CONTAINS, _eval_file_not_contains)
+        self.register(EXPECT_REGEX_MATCH, _eval_regex_match)
+        self.register(EXPECT_JSON_VALID, _eval_json_valid)
+        self.register(EXPECT_PYTHON_PARSEABLE, _eval_python_parseable)
 
 
 # ---------------------------------------------------------------------------
@@ -414,6 +710,13 @@ __all__ = [
     "EXPECT_PROCESS_NOT_RUNNING",
     "EXPECT_NO_ERROR_IN_REPORT",
     "EXPECT_OK_COUNT_AT_LEAST",
+    "EXPECT_FILE_SIZE_BETWEEN",
+    "EXPECT_FILE_LINES_AT_LEAST",
+    "EXPECT_FILE_CONTAINS",
+    "EXPECT_FILE_NOT_CONTAINS",
+    "EXPECT_REGEX_MATCH",
+    "EXPECT_JSON_VALID",
+    "EXPECT_PYTHON_PARSEABLE",
     "ExpectSpec",
     "ExpectationResult",
     "ExpectContext",
