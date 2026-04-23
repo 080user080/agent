@@ -718,7 +718,7 @@ class TestFileNotContains:
 class TestRegexMatch:
     def test_stdout_match(self):
         reg = ExpectRegistry()
-        ctx = _ctx(handler_result={"stdout": "7 tests passed"})
+        ctx = _ctx(handler_result={"stdout_tail": "7 tests passed"})
         res = reg.evaluate(
             ExpectSpec(
                 kind=EXPECT_REGEX_MATCH,
@@ -730,7 +730,7 @@ class TestRegexMatch:
 
     def test_stderr_match(self):
         reg = ExpectRegistry()
-        ctx = _ctx(handler_result={"stderr": "ERROR: bad"})
+        ctx = _ctx(handler_result={"error": "ERROR: bad"})
         res = reg.evaluate(
             ExpectSpec(
                 kind=EXPECT_REGEX_MATCH,
@@ -755,7 +755,7 @@ class TestRegexMatch:
 
     def test_invert_no_match_ok(self):
         reg = ExpectRegistry()
-        ctx = _ctx(handler_result={"stdout": "all good"})
+        ctx = _ctx(handler_result={"stdout_tail": "all good"})
         res = reg.evaluate(
             ExpectSpec(
                 kind=EXPECT_REGEX_MATCH,
@@ -767,7 +767,7 @@ class TestRegexMatch:
 
     def test_invert_match_fails(self):
         reg = ExpectRegistry()
-        ctx = _ctx(handler_result={"stdout": "has ERROR"})
+        ctx = _ctx(handler_result={"stdout_tail": "has ERROR"})
         res = reg.evaluate(
             ExpectSpec(
                 kind=EXPECT_REGEX_MATCH,

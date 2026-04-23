@@ -504,9 +504,11 @@ def _eval_regex_match(
                 kind=spec.kind, ok=False, reason="file missing or unreadable"
             )
     elif where == "stderr":
-        text = str(ctx.handler_result.get("stderr", ""))
+        # TaskRunner handlers write stderr into `error` (see logic_task_runner._handler_run_command).
+        text = str(ctx.handler_result.get("error", ""))
     else:
-        text = str(ctx.handler_result.get("stdout", ""))
+        # TaskRunner handlers write truncated stdout into `stdout_tail`.
+        text = str(ctx.handler_result.get("stdout_tail", ""))
 
     try:
         matched = re.search(str(pattern), text, flags=re_flags) is not None

@@ -1211,7 +1211,7 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 
 ## 🚀 Phase 13: Universal Task Executor (UTE) — «ТЗ → агент виконав»
 
-**Статус:** 🟡 Розпочато — S6 (intake), S7 (code_pipeline), S8a (batch primitive), S8a hotfix, **S10 (universal validators + report, у роботі)** | **Пріоритет:** 🔴 Найвищий після Phase 12.3/12.4 | **Термін:** S6–S12 (~3 місяці)
+**Статус:** 🟡 Розпочато — S6 (intake), S7 (code_pipeline), S8a (batch primitive), S8a hotfix, **S10 (universal validators + report, ✅ merged + hotfix)** | **Пріоритет:** 🔴 Найвищий після Phase 12.3/12.4 | **Термін:** S6–S12 (~3 місяці)
 
 ### 🎯 Оновлені пріоритети спринтів (2026-04-20, після фідбеку юзера)
 
@@ -1241,10 +1241,11 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 - **S7 (PR #26, ✅ merged)** — `pipeline_code.py` + `CodePipeline` зареєстрований для `DOMAIN_CODE` у дефолтному реєстрі. Генерує Plan з `mkdir` + per-deliverable `write_file` + опційні `pytest`/`ruff check` кроки з `expect=[return_code=0]`. Додано handler `log_task_spec` у `TaskRunner` (щоб S6 `SkeletonPipeline` Plan був runnable). 59 нових тестів (≈110 на шарі Phase 13).
 - **S8a (PR #27, ✅ merged)** — handler `batch_task` у `TaskRunner`: шаблонує під-таск для кожного елемента `items`, підтримує `on_item_error=skip|stop`, `max_failures`, `progress_every`, кооперативну зупинку через SessionBudget. Основа для `photo_batch_pipeline` (S8b) і `presentation_pipeline` (S11). 17 нових тестів (782 всього).
 - **S8a hotfix (PR #28, ✅ merged)** — `max_failures` тепер реально контролює агрегований статус batch-у (раніше був dead-code). Два режими: strict (`max_failures < 0`) і tolerant (`max_failures ≥ 0`). +2 тести (784 всього).
-- **S10 (цей PR, у роботі)** — **universal** (domain-agnostic) validators + markdown report generator.
+- **S10 (PR #29, ✅ merged)** — **universal** (domain-agnostic) validators + markdown report generator.
   - `logic_expectations.py`: +7 validator kinds (`file_size_between`, `file_lines_at_least`, `file_contains`, `file_not_contains`, `regex_match` з підтримкою `where=stdout|stderr|file` та `invert`, `json_valid` з опційним `root_type`, `python_parseable` через AST).
   - `logic_report_generator.py`: новий модуль. Бере `ExecutionReport` (+ опційний `TaskSpec`) і будує **goal-driven markdown**: вердикт (`success|partial|failed`), milestones-таблицю, failed expectations, partial batches, issues, next steps. Працює однаково для коду, фото, презентацій, research — без знання домену.
   - +60 тестів (841 всього), ruff clean.
+- **S10 hotfix (цей PR)** — `_eval_regex_match` використовував неправильні ключі `handler_result["stdout"]`/`["stderr"]`, хоча `TaskRunner` handler-и (див. `_handler_run_command`) кладуть `stdout_tail` / `error`. Реальні ранові `where=stdout|stderr` завжди матчили порожній рядок → false negatives / false invert-positives. Виправлено на `stdout_tail` / `error`; відповідні тести синхронізовано. Знайдено Devin Review на PR #29 після мерджу (843 всього, ruff clean).
 
 **Мета:** Перехід від «чат-агента з інструментами» до **goal-driven executor-а**: користувач дає вільне ТЗ — агент сам декомпозує, обирає інструменти/ШІ/додатки, виконує, валідує результат, звітує.
 
@@ -1593,7 +1594,7 @@ logs/tasks/{task_id}/
 | **S8a** | 13.4 `batch_task` primitive (generic loop handler) | Фундамент для будь-яких batch-сценаріїв | ✅ PR #27 |
 | **S8b** | `photo_batch_pipeline` + `comfyui_workflow` handler | «100 фото» реально запрацює | 🟡 низький пріоритет (domain-specific, після універсальних кроків) |
 | **S9** | 13.3 Quota Tracker + 13.6 CodexActor + ChatGPTBrowserActor (**Playwright CDP, без OCR**) | Мікс AI з автоматичним fallback | 🔴 високий |
-| **S10** | 13.7 **universal** validators + 13.10 report generator | Якісні звіти + domain-agnostic перевірка виконання | 🟡 PR #29 (у роботі) |
+| **S10** | 13.7 **universal** validators + 13.10 report generator | Якісні звіти + domain-agnostic перевірка виконання | ✅ PR #29 merged + hotfix (regex_match key fix) |
 | **S11** | `presentation_pipeline` + `ppt_action` + `web_research_pipeline` | Нові домени | 🟡 низький пріоритет (domain-specific) |
 | **S12** | 13.8 Dashboard GUI + 13.9 checkpoint/resume (залежить від V4/12.3) | Повний юзер-флоу «натиснув Run і пішов спати» | 🔴 |
 
