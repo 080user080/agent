@@ -681,14 +681,20 @@ def _handler_batch_task(ctx: TaskContext) -> Dict[str, Any]:
       item_id_prefix: str — префікс для id під-таска (default: parent_id).
       on_item_error: "stop" | "skip" — поведінка на рівні batch
         (default: "skip" — пропустити проблемний item, продовжити).
-      max_failures: int — якщо кількість fail > max_failures → батч
-        зупиняється (default: -1 — без ліміту).
+      max_failures: int — поріг толерантності до fail-ів.
+        -1 (default) — strict-режим: будь-який fail → агрегований
+        STATUS_ERROR (але батч проходить усі items, якщо
+        on_item_error="skip").
+        >=0 — толерантний режим: до `max_failures` fail-ів
+        допускається, агрегований статус лишається OK; як тільки
+        fail > max_failures → батч зупиняється і статус ERROR.
       progress_every: int — скільки items записувати у report.events
         (default: 10, -1 — не логувати).
 
     Returns:
-      status: STATUS_OK якщо failures <= max_failures (або без ліміту)
-        і `on_item_error != "stop"` АБО не було стопу.
+      status: STATUS_OK якщо (strict-режим і failed==0) АБО
+        (толерантний режим і failed<=max_failures), і не було
+        stopped_early.
       summary: агрегований рядок "N items: X ok, Y failed, Z skipped".
       metadata.items_total / items_ok / items_failed / items_skipped
       metadata.per_item: список {index, item_id, status, error}.
@@ -794,9 +800,14 @@ def _handler_batch_task(ctx: TaskContext) -> Dict[str, Any]:
         f"batch: {items_total} items, ok={ok}, failed={failed}, skipped={skipped}"
         + (" (stopped early)" if stopped_early else "")
     )
-    # агрегований статус: OK тільки якщо жодна помилка і не було ранньої зупинки
-    over_limit = max_failures >= 0 and failed > max_failures
-    is_ok = (failed == 0) and not stopped_early and not over_limit
+    # Агрегований статус залежить від max_failures:
+    # strict-режим (max_failures < 0) → OK лише якщо failed == 0.
+    # толерантний режим (max_failures >= 0) → OK якщо failed <= max_failures.
+    if max_failures < 0:
+        within_limit = failed == 0
+    else:
+        within_limit = failed <= max_failures
+    is_ok = within_limit and not stopped_early
     return {
         "status": STATUS_OK if is_ok else STATUS_ERROR,
         "summary": summary,
