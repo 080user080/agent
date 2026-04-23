@@ -155,6 +155,53 @@ class TestBuiltinSimpleHandlers:
         runner.run(plan)
         assert 1.5 in runner._test_sleeps
 
+    def test_log_task_spec_handler_ok(self):
+        runner = _make_runner()
+        plan = Plan(
+            name="t",
+            tasks=[
+                Task(
+                    id="a",
+                    kind="log_task_spec",
+                    params={
+                        "placeholder_step": True,
+                        "spec_task_id": "tid42",
+                        "spec_domain": "code",
+                        "spec_goal": "build thing",
+                    },
+                )
+            ],
+        )
+        result = runner.run(plan)
+        assert result.all_ok is True
+        step = result.report.steps[0]
+        assert step.status == STATUS_OK
+        assert "tid42" in step.summary
+        assert "code" in step.summary
+        assert any("tid42" in e.message for e in result.report.events)
+
+    def test_log_task_spec_handler_missing_params_ok(self):
+        """Handler не повинен падати навіть якщо TaskSpec-поля відсутні."""
+        runner = _make_runner()
+        plan = Plan(
+            name="t",
+            tasks=[Task(id="a", kind="log_task_spec", params={})],
+        )
+        result = runner.run(plan)
+        assert result.all_ok is True
+
+    def test_skeleton_pipeline_plan_runnable(self):
+        """Kомплексний тест S6→S7: SkeletonPipeline Plan виконується на TaskRunner."""
+        from functions.core_plan_compiler import SkeletonPipeline
+        from functions.core_task_intake import DOMAIN_MIXED, TaskSpec
+
+        spec = TaskSpec(goal="demo", domain=DOMAIN_MIXED)
+        plan = SkeletonPipeline().compile(spec)
+        runner = _make_runner()
+        result = runner.run(plan)
+        assert result.all_ok is True
+        assert result.report.steps[0].status == STATUS_OK
+
 
 # --- run_command -----------------------------------------------------------
 

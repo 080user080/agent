@@ -196,6 +196,7 @@ class TaskRunner:
     def _install_builtin_handlers(self) -> None:
         self.register("noop", _handler_noop)
         self.register("log", _handler_log)
+        self.register("log_task_spec", _handler_log_task_spec)
         self.register("sleep", _handler_sleep)
         self.register("run_command", _handler_run_command)
         self.register("read_file", _handler_read_file)
@@ -449,6 +450,29 @@ def _handler_log(ctx: TaskContext) -> Dict[str, Any]:
     message = str(ctx.task.params.get("message", ""))
     ctx.report.add_event(f"[{ctx.task.id}] {message}")
     return {"status": STATUS_OK, "summary": message}
+
+
+def _handler_log_task_spec(ctx: TaskContext) -> Dict[str, Any]:
+    """Safe placeholder handler — логує `TaskSpec`-поля з `task.params`.
+
+    Використовується `SkeletonPipeline` (Phase 13 S6 MVP) щоб наскрізний
+    Plan міг бути виконаний (хоча й без корисної дії). Коли домен отримує
+    реальний pipeline (S7+), skeleton перестає реєструватись і handler
+    не викликається у виробничому потоці.
+    """
+    goal = str(ctx.task.params.get("spec_goal", ""))
+    domain = str(ctx.task.params.get("spec_domain", ""))
+    task_id = str(ctx.task.params.get("spec_task_id", ""))
+    placeholder = bool(ctx.task.params.get("placeholder_step"))
+    summary = (
+        f"log_task_spec: task_id={task_id!r} domain={domain!r} goal={goal[:80]!r}"
+    )
+    ctx.report.add_event(f"[{ctx.task.id}] {summary}")
+    return {
+        "status": STATUS_OK,
+        "summary": summary,
+        "metadata": {"placeholder_step": placeholder},
+    }
 
 
 def _handler_sleep(ctx: TaskContext) -> Dict[str, Any]:

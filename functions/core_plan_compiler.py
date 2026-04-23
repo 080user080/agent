@@ -166,15 +166,23 @@ class SkeletonPipeline:
 
 
 def make_default_registry() -> PipelineRegistry:
-    """Створити реєстр з `SkeletonPipeline` під усі відомі домени.
+    """Створити реєстр з pipeline-ами під усі відомі домени.
 
-    Після S7+ ця функція буде реєструвати реальні pipeline-и поверх
-    skeleton-дефолтів (наприклад `code_pipeline` для `DOMAIN_CODE`).
+    Стан реєстру по спринтах:
+
+    - S6 (PR #25) — всі домени мапились на `SkeletonPipeline`.
+    - S7 (поточний) — `DOMAIN_CODE` переключений на реальний
+      `CodePipeline` (pipeline_code). Решта — ще `SkeletonPipeline`.
+    - S8-S11 — інші домени переключатимуться аналогічно без змін
+      API (`DOMAIN_PHOTO_BATCH` → `PhotoBatchPipeline` тощо).
     """
+    # Локальний імпорт щоб уникнути циклу `pipeline_code → ... → core_plan_compiler`.
+    from .pipeline_code import CodePipeline
+
     registry = PipelineRegistry()
     skeleton = SkeletonPipeline(name="skeleton")
+    registry.register(DOMAIN_CODE, CodePipeline())
     for domain in (
-        DOMAIN_CODE,
         DOMAIN_PHOTO_BATCH,
         DOMAIN_PRESENTATION,
         DOMAIN_WEB_RESEARCH,
