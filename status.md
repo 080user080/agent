@@ -1209,6 +1209,384 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 
 ---
 
+## 🚀 Phase 13: Universal Task Executor (UTE) — «ТЗ → агент виконав»
+
+**Статус:** 🔴 Не розпочато (цей документ — план) | **Пріоритет:** 🔴 Найвищий після Phase 12.3/12.4 | **Термін:** S6–S12 (~3 місяці)
+
+**Мета:** Перехід від «чат-агента з інструментами» до **goal-driven executor-а**: користувач дає вільне ТЗ — агент сам декомпозує, обирає інструменти/ШІ/додатки, виконує, валідує результат, звітує.
+
+**Чому це окрема Phase, а не продовження Phase 11:** Phase 11 дав **інфраструктуру виконання** (TaskRunner, PlanCritic, expect, budget). Phase 13 додає **шар зверху** — intake вільного ТЗ, маршрутизацію між доменами, квотинг, batch-примітиви, вузькі актори для зовнішніх ШІ, domain-validators, dashboard. Це 7–9 модулів, які окремо один від одного не дають цінності, але разом перетворюють агент з «набору тулів» на «виконавця завдань».
+
+### Цільові use-cases (що має запрацювати)
+
+1. **Кодинг:** «Напиши CRUD для таблиці User у моєму Django-проекті. Codex поки є ліміт, далі Windsurf. Всі команди дозволяй.»
+2. **Batch-фото:** «Прогнати всі фото з `D:/photos/in/` через workflow `upscale_2x.json`, скинути в `D:/photos/out/`.»
+3. **Презентація:** «Зробити 10-слайдову презентацію про Phase 13 за нашим `status.md`, зберегти у `.pptx`.»
+4. **Мікс:** «Рефакторинг модуля X: Codex draft → Windsurf review → pytest. Якщо щось провалиться — ChatGPT-web за advice.»
+5. **Research + doc:** «Знайти 5 статей про RAG за 2025, зробити summary-markdown з цитатами.»
+
+### Потік виконання
+
+```
+User ТЗ (free-form text)
+    │
+    ▼
+[13.1 Task Intake]         LLM парсить → TaskSpec + clarification Qs
+    │
+    ▼
+[13.2 Resource Router]     TaskSpec → Pipeline (code / photo / doc / web / mixed)
+    │
+    ▼
+[13.3 Quota Tracker]       Перевіряє залишок квот AI (Codex/GPT/Claude/…)
+    │
+    ▼
+[13.4 Pipeline.compile()]  → Plan (список Task, враховує quota fallback)
+    │                          ↑ (PlanCritic ревізує — PR #21)
+    ▼
+[13.5 TaskRunner.run()]    Виконання + нові handler-и (codex_call,
+    │                      windsurf_actor, comfyui_workflow, batch_task, …)
+    │
+    ▼
+[13.6 Cross-AI Actors]     Делегування у Codex/Cursor/ChatGPT-web/Claude-web
+    │
+    ▼
+[13.7 Output Validators]   Per-domain: validate_code / validate_photo / …
+    │                          ↑ (викликається з Task.expect — PR #18)
+    ▼
+[13.8 Task Dashboard GUI]  Live progress, milestone bar, kill-switch
+    │
+    ▼
+[13.9 Checkpoint / Resume] logs/tasks/{id}/checkpoint.json
+    │
+    ▼
+[13.10 Post-execution Report]  Markdown summary: goal, time, cost, outputs
+```
+
+### 13.1 Task Intake — «ТЗ → TaskSpec»
+
+**Модуль:** `functions/core_task_intake.py`
+
+**Задача:** розпарсити вільний текст ТЗ у структурований `TaskSpec`, запитати уточнення якщо неоднозначно.
+
+**TaskSpec:**
+```python
+@dataclass
+class TaskSpec:
+    goal: str                          # «написати CRUD»
+    deliverables: list[str]            # ["models.py", "views.py", "tests"]
+    constraints: list[str]             # ["Django ORM", "pytest", "без зміни DB schema"]
+    domain: str                        # code | photo_batch | presentation | web | mixed
+    domain_sub: str                    # django | react | …
+    preferred_ai_order: list[str]      # ["codex", "windsurf", "gpt-4o-mini"]
+    permission_mode: str               # confirm_each | auto_read | auto_all
+    budget: BudgetHints                # max_hours, max_cost_usd, max_ai_calls
+    input_files: list[Path]            # з аттачментів / згадок «D:/photos/in/»
+    output_dir: Path | None
+    raw_tz: str                        # збережене ТЗ як є
+```
+
+**Алгоритм:**
+1. LLM (з `ProviderRegistry`) отримує промпт: `ТЗ + enum доступних доменів + JSON-схема TaskSpec`.
+2. Повертає JSON → `safe_json_loads` → `TaskSpec`.
+3. Якщо якесь `required` поле `None` або `"unclear"` — задає юзеру clarification Qs (через callback `ask_user(question, options)`).
+4. Записує `logs/tasks/{id}/spec.json`.
+
+**API:**
+```python
+def create_task_spec_from_tz(
+    tz_text: str,
+    *,
+    registry: ProviderRegistry,
+    ask_user: Callable[[str, list[str]], str] | None = None,
+) -> TaskSpec
+```
+
+**Тести:** happy path, неоднозначне ТЗ → 2 clarification Qs, порожнє ТЗ → ValueError, LLM-fallback на 2-й провайдер.
+
+### 13.2 Resource Router — «TaskSpec → Pipeline»
+
+**Модуль:** `functions/core_resource_router.py` + директорія `pipelines/`
+
+**Задача:** за `TaskSpec.domain` вибрати рецепт.
+
+**Реєстр:**
+```python
+PIPELINE_REGISTRY = {
+    "code":          pipelines.code_pipeline,
+    "photo_batch":   pipelines.photo_batch_pipeline,
+    "presentation":  pipelines.presentation_pipeline,
+    "web_research":  pipelines.web_research_pipeline,
+    "mixed":         pipelines.mixed_pipeline,
+}
+```
+
+**Pipeline protocol:**
+```python
+class Pipeline(Protocol):
+    name: str
+    def compile(self, spec: TaskSpec, quota: QuotaTracker) -> Plan: ...
+    def required_tools(self, spec: TaskSpec) -> list[str]: ...  # для preflight check
+```
+
+**MVP:** реалізуємо лише **`code_pipeline`** + шаблон `mixed_pipeline`. Решта — stub (raise NotImplementedError з повідомленням «цей домен у roadmap, див. S11»).
+
+### 13.3 Quota Tracker
+
+**Модуль:** `functions/core_quota_tracker.py`
+
+**Персистентність:** `~/.mark/quotas.json`
+```json
+{
+  "codex":        {"daily_limit": 500, "used_today": 120, "reset_at_utc": "2026-04-22T00:00Z"},
+  "openai_gpt4o": {"rpm_limit":  60,  "used_last_minute": 3},
+  "anthropic":    {"monthly_tokens": 1_000_000, "used_this_month": 340_000},
+  "windsurf_ui":  {"sessions_today": 12}
+}
+```
+
+**API:**
+- `can_call(provider, cost_hint) -> (ok, reason)`
+- `record_call(provider, tokens, cost)`
+- `reset_if_window_passed()`  ← викликається lazy при кожному check-у
+- `next_available_provider(preferred_list) -> provider_id | None`
+
+**Інтегрується з** `ProviderRegistry.chat()` — перед викликом перевіряє quota, при вичерпанні робить fallback на наступний provider з `spec.preferred_ai_order`.
+
+### 13.4 Batch primitive
+
+**Новий Task kind:** `batch_task`
+
+```python
+Task(
+    kind="batch_task",
+    params={
+        "items": list_of_inputs,           # або lazy callable
+        "per_item_task": Task(kind="comfyui_workflow", params={...}),  # template
+        "max_parallel": 2,
+        "on_item_error": "retry:2 | skip | abort",
+        "progress_every": 5,
+    },
+    expect=ExpectSpec(min_success_ratio=0.95),
+)
+```
+
+**Виконавець** (в TaskRunner) ітерує items, підставляє кожен у template, викликає `_handle_task` рекурсивно, агрегує StepReport-и у `BatchReport`, пише прогрес у логи + callback (для GUI progress bar).
+
+### 13.5 Нові task kinds і handler-и
+
+| Kind | Handler | Для чого |
+|---|---|---|
+| `codex_call` | `tools_codex_actor.py` | API виклик Codex / OpenAI code-моделі |
+| `windsurf_actor` | `tools_windsurf_actor.py` | Написати у Windsurf + прочитати відповідь (extension PR #23 watcher) |
+| `cursor_actor` | `tools_cursor_actor.py` | Cursor через Playwright CDP |
+| `chatgpt_browser` | `tools_chatgpt_browser.py` | chat.openai.com через Playwright |
+| `claude_browser` | `tools_claude_browser.py` | claude.ai через Playwright |
+| `comfyui_workflow` | `tools_comfyui.py` | POST до `http://localhost:8188` з workflow JSON |
+| `pillow_edit` | `tools_pillow.py` | Batch-резайз/фільтри через Pillow (для простих photo задач без ComfyUI) |
+| `ppt_action` | `tools_powerpoint.py` | `pywin32` до PowerPoint / python-pptx |
+| `batch_task` | вбудовано у TaskRunner | цикл + агрегація |
+
+### 13.6 Cross-AI Delegation («AppAgents»)
+
+Різниця з Phase 12.5 (Windsurf Watcher): **watcher = passive (читає),  actor = active (пише)**.
+
+Actor-API:
+```python
+class AIActor(Protocol):
+    def send_prompt(self, prompt: str, *, timeout: float) -> str: ...
+    def health_check(self) -> bool: ...
+    def quota_cost(self, prompt: str) -> dict: ...
+```
+
+Реалізації:
+- `CodexActor` — HTTPS API, найдешевше, лімітоване
+- `WindsurfActor` — OCR-read + click+type у UI; повільне, але без лімітів
+- `ChatGPTBrowserActor` — Playwright CDP до `chat.openai.com` з залогіненим профілем
+- `ClaudeBrowserActor` — так само до `claude.ai`
+- `CursorActor` — Playwright до локального Cursor
+
+**Ризик:** залогінені сесії — великий attack surface. Credentials не зберігаємо у репо; Playwright використовує окремий Chrome-профіль у `~/.mark/browser_profile/`.
+
+### 13.7 Output Validators
+
+**Модуль:** `functions/validators/`
+
+- `validate_code(path, *, tests_run=True, lint=True) -> ValidationReport`
+- `validate_photo(path, *, min_size_kb=100, expected_dims=None, no_black_frames=True)`
+- `validate_presentation(path, *, min_slides=5, has_titles=True)`
+- `validate_markdown(path, *, min_words=200, has_headings=True)`
+
+Викликаються з `Task.expect.custom_validator="validators.validate_code"`.
+
+### 13.8 Task Dashboard GUI
+
+Нова вкладка **«Task»** у `run_assistant.py` (міксин `task_tab.py`).
+
+Елементи:
+- Textarea «Опис задачі (ТЗ)»
+- Attachments (input files)
+- Кнопки: **Run** / **Pause** / **Stop (hard)**
+- Milestone progress bar (заповнюється з `BatchReport.progress`)
+- Live `StepReport` stream (scrollable)
+- Permission checkbox: «Дозволити всі команди без підтвердження» (warning-іконка)
+
+Залежить від **V4 / Phase 12.3** (GUI-інтеграція TaskRunner — базова кнопка «Виконати план»).
+
+### 13.9 Checkpoint / Resume
+
+Формат checkpoint-а:
+```
+logs/tasks/{task_id}/
+├── spec.json               # TaskSpec
+├── plan.json               # compiled Plan
+├── step_reports.jsonl      # append-only кожен StepReport
+├── batch_progress.jsonl    # для batch_task item-рівень
+└── checkpoint.json         # current_step_index + context + quota state
+```
+
+`resume_task(task_id)`:
+1. Читає `plan.json` + `checkpoint.json`
+2. Перестворює TaskRunner з `context` з checkpoint
+3. Пропускає виконані step-и (по `step_reports.jsonl`)
+4. Продовжує з `checkpoint.json.next_step_index`
+
+### 13.10 Post-execution Report
+
+`functions/core_task_report.py` → `generate_markdown_report(task_id) -> str`
+
+Структура:
+```markdown
+# Task Report: <goal>
+**Task ID:** abc123
+**Duration:** 43 min
+**Status:** ✅ Completed / ⚠️ Partial / ❌ Failed
+
+## Milestones
+1. ✅ Codex CRUD skeleton (3 min, $0.12, 3 AI calls)
+2. ✅ Django migrations (45s)
+3. ✅ Windsurf refactor (15 min, 1 delegation)
+4. ✅ pytest — 7/7 passed (2 min)
+
+## Outputs
+- `apps/users/models.py` (+45 LoC)
+- `apps/users/views.py` (+78 LoC)
+- ...
+
+## Issues
+- Codex quota 500→397 (still OK)
+- pytest WARNING: deprecated `django.conf.urls.url`
+
+## Next Steps Suggested
+- [ ] Оновити URL routing до path()
+- [ ] Додати permissions class
+
+## Audit trail
+→ `logs/tasks/abc123/step_reports.jsonl`
+```
+
+---
+
+### Приклади повних flow
+
+#### Приклад 1 — «Django CRUD» (код + Codex + Windsurf)
+
+**ТЗ:** _«Напиши CRUD для таблиці User у моєму Django-проекті. Codex поки є ліміт, далі Windsurf. Всі команди дозволяй.»_
+
+1. **13.1 Intake** → `TaskSpec(domain="code", domain_sub="django", preferred_ai_order=["codex","windsurf_actor","gpt4o"], permission_mode="auto_all", budget=BudgetHints(max_hours=3))`
+2. **13.2 Router** → `code_pipeline`
+3. **13.3 Quota** → Codex: 380/500 today → OK для 5 викликів
+4. **13.4 compile()** → Plan:
+   ```
+   T1 codex_call     prompt="generate Django CRUD for table User"  → files[]
+   T2 shell          "./manage.py makemigrations && migrate"       expect: rc==0
+   T3 windsurf_actor prompt="refactor views to ListAPIView"
+                     (PR #23 Watcher читає відповідь)
+   T4 shell          "pytest apps/users/"                           expect: ok_count>=5
+   T5 [on_expect_failed hook] → Phase 12.2 repair loop
+   ```
+5. **13.5 Runner**: виконує; PlanCritic каже approve; SessionBudget дивиться 3h
+6. **13.7 Validators**: `validate_code(apps/users/models.py, lint=True, tests=True)`
+7. **13.10 Report:**
+   ```
+   ✅ Django User CRUD | 43 min | Codex calls: 3 ($0.12) | Windsurf: 1
+   Files: apps/users/{models,views,serializers,tests}.py
+   Tests: 7 passed | Lint: clean | Next: оновити до path()
+   ```
+
+#### Приклад 2 — «100 фото у ComfyUI»
+
+**ТЗ:** _«Прогнати всі фото з `D:/photos/in/` через workflow `upscale_2x.json`, скинути в `D:/photos/out/`.»_
+
+1. **13.1 Intake** → `TaskSpec(domain="photo_batch", input_dir="D:/photos/in", output_dir="D:/photos/out", extra={"workflow":"upscale_2x.json"}, budget=BudgetHints(max_hours=8))`
+2. **13.2 Router** → `photo_batch_pipeline`
+3. **13.4 compile()**:
+   ```
+   T1 shell        glob "D:/photos/in/*.{jpg,png}" → items (100 files)
+   T2 batch_task   per_item=comfyui_workflow(workflow="upscale_2x.json", input=$item)
+                   max_parallel=2, on_item_error="retry:2 | skip"
+                   expect: min_success_ratio=0.95
+   T3 shell        du -sh D:/photos/out/
+   ```
+4. **13.5 Runner**: progress bar 0/100 → 100/100; 2 items skip (CUDA OOM)
+5. **13.7 Validators**: `validate_photo` на кожен out → 98 ok, 2 skipped
+6. **13.10 Report:** _«98/100 ok, 2 skipped (CUDA OOM), total 2h 15min, disk used 1.2 GB»_
+
+#### Приклад 3 — «Рефакторинг × 3 у Windsurf» (з Key Scenario у status.md)
+
+**ТЗ:** _«По закінченні задач, задай у Windsurf рефакторинг пройти 3 рази. По пунктах зроби звіт по кожному виконанню тезисно із часом виконання.»_
+
+1. **13.1 Intake** → `TaskSpec(domain="mixed", deliverables=["windsurf_refactor×3", "per-run report"])`
+2. **13.2 Router** → `mixed_pipeline`
+3. **13.4 compile()**:
+   ```
+   T1 batch_task {
+     items: ["refactor_1", "refactor_2", "refactor_3"],
+     per_item: windsurf_actor(prompt="пройди рефакторинг №$i")
+               + windsurf_watch (PR #23) поки чат idle 3s
+               + record duration
+   }
+   T2 markdown_report → logs/tasks/{id}/refactor_report.md
+   ```
+4. **13.10 Report:** _«Рефакторинг 1: 8 min 12s | 2: 6 min 40s | 3: 5 min 55s»_
+
+---
+
+### Послідовність реалізації (S6 → S12)
+
+| Спринт | Задачі | Що дає в руки юзеру |
+|---|---|---|
+| **S6** | 13.1 Intake + 13.4 skeleton Plan compile | Перший working `ТЗ → Plan` (ще без custom handler-ів) — вже можна демонструвати |
+| **S7** | 13.2 Router + `code_pipeline` MVP | Кодингова задача E2E — використовує існуючі tool-и (shell, file-edit, pytest) |
+| **S8** | 13.4 `batch_task` + `photo_batch_pipeline` + `comfyui_workflow` handler | «100 фото» реально запрацює |
+| **S9** | 13.3 Quota Tracker + 13.6 CodexActor + ChatGPTBrowserActor | Мікс AI з автоматичним fallback |
+| **S10** | 13.7 validators + 13.10 report generator | Якісні звіти після кожного run-у |
+| **S11** | `presentation_pipeline` + `ppt_action` + `web_research_pipeline` | Нові домени |
+| **S12** | 13.8 Dashboard GUI + 13.9 checkpoint/resume (залежить від V4/12.3) | Повний юзер-флоу «натиснув Run і пішов спати» |
+
+### Критерії готовності Phase 13
+
+- [ ] 5 use-case-ів (code / photo / presentation / mixed / research) запускаються з єдиного UI-поля ТЗ
+- [ ] >= 90% задач завершуються без втручання юзера (при `permission_mode="auto_all"`)
+- [ ] Середній час на декомпозицію ТЗ → Plan: <30s
+- [ ] Quota fallback працює без людського втручання
+- [ ] Resume після краш-а продовжує з точно того самого місця
+- [ ] Markdown-звіт автогенерується для кожної сесії
+
+### Залежності на інші фази
+
+| Залежність | Чому |
+|---|---|
+| Phase 11 (TaskRunner, PlanCritic, expect, budget) | ✅ вже є — фундамент |
+| Phase 12.2 (repair loop) | бажано для робастного E2E |
+| Phase 12.3 (GUI-інтеграція TaskRunner) | блокер для **13.8 Dashboard** |
+| Phase 12.4 (checkpoint/resume інфра) | бекенд для **13.9** |
+| Phase 12.5 Windsurf Watcher (PR #23) | базис для `windsurf_actor` (13.6) |
+| V1 UIA (accessibility) | для стійкого `ppt_action` / ComfyUI UI-кліків |
+| V2 Vision-LM | для «зрозуміти незнайомий UI» у нових доменах |
+| V3 Playwright | блокер для ChatGPT/Claude browser actors (13.6) |
+
+---
+
 ## 🔌 Додаткові модулі (паралельно з основними фазами)
 
 ### Інтеграція з браузером (Chrome/Edge)
