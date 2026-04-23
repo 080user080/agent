@@ -8,12 +8,19 @@ from unittest.mock import MagicMock
 import pytest
 
 from functions.logic_expectations import (
+    EXPECT_FILE_CONTAINS,
     EXPECT_FILE_EXISTS,
+    EXPECT_FILE_LINES_AT_LEAST,
     EXPECT_FILE_MISSING,
+    EXPECT_FILE_NOT_CONTAINS,
+    EXPECT_FILE_SIZE_BETWEEN,
+    EXPECT_JSON_VALID,
     EXPECT_NO_ERROR_IN_REPORT,
     EXPECT_OK_COUNT_AT_LEAST,
     EXPECT_PROCESS_NOT_RUNNING,
     EXPECT_PROCESS_RUNNING,
+    EXPECT_PYTHON_PARSEABLE,
+    EXPECT_REGEX_MATCH,
     EXPECT_RETURN_CODE,
     EXPECT_STDERR_CONTAINS,
     EXPECT_STDOUT_CONTAINS,
@@ -499,3 +506,373 @@ class TestHelpers:
         out = failures(rs)
         assert len(out) == 1
         assert out[0].kind == "b"
+
+
+# ---------------------------------------------------------------------------
+# Phase 13 S10 — universal validators
+# ---------------------------------------------------------------------------
+
+
+class TestFileSizeBetween:
+    def test_ok_within_range(self, tmp_path):
+        f = tmp_path / "a.bin"
+        f.write_bytes(b"x" * 500)
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_SIZE_BETWEEN,
+                params={"path": str(f), "min_bytes": 100, "max_bytes": 1000},
+            ),
+            _ctx(),
+        )
+        assert res.ok
+        assert res.details["size"] == 500
+
+    def test_below_min(self, tmp_path):
+        f = tmp_path / "small.bin"
+        f.write_bytes(b"x")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_SIZE_BETWEEN,
+                params={"path": str(f), "min_bytes": 100},
+            ),
+            _ctx(),
+        )
+        assert not res.ok
+        assert "min_bytes" in res.reason
+
+    def test_above_max(self, tmp_path):
+        f = tmp_path / "big.bin"
+        f.write_bytes(b"x" * 5000)
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_SIZE_BETWEEN,
+                params={"path": str(f), "max_bytes": 1000},
+            ),
+            _ctx(),
+        )
+        assert not res.ok
+        assert "max_bytes" in res.reason
+
+    def test_missing_file(self, tmp_path):
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_SIZE_BETWEEN,
+                params={"path": str(tmp_path / "nope.bin"), "min_bytes": 1},
+            ),
+            _ctx(),
+        )
+        assert not res.ok
+        assert "not found" in res.reason
+
+    def test_missing_path_param(self):
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(kind=EXPECT_FILE_SIZE_BETWEEN, params={"min_bytes": 1}),
+            _ctx(),
+        )
+        assert not res.ok
+
+
+class TestFileLinesAtLeast:
+    def test_ok(self, tmp_path):
+        f = tmp_path / "lines.txt"
+        f.write_text("a\nb\nc\n")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_LINES_AT_LEAST,
+                params={"path": str(f), "value": 3},
+            ),
+            _ctx(),
+        )
+        assert res.ok
+        assert res.details["lines"] == 3
+
+    def test_empty_lines_excluded(self, tmp_path):
+        f = tmp_path / "lines.txt"
+        f.write_text("a\n\n\nb\n")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_LINES_AT_LEAST,
+                params={"path": str(f), "value": 3},
+            ),
+            _ctx(),
+        )
+        assert not res.ok
+        assert "2" in res.reason
+
+    def test_missing_file(self, tmp_path):
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_LINES_AT_LEAST,
+                params={"path": str(tmp_path / "nope.txt"), "value": 1},
+            ),
+            _ctx(),
+        )
+        assert not res.ok
+
+
+class TestFileContains:
+    def test_ok(self, tmp_path):
+        f = tmp_path / "a.txt"
+        f.write_text("hello WORLD")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_CONTAINS,
+                params={"path": str(f), "substring": "world", "case_insensitive": True},
+            ),
+            _ctx(),
+        )
+        assert res.ok
+
+    def test_fail_case_sensitive(self, tmp_path):
+        f = tmp_path / "a.txt"
+        f.write_text("hello WORLD")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_CONTAINS,
+                params={"path": str(f), "substring": "world"},
+            ),
+            _ctx(),
+        )
+        assert not res.ok
+
+    def test_missing_substring(self, tmp_path):
+        f = tmp_path / "a.txt"
+        f.write_text("x")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(kind=EXPECT_FILE_CONTAINS, params={"path": str(f)}),
+            _ctx(),
+        )
+        assert not res.ok
+
+
+class TestFileNotContains:
+    def test_ok_no_forbidden(self, tmp_path):
+        f = tmp_path / "a.py"
+        f.write_text("def main(): pass\n")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_NOT_CONTAINS,
+                params={
+                    "path": str(f),
+                    "substrings": ["TODO", "FIXME", "XXX"],
+                },
+            ),
+            _ctx(),
+        )
+        assert res.ok
+
+    def test_fail_has_forbidden(self, tmp_path):
+        f = tmp_path / "a.py"
+        f.write_text("# TODO: implement\nx=1\n")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_NOT_CONTAINS,
+                params={"path": str(f), "substrings": ["TODO", "FIXME"]},
+            ),
+            _ctx(),
+        )
+        assert not res.ok
+        assert "TODO" in res.reason
+
+    def test_case_insensitive_hit(self, tmp_path):
+        f = tmp_path / "a.py"
+        f.write_text("# todo here\n")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_FILE_NOT_CONTAINS,
+                params={
+                    "path": str(f),
+                    "substrings": ["TODO"],
+                    "case_insensitive": True,
+                },
+            ),
+            _ctx(),
+        )
+        assert not res.ok
+
+    def test_missing_list(self, tmp_path):
+        f = tmp_path / "a.py"
+        f.write_text("x")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(kind=EXPECT_FILE_NOT_CONTAINS, params={"path": str(f)}),
+            _ctx(),
+        )
+        assert not res.ok
+
+
+class TestRegexMatch:
+    def test_stdout_match(self):
+        reg = ExpectRegistry()
+        ctx = _ctx(handler_result={"stdout": "7 tests passed"})
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_REGEX_MATCH,
+                params={"pattern": r"(\d+) tests passed"},
+            ),
+            ctx,
+        )
+        assert res.ok
+
+    def test_stderr_match(self):
+        reg = ExpectRegistry()
+        ctx = _ctx(handler_result={"stderr": "ERROR: bad"})
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_REGEX_MATCH,
+                params={"pattern": r"ERROR", "where": "stderr"},
+            ),
+            ctx,
+        )
+        assert res.ok
+
+    def test_file_match(self, tmp_path):
+        f = tmp_path / "log.txt"
+        f.write_text("line1\nWARN: something\nline3")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_REGEX_MATCH,
+                params={"pattern": r"^WARN", "where": "file", "path": str(f), "flags": "m"},
+            ),
+            _ctx(),
+        )
+        assert res.ok
+
+    def test_invert_no_match_ok(self):
+        reg = ExpectRegistry()
+        ctx = _ctx(handler_result={"stdout": "all good"})
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_REGEX_MATCH,
+                params={"pattern": r"ERROR", "invert": True},
+            ),
+            ctx,
+        )
+        assert res.ok
+
+    def test_invert_match_fails(self):
+        reg = ExpectRegistry()
+        ctx = _ctx(handler_result={"stdout": "has ERROR"})
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_REGEX_MATCH,
+                params={"pattern": r"ERROR", "invert": True},
+            ),
+            ctx,
+        )
+        assert not res.ok
+
+    def test_missing_pattern(self):
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(kind=EXPECT_REGEX_MATCH, params={}),
+            _ctx(),
+        )
+        assert not res.ok
+
+    def test_invalid_regex(self):
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(kind=EXPECT_REGEX_MATCH, params={"pattern": "["}),
+            _ctx(),
+        )
+        assert not res.ok
+        assert "invalid regex" in res.reason
+
+
+class TestJsonValid:
+    def test_ok(self, tmp_path):
+        f = tmp_path / "a.json"
+        f.write_text('{"k": 1}')
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(kind=EXPECT_JSON_VALID, params={"path": str(f)}),
+            _ctx(),
+        )
+        assert res.ok
+
+    def test_malformed(self, tmp_path):
+        f = tmp_path / "a.json"
+        f.write_text("{not valid")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(kind=EXPECT_JSON_VALID, params={"path": str(f)}),
+            _ctx(),
+        )
+        assert not res.ok
+        assert "JSON parse error" in res.reason
+
+    def test_root_type_match(self, tmp_path):
+        f = tmp_path / "a.json"
+        f.write_text("[1,2,3]")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_JSON_VALID,
+                params={"path": str(f), "root_type": "array"},
+            ),
+            _ctx(),
+        )
+        assert res.ok
+
+    def test_root_type_mismatch(self, tmp_path):
+        f = tmp_path / "a.json"
+        f.write_text("[1,2,3]")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_JSON_VALID,
+                params={"path": str(f), "root_type": "object"},
+            ),
+            _ctx(),
+        )
+        assert not res.ok
+
+
+class TestPythonParseable:
+    def test_ok(self, tmp_path):
+        f = tmp_path / "a.py"
+        f.write_text("def hello():\n    return 1\n")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(kind=EXPECT_PYTHON_PARSEABLE, params={"path": str(f)}),
+            _ctx(),
+        )
+        assert res.ok
+
+    def test_syntax_error(self, tmp_path):
+        f = tmp_path / "a.py"
+        f.write_text("def broken(:\n")
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(kind=EXPECT_PYTHON_PARSEABLE, params={"path": str(f)}),
+            _ctx(),
+        )
+        assert not res.ok
+        assert "SyntaxError" in res.reason
+
+    def test_missing_file(self, tmp_path):
+        reg = ExpectRegistry()
+        res = reg.evaluate(
+            ExpectSpec(
+                kind=EXPECT_PYTHON_PARSEABLE,
+                params={"path": str(tmp_path / "nope.py")},
+            ),
+            _ctx(),
+        )
+        assert not res.ok
