@@ -797,6 +797,50 @@ class TestBatchTaskHandler:
         assert batch_step.metadata["items_failed"] == 2
         assert batch_step.metadata["stopped_early"] is True
 
+    def test_max_failures_tolerates_within_threshold(self):
+        """max_failures=2, 2 fail-и з 5 items → aggregate STATUS_OK."""
+        def flaky(ctx):
+            # items "a","b" fail; "c","d","e" ok
+            if ctx.task.params.get("item") in ("a", "b"):
+                return {"status": STATUS_ERROR, "error": "bad"}
+            return {"status": STATUS_OK}
+
+        runner = _make_runner()
+        runner.register("flaky", flaky)
+        plan = self._items_plan(
+            items=["a", "b", "c", "d", "e"],
+            template={"kind": "flaky"},
+            max_failures=2,
+        )
+        result = runner.run(plan)
+        batch_step = result.report.steps[-1]
+        assert batch_step.metadata["items_failed"] == 2
+        assert batch_step.metadata["items_ok"] == 3
+        assert batch_step.metadata["stopped_early"] is False
+        # aggregate OK бо failed (2) <= max_failures (2)
+        assert batch_step.status == STATUS_OK
+        assert result.all_ok is True
+
+    def test_max_failures_zero_is_strict(self):
+        """max_failures=0 — ЖОДНОГО fail допустимо (еквівалент strict)."""
+        def flaky(ctx):
+            if ctx.task.params.get("item") == "bad":
+                return {"status": STATUS_ERROR}
+            return {"status": STATUS_OK}
+
+        runner = _make_runner()
+        runner.register("flaky", flaky)
+        plan = self._items_plan(
+            items=["a", "bad", "c"],
+            template={"kind": "flaky"},
+            max_failures=0,
+        )
+        result = runner.run(plan)
+        batch_step = result.report.steps[-1]
+        assert batch_step.metadata["items_failed"] == 1
+        assert batch_step.metadata["stopped_early"] is True
+        assert result.all_ok is False
+
     def test_invalid_on_item_error_value(self):
         runner = _make_runner()
         plan = self._items_plan(

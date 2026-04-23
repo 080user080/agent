@@ -1232,7 +1232,8 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 
 - **S6 (PR #25, ✅ merged)** — `core_task_intake.py` + `core_plan_compiler.py` (skeleton pipeline для всіх 6 доменів). 56 нових тестів.
 - **S7 (PR #26, ✅ merged)** — `pipeline_code.py` + `CodePipeline` зареєстрований для `DOMAIN_CODE` у дефолтному реєстрі. Генерує Plan з `mkdir` + per-deliverable `write_file` + опційні `pytest`/`ruff check` кроки з `expect=[return_code=0]`. Додано handler `log_task_spec` у `TaskRunner` (щоб S6 `SkeletonPipeline` Plan був runnable). 59 нових тестів (≈110 на шарі Phase 13).
-- **S8a (PR #27, цей PR)** — handler `batch_task` у `TaskRunner`: шаблонує під-таск для кожного елемента `items`, підтримує `on_item_error=skip|stop`, `max_failures`, `progress_every`, кооперативну зупинку через SessionBudget. Основа для `photo_batch_pipeline` (S8b) і `presentation_pipeline` (S11). 17 нових тестів (782 всього).
+- **S8a (PR #27, ✅ merged)** — handler `batch_task` у `TaskRunner`: шаблонує під-таск для кожного елемента `items`, підтримує `on_item_error=skip|stop`, `max_failures`, `progress_every`, кооперативну зупинку через SessionBudget. Основа для `photo_batch_pipeline` (S8b) і `presentation_pipeline` (S11). 17 нових тестів.
+- **S8a hotfix (PR #28, цей PR)** — фікс логіки `max_failures` у `batch_task` (Devin Review знайшов dead-code у агрегованому `is_ok`). Тепер явні два режими: strict (default, `max_failures=-1` → будь-який fail → `STATUS_ERROR`) і толерантний (`max_failures>=0` → до N fail-ів OK). +2 нові тести (tolerance + zero-is-strict). 784 всього.
 
 **Мета:** Перехід від «чат-агента з інструментами» до **goal-driven executor-а**: користувач дає вільне ТЗ — агент сам декомпозує, обирає інструменти/ШІ/додатки, виконує, валідує результат, звітує.
 
