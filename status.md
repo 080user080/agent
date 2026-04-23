@@ -311,6 +311,92 @@ tests/
 
 ---
 
+## 🎯 Phase 12.5: Windsurf Watcher MVP (перший реальний E2E кейс)
+
+**Статус:** 🟢 У PR (passive-monitor частина) | **Пріоритет:** Критичний (validates Phase 11 стек на реальному use-case)
+
+**Мета:** Перший **реально запускний** автономний кейс, який поєднує увесь Phase 11+ стек у один робочий E2E-flow:
+> «Слідкуй за відповідями у Windsurf поки я не зупиню тебе або не закрию Windsurf. Всі команди дозволяти.»
+
+Розкривається у **12 конкретних пунктів** — перенесено з практичного обговорення користувача. Кожен — окремий трек, позначка каже у якому PR / фазі.
+
+### 🔴 Must-have (без цих не запустити)
+
+| № | Пункт | Статус | Пояснення |
+|---|---|---|---|
+| **W1** | GUI кнопка Start/Stop Windsurf Watch | 🔴 TODO (Phase 12.3 follow-up) | Поки можна через `python -m functions.core_windsurf_watcher` або `WindsurfWatcherRunner().run_forever()` з Python REPL. UI-tab буде у Phase 12.3 (GUI-інтеграція Phase 11 стеку). |
+| **W2** | `functions/tools_windsurf.py` — адаптер | 🟢 **У цьому PR** | `find_windsurf_window()` (через `pygetwindow` / `tools_window_manager`), `make_default_snapshot_fn()` (OCR-обгортка), `normalize_text()` (прибирає cursor-blink), `compute_text_hash()`, `diff_snapshots()`. Повністю тестовий (22 юніт-тести, injection points). |
+| **W3** | Auto-approve PermissionGate для read-only | 🟡 Частково (Phase 12.5 passive) / 🔴 Full auto-execute — follow-up | MVP — passive-only (read-only OCR, ніяких кліків). Для active-mode (виконання команд зі відповіді Windsurf) потрібен окремий PR з явним `WindsurfActor` + ризик-чекбокс у GUI. |
+| **W4** | `functions/core_windsurf_watcher.py` — loop оркестратор | 🟢 **У цьому PR** | `WindsurfWatcherRunner` композує `Watcher` + `condition_chat_idle` + `SessionBudget`. Приймає injection points `window_finder`, `snapshot_fn`, `on_response`. Thread-safe start/stop. |
+| **W5** | Auto-stop коли Windsurf закрили | 🟢 **У цьому PR** | `window_lost_max=5` по дефолту: якщо `window_finder()` повертає None 5 разів поспіль — watcher зупиняється з `stop_reason="auto:window_lost"`. |
+
+### 🟡 Should-have (працюватиме, але крихко)
+
+| № | Пункт | Статус | Пояснення |
+|---|---|---|---|
+| **W6** | De-dup по SHA-256 хешу відповіді | 🟢 **У цьому PR** | `compute_text_hash()` після `normalize_text()` → однакові snapshot-и (включно з cursor-blink) мають той самий хеш. Response-register тригериться тільки при `diff.changed=True`. |
+| **W7** | Persistence `logs/windsurf_watch/{name}.jsonl` | 🟢 **У цьому PR** | Використовує `Watcher._log_path` (JSONL append-only). Записує `{event:"action", iteration, at, result}` на кожну захоплену відповідь. `{event:"stopped", state}` на фінал. |
+| **W8** | Heartbeat / alive-signal | 🔴 TODO (follow-up) | Зараз: Watcher пише `event:"action"` тільки при зміні. Треба періодичний `event:"heartbeat"` кожні N хв, щоб юзер бачив що агент ще живий. |
+| **W9** | Auto-scroll довгих відповідей | 🔴 TODO (follow-up) | OCR бачить тільки видиму частину. Треба: якщо `diff.new_text` на межі видимого регіону — `mouse_scroll(down)` + ще один snapshot → склеїти. Залежить від V1 (UIA) для точного scroll-у. |
+
+### 🟢 Nice-to-have
+
+| № | Пункт | Статус | Пояснення |
+|---|---|---|---|
+| **W10** | Toast / tray icon при новій відповіді | 🔴 TODO | `on_response` callback є (PR #22); підключити `plyer.notification` або `win10toast` — 20 LoC. |
+| **W11** | Фільтр «реагуй тільки якщо містить X» | 🔴 TODO | Розширити `WindsurfWatcherConfig` полем `response_filter: Callable[[str], bool]`; пропускати `register_response` якщо filter=False. |
+| **W12** | 2-way: автоматично надіслати наступний промпт | 🔴 TODO (окремий PR — WindsurfActor) | Ризик: вимагає `mouse_click` + `keyboard_type` у Windsurf-вікно без згоди. Потребує `WindsurfActor` з explicit `allow_actions=True` + audit-log. **Це не MVP.** |
+
+### Архітектура (як поєднано з існуючим стеком)
+
+```
+WindsurfWatcherRunner
+├─ Watcher (PR #7)              ← фоновий тред + поллінг + stop()
+│   └─ condition_chat_idle       ← snapshot не змінюється N секунд (PR #11)
+│       └─ activity_fn           ← window_finder() + snapshot_fn()
+│                                    │
+│                                    ├─ tools_windsurf.find_windsurf_window()
+│                                    └─ tools_windsurf.make_default_snapshot_fn()
+│                                        └─ tools_ocr.ocr_window(hwnd)
+│   └─ action = register_response
+│       └─ diff_snapshots(prev, curr) → WindsurfState.register_response()
+│           └─ on_response(entry) callback (toast / webhook / file)
+├─ SessionBudget (PR #7)          ← 6h wall-time kill-switch
+└─ Watcher._log_path → logs/windsurf_watch/{name}.jsonl (persistence)
+```
+
+### Тестування / запуск
+
+**Smoke (Linux CI):** 43 юніт-тести покривають нормалізацію, diff, window-finder (моки `pygetwindow`), runner з FakeClock.
+
+**Реальний запуск на Windows (для користувача):**
+```python
+from functions.core_windsurf_watcher import create_windsurf_watcher
+
+def on_resp(entry):
+    print(f"[{entry['at']:.0f}] {entry['text'][:100]}…")
+
+runner = create_windsurf_watcher(
+    idle_seconds=3.0,
+    max_duration_seconds=6*60*60,
+    max_responses=None,  # без ліміту
+    on_response=on_resp,
+)
+runner.run_forever()  # блокує до закриття Windsurf або Ctrl+C
+```
+
+### Пріоритет наступних W-треків
+
+1. **W1 (GUI)** — без цього юзер не може натиснути Stop мишею. Phase 12.3 (окремий PR).
+2. **W8 (heartbeat)** — критично для 6-годинних сесій без UI-індикації.
+3. **W9 (auto-scroll)** — без цього довгі відповіді обрізані.
+4. **W10 (toast)** — найдешевша feature з високою user-value.
+5. **W12 (2-way auto-send)** — окремий ризиковий PR, потребує обговорення UX.
+
+> **Це перший Phase у `status.md` який реально валідує весь Phase 11+ стек на живому кейсі.** Усе інше до цього було інфраструктурою. Якщо W1 + W8 доробити — маємо повноцінний «запустив і пішов спати на 6 годин» workflow.
+
+---
+
 ## 📦 Phase 1: Базова автоматизація GUI (Core Input Control)
 
 **Статус:** ✅ Готово | **Пріоритет:** ✅ Завершено | **Термін:** 20.04.2026
