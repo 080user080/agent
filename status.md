@@ -1211,17 +1211,17 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 
 ## 🚀 Phase 13: Universal Task Executor (UTE) — «ТЗ → агент виконав»
 
-**Статус:** 🟡 Розпочато — S6 (intake) та S7 (code_pipeline) на main | **Пріоритет:** 🔴 Найвищий після Phase 12.3/12.4 | **Термін:** S6–S12 (~3 місяці)
+**Статус:** 🟡 Розпочато — S6 (intake), S7 (code_pipeline), S8a (batch primitive) | **Пріоритет:** 🔴 Найвищий після Phase 12.3/12.4 | **Термін:** S6–S12 (~3 місяці)
 
-### 📊 Поточний стан компонентів (оновлено після S7)
+### 📊 Поточний стан компонентів (оновлено після S8a)
 
 | Компонент | Стан | PR / посилання |
 |---|---|---|
 | 13.1 Task Intake (вільний текст → `TaskSpec`) | ✅ реалізовано | PR #25 (S6) — `functions/core_task_intake.py` |
 | 13.2 Resource Router / PipelineRegistry | 🟡 частково | PR #25 (S6) — реєстр + skeleton для всіх 6 доменів; PR #26 (S7) — реальний `CodePipeline` під `DOMAIN_CODE` |
 | 13.3 Quota / Rate Tracker | 🔴 не розпочато | планується у S9 |
-| 13.4 Plan Compilation (TaskSpec → Plan) | 🟡 частково | PR #25 (S6) — `compile_plan_from_spec`; PR #26 (S7) — `CodePipeline` генерує реальні `run_command`/`write_file` кроки + `expect` |
-| 13.5 TaskRunner integration | ✅ базис готовий | Phase 11 (PR #13, #18); новий handler `log_task_spec` доданий у PR #26 |
+| 13.4 Plan Compilation (TaskSpec → Plan) | 🟡 частково | PR #25 (S6) — `compile_plan_from_spec`; PR #26 (S7) — `CodePipeline` генерує реальні кроки; PR #27 (S8a) — `batch_task` primitive (основа для photo/presentation pipelines) |
+| 13.5 TaskRunner integration | ✅ базис готовий | Phase 11 (PR #13, #18); handler `log_task_spec` у PR #26; handler `batch_task` у PR #27 |
 | 13.6 Cross-AI Actors (Codex / Cursor / ChatGPT-web) | 🔴 не розпочато | планується у S9 |
 | 13.7 Output Validators (per-domain) | 🔴 не розпочато | планується у S10 |
 | 13.8 Task Dashboard (GUI) | 🔴 не розпочато | залежить від Phase 12.3; планується у S12 |
@@ -1231,7 +1231,8 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 ### 🗓️ Спринт-лог
 
 - **S6 (PR #25, ✅ merged)** — `core_task_intake.py` + `core_plan_compiler.py` (skeleton pipeline для всіх 6 доменів). 56 нових тестів.
-- **S7 (PR #26, цей PR)** — `pipeline_code.py` + `CodePipeline` зареєстрований для `DOMAIN_CODE` у дефолтному реєстрі. Генерує Plan з `mkdir` + per-deliverable `write_file` + опційні `pytest`/`ruff check` кроки з `expect=[return_code=0]`. Додано handler `log_task_spec` у `TaskRunner` (щоб S6 `SkeletonPipeline` Plan був runnable). 59 нових тестів (≈110 на шарі Phase 13).
+- **S7 (PR #26, ✅ merged)** — `pipeline_code.py` + `CodePipeline` зареєстрований для `DOMAIN_CODE` у дефолтному реєстрі. Генерує Plan з `mkdir` + per-deliverable `write_file` + опційні `pytest`/`ruff check` кроки з `expect=[return_code=0]`. Додано handler `log_task_spec` у `TaskRunner` (щоб S6 `SkeletonPipeline` Plan був runnable). 59 нових тестів (≈110 на шарі Phase 13).
+- **S8a (PR #27, цей PR)** — handler `batch_task` у `TaskRunner`: шаблонує під-таск для кожного елемента `items`, підтримує `on_item_error=skip|stop`, `max_failures`, `progress_every`, кооперативну зупинку через SessionBudget. Основа для `photo_batch_pipeline` (S8b) і `presentation_pipeline` (S11). 17 нових тестів (782 всього).
 
 **Мета:** Перехід від «чат-агента з інструментами» до **goal-driven executor-а**: користувач дає вільне ТЗ — агент сам декомпозує, обирає інструменти/ШІ/додатки, виконує, валідує результат, звітує.
 
@@ -1577,7 +1578,8 @@ logs/tasks/{task_id}/
 |---|---|---|---|
 | **S6** | 13.1 Intake + 13.4 skeleton Plan compile | Перший working `ТЗ → Plan` (ще без custom handler-ів) — вже можна демонструвати | ✅ PR #25 |
 | **S7** | 13.2 Router + `code_pipeline` MVP | Кодингова задача E2E — використовує існуючі tool-и (shell, file-edit, pytest) | ✅ PR #26 |
-| **S8** | 13.4 `batch_task` + `photo_batch_pipeline` + `comfyui_workflow` handler | «100 фото» реально запрацює | 🔴 |
+| **S8a** | 13.4 `batch_task` primitive (generic loop handler) | Фундамент для будь-яких batch-сценаріїв | ✅ PR #27 |
+| **S8b** | `photo_batch_pipeline` + `comfyui_workflow` handler | «100 фото» реально запрацює | 🔴 |
 | **S9** | 13.3 Quota Tracker + 13.6 CodexActor + ChatGPTBrowserActor | Мікс AI з автоматичним fallback | 🔴 |
 | **S10** | 13.7 validators + 13.10 report generator | Якісні звіти після кожного run-у | 🔴 |
 | **S11** | `presentation_pipeline` + `ppt_action` + `web_research_pipeline` | Нові домени | 🔴 |

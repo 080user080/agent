@@ -203,6 +203,7 @@ class TaskRunner:
         self.register("write_file", _handler_write_file)
         self.register("call_provider", _handler_call_provider)
         self.register("sub_plan", _handler_sub_plan)
+        self.register("batch_task", _handler_batch_task)
 
     # ----- Core loop -----
 
@@ -658,6 +659,155 @@ def _handler_sub_plan(ctx: TaskContext) -> Dict[str, Any]:
     return {
         "status": STATUS_OK if result.all_ok else STATUS_ERROR,
         "summary": f"sub-plan {plan.name}: {len(plan.tasks)} task(s), all_ok={result.all_ok}",
+    }
+
+
+def _handler_batch_task(ctx: TaskContext) -> Dict[str, Any]:
+    """Phase 13 S8a — batch primitive.
+
+    Виконує один і той самий під-task для кожного елемента списку `items`.
+    Для кожного елемента будується свіжий `Task` на основі `task_template`,
+    `item` інжектиться у params під ключем `item_param` (default: "item").
+    Виконання — послідовне (concurrency — майбутнє розширення).
+
+    Params:
+      items: List[Any] — обовʼязково, елементи для ітерації.
+      task_template: dict — обовʼязково, шаблон під-таска з полями:
+        kind (str, required), params (dict, optional),
+        on_error (str, optional), max_retries (int, optional),
+        retry_delay_s (float, optional), expect (list, optional).
+      item_param: str — ключ у params під який кладеться поточний item
+        (default: "item").
+      item_id_prefix: str — префікс для id під-таска (default: parent_id).
+      on_item_error: "stop" | "skip" — поведінка на рівні batch
+        (default: "skip" — пропустити проблемний item, продовжити).
+      max_failures: int — якщо кількість fail > max_failures → батч
+        зупиняється (default: -1 — без ліміту).
+      progress_every: int — скільки items записувати у report.events
+        (default: 10, -1 — не логувати).
+
+    Returns:
+      status: STATUS_OK якщо failures <= max_failures (або без ліміту)
+        і `on_item_error != "stop"` АБО не було стопу.
+      summary: агрегований рядок "N items: X ok, Y failed, Z skipped".
+      metadata.items_total / items_ok / items_failed / items_skipped
+      metadata.per_item: список {index, item_id, status, error}.
+    """
+    params = ctx.task.params
+    items = params.get("items")
+    template = params.get("task_template")
+
+    if not isinstance(items, list):
+        return {
+            "status": STATUS_ERROR,
+            "error": "'items' must be a list",
+        }
+    if not isinstance(template, dict) or not template.get("kind"):
+        return {
+            "status": STATUS_ERROR,
+            "error": "'task_template' must be a dict with 'kind'",
+        }
+
+    item_param = str(params.get("item_param", "item"))
+    id_prefix = str(params.get("item_id_prefix", ctx.task.id))
+    on_item_error = str(params.get("on_item_error", ON_ERROR_SKIP))
+    max_failures = int(params.get("max_failures", -1))
+    progress_every = int(params.get("progress_every", 10))
+
+    if on_item_error not in (ON_ERROR_STOP, ON_ERROR_SKIP):
+        return {
+            "status": STATUS_ERROR,
+            "error": (
+                f"'on_item_error' must be 'stop' or 'skip', got {on_item_error!r}"
+            ),
+        }
+
+    items_total = len(items)
+    ok = 0
+    failed = 0
+    skipped = 0
+    stopped_early = False
+    per_item: List[Dict[str, Any]] = []
+    previous: Dict[str, Dict[str, Any]] = dict(ctx.previous_results)
+
+    for idx, item in enumerate(items):
+        # кооперативна зупинка
+        runner = ctx.runner
+        if runner._budget_says_stop():
+            stopped_early = True
+            break
+        if runner._should_stop and runner._should_stop():
+            stopped_early = True
+            break
+
+        item_id = f"{id_prefix}__item_{idx}"
+        sub_params = dict(template.get("params") or {})
+        sub_params[item_param] = item
+        sub_params.setdefault("batch_index", idx)
+        sub_task = Task(
+            id=item_id,
+            kind=str(template["kind"]),
+            name=str(template.get("name") or f"item #{idx}"),
+            params=sub_params,
+            on_error=str(template.get("on_error", ON_ERROR_STOP)),
+            max_retries=int(template.get("max_retries", 2)),
+            retry_delay_s=float(template.get("retry_delay_s", 1.0)),
+            depends_on=[],
+            precheck=parse_expect_list(template.get("precheck")),
+            expect=parse_expect_list(template.get("expect")),
+        )
+
+        step = runner._run_one(sub_task, ctx.report, previous)
+        ctx.report.record(step)
+        previous[item_id] = {
+            "status": step.status,
+            "summary": step.summary,
+            "error": step.error,
+        }
+        per_item.append({
+            "index": idx,
+            "item_id": item_id,
+            "status": step.status,
+            "error": step.error,
+        })
+
+        if step.status == STATUS_OK:
+            ok += 1
+        elif step.status == STATUS_SKIPPED:
+            skipped += 1
+        else:
+            failed += 1
+            if on_item_error == ON_ERROR_STOP:
+                stopped_early = True
+                break
+            if max_failures >= 0 and failed > max_failures:
+                stopped_early = True
+                break
+
+        if progress_every > 0 and (idx + 1) % progress_every == 0:
+            ctx.report.add_event(
+                f"[{ctx.task.id}] batch progress: "
+                f"{idx + 1}/{items_total} (ok={ok} fail={failed} skip={skipped})"
+            )
+
+    summary = (
+        f"batch: {items_total} items, ok={ok}, failed={failed}, skipped={skipped}"
+        + (" (stopped early)" if stopped_early else "")
+    )
+    # агрегований статус: OK тільки якщо жодна помилка і не було ранньої зупинки
+    over_limit = max_failures >= 0 and failed > max_failures
+    is_ok = (failed == 0) and not stopped_early and not over_limit
+    return {
+        "status": STATUS_OK if is_ok else STATUS_ERROR,
+        "summary": summary,
+        "metadata": {
+            "items_total": items_total,
+            "items_ok": ok,
+            "items_failed": failed,
+            "items_skipped": skipped,
+            "stopped_early": stopped_early,
+            "per_item": per_item,
+        },
     }
 
 

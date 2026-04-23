@@ -607,3 +607,276 @@ class TestIntegrationSmoke:
         md = report_path.read_text(encoding="utf-8")
         assert "smoke" in md
         assert "start" in md
+
+
+# --- batch_task (Phase 13 S8a) ---------------------------------------------
+
+
+class TestBatchTaskHandler:
+    def _items_plan(self, items, template, **batch_params):
+        params = {"items": items, "task_template": template}
+        params.update(batch_params)
+        return Plan(name="b", tasks=[Task(id="batch", kind="batch_task", params=params)])
+
+    def test_happy_path_all_ok(self):
+        runner = _make_runner()
+        plan = self._items_plan(
+            items=["a", "b", "c"],
+            template={"kind": "log", "params": {"message": "m"}},
+        )
+        result = runner.run(plan)
+        assert result.all_ok is True
+        batch_step = result.report.steps[-1]
+        assert batch_step.status == STATUS_OK
+        assert "3 items" in batch_step.summary
+        assert "ok=3" in batch_step.summary
+        meta = batch_step.metadata or {}
+        assert meta["items_total"] == 3
+        assert meta["items_ok"] == 3
+        assert meta["items_failed"] == 0
+        assert len(meta["per_item"]) == 3
+
+    def test_item_param_injection(self):
+        """Кожен item інʼєктиться під item_param у params."""
+        seen = []
+
+        def capturing_handler(ctx):
+            seen.append(ctx.task.params.get("photo"))
+            return {"status": STATUS_OK, "summary": "ok"}
+
+        runner = _make_runner()
+        runner.register("capture", capturing_handler)
+        plan = self._items_plan(
+            items=["one.jpg", "two.jpg"],
+            template={"kind": "capture", "params": {"scale": 2}},
+            item_param="photo",
+        )
+        runner.run(plan)
+        assert seen == ["one.jpg", "two.jpg"]
+
+    def test_default_item_param_is_item(self):
+        seen = []
+
+        def capturing_handler(ctx):
+            seen.append(ctx.task.params.get("item"))
+            return {"status": STATUS_OK}
+
+        runner = _make_runner()
+        runner.register("capture", capturing_handler)
+        plan = self._items_plan(
+            items=[1, 2, 3],
+            template={"kind": "capture"},
+        )
+        runner.run(plan)
+        assert seen == [1, 2, 3]
+
+    def test_batch_index_is_injected(self):
+        seen = []
+
+        def capturing_handler(ctx):
+            seen.append(ctx.task.params.get("batch_index"))
+            return {"status": STATUS_OK}
+
+        runner = _make_runner()
+        runner.register("capture", capturing_handler)
+        plan = self._items_plan(
+            items=["a", "b", "c"],
+            template={"kind": "capture"},
+        )
+        runner.run(plan)
+        assert seen == [0, 1, 2]
+
+    def test_empty_items_is_ok(self):
+        runner = _make_runner()
+        plan = self._items_plan(
+            items=[],
+            template={"kind": "log", "params": {"message": "m"}},
+        )
+        result = runner.run(plan)
+        assert result.all_ok is True
+        batch_step = result.report.steps[-1]
+        assert batch_step.metadata["items_total"] == 0
+        assert batch_step.metadata["items_ok"] == 0
+
+    def test_missing_items_errors(self):
+        runner = _make_runner()
+        plan = Plan(name="b", tasks=[
+            Task(id="batch", kind="batch_task", params={
+                "task_template": {"kind": "noop"},
+            }),
+        ])
+        result = runner.run(plan)
+        assert result.all_ok is False
+        assert "'items'" in result.report.steps[-1].error
+
+    def test_missing_template_errors(self):
+        runner = _make_runner()
+        plan = Plan(name="b", tasks=[
+            Task(id="batch", kind="batch_task", params={"items": [1, 2]}),
+        ])
+        result = runner.run(plan)
+        assert result.all_ok is False
+        assert "task_template" in result.report.steps[-1].error
+
+    def test_template_without_kind_errors(self):
+        runner = _make_runner()
+        plan = Plan(name="b", tasks=[
+            Task(id="batch", kind="batch_task", params={
+                "items": [1], "task_template": {"params": {}},
+            }),
+        ])
+        result = runner.run(plan)
+        assert result.all_ok is False
+        assert "kind" in result.report.steps[-1].error
+
+    def test_on_item_error_skip_continues(self):
+        """on_item_error=skip (default) — fail одного item не зупиняє батч."""
+        calls = [0]
+
+        def flaky(ctx):
+            calls[0] += 1
+            item = ctx.task.params.get("item")
+            if item == "bad":
+                return {"status": STATUS_ERROR, "error": "oops"}
+            return {"status": STATUS_OK}
+
+        runner = _make_runner()
+        runner.register("flaky", flaky)
+        plan = self._items_plan(
+            items=["a", "bad", "c"],
+            template={"kind": "flaky"},
+        )
+        result = runner.run(plan)
+        # батч як ціле fail бо був item-fail
+        assert result.all_ok is False
+        batch_step = result.report.steps[-1]
+        assert batch_step.metadata["items_ok"] == 2
+        assert batch_step.metadata["items_failed"] == 1
+        # але всі 3 itemи оброблені
+        assert calls[0] == 3
+
+    def test_on_item_error_stop_halts(self):
+        calls = [0]
+
+        def flaky(ctx):
+            calls[0] += 1
+            if ctx.task.params.get("item") == "bad":
+                return {"status": STATUS_ERROR, "error": "oops"}
+            return {"status": STATUS_OK}
+
+        runner = _make_runner()
+        runner.register("flaky", flaky)
+        plan = self._items_plan(
+            items=["a", "bad", "c"],
+            template={"kind": "flaky"},
+            on_item_error=ON_ERROR_STOP,
+        )
+        result = runner.run(plan)
+        assert result.all_ok is False
+        # третій item не оброблено
+        assert calls[0] == 2
+        batch_step = result.report.steps[-1]
+        assert batch_step.metadata["stopped_early"] is True
+
+    def test_max_failures_triggers_stop(self):
+        """max_failures=1 означає: коли перевищимо — батч зупиняється."""
+        def always_fail(ctx):
+            return {"status": STATUS_ERROR, "error": "nope"}
+
+        runner = _make_runner()
+        runner.register("fail", always_fail)
+        plan = self._items_plan(
+            items=[1, 2, 3, 4, 5],
+            template={"kind": "fail"},
+            max_failures=1,
+        )
+        result = runner.run(plan)
+        assert result.all_ok is False
+        batch_step = result.report.steps[-1]
+        # після 2-го fail (>max_failures=1) — стоп
+        assert batch_step.metadata["items_failed"] == 2
+        assert batch_step.metadata["stopped_early"] is True
+
+    def test_invalid_on_item_error_value(self):
+        runner = _make_runner()
+        plan = self._items_plan(
+            items=[1],
+            template={"kind": "noop"},
+            on_item_error="unknown",
+        )
+        result = runner.run(plan)
+        assert result.all_ok is False
+        assert "on_item_error" in result.report.steps[-1].error
+
+    def test_per_item_reports_recorded(self):
+        """Per-item StepReport-и повинні бути записані у головний звіт."""
+        runner = _make_runner()
+        plan = self._items_plan(
+            items=[1, 2, 3],
+            template={"kind": "noop"},
+        )
+        result = runner.run(plan)
+        # 3 item-и + 1 batch = 4 steps у звіті
+        assert len(result.report.steps) == 4
+        item_ids = [s.task_id for s in result.report.steps[:3]]
+        assert item_ids == ["batch__item_0", "batch__item_1", "batch__item_2"]
+
+    def test_progress_event_logged(self):
+        runner = _make_runner()
+        plan = self._items_plan(
+            items=list(range(25)),
+            template={"kind": "noop"},
+            progress_every=10,
+        )
+        result = runner.run(plan)
+        progress_events = [
+            e for e in result.report.events if "batch progress" in e.message
+        ]
+        # на 25 items з progress_every=10 — 2 progress-евенти (на 10 і 20)
+        assert len(progress_events) >= 2
+
+    def test_progress_every_disabled(self):
+        runner = _make_runner()
+        plan = self._items_plan(
+            items=list(range(15)),
+            template={"kind": "noop"},
+            progress_every=-1,
+        )
+        r = runner.run(plan)
+        progress_events = [
+            e for e in r.report.events if "batch progress" in e.message
+        ]
+        assert progress_events == []
+
+    def test_custom_item_id_prefix(self):
+        runner = _make_runner()
+        plan = self._items_plan(
+            items=["x", "y"],
+            template={"kind": "noop"},
+            item_id_prefix="photo",
+        )
+        result = runner.run(plan)
+        item_ids = [s.task_id for s in result.report.steps[:2]]
+        assert item_ids == ["photo__item_0", "photo__item_1"]
+
+    def test_budget_stops_batch_mid_run(self):
+        class _Budget:
+            def __init__(self):
+                self.calls = 0
+
+            def should_stop(self):
+                self.calls += 1
+                return self.calls > 2
+
+        budget = _Budget()
+        runner = _make_runner(budget=budget)
+        plan = self._items_plan(
+            items=list(range(10)),
+            template={"kind": "noop"},
+        )
+        result = runner.run(plan)
+        batch_step = result.report.steps[-1]
+        assert batch_step.metadata["stopped_early"] is True
+        # оброблено менше ніж 10
+        assert batch_step.metadata["items_total"] == 10
+        assert batch_step.metadata["items_ok"] < 10
