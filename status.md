@@ -1211,7 +1211,27 @@ Phase 11 = `TaskRunner` + `PermissionGate` + `ExecutionReport` + формат п
 
 ## 🚀 Phase 13: Universal Task Executor (UTE) — «ТЗ → агент виконав»
 
-**Статус:** 🔴 Не розпочато (цей документ — план) | **Пріоритет:** 🔴 Найвищий після Phase 12.3/12.4 | **Термін:** S6–S12 (~3 місяці)
+**Статус:** 🟡 Розпочато — S6 (intake) та S7 (code_pipeline) на main | **Пріоритет:** 🔴 Найвищий після Phase 12.3/12.4 | **Термін:** S6–S12 (~3 місяці)
+
+### 📊 Поточний стан компонентів (оновлено після S7)
+
+| Компонент | Стан | PR / посилання |
+|---|---|---|
+| 13.1 Task Intake (вільний текст → `TaskSpec`) | ✅ реалізовано | PR #25 (S6) — `functions/core_task_intake.py` |
+| 13.2 Resource Router / PipelineRegistry | 🟡 частково | PR #25 (S6) — реєстр + skeleton для всіх 6 доменів; PR #26 (S7) — реальний `CodePipeline` під `DOMAIN_CODE` |
+| 13.3 Quota / Rate Tracker | 🔴 не розпочато | планується у S9 |
+| 13.4 Plan Compilation (TaskSpec → Plan) | 🟡 частково | PR #25 (S6) — `compile_plan_from_spec`; PR #26 (S7) — `CodePipeline` генерує реальні `run_command`/`write_file` кроки + `expect` |
+| 13.5 TaskRunner integration | ✅ базис готовий | Phase 11 (PR #13, #18); новий handler `log_task_spec` доданий у PR #26 |
+| 13.6 Cross-AI Actors (Codex / Cursor / ChatGPT-web) | 🔴 не розпочато | планується у S9 |
+| 13.7 Output Validators (per-domain) | 🔴 не розпочато | планується у S10 |
+| 13.8 Task Dashboard (GUI) | 🔴 не розпочато | залежить від Phase 12.3; планується у S12 |
+| 13.9 Checkpoint / Resume | 🔴 не розпочато | залежить від Phase 12.4; планується у S12 |
+| 13.10 Post-execution Report (markdown) | 🔴 не розпочато | планується у S10 |
+
+### 🗓️ Спринт-лог
+
+- **S6 (PR #25, ✅ merged)** — `core_task_intake.py` + `core_plan_compiler.py` (skeleton pipeline для всіх 6 доменів). 56 нових тестів.
+- **S7 (PR #26, цей PR)** — `pipeline_code.py` + `CodePipeline` зареєстрований для `DOMAIN_CODE` у дефолтному реєстрі. Генерує Plan з `mkdir` + per-deliverable `write_file` + опційні `pytest`/`ruff check` кроки з `expect=[return_code=0]`. Додано handler `log_task_spec` у `TaskRunner` (щоб S6 `SkeletonPipeline` Plan був runnable). 59 нових тестів (≈110 на шарі Phase 13).
 
 **Мета:** Перехід від «чат-агента з інструментами» до **goal-driven executor-а**: користувач дає вільне ТЗ — агент сам декомпозує, обирає інструменти/ШІ/додатки, виконує, валідує результат, звітує.
 
@@ -1553,15 +1573,15 @@ logs/tasks/{task_id}/
 
 ### Послідовність реалізації (S6 → S12)
 
-| Спринт | Задачі | Що дає в руки юзеру |
-|---|---|---|
-| **S6** | 13.1 Intake + 13.4 skeleton Plan compile | Перший working `ТЗ → Plan` (ще без custom handler-ів) — вже можна демонструвати |
-| **S7** | 13.2 Router + `code_pipeline` MVP | Кодингова задача E2E — використовує існуючі tool-и (shell, file-edit, pytest) |
-| **S8** | 13.4 `batch_task` + `photo_batch_pipeline` + `comfyui_workflow` handler | «100 фото» реально запрацює |
-| **S9** | 13.3 Quota Tracker + 13.6 CodexActor + ChatGPTBrowserActor | Мікс AI з автоматичним fallback |
-| **S10** | 13.7 validators + 13.10 report generator | Якісні звіти після кожного run-у |
-| **S11** | `presentation_pipeline` + `ppt_action` + `web_research_pipeline` | Нові домени |
-| **S12** | 13.8 Dashboard GUI + 13.9 checkpoint/resume (залежить від V4/12.3) | Повний юзер-флоу «натиснув Run і пішов спати» |
+| Спринт | Задачі | Що дає в руки юзеру | Статус |
+|---|---|---|---|
+| **S6** | 13.1 Intake + 13.4 skeleton Plan compile | Перший working `ТЗ → Plan` (ще без custom handler-ів) — вже можна демонструвати | ✅ PR #25 |
+| **S7** | 13.2 Router + `code_pipeline` MVP | Кодингова задача E2E — використовує існуючі tool-и (shell, file-edit, pytest) | ✅ PR #26 |
+| **S8** | 13.4 `batch_task` + `photo_batch_pipeline` + `comfyui_workflow` handler | «100 фото» реально запрацює | 🔴 |
+| **S9** | 13.3 Quota Tracker + 13.6 CodexActor + ChatGPTBrowserActor | Мікс AI з автоматичним fallback | 🔴 |
+| **S10** | 13.7 validators + 13.10 report generator | Якісні звіти після кожного run-у | 🔴 |
+| **S11** | `presentation_pipeline` + `ppt_action` + `web_research_pipeline` | Нові домени | 🔴 |
+| **S12** | 13.8 Dashboard GUI + 13.9 checkpoint/resume (залежить від V4/12.3) | Повний юзер-флоу «натиснув Run і пішов спати» | 🔴 |
 
 ### Критерії готовності Phase 13
 

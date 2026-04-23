@@ -178,9 +178,23 @@ class TestDefaultRegistry:
         ):
             assert reg.get(d) is not None
 
-    def test_all_domains_use_skeleton(self):
+    def test_code_domain_uses_code_pipeline(self):
+        from functions.pipeline_code import CodePipeline
+
         reg = make_default_registry()
-        for d in reg.list_domains():
+        code_pipe = reg.get(DOMAIN_CODE)
+        assert isinstance(code_pipe, CodePipeline)
+
+    def test_non_code_domains_still_skeleton_in_s7(self):
+        """До S8+ не-code домени ще мапляться на SkeletonPipeline."""
+        reg = make_default_registry()
+        for d in (
+            DOMAIN_PHOTO_BATCH,
+            DOMAIN_PRESENTATION,
+            DOMAIN_WEB_RESEARCH,
+            DOMAIN_MIXED,
+            DOMAIN_UNKNOWN,
+        ):
             assert isinstance(reg.get(d), SkeletonPipeline)
 
 
@@ -190,14 +204,28 @@ class TestDefaultRegistry:
 
 
 class TestCompilePlanFromSpec:
-    def test_uses_default_registry(self):
-        spec = TaskSpec(goal="g", domain=DOMAIN_CODE)
+    def test_uses_default_registry_for_skeleton_domain(self):
+        spec = TaskSpec(goal="g", domain=DOMAIN_MIXED)
         plan = compile_plan_from_spec(spec)
         assert len(plan.tasks) == 1
         assert plan.tasks[0].kind == "log_task_spec"
         assert plan.metadata["pipeline"] == "skeleton"
-        assert plan.metadata["domain"] == DOMAIN_CODE
+        assert plan.metadata["domain"] == DOMAIN_MIXED
         assert plan.metadata["task_id"] == spec.task_id
+
+    def test_uses_default_registry_for_code_domain(self):
+        spec = TaskSpec(
+            goal="generate hello module",
+            domain=DOMAIN_CODE,
+            deliverables=["hello.py"],
+        )
+        plan = compile_plan_from_spec(spec)
+        assert plan.metadata["pipeline"] == "code"
+        assert plan.metadata["domain"] == DOMAIN_CODE
+        # At least mkdir + one scaffold step
+        assert len(plan.tasks) >= 2
+        assert plan.tasks[0].kind == "run_command"
+        assert any(t.kind == "write_file" for t in plan.tasks)
 
     def test_custom_registry(self):
         reg = PipelineRegistry()
