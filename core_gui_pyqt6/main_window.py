@@ -181,7 +181,7 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         self.send_button.clicked.connect(self.send_text_command)
         input_layout.addWidget(self.send_button)
 
-        # Кнопка перезавантаження 🔄 (для відладки)
+        # Кнопка перезавантаження � (для відладки)
         self.restart_button = QPushButton("🔄")
         self.restart_button.setObjectName("restart_button")
         self.restart_button.setFixedSize(48, 48)
@@ -320,7 +320,6 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         if not command:
             return
         self.input_text.clear()
-        self.add_message("user", command)
         if self.assistant_callback:
             self.assistant_callback("process_text", command)
 
@@ -330,7 +329,6 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         if not command:
             return
         self.input_text.clear()
-        self.add_message("user", command)
         if self.assistant_callback:
             self.assistant_callback("run_agent", command)
 

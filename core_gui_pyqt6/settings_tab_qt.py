@@ -445,7 +445,7 @@ class SettingsTabQtMixin:
         import sys
 
         root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        run_script = os.path.join(root_dir, "run_assistant.py")
+        run_script = os.path.join(root_dir, "run.py")
 
         subprocess.Popen(
             [sys.executable, run_script],

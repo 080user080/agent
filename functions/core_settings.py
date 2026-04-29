@@ -18,7 +18,7 @@ from . import config as base_config
 
 # Шлях до user-налаштувань
 _HERE = os.path.dirname(os.path.abspath(__file__))
-USER_SETTINGS_PATH = os.path.join(_HERE, "user_settings.json")
+USER_SETTINGS_PATH = os.path.join(os.path.dirname(_HERE), "runtime", "user_settings.json")
 
 # Схема налаштувань для UI (тип, label, опис, варіанти)
 # Тип: bool | int | float | str | choice | readonly

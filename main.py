@@ -876,6 +876,25 @@ class AssistantCore:
             self.windsurf_watcher = None
             print(f"{Fore.YELLOW}⚠️  WindsurfWatcherExecutor недоступний: {e}")
 
+        # --- Ініціалізація STT контролера для GUI (кнопка мікрофона) ---
+        if stt_enabled and self.gui_queue is not None:
+            try:
+                from functions.core_stt_listener import get_stt_controller
+                print(f"\n{Fore.CYAN}🎤 Ініціалізація голосових команд для GUI...")
+                stt_controller = get_stt_controller(
+                    process_command_callback=self.process_text_command
+                )
+                if stt_controller:
+                    # GUI може ще не бути готовим - відкладене встановлення через чергу
+                    self._pending_stt_controller = stt_controller
+                    print(f"{Fore.GREEN}✅ STT контролер створено, буде передано в GUI")
+                else:
+                    print(f"{Fore.YELLOW}⚠️  STT контролер не створено")
+            except Exception as e:
+                print(f"{Fore.YELLOW}⚠️  Не вдалося ініціалізувати STT контролер: {e}")
+                import traceback
+                traceback.print_exc()
+
         # --- AgentLoop init (Phase 12.1: observe → plan → act → check) ---
         try:
             from functions.agent_loop import AgentLoop, AgentLoopConfig
