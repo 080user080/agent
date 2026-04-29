@@ -478,6 +478,16 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         if not self._is_streaming:
             self.start_stream_message()
         
+        # Фільтрація JSON чанків - не вставляємо в чат
+        stripped_chunk = chunk.strip()
+        if (stripped_chunk.startswith('{"response":') or 
+            stripped_chunk.startswith('{"response"') or 
+            stripped_chunk.startswith('```json') or 
+            stripped_chunk.startswith('```')):
+            self._stream_buffer += chunk  # Зберігаємо в буфер для парсингу, але не виводимо в чат
+            self._scroll_chat_to_end()
+            return
+        
         self._stream_buffer += chunk
         cursor = self.chat_history.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)

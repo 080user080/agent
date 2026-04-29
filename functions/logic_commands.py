@@ -563,9 +563,8 @@ class VoiceAssistant:
                     start_llm = time.time()
                     used_streaming = True
 
-                    # Почати streaming в GUI
-                    if self.gui_log_callback:
-                        self.gui_log_callback("assistant_stream_start", None)
+                    # Не викликаємо stream_start - всі відповіді додаватимуться через log_to_gui
+                    # без дублювання префікса "⚡ МАРК:"
 
                     # Буфер для накопичення тексту перед виведенням
                     buffer_data = {"text": "", "displayed": "", "count": 0}
@@ -573,13 +572,8 @@ class VoiceAssistant:
                     SENTENCE_END = ('. ', '! ', '? ', '\n')  # Кінці речень (з пробілом)
 
                     def flush_buffer():
-                        """Вивести накопичений буфер в чат."""
-                        if buffer_data["text"] and self.gui_log_callback:
-                            # Виводимо тільки нову частину
-                            new_part = buffer_data["text"][len(buffer_data["displayed"]):]
-                            if new_part:
-                                self.gui_log_callback("assistant_stream_chunk", new_part)
-                                buffer_data["displayed"] = buffer_data["text"]
+                        """Не виводимо в streaming - всі відповіді додаватимуться через log_to_gui"""
+                        pass
 
                     def on_chunk(chunk_text: str):
                         nonlocal full_response
@@ -587,11 +581,16 @@ class VoiceAssistant:
                         buffer_data["text"] += chunk_text
                         buffer_data["count"] += 1
 
+                        # Перевіряємо чи це JSON - якщо так, не показуємо в streaming
+                        temp_text = buffer_data["text"].strip()
+                        if temp_text.startswith('{'):
+                            # Це JSON - не показуємо в streaming взагалі
+                            return
+
                         # Перевіряємо чи треба flush (кінець речення або накопичено достатньо)
                         should_flush = (
                             buffer_data["text"].rstrip().endswith(SENTENCE_END) or
-                            len(buffer_data["text"]) - len(buffer_data["displayed"]) >= MIN_BUFFER or
-                            buffer_data["text"].strip().startswith('{')  # Flush для JSON
+                            len(buffer_data["text"]) - len(buffer_data["displayed"]) >= MIN_BUFFER
                         )
 
                         if should_flush and self.gui_log_callback:
@@ -610,9 +609,7 @@ class VoiceAssistant:
                     if buffer_data["text"] and len(buffer_data["text"]) > len(buffer_data["displayed"]):
                         flush_buffer()
 
-                    # Завершити streaming в GUI
-                    if self.gui_log_callback:
-                        self.gui_log_callback("assistant_stream_end", None)
+                    # Не викликаємо stream_end - всі відповіді додаватимуться через log_to_gui
                     
                     llm_time = time.time() - start_llm
                     

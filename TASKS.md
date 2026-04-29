@@ -20,6 +20,12 @@
 - Додана фільтрація JSON чанків в `append_stream_chunk` в `core_gui_pyqt6/main_window.py`
 - JSON чанки не відображаються в чаті, але зберігаються в буфері для парсингу
 
+**Виправлення дублювання в чаті GUI:**
+- Прибрано виклик `stream_start` в `functions/logic_commands.py` - не додає порожній префікс "⚡ МАРК:"
+- Прибрано виклик `assistant_stream_chunk` в `flush_buffer` - не додає текст через streaming
+- Прибрано виклик `stream_end` - не завершує streaming
+- Всі відповіді тепер додаватимуться через `log_to_gui` без дублювання префікса
+
 ---
 
 ## В процесі
