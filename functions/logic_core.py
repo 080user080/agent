@@ -1,0 +1,370 @@
+# functions/logic_core.py
+"""Ядро асистента - реєстр функцій та VoiceAssistant"""
+import os
+import sys
+import importlib
+import inspect
+from pathlib import Path
+import time
+from colorama import Fore, Back, Style
+from .core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result, get_audit_log
+
+# Глобальне посилання на реєстр, щоб aaa_architect міг його оновити
+global_registry = None
+
+class FunctionRegistry:
+    """Реєстр функцій з автоматичним завантаженням"""
+    
+    def __init__(self):
+        global global_registry
+        self.functions = {}
+        self.core_modules = {}
+        self.last_tool_result = None
+        self.load_all_modules()
+        global_registry = self  # Зберігаємо посилання на себе
+    
+    def refresh(self):
+        """Перезавантажити всі функції без перезапуску програми"""
+        print(f"{Fore.CYAN}♻️  Оновлення реєстру навичок...")
+        
+        # Очистити поточні функції
+        self.functions.clear()
+        
+        # Примусово очистити кеш модулів aaa_*, щоб Python перечитав файли
+        keys_to_remove = [k for k in sys.modules if k.startswith('functions.aaa_')]
+        for k in keys_to_remove:
+            del sys.modules[k]
+            
+        # Завантажити заново
+        self.load_all_modules()
+        print(f"{Fore.GREEN}✅ Реєстр оновлено. Доступно навичок: {len(self.functions)}")
+
+    def load_all_modules(self):
+        """Автоматично завантажити всі модулі з папки functions"""
+        functions_dir = Path(__file__).parent
+        
+        if not functions_dir.exists():
+            print(f"{Fore.YELLOW}⚠️  Папка functions не знайдена")
+            return
+        
+        # Спочатку завантажити CORE модулі (core_*.py)
+        print(f"{Fore.CYAN}📦 Завантаження core модулів...")
+        core_files = sorted(functions_dir.glob("core_*.py"))
+        
+        for file_path in core_files:
+            module_name = file_path.stem
+            full_name = f"functions.{module_name}"
+            try:
+                # Якщо модуль уже завантажений через `from functions.xxx import ...`
+                # (наприклад core_settings з run_assistant.py), використовуємо його.
+                if full_name in sys.modules:
+                    module = sys.modules[full_name]
+                else:
+                    # Важливо: ім'я пакета functions.xxx — інакше relative import (`from . import config`) падає
+                    spec = importlib.util.spec_from_file_location(full_name, file_path)
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules[full_name] = module
+                    spec.loader.exec_module(module)
+
+                self.core_modules[module_name] = module
+                print(f"{Fore.MAGENTA}⚡ Core: {Fore.CYAN}{module_name}")
+
+                if hasattr(module, 'init'):
+                    module.init()
+
+            except Exception as e:
+                print(f"{Fore.RED}❌ Помилка завантаження {module_name}: {e}")
+        
+        # Завантажити звичайні функції (aaa_*.py)
+        print(f"\n{Fore.CYAN}📦 Завантаження функцій...")
+        for file_path in sorted(functions_dir.glob("aaa_*.py")):
+            module_name = file_path.stem
+            try:
+                # Важливо: використовуємо ім'я пакета functions.aaa_... для коректного імпорту
+                spec = importlib.util.spec_from_file_location(f"functions.{module_name}", file_path)
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[f"functions.{module_name}"] = module # Реєструємо в sys.modules
+                spec.loader.exec_module(module)
+                
+                for _name, obj in inspect.getmembers(module):
+                    if inspect.isfunction(obj) and hasattr(obj, '_is_llm_function'):
+                        func_info = {
+                            'function': obj,
+                            'name': obj._function_name,
+                            'description': obj._description,
+                            'parameters': obj._parameters
+                        }
+                        self.functions[obj._function_name] = func_info
+                        print(f"{Fore.GREEN}✅ {Fore.CYAN}{obj._function_name}")
+            
+            except Exception as e:
+                print(f"{Fore.RED}❌ Помилка завантаження {module_name}: {e}")
+
+        # Завантажити GUI Automation tools (tools_*.py) — функції без декораторів, для прямого виклику
+        print(f"\n{Fore.CYAN}📦 Завантаження GUI Automation tools...")
+        for file_path in sorted(functions_dir.glob("tools_*.py")):
+            module_name = file_path.stem
+            try:
+                spec = importlib.util.spec_from_file_location(f"functions.{module_name}", file_path)
+                module = importlib.util.module_from_spec(spec)
+                sys.modules[f"functions.{module_name}"] = module
+                spec.loader.exec_module(module)
+
+                # Реєструємо всі публічні функції (без підкреслення на початку)
+                count = 0
+                for name, obj in inspect.getmembers(module):
+                    if inspect.isfunction(obj) and not name.startswith('_') and hasattr(module, name):
+                        # Перевіряємо чи це функція з модуля (не імпортована)
+                        if obj.__module__ == f"functions.{module_name}":
+                            self.functions[name] = {
+                                'function': obj,
+                                'name': name,
+                                'description': obj.__doc__ or f"GUI tool: {name}",
+                                'parameters': getattr(obj, '_parameters', {})
+                            }
+                            count += 1
+
+                if count > 0:
+                    print(f"{Fore.GREEN}✅ {Fore.CYAN}{module_name} ({count} функцій)")
+                else:
+                    print(f"{Fore.YELLOW}⚠️  {module_name} (немає публічних функцій)")
+
+            except Exception as e:
+                print(f"{Fore.RED}❌ Помилка завантаження {module_name}: {e}")
+
+    def get_core_module(self, name):
+        """Отримати core модуль за назвою"""
+        for module_name, module in self.core_modules.items():
+            if name in module_name:
+                return module
+        return None
+
+    def get_tool_policy(self, action):
+        """Отримати політику інструмента."""
+        return get_tool_policy(action)
+
+    def get_tool_risk(self, action):
+        """Отримати risk-level інструмента."""
+        return get_tool_risk(action)
+    
+    def get_system_prompt(self, mode: str = None):
+        """Згенерувати system prompt залежно від режиму ('voice' або 'coding')."""
+        from .config import AGENT_MODE
+        active_mode = mode or AGENT_MODE
+        if active_mode == "coding":
+            return self.get_coding_system_prompt()
+        return self._get_voice_system_prompt()
+
+    def get_coding_system_prompt(self):
+        """System prompt для режиму coding agent.
+
+        Цикл: аналіз задачі -> пошук у коді -> читання -> редагування -> верифікація.
+        """
+        from .config import ASSISTANT_NAME
+
+        prompt = f"""ТИ: Агент-розробник {ASSISTANT_NAME} для роботи з кодом.
+
+МОВА: Українська для спілкування, англійська для коментарів у коді.
+РЕЖИМ: Coding Agent - фокус на якісному виконанні задач із кодом.
+
+ЦИКЛ РОБОТИ АГЕНТА:
+1. **Аналіз** - розбий задачу на кроки
+2. **Пошук** - `search_in_code` / `list_directory` для знайомства з проєктом
+3. **Читання** - `read_code_file` перед будь-яким редагуванням
+4. **Редагування** - `edit_file` або `create_file`
+5. **Верифікація** - `execute_python` або `debug_python_code` для перевірки
+6. **Git** - `git_status` / `git_diff` після змін
+
+КРИТИЧНІ ПРАВИЛА:
+1. ЗАВЖДИ читай файл перед редагуванням (`read_code_file`)
+2. НЕ пиши код "навмання" - спочатку подивись, що є в проєкті
+3. Перевіряй результат `execute_python` після змін
+4. Якщо помилка - використай `debug_python_code`
+5. Поверни JSON з action та параметрами
+6. На складні задачі — використовуй planner (багатокроковий план)
+
+ДОСТУПНІ CODE-TOOLS:
+- `read_code_file(filepath, start_line, max_lines)` — читання файлу
+- `search_in_code(pattern, directory, file_pattern)` — regex-пошук
+- `list_directory(directory)` — вміст директорії
+- `edit_file(filepath, new_content)` — редагування з бекапом
+- `create_file(filename, content)` — створення файлу
+- `execute_python(code)` — запуск Python у пісочниці
+- `debug_python_code(code)` — автовиправлення помилок
+- `git_status(directory)` — статус git-репозиторію
+- `git_diff(directory, staged)` — показати зміни
+
+ВЗІРЦІ (КОРОТКІ ПРИКЛАДИ):
+- "Знайди TODO в коді" → {{"action":"search_in_code","pattern":"TODO","directory":"."}}
+- "Покажи git зміни" → {{"action":"git_diff","directory":"."}}
+- "Прочитай файл config.py" → {{"action":"read_code_file","filepath":"config.py"}}
+- "Активуй вікно і напиши текст" → ДВА action підряд:
+  {{"action":"activate_window_by_title","title":"Notepad"}}
+  {{"action":"keyboard_type","text":"Привіт!"}}
+- "Напиши Привіт у вікно windsurf" → ДВА action підряд:
+  {{"action":"activate_window_by_title","title":"Windsurf"}}
+  {{"action":"keyboard_type","text":"Привіт"}}
+- "Введе команду Привіт у вікно WinSurf" → ДВА action підряд:
+  {{"action":"activate_window_by_title","title":"Windsurf"}}
+  {{"action":"keyboard_type","text":"Привіт"}}
+- "Введи текст у вікно" → ДВА action підряд:
+  {{"action":"activate_window_by_title","title":"[назва вікна]"}}
+  {{"action":"keyboard_type","text":"[текст]"}}
+- "Напиши слово у вікно" → ДВА action підряд:
+  {{"action":"activate_window_by_title","title":"[назва вікна]"}}
+  {{"action":"keyboard_type","text":"[слово]"}}
+
+ВАЖЛИВО: Коли потрібно написати текст у вікно — ЗАВЖДИ повертай ДВА action: activate_window_by_title + keyboard_type.
+НІКОЛИ не використовуй find_windsurf_window — це внутрішня функція.
+Якщо команда не має прямого JSON action — поверни {{"response":"[пояснення чому немає прямої функції]"}}.
+
+ЗАБОРОНЕНІ ФРАЗИ: "Звичайно", "Я допоможу", "Дозвольте", "З радістю".
+ДОЗВОЛЕНІ: "Готово", "Виконую", "Знайдено", "Помилка у рядку X".
+
+ЗАВЖДИ ПОВЕРТАЙ JSON З action!
+"""
+        if self.functions:
+            prompt += "\n\nДОСТУПНІ ФУНКЦІЇ:\n"
+            for _func_name, func_info in sorted(self.functions.items()):
+                prompt += f"\n🔧 {func_info['name']}: {func_info['description']}\n"
+                if func_info['parameters']:
+                    for pname, pdesc in func_info['parameters'].items():
+                        prompt += f"   • {pname}: {pdesc}\n"
+
+        return prompt
+
+    def _get_voice_system_prompt(self):
+        """Звичайний Voice-First system prompt."""
+        from .config import ASSISTANT_NAME, ASSISTANT_MODES, ACTIVE_MODE
+        
+        mode = ASSISTANT_MODES[ACTIVE_MODE]
+        
+        prompt = f"""ТИ: {ASSISTANT_NAME}, асистент-кодер. Мова: українська.
+РЕЖИМ: {ACTIVE_MODE} ({mode['max_words']} слів, {mode['max_sentences']} реч).
+
+ПРАВИЛА:
+1. JSON з action та параметрами. Без коментарів.
+2. Помилка → "Помилка: [причина]". Не зрозумів → "Не зрозумів."
+3. НЕЗРОУМІЛИЙ ТЕРМІН → ЗАВЖДИ спочатку запитай: {{"response":"Що ви маєте на увазі під [термін]?"}}
+   НЕ ВИКОНУЙ дію без уточнення!
+
+ПРИКЛАДИ:
+- "виконай print('hi')" → {{"action":"execute_python","code":"print('hi')"}}
+- "відкрий блокнот" → {{"action":"open_program","program_name":"notepad"}}
+- "клікни Зберегти" → {{"action":"click_text","text":"Зберегти"}}
+- "скріншот" → {{"action":"take_screenshot"}}
+- "вікна" → {{"action":"list_windows"}}
+- "дай команду у windsurf" → {{"response":"Що ви маєте на увазі під windsurf?"}}
+- "відкрий xyz" → {{"response":"Що ви маєте на увазі під xyz?"}}
+- "активуй вікно і напиши текст" → ДВА action підряд (кожен окремим JSON):
+  {{"action":"activate_window_by_title","title":"Notepad"}}
+  {{"action":"keyboard_type","text":"Привіт!"}}
+- "напиши привіт у вікно windsurf" → ДВА action:
+  {{"action":"activate_window_by_title","title":"Windsurf"}}
+  {{"action":"keyboard_type","text":"привіт"}}
+
+ВАЖЛИВО: Коли потрібно написати текст у вікно — ЗАВЖДИ повертай ДВА action: activate_window_by_title + keyboard_type.
+НІКОЛИ не використовуй find_windsurf_window.
+"""
+        
+        if not self.functions:
+            return prompt + "\n\n⚠️ Функції недоступні."
+        
+        # Скорочений список функцій (тільки назва + опис, без параметрів)
+        # Обмежуємо кількість функцій для зменшення розміру промпта
+        MAX_FUNCTIONS_IN_PROMPT = 15
+        
+        prompt += f"\n\nДОСТУПНІ ФУНКЦІЇ (перші {MAX_FUNCTIONS_IN_PROMPT}):\n"
+        
+        # Сортуємо: спочатку найважливіші (core + GUI automation)
+        priority_funcs = [
+            'execute_python', 'debug_python_code', 'open_program', 'close_program',
+            'create_file', 'edit_file', 'list_directory',
+            'mouse_click', 'keyboard_type', 'take_screenshot', 'ocr_screen',
+            'click_text', 'list_windows', 'find_window_by_title', 'activate_window',
+            'playwright_navigate', 'playwright_click', 'playwright_type',
+            'playwright_screenshot', 'playwright_get_text', 'playwright_evaluate',
+            'playwright_close', 'open_browser_playwright',
+            'cdp_ensure_chrome', 'cdp_open_tab', 'cdp_switch_tab', 'cdp_type_text',
+            'cdp_get_response', 'cdp_send_to_ai', 'cdp_list_tabs', 'cdp_get_page_text'
+        ]
+        
+        # Додаємо priority функції першими
+        added = set()
+        for func_name in priority_funcs:
+            if func_name in self.functions and len(added) < MAX_FUNCTIONS_IN_PROMPT:
+                func_info = self.functions[func_name]
+                prompt += f"• {func_info['name']}: {func_info['description'][:50]}...\n"
+                added.add(func_name)
+        
+        # Додаємо решту функцій до ліміту
+        for func_name, func_info in self.functions.items():
+            if func_name not in added and len(added) < MAX_FUNCTIONS_IN_PROMPT:
+                prompt += f"• {func_info['name']}: {func_info['description'][:40]}\n"
+                added.add(func_name)
+        
+        prompt += """
+
+ПРАВИЛА ВИБОРУ ФУНКЦІЇ:
+1. "виконай код" → execute_python
+2. "відкрий", "закрий" → open_program/close_program
+3. "скріншот" → take_screenshot
+4. "клікни [текст]" → click_text
+5. "вікна" → list_windows
+6. "знайди вікно" → find_window_by_title
+7. "активуй" → activate_window
+8. "клікни [x,y]" → mouse_click
+9. "напиши [текст]" → keyboard_type
+
+ЗАВЖДИ ПОВЕРТАЙ JSON З action!
+"""
+        
+        return prompt
+    
+    def execute_function(self, action, params, auto_create=True):
+        """Виконати функцію за назвою з аудитом.
+
+        Якщо функція не знайдена і auto_create=True — спробувати створити її
+        через Архітектор (create_skill).
+        """
+        audit = get_audit_log()
+        risk = get_tool_risk(action)
+
+        if action not in self.functions:
+            # Автоматичне створення функції через Архітектор
+            if auto_create and action != "create_skill" and "create_skill" in self.functions:
+                print(f"{Fore.YELLOW}🏗️  Функція '{action}' не знайдена — створюю через Архітектор...")
+                try:
+                    create_fn = self.functions["create_skill"]["function"]
+                    task_desc = f"Функція з назвою '{action}' приймає параметри: {params}"
+                    create_fn(task_description=task_desc)
+                    # Після refresh() функції перезавантажуються
+                    if action in self.functions:
+                        print(f"{Fore.GREEN}✅ Функція '{action}' створена, виконую...")
+                        return self.execute_function(action, params, auto_create=False)
+                    else:
+                        print(f"{Fore.YELLOW}⚠️  Архітектор не створив функцію з точною назвою '{action}'")
+                except Exception as e:
+                    print(f"{Fore.RED}❌ Помилка Архітектора: {e}")
+
+            result = normalize_tool_result(f"{Fore.RED}❌ Функція {action} не знайдена")
+            self.last_tool_result = result
+            audit.log(action, params, result, risk)
+            return result["message"]
+
+        try:
+            func = self.functions[action]['function']
+            raw_result = func(**params)
+            result = normalize_tool_result(raw_result)
+            result["action"] = action
+            result["params"] = params
+            self.last_tool_result = result
+            audit.log(action, params, result, risk)
+            return result["message"]
+        except Exception as e:
+            result = normalize_tool_result(f"{Fore.RED}❌ Помилка виконання {action}: {str(e)}")
+            result["action"] = action
+            result["params"] = params
+            self.last_tool_result = result
+            audit.log(action, params, result, risk)
+            return result["message"]

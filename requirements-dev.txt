@@ -1,0 +1,7 @@
+# Dev-залежності (тести, лінтер, coverage, форматер)
+# Встановлення: pip install -r requirements-dev.txt
+-r requirements.txt
+
+pytest>=7.0
+pytest-cov>=4.0
+ruff>=0.6
