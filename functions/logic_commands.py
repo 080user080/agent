@@ -587,17 +587,11 @@ class VoiceAssistant:
                         buffer_data["text"] += chunk_text
                         buffer_data["count"] += 1
 
-                        # Перевіряємо чи це JSON - якщо так, не показуємо в streaming
-                        # (щоб не показувати JSON перед результатом виконання або відповіддю)
-                        temp_text = buffer_data["text"].strip()
-                        if temp_text.startswith('{'):
-                            # Це JSON - не показуємо в streaming взагалі
-                            return
-
                         # Перевіряємо чи треба flush (кінець речення або накопичено достатньо)
                         should_flush = (
                             buffer_data["text"].rstrip().endswith(SENTENCE_END) or
-                            len(buffer_data["text"]) - len(buffer_data["displayed"]) >= MIN_BUFFER
+                            len(buffer_data["text"]) - len(buffer_data["displayed"]) >= MIN_BUFFER or
+                            buffer_data["text"].strip().startswith('{')  # Flush для JSON
                         )
 
                         if should_flush and self.gui_log_callback:
@@ -655,7 +649,6 @@ class VoiceAssistant:
             final_answer = process_llm_response(full_response, self.registry, command_text)
 
             # Виводимо результат виконання дій в чат
-            # (стрімінг не показує JSON, а тут — чистий текст після парсингу)
             if final_answer:
                 self.log_to_gui("assistant", final_answer)
                 
