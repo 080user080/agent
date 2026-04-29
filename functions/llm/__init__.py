@@ -41,13 +41,13 @@ __all__ = [
 
 
 def ask_llm(user_message: str, conversation_history: List[Dict[str, str]], system_prompt: str) -> str:
-    """Відправити запит до активного LLM endpoint (primary → secondary).
-    
+    """Відправити запит до активного LLM endpoint (1 → 2 → 3 → 4 → ...).
+
     Args:
         user_message: Повідомлення користувача
         conversation_history: Історія розмови
         system_prompt: Системний промпт
-        
+
     Returns:
         Відповідь від LLM або повідомлення про помилку
     """
@@ -58,35 +58,54 @@ def ask_llm(user_message: str, conversation_history: List[Dict[str, str]], syste
     if not (last and last.get("role") == "user" and last.get("content") == user_message):
         messages.append({"role": "user", "content": user_message})
 
-    # 1. Спробувати primary
-    primary = get_primary_endpoint()
-    ok, result = call_endpoint(primary, messages)
-    if ok:
-        return result
+    # Отримуємо всі enabled endpoints в порядку цифрового role
+    from .core_settings import get_setting
+    endpoints = get_setting("LLM_ENDPOINTS", [])
 
-    print(f"{Fore.YELLOW}⚠️ Primary не вдалося ({result}), пробую secondary...")
+    # Сортуємо endpoints за цифровим role (1, 2, 3, ...)
+    def get_role_order(role):
+        try:
+            return int(role) if role else 999
+        except (ValueError, TypeError):
+            # Для сумісності зі старими текстовими role
+            role_map = {"primary": 1, "secondary": 2, "fallback": 3, "alternative": 4}
+            return role_map.get(role, 999)
 
-    # 2. Fallback на secondary
-    secondary = get_secondary_endpoint()
-    if secondary:
-        ok2, result2 = call_endpoint(secondary, messages)
-        if ok2:
-            return result2
-        print(f"{Fore.YELLOW}⚠️ Secondary теж не вдалося: {result2}")
-    else:
-        print(f"{Fore.YELLOW}⚠️ Secondary endpoint не налаштовано")
+    enabled_endpoints = [ep for ep in endpoints if ep.get("enabled") and ep.get("model") and ep.get("url")]
+    enabled_endpoints.sort(key=lambda ep: get_role_order(ep.get("role")))
 
-    # 3. Усі спроби провалились — повернути помилку
-    if "connection" in str(result).lower() or "refused" in str(result).lower():
-        return (
-            "❌ **Не вдається підключитися до LLM**\n\n"
-            "Перевірте:\n"
-            "1. Primary (Gemini): API ключ та модель\n"
-            "2. Secondary (DeepSeek): чи запущено LM Studio?\n"
-            "3. Налаштування в редакторі LLM endpoints\n\n"
-            f"Остання помилка: {result[:200]}"
-        )
-    return f"❌ Помилка LLM: {result[:200]}"
+    last_error = None
+
+    for ep in enabled_endpoints:
+        try:
+            from .endpoint_client import _normalize_endpoint
+            endpoint = _normalize_endpoint(ep)
+            role = ep.get("role", "unknown")
+            name = ep.get("name", "LLM")
+
+            ok, result = call_endpoint(endpoint, messages)
+            if ok:
+                return result
+
+            last_error = result
+            print(f"{Fore.YELLOW}⚠️ {name} (порядок {role}) не вдалося: {result[:100]}...")
+        except Exception as e:
+            last_error = str(e)
+            print(f"{Fore.YELLOW}⚠️ Помилка при виклику {ep.get('name', 'LLM')}: {e}")
+
+    # Усі спроби провалились — повернути помилку
+    if last_error:
+        if "connection" in str(last_error).lower() or "refused" in str(last_error).lower():
+            return (
+                "❌ **Не вдається підключитися до LLM**\n\n"
+                "Перевірте:\n"
+                "1. API ключі та налаштування endpoints\n"
+                "2. Налаштування в редакторі LLM endpoints\n\n"
+                f"Остання помилка: {last_error[:200]}"
+            )
+        return f"❌ Помилка LLM: {last_error[:200]}"
+
+    return "❌ Немає налаштованих LLM endpoints"
 
 
 # Backward compatibility: keep old function names

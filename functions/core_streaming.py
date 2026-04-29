@@ -103,63 +103,94 @@ class StreamingHandler:
             return f"❌ Помилка стрімінгу: {str(e)}"
 
     def stream_response_with_callback(self, messages, callback):
-        """Стрімить відповідь і викликає callback(chunk_text) для кожного фрагмента."""
+        """Стрімить відповідь і викликає callback(chunk_text) для кожного фрагмента з fallback."""
         print(f"[DEBUG] stream_response_with_callback called")
-        try:
-            ep = self._get_endpoint()
-            print(f"[DEBUG] Endpoint: {ep.get('url')}")
-            print(f"{Fore.LIGHTBLACK_EX}[DEBUG] Streaming with callback to endpoint: {ep.get('url')}{Fore.RESET}")
-            
-            # Groq підтримує OpenAI-compatible API - використовуємо стандартний стрімінг
-            headers = {"Content-Type": "application/json"}
-            if ep["api_key"]:
-                headers["Authorization"] = f"Bearer {ep['api_key']}"
-            
-            print(f"[DEBUG] Sending request with {len(messages)} messages")
-            
-            response = requests.post(
-                ep["url"],
-                headers=headers,
-                json={
-                    "model": ep["model"],
-                    "messages": messages,
-                    "temperature": ep["temperature"],
-                    "max_tokens": ep.get("max_tokens", 8000),
-                    "stream": True
-                },
-                stream=True,
-                timeout=ep["timeout"]
-            )
-            
-            print(f"[DEBUG] Response status: {response.status_code}")
-            
-            if response.status_code != 200:
-                print(f"[DEBUG] Response error: {response.text[:500]}")
-                raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
-            
-            chunk_count = 0
-            for line in response.iter_lines():
-                if line:
-                    line = line.decode('utf-8')
-                    if line.startswith('data: '):
-                        data = line[6:]
-                        if data == '[DONE]':
-                            print(f"[DEBUG] Stream DONE, total chunks: {chunk_count}")
-                            break
-                        try:
-                            json_data = json.loads(data)
-                            delta = json_data['choices'][0]['delta']
-                            if 'content' in delta:
-                                chunk_count += 1
-                                callback(delta['content'])
-                        except Exception as e:
-                            print(f"[DEBUG] Parse error: {e}, line: {line[:100]}")
-                            pass
-            
-            print(f"[DEBUG] Streaming completed, chunks: {chunk_count}")
-        except Exception as e:
-            print(f"{Fore.RED}❌ Помилка стрімінгу: {e}")
-            raise
+
+        # Отримуємо всі enabled endpoints в порядку цифрового role
+        from .core_settings import get_setting
+        endpoints = get_setting("LLM_ENDPOINTS", [])
+
+        # Сортуємо endpoints за цифровим role (1, 2, 3, ...)
+        def get_role_order(role):
+            try:
+                return int(role) if role else 999
+            except (ValueError, TypeError):
+                # Для сумісності зі старими текстовими role
+                role_map = {"primary": 1, "secondary": 2, "fallback": 3, "alternative": 4}
+                return role_map.get(role, 999)
+
+        enabled_endpoints = [ep for ep in endpoints if ep.get("enabled") and ep.get("model") and ep.get("url")]
+        enabled_endpoints.sort(key=lambda ep: get_role_order(ep.get("role")))
+
+        last_error = None
+
+        for ep in enabled_endpoints:
+            try:
+                from .llm.endpoint_client import _normalize_endpoint
+                endpoint = _normalize_endpoint(ep)
+                role = ep.get("role", "unknown")
+                name = ep.get("name", "LLM")
+
+                print(f"[DEBUG] Endpoint: {endpoint.get('url')} ({name}, порядок {role})")
+                print(f"{Fore.LIGHTBLACK_EX}[DEBUG] Streaming with callback to endpoint: {endpoint.get('url')}{Fore.RESET}")
+
+                # Groq підтримує OpenAI-compatible API - використовуємо стандартний стрімінг
+                headers = {"Content-Type": "application/json"}
+                if endpoint["api_key"]:
+                    headers["Authorization"] = f"Bearer {endpoint['api_key']}"
+
+                print(f"[DEBUG] Sending request with {len(messages)} messages")
+
+                response = requests.post(
+                    endpoint["url"],
+                    headers=headers,
+                    json={
+                        "model": endpoint["model"],
+                        "messages": messages,
+                        "temperature": endpoint["temperature"],
+                        "max_tokens": endpoint.get("max_tokens", 8000),
+                        "stream": True
+                    },
+                    stream=True,
+                    timeout=endpoint["timeout"]
+                )
+
+                print(f"[DEBUG] Response status: {response.status_code}")
+
+                if response.status_code != 200:
+                    print(f"[DEBUG] Response error: {response.text[:500]}")
+                    last_error = f"HTTP {response.status_code}: {response.text[:200]}"
+                    print(f"{Fore.YELLOW}⚠️ {name} ({role}) не вдалося: {last_error}")
+                    continue
+
+                chunk_count = 0
+                for line in response.iter_lines():
+                    if line:
+                        line = line.decode('utf-8')
+                        if line.startswith('data: '):
+                            data = line[6:]
+                            if data == '[DONE]':
+                                print(f"[DEBUG] Stream DONE, total chunks: {chunk_count}")
+                                return  # Успішно завершено
+                            try:
+                                json_data = json.loads(data)
+                                delta = json_data['choices'][0]['delta']
+                                if 'content' in delta:
+                                    chunk_count += 1
+                                    callback(delta['content'])
+                            except (json.JSONDecodeError, KeyError, IndexError):
+                                pass
+
+                return  # Успішно завершено
+
+            except Exception as e:
+                last_error = str(e)
+                print(f"{Fore.YELLOW}⚠️ Помилка при стрімінгу {ep.get('name', 'LLM')}: {e}")
+
+        # Усі спроби провалились - викликаємо callback з помилкою
+        error_msg = last_error if last_error else "Немає налаштованих LLM endpoints"
+        callback(f"❌ Помилка стрімінгу: {error_msg}")
+        return
 
 def init():
     """Ініціалізація модуля"""

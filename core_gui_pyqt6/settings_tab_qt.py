@@ -425,19 +425,7 @@ class SettingsTabQtMixin:
             self._settings_status.setStyleSheet("color: #d32f2f;")
 
     def _restart_agent(self) -> None:
-        """Перезавантажити агента."""
-        from PyQt6.QtWidgets import QMessageBox
-
-        reply = QMessageBox.question(
-            self,
-            "Перезавантаження агента",
-            "Ви впевнені що хочете перезавантажити агента?\n\nПрограма буде закрита і запущена заново.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if reply != QMessageBox.StandardButton.Yes:
-            return
-
+        """Перезавантажити агента (без підтвердження)."""
         self._settings_status.setText("🔁 Перезавантаження агента...")
         self._settings_status.setStyleSheet("color: #1976d2;")
 

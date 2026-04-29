@@ -172,8 +172,8 @@ def extract_json_from_text(text: str) -> str:
     if candidate:
         return candidate
 
-    # Нічого не знайдено — повертаємо ОЧИЩЕНИЙ текст як response
-    return json.dumps({"response": clean_text}, ensure_ascii=False)
+    # Нічого не знайдено — повертаємо ОЧИЩЕНИЙ текст напряму (без JSON обгортки)
+    return clean_text
 
 
 def extract_all_json_actions(text: str) -> List[Dict[str, Any]]:

@@ -43,7 +43,7 @@ def get_endpoint_by_role(role: str, default: Optional[Dict] = None) -> Optional[
     """Отримати активний LLM endpoint з певною роллю з налаштувань.
 
     Args:
-        role: Роль endpoint'у (наприклад, "primary", "secondary", "fallback", "alternative")
+        role: Роль endpoint'у (наприклад, "primary", "secondary", "fallback", "alternative" або "1", "2", "3", "4")
         default: Дефолтне значення, якщо endpoint не знайдено
 
     Returns:
@@ -52,6 +52,23 @@ def get_endpoint_by_role(role: str, default: Optional[Dict] = None) -> Optional[
     try:
         from ..core_settings import get_setting
         endpoints = get_setting("LLM_ENDPOINTS", [])
+
+        # Шукаємо endpoint за role напряму (чи то число, чи то текст)
+        for ep in endpoints:
+            if (ep.get("enabled") and ep.get("role") == role
+                and ep.get("model") and ep.get("url")):
+                return _normalize_endpoint(ep)
+
+        # Якщо не знайдено за role, пробуємо мапінг для сумісності зі старими даними
+        role_map = {"1": "primary", "2": "secondary", "3": "fallback", "4": "alternative"}
+        # Якщо role — це число, пробуємо знайти за текстовим еквівалентом
+        target_role = role_map.get(role)
+        if target_role:
+            for ep in endpoints:
+                if (ep.get("enabled") and ep.get("role") == target_role
+                    and ep.get("model") and ep.get("url")):
+                    return _normalize_endpoint(ep)
+
         # Якщо role — це "primary", то шукаємо тільки "primary"
         # Якщо role — це "secondary", то шукаємо "secondary", "fallback" або "alternative"
         valid_roles = [role] if role == "primary" else [role, "fallback", "alternative"]
@@ -70,14 +87,49 @@ def get_primary_endpoint():
     Повертає dict з url, model, api_key, temperature, max_tokens, timeout.
     Якщо primary не налаштовано — повертає дефолт (LM Studio).
     """
-    return get_endpoint_by_role("primary", {
+    try:
+        from ..core_settings import get_setting
+        endpoints = get_setting("LLM_ENDPOINTS", [])
+        print(f"[DEBUG] Total endpoints: {len(endpoints)}")
+
+        # Шукаємо endpoint з role="1"
+        primary = get_endpoint_by_role("1", None)
+        if primary:
+            print(f"[DEBUG] Found endpoint with role=1: {primary.get('name', 'unknown')}")
+            return primary
+        print(f"[DEBUG] No endpoint with role=1 found")
+
+        # Якщо не знайдено role="1", шукаємо endpoint з найменшим цифровим role
+        enabled_endpoints = [ep for ep in endpoints if ep.get("enabled") and ep.get("model") and ep.get("url")]
+        print(f"[DEBUG] Enabled endpoints with model and url: {len(enabled_endpoints)}")
+        if enabled_endpoints:
+            # Сортуємо за цифровим role
+            def get_role_order(ep):
+                try:
+                    return int(ep.get("role", 999)) if ep.get("role") else 999
+                except (ValueError, TypeError):
+                    # Для сумісності зі старими текстовими role
+                    role_map = {"primary": 1, "secondary": 2, "fallback": 3, "alternative": 4}
+                    return role_map.get(ep.get("role"), 999)
+
+            enabled_endpoints.sort(key=get_role_order)
+            result = _normalize_endpoint(enabled_endpoints[0])
+            print(f"[DEBUG] Using endpoint with smallest role: {enabled_endpoints[0].get('role')} - {enabled_endpoints[0].get('name', 'unknown')}")
+            return result
+        print(f"[DEBUG] No enabled endpoints with model and url found")
+    except Exception as e:
+        print(f"[DEBUG] Exception in get_primary_endpoint: {e}")
+
+    # Дефолтне значення
+    print(f"[DEBUG] Using default LM Studio endpoint")
+    return {
         "url": LM_STUDIO_URL,
         "model": "local-model",
         "api_key": "",
         "temperature": 0.1,
         "max_tokens": 1024,
         "timeout": 60,
-    })
+    }
 
 
 def get_secondary_endpoint():

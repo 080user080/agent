@@ -430,6 +430,22 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         if message is None:
             return
         text = str(message)
+
+        # Пропускаємо JSON відповіді (вони будуть замінені на розпарсений текст)
+        if sender == "assistant":
+            stripped_msg = text.strip()
+            # Логування для відстеження
+            import datetime
+            log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] main_window add_message: sender={sender}, message={stripped_msg[:100]}...\n"
+            with open(r"d:\Python\agent\debug_logs\main_window.log", "a", encoding="utf-8") as f:
+                f.write(log_msg)
+            # Якщо повідомлення це JSON з response полем або markdown код блок, пропускаємо його повністю
+            if stripped_msg.startswith('{"response":') or stripped_msg.startswith('{"response"') or stripped_msg.startswith('```json') or stripped_msg.startswith('```'):
+                log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] main_window: Пропускаємо JSON/markdown: {stripped_msg[:50]}...\n"
+                with open(r"d:\Python\agent\debug_logs\main_window.log", "a", encoding="utf-8") as f:
+                    f.write(log_msg)
+                return
+
         if sender == "user":
             prefix = f"\n{USER_TITLE}: "
         elif sender == "system":
@@ -452,10 +468,16 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         self._is_streaming = True
         self._stream_buffer = ""
         self.chat_history.append(f"\n{ASSISTANT_TITLE}: ")
+        # Логування виклику start_stream_message
+        import datetime
+        log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] start_stream_message called\n"
+        with open(r"d:\Python\agent\debug_logs\start_stream.log", "a", encoding="utf-8") as f:
+            f.write(log_msg)
 
     def append_stream_chunk(self, chunk: str) -> None:
         if not self._is_streaming:
             self.start_stream_message()
+        
         self._stream_buffer += chunk
         cursor = self.chat_history.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
@@ -580,6 +602,19 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         try:
             if msg_type == "add_message":
                 sender, text = data
+                # Логування для відстеження
+                import datetime
+                log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] _on_message add_message: msg_type={msg_type}, sender={sender}, text={str(text)[:100]}...\n"
+                with open(r"d:\Python\agent\debug_logs\_on_message.log", "a", encoding="utf-8") as f:
+                    f.write(log_msg)
+                # Пропускаємо JSON відповіді (вони будуть замінені на розпарсений текст)
+                if sender == "assistant":
+                    stripped_msg = str(text).strip()
+                    if stripped_msg.startswith('{"response":') or stripped_msg.startswith('{"response"') or stripped_msg.startswith('```json') or stripped_msg.startswith('```'):
+                        log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] _on_message: Пропускаємо JSON/markdown: {stripped_msg[:50]}...\n"
+                        with open(r"d:\Python\agent\debug_logs\_on_message.log", "a", encoding="utf-8") as f:
+                            f.write(log_msg)
+                        return
                 self.add_message(sender, text)
             elif msg_type == "show_confirmation":
                 question, cb = data
@@ -627,6 +662,12 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         if app is None:
             raise RuntimeError("QApplication має бути створений ДО виклику run()")
         app.exec()
+
+    def showEvent(self, event):
+        """Викликається коли вікно показується - встановлює фокус на поле вводу."""
+        super().showEvent(event)
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(2000, lambda: self.input_text.setFocus())
 
 
 def create_pyqt6_gui(assistant_callback: Optional[Callable] = None) -> MainWindowPyQt6:

@@ -91,6 +91,21 @@ class ChatPanelQtMixin:
                     message = message[len(prefix):].strip()
                     break
 
+        # Пропускаємо JSON відповіді (вони будуть замінені на розпарсений текст)
+        if sender == "assistant":
+            stripped_msg = message.strip()
+            # Логування для відстеження
+            import datetime
+            log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] chat_panel_qt add_message: sender={sender}, message={stripped_msg[:100]}...\n"
+            with open(r"d:\Python\agent\debug_logs\chat_panel_qt.log", "a", encoding="utf-8") as f:
+                f.write(log_msg)
+            # Якщо повідомлення це JSON з response полем, пропускаємо його повністю
+            if stripped_msg.startswith('{"response":') or stripped_msg.startswith('{"response"') or stripped_msg.startswith('```json'):
+                log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] chat_panel_qt: Пропускаємо JSON/markdown: {stripped_msg[:50]}...\n"
+                with open(r"d:\Python\agent\debug_logs\chat_panel_qt.log", "a", encoding="utf-8") as f:
+                    f.write(log_msg)
+                return
+
         # Додаємо роздільник (або об'єднуємо JSON-блоки)
         current_text = self.chat_history.toPlainText().strip()
         skip_separator = False

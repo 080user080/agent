@@ -92,9 +92,10 @@ class LLMEndpointItem:
 class LLMEndpointDialog(QDialog):
     """Діалог для додавання/редагування одного ендпоінту."""
 
-    def __init__(self, item: LLMEndpointItem | None = None, parent=None):
+    def __init__(self, item: Optional[LLMEndpointItem] = None, parent=None, total_items=1):
         super().__init__(parent)
-        self.item = item or LLMEndpointItem({})
+        self.item = item if item else LLMEndpointItem({})
+        self.total_items = total_items
         self._init_ui()
 
     def _init_ui(self) -> None:
@@ -108,11 +109,25 @@ class LLMEndpointDialog(QDialog):
         self.name_edit = QLineEdit(self.item.name)
         layout.addWidget(self.name_edit)
 
-        # Role
-        layout.addWidget(QLabel("Role:"))
+        # Порядок запуску (role)
+        layout.addWidget(QLabel("Порядок запуску:"))
         self.role_combo = QComboBox()
-        self.role_combo.addItems(["primary", "secondary", "fallback", "alternative"])
-        self.role_combo.setCurrentText(self.item.role)
+        # Генеруємо список цифр від 1 до total_items
+        self.role_combo.addItems([str(i) for i in range(1, self.total_items + 1)])
+        # Якщо role вже число, використовуємо його, інакше дефолт 1
+        try:
+            current_role_num = int(self.item.role)
+            if 1 <= current_role_num <= self.total_items:
+                self.role_combo.setCurrentText(str(current_role_num))
+            else:
+                self.role_combo.setCurrentText("1")
+        except (ValueError, TypeError):
+            # Якщо role не число, пробуємо знайти в мапі для сумісності зі старими даними
+            role_map = {"primary": "1", "secondary": "2", "fallback": "3", "alternative": "4"}
+            if self.item.role in role_map and int(role_map[self.item.role]) <= self.total_items:
+                self.role_combo.setCurrentText(role_map[self.item.role])
+            else:
+                self.role_combo.setCurrentText("1")
         layout.addWidget(self.role_combo)
 
         # Type
@@ -213,6 +228,7 @@ class LLMEndpointDialog(QDialog):
 
     def get_item(self) -> LLMEndpointItem:
         self.item.name = self.name_edit.text().strip()
+        # Зберігаємо role як число
         self.item.role = self.role_combo.currentText()
         self.item.type = self.type_combo.currentText()
         self.item.url = self.url_edit.text().strip()
@@ -260,6 +276,7 @@ class LLMEndpointsEditor(QFrame):
     def __init__(self, value: List[dict] | None = None, parent=None):
         super().__init__(parent)
         self.items: List[LLMEndpointItem] = [LLMEndpointItem(d) for d in (value or [])]
+        self._sorted_indices: List[int] = []
         self._init_ui()
         self._refresh_list()
 
@@ -295,21 +312,36 @@ class LLMEndpointsEditor(QFrame):
 
     def _refresh_list(self) -> None:
         self.list_widget.clear()
-        for item in self.items:
-            status = "✅" if item.enabled else "⭕"
-            role = item.role or "primary"
-            ep_type = item.type or "openai_compatible"
-            text = f"{status} [{role}] {ep_type} {item.model} ({item.provider})"
+        # Сортуємо items за цифровим role
+        def get_role_order(item):
+            try:
+                return int(item.role) if item.role else 999
+            except (ValueError, TypeError):
+                # Для сумісності зі старими текстовими role
+                role_map = {"primary": 1, "secondary": 2, "fallback": 3, "alternative": 4}
+                return role_map.get(item.role, 999)
+
+        sorted_items = sorted(self.items, key=get_role_order)
+        # Зберігаємо відсортовані індекси для коректного редагування
+        self._sorted_indices = [self.items.index(item) for item in sorted_items]
+
+        for item in sorted_items:
+            status = "✅" if item.enabled else "❌"
+            api_status = "✅" if item.api_key else "❌"
+            text = f"{status} "
+            if item.role:
+                text += f"[порядок={item.role}] "
             if item.name:
-                text += f" — {item.name}"
+                text += f"{item.name} "
             if item.url:
-                text += f" @ {item.url}"
-            if item.id:
-                text += f" [id={item.id}]"
+                text += f"URL ({item.url}) "
+            if item.model:
+                text += f"Модель({item.model}) "
+            text += f"API ({api_status})"
             self.list_widget.addItem(text)
 
     def _add_item(self) -> None:
-        dlg = LLMEndpointDialog(parent=self)
+        dlg = LLMEndpointDialog(parent=self, total_items=len(self.items) + 1)
         if dlg.exec():
             self.items.append(dlg.get_item())
             self._refresh_list()
@@ -317,25 +349,35 @@ class LLMEndpointsEditor(QFrame):
 
     def _edit_item(self) -> None:
         row = self.list_widget.currentRow()
-        if row < 0 or row >= len(self.items):
+        if row < 0 or row >= len(self._sorted_indices):
             return
-        dlg = LLMEndpointDialog(self.items[row], parent=self)
+        # Отримуємо реальний індекс в self.items через _sorted_indices
+        actual_index = self._sorted_indices[row]
+        if actual_index < 0 or actual_index >= len(self.items):
+            return
+        dlg = LLMEndpointDialog(self.items[actual_index], parent=self, total_items=len(self.items))
         if dlg.exec():
-            self.items[row] = dlg.get_item()
+            self.items[actual_index] = dlg.get_item()
             self._refresh_list()
             self.changed.emit()
 
     def _copy_item(self) -> None:
         """Копіювати налаштування вибраної LLM моделі на новий рядок."""
         row = self.list_widget.currentRow()
-        if row < 0 or row >= len(self.items):
+        if row < 0 or row >= len(self._sorted_indices):
+            return
+        # Отримуємо реальний індекс в self.items через _sorted_indices
+        actual_index = self._sorted_indices[row]
+        if actual_index < 0 or actual_index >= len(self.items):
             return
         # Копіюємо дані вибраного елементу
-        original_data = self.items[row].to_dict()
-        # Очищаємо id та name щоб створити нову копію
+        original_data = self.items[actual_index].to_dict()
+        # Змінюємо id щоб уникнути дублювання
         original_data["id"] = ""
-        original_data["name"] = f"{original_data.get('name', '')} (копія)" if original_data.get('name') else "Копія"
-        # Створюємо новий елемент з копією даних
+        # Змінюємо name додавши копію
+        if original_data.get("name"):
+            original_data["name"] = f"{original_data['name']} (copy)"
+        # Створюємо новий елемент з скопійованими даними
         new_item = LLMEndpointItem(original_data)
         self.items.append(new_item)
         self._refresh_list()
@@ -343,9 +385,13 @@ class LLMEndpointsEditor(QFrame):
 
     def _remove_item(self) -> None:
         row = self.list_widget.currentRow()
-        if row < 0 or row >= len(self.items):
+        if row < 0 or row >= len(self._sorted_indices):
             return
-        del self.items[row]
+        # Отримуємо реальний індекс в self.items через _sorted_indices
+        actual_index = self._sorted_indices[row]
+        if actual_index < 0 or actual_index >= len(self.items):
+            return
+        del self.items[actual_index]
         self._refresh_list()
         self.changed.emit()
 

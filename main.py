@@ -270,10 +270,24 @@ class AssistantCore:
             try:
                 from functions.core_settings import get_setting
                 endpoints = get_setting("LLM_ENDPOINTS", [])
+                # Шукаємо endpoint з role="1" або "primary"
                 for ep in endpoints:
-                    if (ep.get("enabled") and ep.get("role") == "primary"
-                        and ep.get("model") and ep.get("url")):
-                        return ep
+                    role = ep.get("role")
+                    if role == "1" or role == "primary":
+                        if (ep.get("enabled") and ep.get("model") and ep.get("url")):
+                            return ep
+                # Якщо не знайдено role="1" або "primary", шукаємо endpoint з найменшим цифровим role
+                enabled_endpoints = [ep for ep in endpoints if ep.get("enabled") and ep.get("model") and ep.get("url")]
+                if enabled_endpoints:
+                    # Сортуємо за цифровим role
+                    def get_role_order(ep):
+                        try:
+                            return int(ep.get("role", 999)) if ep.get("role") else 999
+                        except (ValueError, TypeError):
+                            role_map = {"primary": 1, "secondary": 2, "fallback": 3, "alternative": 4}
+                            return role_map.get(ep.get("role"), 999)
+                    enabled_endpoints.sort(key=get_role_order)
+                    return enabled_endpoints[0]
             except:
                 pass
             return None

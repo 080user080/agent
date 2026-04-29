@@ -143,18 +143,49 @@ class VoiceAssistant:
             if clean_text.startswith(prefix):
                 clean_text = clean_text[len(prefix):].strip()
         return clean_text
+
+    def filter_code_for_tts(self, text: str) -> str:
+        """Видалити код і спец символи для кращого озвучування."""
+        import re
+
+        # Видалити кодові блоки (```...```)
+        text = re.sub(r'```[\s\S]*?```', '', text)
+
+        # Видалити inline code (`...`)
+        text = re.sub(r'`[^`]+`', '', text)
+
+        # Видалити JSON та інші структуровані дані
+        text = re.sub(r'\{[\s\S]*?\}', '', text)
+        text = re.sub(r'\[[\s\S]*?\]', '', text)
+
+        # Видалити спец символи для коду
+        text = re.sub(r'[{}[\]()<>]', '', text)
+
+        # Замінити технічні терміни на прості фрази
+        text = text.replace('✅', 'завдання виконано')
+        text = text.replace('❌', 'завдання не виконано')
+        text = text.replace('⚠️', 'увага')
+        text = text.replace('❓', 'питання')
+
+        # Видалити зайві пробіли та переноси рядків
+        text = re.sub(r'\s+', ' ', text).strip()
+
+        return text
     
     def speak_response(self, text):
         """Озвучити відповідь (викликається в окремому потоці)"""
         if not self.tts_enabled or not self.tts_engine:
             return
-        
+
         if self.tts_engine.is_playing:
             print(f"{Fore.YELLOW}⚠️  TTS вже відтворює аудіо, пропускаю")
             return
-        
+
+        # Фільтруємо код і спец символи для кращого озвучування
+        text_to_speak = self.filter_code_for_tts(text)
+
         try:
-            success = self.tts_engine.speak(text, wait=True)
+            success = self.tts_engine.speak(text_to_speak, wait=True)
             if not success:
                 print(f"{Fore.RED}❌ Не вдалося озвучити відповідь")
         except Exception as e:
@@ -558,11 +589,10 @@ class VoiceAssistant:
 
                         # Перевіряємо чи це JSON - якщо так, не показуємо в streaming
                         # (щоб не показувати JSON перед результатом виконання або відповіддю)
-                        if buffer_data["count"] < 20:  # Перевіряємо тільки на початку
-                            temp_text = buffer_data["text"].strip()
-                            if temp_text.startswith('{'):
-                                # Це JSON - не показуємо в streaming
-                                return
+                        temp_text = buffer_data["text"].strip()
+                        if temp_text.startswith('{'):
+                            # Це JSON - не показуємо в streaming взагалі
+                            return
 
                         # Перевіряємо чи треба flush (кінець речення або накопичено достатньо)
                         should_flush = (
@@ -625,7 +655,7 @@ class VoiceAssistant:
             final_answer = process_llm_response(full_response, self.registry, command_text)
 
             # Виводимо результат виконання дій в чат
-            # (стрімінг показує сирий JSON, а тут — результат виконання)
+            # (стрімінг не показує JSON, а тут — чистий текст після парсингу)
             if final_answer:
                 self.log_to_gui("assistant", final_answer)
                 

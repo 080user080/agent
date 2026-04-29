@@ -1,5 +1,24 @@
 # Поточні задачі МАРК
-> Останнє оновлення: 28.04.2026
+> Останнє оновлення: 30.04.2026
+
+---
+
+## РОБОЧІ МЕТОДИ АВТОМАТИЗАЦІЇ ДЛЯ PYQT6 GUI (підтверджено)
+
+**Автоматизована вставка тексту в PyQt6 GUI:**
+- `activate_window_by_title(title="МАРК — Асистент (PyQt6)")` з `functions.aaa_voice_input`
+- `keyboard_type(text="привіт")` з `functions.tools_mouse_keyboard`
+- `keyboard_press(key="Enter")` з `functions.tools_mouse_keyboard`
+
+**Затримки:**
+- 2 секунди до вставки тексту
+- 20 секунд до перевірки відповіді
+
+**Скрипт:** `test_duplication_direct.py` - автоматизований тест для перевірки дублювання повідомлень
+
+**Фільтрація JSON:**
+- Додана фільтрація JSON чанків в `append_stream_chunk` в `core_gui_pyqt6/main_window.py`
+- JSON чанки не відображаються в чаті, але зберігаються в буфері для парсингу
 
 ---
 
