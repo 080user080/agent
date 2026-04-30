@@ -83,7 +83,7 @@ class TestAgentLoopCheck:
 
         # Перша ітерація — вважаємо OK
         assert result["success"] is True
-        assert result["detail"] == "Перша ітерація"
+        assert "Перша ітерація" in result["detail"]
 
     def test_check_screen_changed(self):
         assistant = FakeAssistant()

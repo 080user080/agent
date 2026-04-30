@@ -909,9 +909,18 @@ class AssistantCore:
                 import traceback
                 traceback.print_exc()
 
-        # --- AgentLoop init (Phase 12.1: observe → plan → act → check) ---
+        # --- AgentLoop init (Phase 12.1+: observe → plan → act → check + LLM tool-calling) ---
         try:
-            from functions.agent_loop import AgentLoop, AgentLoopConfig
+            from functions.agent_loop import AgentLoop, AgentLoopConfig, build_default_decider
+
+            decider = build_default_decider(
+                enable_vision=False,
+                enable_uia=False,
+                enable_browser=False,
+                history_max=10,
+            )
+            decider_status = "з LLM tool-calling" if (decider and decider.is_available) else "без LLM (fallback на CompiledPlan)"
+
             self.agent_loop = AgentLoop(
                 assistant=self.assistant,
                 registry=self.registry,
@@ -919,10 +928,13 @@ class AssistantCore:
                     max_steps=50,
                     max_duration_seconds=3600.0,
                     enable_ocr=True,
+                    enable_llm_decider=True,
+                    enable_ui_elements=True,
                 ),
+                decider=decider,
             )
             self.agent_loop.gui_cb = lambda msg_type, data: self.log_to_gui(msg_type, data)
-            print(f"{Fore.GREEN}✅ AgentLoop готовий")
+            print(f"{Fore.GREEN}✅ AgentLoop готовий ({decider_status})")
         except Exception as e:
             self.agent_loop = None
             print(f"{Fore.YELLOW}⚠️  AgentLoop недоступний: {e}")

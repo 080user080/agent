@@ -1,0 +1,189 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+main_controller_simple.py
+Спрощений головний контролер без проблем з кодуванням
+"""
+
+import os
+import sys
+import time
+import logging
+import subprocess
+import pyperclip  # Додаємо імпорт для роботи з буфером обміну
+from pathlib import Path
+
+# Налаштування логування
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger("main_controller")
+
+def run_script_simple(script_name, args=None):
+    """Спрощений запуск скрипта - тільки перевірка коду виходу"""
+    try:
+        cmd = [sys.executable, script_name]
+        if args:
+            cmd.extend(args)
+            
+        logger.info(f"🚀 Запуск {script_name}...")
+        
+        # Викостовуємо DEVNULL щоб уникнути проблем з кодуванням
+        result = subprocess.run(
+            cmd, 
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=120  # Збільшимо таймаут для 5_copy.py
+        )
+        
+        if result.returncode == 0:
+            logger.info(f"✅ {script_name} успішно виконано")
+            return True
+        else:
+            logger.warning(f"⚠️ {script_name} завершився з кодом {result.returncode}")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        logger.error(f"⏰ Таймаут запуску {script_name}")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Помилка запуску {script_name}: {e}")
+        return False
+
+def get_response_from_clipboard():
+    """Отримати відповідь з буфера обміну"""
+    try:
+        response_text = pyperclip.paste()
+        if response_text and response_text.strip():
+            logger.info(f"✅ Відповідь отримано з буфера обміну ({len(response_text)} символів)")
+            return response_text.strip()
+        else:
+            logger.warning("⚠️ Буфер обміну порожній")
+            return None
+    except Exception as e:
+        logger.error(f"❌ Помилка читання буфера обміну: {e}")
+        return None
+
+def get_input_folder():
+    """Отримати папку введення з конфігурації"""
+    try:
+        import yaml
+        with open("config.yaml", "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        return config.get("input_folder", "input")
+    except Exception as e:
+        logger.error(f"❌ Помилка читання конфігу: {e}")
+        return "input"
+
+def main():
+    """Головна функція контролера"""
+    start_time = time.time()  # Початок вимірювання часу
+    logger.info("🎬 Запуск головного контролера перекладу")
+    
+    # Перевірка конфігурації
+    if not os.path.exists("config.yaml"):
+        logger.info("📝 Конфіг не знайдено, створюю...")
+        run_script_simple("0_create_default_config.py")
+    
+    # Крок 1: Визначити папку введення
+    run_script_simple("1_folder_loader.py")
+    
+    # Крок 2: Запустити браузер
+    if not run_script_simple("2_launch_gemini.py"):
+        logger.error("❌ Не вдалося запустити браузер")
+        return 1
+    
+    time.sleep(2)
+    
+    # Отримуємо папку введення
+    input_folder = get_input_folder()
+    logger.info(f"📁 Папка введення: {input_folder}")
+    
+    # Отримуємо список файлів
+    if not os.path.exists(input_folder):
+        logger.error(f"❌ Папка {input_folder} не існує")
+        return 1
+        
+    files_to_process = list(Path(input_folder).glob("*.txt"))
+    files_to_process.sort()
+    
+    if not files_to_process:
+        logger.error("❌ Не знайдено файлів для обробки")
+        return 1
+    
+    logger.info(f"📁 Знайдено {len(files_to_process)} файлів для обробки")
+    
+    successful_files = 0
+    
+    # Обробка кожного файлу
+    for file_path in files_to_process:
+        logger.info(f"📄 Обробка файлу: {file_path.name}")
+        
+        # Крок 3: Відкрити тимчасовий чат
+        run_script_simple("3_open_temp_chat.py")
+        time.sleep(0.8)
+        
+        # Крок 4: Відправити повідомлення
+        if run_script_simple("4_send.py", [str(file_path)]):
+            # Затримка для генерації відповіді
+            logger.info("⏳ Очікування генерації відповіді...")
+            time.sleep(8)  # Затримка для генерації
+            
+            # Крок 5: Запустити копіювання (5_copy.py скопіює відповідь в буфер обміну)
+            if run_script_simple("5_copy.py"):
+                # Отримуємо відповідь з буфера обміну
+                response_text = get_response_from_clipboard()
+                
+                if response_text:
+                    # Крок 6: Зберегти відповідь
+                    if run_script_simple("6_save_response.py", [str(file_path), response_text]):
+                        successful_files += 1
+                        logger.info(f"✅ Файл {file_path.name} успішно оброблено")
+                        
+                        # Крок 7: Оновити злитий файл після кожного успішного збереження
+                        run_script_simple("7_update_merged.py")
+                        time.sleep(0.4)  # Коротка затримка для стабільності
+                    else:
+                        logger.error(f"❌ Не вдалося зберегти відповідь для {file_path.name}")
+                else:
+                    logger.error(f"❌ Не вдалося отримати відповіді з буфера обміну для {file_path.name}")
+            else:
+                logger.error(f"❌ Не вдалося виконати копіювання для {file_path.name}")
+        else:
+            logger.error(f"❌ Не вдалося відправити файл {file_path.name}")
+        
+        # Затримка між файлами
+        time.sleep(0.3)
+    
+    # Фінальна статистика
+    logger.info(f"📊 Обробка завершена: {successful_files}/{len(files_to_process)} файлів успішно")
+    
+    # Розрахунок часу виконання
+    total_seconds = int(time.time() - start_time)
+    minutes = total_seconds // 60
+    seconds = total_seconds % 60
+    
+    # Вивід часу виконання
+    if minutes > 0:
+        print(f"\nЧас виконання: {minutes} хв {seconds} сек")
+    else:
+        print(f"\nЧас виконання: {seconds} сек")
+    
+    if successful_files == len(files_to_process):
+        logger.info("🎉 Всі файли успішно оброблено!")
+        return 0
+    else:
+        logger.warning(f"⚠️ Деякі файли не вдалося обробити")
+        return 1
+
+if __name__ == "__main__":
+    try:
+        exit_code = main()
+        sys.exit(exit_code)
+    except KeyboardInterrupt:
+        logger.info("⏹️ Обробку перервано користувачем")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"💥 Критична помилка: {e}")
+        sys.exit(1)

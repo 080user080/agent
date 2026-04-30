@@ -1,0 +1,27 @@
+cdp_port: 9222
+chrome_executable_path: C:\Program Files\Google\Chrome\Application\chrome.exe
+chrome_launch_timeout: 15
+connect_via_cdp: true
+gemini_url: https://gemini.google.com/
+hotkey_new_chat: ctrl_shift_o
+input_folder: d:\Python\TEXT\translation\test2
+log_formats:
+- txt
+- json
+manual_tag: _check
+max_retries: 2
+merged_filename: merged_UKR.txt
+numeric_prefix_regex: ^\d+
+on_bad_response: mark_for_manual
+on_missing_copy_button: retry
+output_folder: output
+page_load_timeout: 10
+response_timeout: 120
+template_message: |
+
+use_dom_method:
+- copy_button
+- js_full
+- clipboard_via_js
+- keyboard_copy
+use_numeric_prefix: true

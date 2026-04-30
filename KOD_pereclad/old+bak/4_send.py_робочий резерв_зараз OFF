@@ -1,0 +1,394 @@
+import os
+import sys
+import time
+import yaml
+import logging
+import re
+import pyperclip
+import ctypes
+from ctypes import wintypes
+from pathlib import Path
+
+# Налаштування логування
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("send_message")
+
+try:
+    from playwright.sync_api import sync_playwright
+except Exception as e:
+    print("Відсутні залежності. Виконайте:\n  pip install playwright\n  playwright install")
+    raise
+
+CONFIG_PATH = "config.yaml"
+
+class MessageSender:
+    def __init__(self, cfg: dict):
+        self.cfg = cfg
+        self.play = None
+        self.conn = None
+        self.page = None
+    
+    def connect_cdp(self):
+        """Підключитися до браузера через CDP і знайти вкладку Google Gemini"""
+        port = int(self.cfg.get("cdp_port", 9222))
+        url = f"http://127.0.0.1:{port}"
+        try:
+            self.play = sync_playwright().start()
+            self.conn = self.play.chromium.connect_over_cdp(url)
+            
+            # Отримуємо всі вкладки
+            pages = []
+            try:
+                pages = self.conn.contexts[0].pages if self.conn.contexts else []
+                if not pages:
+                    pages = self.conn.pages
+            except Exception as e:
+                logger.error(f"Помилка отримання вкладок: {e}")
+                return False
+            
+            logger.info(f"Знайдено {len(pages)} вкладок")
+            
+            # Логуємо всі знайдені вкладки для діагностики
+            for i, page in enumerate(pages):
+                try:
+                    page_url = page.url or "невідомий URL"
+                    page_title = page.title() or "без заголовка"
+                    logger.info(f"Вкладка {i}: {page_title} - {page_url}")
+                except Exception as e:
+                    logger.info(f"Вкладка {i}: не вдалося отримати інформацію - {e}")
+            
+            # Шукаємо вкладку з заголовком "Google Gemini"
+            gemini_page = None
+            target_title = "Google Gemini"
+            
+            for page in pages:
+                try:
+                    page_title = page.title() or ""
+                    page_url = page.url or ""
+                    
+                    if target_title.lower() in page_title.lower():
+                        gemini_page = page
+                        logger.info(f"Знайдено вкладку за заголовком: {page_title}")
+                        break
+                    
+                    # Додатково перевіряємо URL
+                    if "gemini.google.com" in page_url:
+                        gemini_page = page
+                        logger.info(f"Знайдено вкладку за URL: {page_url}")
+                        break
+                        
+                except Exception as e:
+                    logger.debug(f"Помилка перевірки вкладки: {e}")
+                    continue
+            
+            if gemini_page:
+                self.page = gemini_page
+                logger.info(f"Обрано вкладку: {self.page.title()}")
+                return True
+            else:
+                logger.error(f"Не знайдено вкладку з заголовком '{target_title}'")
+                return False
+            
+        except Exception as e:
+            logger.error("Не вдалося підключитися до CDP %s: %s", url, e)
+            return False
+
+    def activate_gemini_tab(self):
+        """Активувати вкладку Gemini"""
+        try:
+            if self.page:
+                self.page.bring_to_front()
+                logger.info("Вкладка Gemini активована")
+                time.sleep(0.5)
+                return True
+        except Exception as e:
+            logger.error(f"Помилка активації вкладки: {e}")
+        return False
+
+    def focus_chat_input(self):
+        """Знайти і сфокусуватися на полі вводу чату"""
+        try:
+            # Селектори для поля вводу на основі вашого HTML
+            input_selectors = [
+                'rich-textarea[aria-label="Введіть запит"]',
+                'div.ql-editor[contenteditable="true"]',
+                '[role="textbox"][aria-label="Введіть запит"]',
+                'div.ql-editor.textarea',
+                'rich-textarea .ql-editor',
+                'div[contenteditable="true"][aria-label="Введіть запит"]'
+            ]
+            
+            for selector in input_selectors:
+                try:
+                    logger.info(f"Спроба знайти поле вводу за селектором: {selector}")
+                    input_field = self.page.query_selector(selector)
+                    if input_field:
+                        # Клікаємо на поле вводу для фокусу
+                        input_field.click()
+                        logger.info(f"Знайдено поле вводу за селектором: {selector}")
+                        time.sleep(0.5)
+                        
+                        # Додатково перевіряємо, чи активне поле вводу
+                        is_focused = self.page.evaluate(f"""
+                            () => {{
+                                const el = document.querySelector('{selector}');
+                                return el && document.activeElement === el;
+                            }}
+                        """)
+                        
+                        if is_focused:
+                            logger.info("Поле вводу успішно сфокусовано")
+                        else:
+                            logger.warning("Поле вводу не отримало фокус, спробуємо інший метод")
+                            # Альтернативний метод фокусу
+                            self.page.evaluate(f"""
+                                () => {{
+                                    const el = document.querySelector('{selector}');
+                                    if (el) {{
+                                        el.focus();
+                                        el.click();
+                                    }}
+                                }}
+                            """)
+                            time.sleep(0.5)
+                        
+                        return True
+                except Exception as e:
+                    logger.debug(f"Не вдалося знайти поле вводу за селектором {selector}: {e}")
+                    continue
+            
+            logger.error("Не вдалося знайти поле вводу за жодним селектором")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Помилка при фокусуванні на полі вводу: {e}")
+            return False
+
+    def send_message(self, text: str):
+        """Надійно вводить текст у поле вводу Gemini та відправляє його (інтегрований метод з першого коду)"""
+        # Спочатку копіюємо текст в буфер обміну
+        clipboard_success = False
+        for attempt in range(2):
+            try:
+                pyperclip.copy(text)
+                if pyperclip.paste() == text:
+                    clipboard_success = True
+                    break
+            except Exception as e:
+                logger.warning("Спроба %d копіювання в буфер не вдала: %s", attempt + 1, e)
+
+        # Затримка для стабілізації
+        time.sleep(0.5)
+
+        if clipboard_success:
+            self.page.keyboard.press("Control+V")
+            time.sleep(0.5)  # Затримка для вставки
+            self.page.keyboard.press("Enter")
+            logger.info("Текст успішно вставлено через Ctrl+V та відправлено Enter")
+        else:
+            # Резервний метод: введення тексту напряму
+            logger.warning("Використання резервного методу введення тексту")
+            self.page.keyboard.type(text)
+            time.sleep(0.8)  # Затримка для введення тексту
+            self.page.keyboard.press("Enter")
+            logger.info("Текст успішно введено через клавіатуру та відправлено Enter")
+
+    def send_via_clipboard(self, text):
+        """Відправити текст через буфер обміну з використанням Windows API"""
+        try:
+            # Копіюємо текст в буфер
+            pyperclip.copy(text)
+            logger.info("Текст скопійовано в буфер обміну")
+            time.sleep(0.5)
+            
+            # Константи для клавіш
+            VK_CONTROL = 0x11
+            VK_V = 0x56
+            VK_RETURN = 0x0D
+            
+            # Функції Windows API
+            user32 = ctypes.WinDLL('user32')
+            user32.keybd_event.argtypes = [wintypes.BYTE, wintypes.BYTE, wintypes.DWORD, wintypes.ULONG]
+            
+            # Натискаємо Ctrl+V
+            user32.keybd_event(VK_CONTROL, 0, 0, 0)  # Ctrl down
+            time.sleep(0.1)
+            user32.keybd_event(VK_V, 0, 0, 0)        # V down
+            time.sleep(0.1)
+            user32.keybd_event(VK_V, 0, 2, 0)        # V up
+            time.sleep(0.1)
+            user32.keybd_event(VK_CONTROL, 0, 2, 0)  # Ctrl up
+            
+            logger.info("Виконано Ctrl+V через Windows API")
+            time.sleep(1.0)
+            
+            # Натискаємо Enter
+            user32.keybd_event(VK_RETURN, 0, 0, 0)   # Enter down
+            time.sleep(0.1)
+            user32.keybd_event(VK_RETURN, 0, 2, 0)   # Enter up
+            
+            logger.info("Виконано Enter через Windows API")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Помилка при відправці через буфер обміну: {e}")
+            return False
+
+    def close(self):
+        """Закрити з'єднання"""
+        try:
+            if self.conn:
+                self.conn.close()
+            if self.play:
+                self.play.stop()
+        except Exception:
+            pass
+
+def load_config():
+    """Завантажити конфігурацію"""
+    if not os.path.exists(CONFIG_PATH):
+        raise FileNotFoundError(f"Не знайдено файл {CONFIG_PATH}")
+
+    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+        cfg_all = yaml.safe_load(f) or {}
+
+    cfg = cfg_all  # Використовуємо вже завантажені дані
+
+    defaults = {
+        "input_folder": "input",
+        "template_message": "Зробити адаптивний переклад максимально точний. У відповіді тільки перекладений текст без жодних твоїх питань побажань чи вставок.",
+        "cdp_port": 9222,
+        "numeric_prefix_regex": r"^\d+"
+    }
+    
+    for k, v in defaults.items():
+        cfg.setdefault(k, v)
+
+    return cfg
+
+def scan_files(folder, regex):
+    """Сканувати файли за числовим префіксом"""
+    files = [p for p in Path(folder).iterdir() if p.suffix.lower() == ".txt"]
+    rx = re.compile(regex)
+    ordered = []
+    for f in files:
+        m = rx.match(f.name)
+        num = int(m.group()) if m else 999999
+        ordered.append((num, f.name, f))
+    ordered.sort()
+    return [f[2] for f in ordered]
+
+def main():
+    """Головна функція для відправки повідомлення"""
+    try:
+        cfg = load_config()
+        
+        # Отримуємо папку з вхідними файлами з конфігурації
+        input_folder = cfg["input_folder"]
+        numeric_rx = cfg["numeric_prefix_regex"]
+        
+        # Скануємо файли
+        files = scan_files(input_folder, numeric_rx)
+        
+        if not files:
+            logger.error("Не знайдено файлів для обробки в папці %s", input_folder)
+            return False
+
+        # Створюємо відправника повідомлень
+        sender = MessageSender(cfg)
+        
+        # Підключаємося до браузера і знаходимо вкладку Google Gemini
+        if not sender.connect_cdp():
+            logger.error("Не вдалося підключитися до браузера або знайти вкладку Google Gemini")
+            return False
+
+        # Активуємо вкладку Gemini
+        if not sender.activate_gemini_tab():
+            logger.error("Не вдалося активувати вкладку Gemini")
+            return False
+
+        # Пауза для гарантії активації вкладки
+        logger.info("Очікування 1 секунди для активації вкладки...")
+        time.sleep(1)
+
+        # Обробляємо всі файли
+        for file_path in files:
+            logger.info(f"Обробка файлу: {file_path.name}")
+
+            # Зчитуємо текст файлу
+            text = file_path.read_text(encoding="utf-8", errors="ignore")
+            template = cfg["template_message"].strip()
+            msg = template + "\n\n" + text
+
+            # Фокусуємося на полі вводу
+            if not sender.focus_chat_input():
+                logger.error("Не вдалося сфокусуватися на полі вводу для файлу %s", file_path.name)
+                continue
+
+            # ВИКОРИСТАННЯ ІНТЕГРОВАНОГО МЕТОДУ - основний спосіб
+            logger.info("Використання інтегрованого методу вставки...")
+            sender.send_message(msg)
+
+            # Альтернативно: можна використовувати старий метод через Windows API
+            # sender.send_via_clipboard(msg)
+
+            logger.info(f"Повідомлення з файлу {file_path.name} успішно відправлено")
+            
+            # Чекаємо перед наступним файлом
+            time.sleep(1)
+
+        logger.info("Всі файли успішно оброблено")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Помилка при відправці повідомлень: {e}")
+        return False
+    finally:
+        if 'sender' in locals():
+            sender.close()
+
+def send_single_file(file_path):
+    """Відправити один конкретний файл"""
+    try:
+        cfg = load_config()
+        sender = MessageSender(cfg)
+        
+        if not sender.connect_cdp():
+            logger.error("Не вдалося підключитися до браузера")
+            return False
+        
+        if not sender.activate_gemini_tab():
+            logger.error("Не вдалося активувати вкладку Gemini")
+            return False
+        
+        time.sleep(0.8)
+        
+        if not sender.focus_chat_input():
+            logger.error("Не вдалося сфокусуватися на полі вводу")
+            return False
+        
+        # Зчитуємо текст файлу
+        text = Path(file_path).read_text(encoding="utf-8", errors="ignore")
+        template = cfg.get("template_message", "").strip()
+        msg = template + "\n\n" + text if template else text
+        
+        logger.info(f"📤 Відправка тексту ({len(msg)} символів)")
+        
+        # Відправляємо повідомлення
+        sender.send_message(msg)
+        logger.info("✅ Повідомлення відправлено")
+        
+        sender.close()
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Помилка відправки файлу: {e}")
+        return False
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        # Режим одного файлу
+        success = send_single_file(sys.argv[1])
+        sys.exit(0 if success else 1)
+    else:
+        main()

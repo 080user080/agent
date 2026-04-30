@@ -30,6 +30,353 @@
 
 ## В процесі
 
+### P0: COMPUTER USE АГЕНТ — МАРК як людина за комп'ютером
+
+> Базовий план: див. `PLAN_COMPUTER_USE.md` (1138 рядків, аудит коду 26.04.2026)
+> Мета: Перетворити МАРК з "набору інструментів з планером" на агента, який користується ПК як людина і може тестувати GUI як QA-інженер.
+
+**Поточний стан (станом на 30.04.2026):**
+- ✅ AgentLoop повний (`functions/agent_loop.py`, ~1190 рядків) — observe→plan→act→check + LLM tool-calling
+- ✅ ActionDecider з LLM tool-calling (через `logic_llm_tools.ask_llm_with_tools`)
+- ✅ Tools schema (`functions/logic_agent_tools_schema.py`) — AGENT/VISION/UIA/BROWSER tools
+- ✅ `Observation` посилене: screenshot, OCR, UI elements, UIA tree, vision description, active window
+- ✅ `check()` посилене: act_result + ExpectRegistry (17 evaluator-ів) + screen hash fallback
+- ✅ AgentLoop інтегрований з GUI (кнопка "🤖 Агент" → run_agent_loop)
+- ✅ Базові інструменти (mouse_keyboard, screen_capture, ocr, ui_detector, window_manager, app_recognizer, visual_diff)
+- ✅ Phase 11+ стек (TaskRunner, PermissionGate, Expectations, ExecutionReport, SessionBudget, PlanCritic)
+- ✅ UIA через pywinauto (`tools_ui_accessibility.py`)
+- ✅ Vision providers (`providers_vision.py`)
+- ✅ Browser CDP + Playwright (`tools_browser_cdp.py`, `tools_playwright.py`)
+- ✅ Repair loop базовий (`logic_repair_loop.py`)
+- ✅ Checkpoint manager (`core_checkpoint.py`)
+- ✅ LLM tool-calling низькорівневий (`logic_llm_tools.py`)
+- � **Gap**: GUITester для тестування GUI як QA-інженер — відсутній (ЕТАП 2)
+- � **Gap**: Vision-LM, UIA, Browser capabilities в decider — вимкнені за замовчуванням (треба ввімкнути в config)
+
+---
+
+#### ЕТАП 1: ПОВНОЦІННИЙ AGENT LOOP З LLM TOOL-CALLING (КРИТИЧНИЙ)
+
+**Ціль:** AgentLoop приймає рішення через LLM tool-calling замість попередньо складеного плану.
+
+- [x] Створити `functions/logic_agent_tools_schema.py` (~440 рядків) — DONE 30.04.2026
+  - Пріоритет: P0
+  - Деталі:
+    - OpenAI tool-calling schema для всіх GUI-дій
+    - Покриває: `mouse_click`, `click_text`, `keyboard_type`, `keyboard_hotkey`, `take_screenshot`, `ocr_screen`, `open_program`, `fill_form`, `wait_for_text`, `find_button_by_text`, `done`
+    - Окрема група vision-tools: `describe_screen`, `find_element_by_description`, `is_screen_correct`
+    - Окрема група UIA-tools: `uia_click_by_name`, `uia_type_in_element`, `uia_get_value`, `uia_list_buttons`
+    - Окрема група browser-tools: `browser_open_url`, `browser_click_text`, `browser_fill`, `browser_screenshot`, `browser_extract_text`
+    - Експортує `AGENT_TOOLS`, `VISION_TOOLS`, `UIA_TOOLS`, `BROWSER_TOOLS` константи
+
+- [x] Розширити `functions/agent_loop.py` — додати `ActionDecider` (~220 рядків) — DONE 30.04.2026
+  - Пріоритет: P0
+  - Деталі:
+    - `class ActionDecider` з методом `decide(goal, observation, history, last_result) → AgentAction`
+    - Використовує `logic_llm_tools.ask_llm_with_tools()` (вже існує)
+    - Будує промпт з: цілі, скріншот опису, OCR тексту, UIA дерева (якщо доступно), історії дій (max 10), останнього результату
+    - Метод `replan(state)` — переосмислити підхід після 3 невдач підряд
+    - Інтегрується в `AgentLoop.plan()` як ПЕРШИЙ пріоритет (вище CompiledPlan)
+    - Fallback на CompiledPlan/Planner якщо LLM tool-calling недоступний
+
+- [x] Розширити `functions/agent_loop.py` — посилити `observe()` (~120 рядків) — DONE 30.04.2026
+  - Пріоритет: P0
+  - Деталі:
+    - Додати збір UI елементів через `tools_ui_detector.find_button_by_text("*")`, `find_input_field()`, `find_checkbox()`
+    - Додати UIA дерево через `tools_ui_accessibility.get_ui_tree()` коли доступно
+    - Додати vision-опис через `providers_vision` (опційно, через config flag)
+    - `Observation` має містити: screenshot_path, ocr_text, ui_elements, uia_tree, vision_description, active_app
+    - Кешування скріншоту (не робити новий якщо screen_hash не змінився > N мс)
+
+- [x] Покращити `check()` в `agent_loop.py` (~140 рядків) — DONE 30.04.2026
+  - Пріоритет: P0
+  - Деталі:
+    - Зараз: тільки порівняння screen_hash (примітив)
+    - Додати: перевірка через `logic_expectations.ExpectRegistry` (17 evaluator-ів)
+    - Додати: перевірка появи очікуваного тексту/елемента
+    - Додати: visual diff regions (чи змінилось саме потрібне місце)
+    - Повертає `ExpectationResult` сумісний з Phase 11
+
+- [x] Виправити інтеграцію `AgentLoop` з GUI (~30 рядків змін у main.py) — DONE 30.04.2026
+  - Пріоритет: P0
+  - Файли: `core_gui_pyqt6/main_window.py`, `run_assistant_qt.py`, `main.py`
+  - Деталі:
+    - Кнопка "🤖 Агент" вже існує в PyQt6 GUI — перевірити що вона викликає `run_agent_loop()`
+    - `AssistantCore.run_agent_loop()` має ініціалізувати `ActionDecider` з LLM
+    - `AgentLoop.gui_cb` має передавати кожен крок (action+result) в чат GUI як stream messages
+    - Додати скріншот thumbnail у GUI на кожному кроці (через signal)
+    - Кнопка "⬛ Стоп" має викликати `agent_loop.request_stop()`
+
+**Оцінка:** ~560 нових рядків, ~80 змін. Складність: висока.
+
+---
+
+#### ЕТАП 2: GUI ТЕСТУВАЛЬНИК (ВИСОКА ЦІННІСТЬ для self-validation)
+
+**Ціль:** МАРК може тестувати власні зміни в GUI як QA-інженер: відкрити програму, перевірити функції, зробити висновки.
+
+**Робоча основа:**
+- ✅ `test_duplication_direct.py` (~134 рядків) — працюючий скрипт для автоматизованого GUI тестування
+- Використовує: `activate_window_by_title`, `keyboard_type`, `keyboard_press`
+- Запускає GUI через subprocess, вставляє текст, чекає відповіді, читає логи
+- Це базовий шаблон для розширення до повноцінного GUITester
+
+- [ ] Створити `functions/logic_gui_tester.py` (~500 рядків) на основі `test_duplication_direct.py`
+  - Пріоритет: P1
+  - Деталі:
+    - `class GUITester` що використовує `AgentLoop` під капотом
+    - Метод `test_scenario(scenario: TestScenario) → TestReport`
+    - Метод `test_function(app_name, function_name) → TestCaseResult` — швидкий тест однієї функції
+    - Метод `test_changes(app_name, changes_description) → TestReport` — тестування ПІСЛЯ змін у коді
+    - Інтеграція з `core_action_recorder.ActionRecorder` (скріншоти до/після вже є)
+    - Інтеграція з `tools_visual_diff` (порівняння baseline/current)
+    - dataclasses: `TestCase`, `TestScenario`, `TestCaseResult`, `TestReport`, `Expectation`
+    - Built-in expectations: `TextVisible`, `TextNotVisible`, `WindowTitle`, `ElementExists`, `NoErrorDialog`, `VisualMatch`, `FileExists`
+
+- [ ] Створити `functions/logic_gui_test_report.py` (~200 рядків)
+  - Пріоритет: P1
+  - Деталі:
+    - `class TestReportGenerator` — markdown-звіт з вердиктом
+    - Колонки: Тест, Статус (✅/❌), Час, Деталі
+    - Розділ "❌ Невдалі тести" з очікуваним vs отриманим, скріншотами
+    - Висновок: "Все ок" або "Не пройшло X з Y, рекомендація: доробити"
+    - Збереження звіту в `runtime/test_reports/{date}_{scenario}.md`
+
+- [ ] Створити каталог сценаріїв `scenarios/`
+  - Пріоритет: P1
+  - Деталі:
+    - `scenarios/test_notepad_basic.json` — базові функції Notepad
+    - `scenarios/test_marka_gui.json` — самотестування PyQt6 GUI МАРКА (відкрити, ввести команду, перевірити відповідь, відсутність дублювання)
+    - `scenarios/test_browser_basic.json` — базова веб-автоматизація
+    - JSON-формат: `name`, `app_name`, `setup_steps`, `test_cases[]{name, goal, expectations[]}`, `teardown_steps`
+
+- [ ] Інтегрувати GUITester в GUI як вкладку "Тестування"
+  - Пріоритет: P2
+  - Файли: `core_gui_pyqt6/main_window.py`, новий `core_gui_pyqt6/test_panel_qt.py`
+  - Деталі:
+    - QListWidget зі списком сценаріїв
+    - Кнопки: "Запустити", "Запустити всі", "Переглянути звіт"
+    - Прогрес-бар виконання
+    - Перегляд скріншотів до/після для кожного тесту
+
+- [ ] Тести для `logic_gui_tester.py` (`tests/test_logic_gui_tester.py`, ~200 рядків)
+  - Пріоритет: P1
+
+**Оцінка:** ~700 нових рядків + ~50 змін + ~200 тестів. Складність: середня (використовує AgentLoop).
+
+---
+
+#### ЕТАП 3: ПОСИЛЕННЯ UIA (СТАБІЛЬНІСТЬ КЛІКІВ) — DONE ✅
+
+**Ціль:** Перевести GUI-кліки з OCR+template matching на UIA для стабільності проти DPI/тем/мови.
+
+- [x] Доробити `tools_ui_accessibility.py` (потрібні методи)
+  - Пріоритет: P1
+  - Деталі:
+    - Реалізовано: `uia_list_elements`, `uia_find_button`, `uia_click_element`, `uia_set_text`, `uia_get_value`, `uia_wait_for_element`
+    - Додано: `get_ui_tree(hwnd, depth)` що повертає JSON-friendly дерево для LLM
+    - Додано: `list_all_buttons()`, `list_all_inputs()`, `list_all_checkboxes()` для observe()
+    - Додано: `get_value()`, `wait_for_element()`
+
+- [x] Додати UIA fallback у `tools_ui_detector.py` (~100 рядків змін)
+  - Пріоритет: P1
+  - Деталі:
+    - `find_button_by_text(text)` — спочатку UIA (якщо доступний), fallback на OCR+CV
+    - `find_input_field(label)` — те саме
+    - `click_text(text)` — те саме
+    - Додано feature-flag `USE_UIA_FIRST` в SETTINGS_SCHEMA (default: True)
+
+- [x] Smoke-тести UIA на Windows (`tests/test_tools_ui_accessibility.py`, ~200 рядків)
+  - Пріоритет: P1
+  - Деталі:
+    - 30 unit-тестів з моками (TestUIElement, TestUIAWrapper, TestLLMTools, TestUIAFallbackIntegration)
+    - Всі тести pass (30/30)
+
+**Статус:** Виконано 30.04.2026.
+
+**Файли змінено:**
+- `functions/tools_ui_accessibility.py` — додано `get_ui_tree()`, `list_all_buttons()`, `list_all_inputs()`, `list_all_checkboxes()`, `get_value()`, `wait_for_element()`, реалізовано LLM tools
+- `functions/tools_ui_detector.py` — додано UIA fallback для `find_button_by_text()`, `find_input_field()`, додано `click_text()`
+- `functions/core_settings.py` — додано `USE_UIA_FIRST` setting (default: True)
+- `tests/test_tools_ui_accessibility.py` — новий файл з 30 тестами
+
+---
+
+#### ЕТАП 4: VISION-LLM ІНТЕГРАЦІЯ (РОЗУМІННЯ ЕКРАНУ)
+
+**Ціль:** Агент дивиться на скріншот через GPT-4V/Claude Vision/LLaVA і розуміє що бачить.
+
+- [ ] Перевірити та доробити `providers_vision.py`
+  - Пріоритет: P1
+  - Деталі:
+    - Перевірити що реалізовано: `OpenAIVisionProvider`, `AnthropicVisionProvider`, `OllamaVisionProvider`
+    - Додати методи: `describe(image_path, prompt) → str`, `plan_action(image_path, goal) → Dict`, `find_element(image_path, description) → Dict[bbox]`
+    - `get_vision_provider(assistant)` factory — з конфігу `VISION_PROVIDER` в SETTINGS_SCHEMA
+    - Кешування: не аналізувати той самий скріншот повторно (хеш скрину → опис)
+
+- [ ] Інтегрувати у `ActionDecider.decide()` (~50 рядків)
+  - Пріоритет: P1
+  - Деталі:
+    - Якщо `enable_vision=True` і провайдер доступний — додавати vision_description в промпт
+    - Якщо LLM просить — викликати `vision_provider.find_element(...)` для пошуку елемента за описом
+
+- [ ] Додати vision-tools в schema (`logic_agent_tools_schema.py`)
+  - Пріоритет: P1
+  - Tools: `describe_screen`, `find_element_by_description`, `is_screen_correct`
+
+- [ ] Тести (`tests/test_providers_vision.py`, ~150 рядків)
+  - Пріоритет: P1
+  - Моки HTTP-викликів OpenAI/Anthropic/Ollama
+
+**Оцінка:** ~200 нових рядків + ~50 змін + ~150 тестів. Складність: середня. Залежність: API key або Ollama.
+
+---
+
+#### ЕТАП 5: БРАУЗЕРНА АВТОМАТИЗАЦІЯ (ВЕБ-ЗАДАЧІ)
+
+**Ціль:** МАРК може працювати з веб-сайтами через Playwright/CDP як людина.
+
+- [ ] Перевірити та доробити `tools_browser_cdp.py` + `tools_playwright.py`
+  - Пріоритет: P1
+  - Деталі:
+    - Перевірити що реалізовано: open_url, click_text, click_role, fill, screenshot, extract_text, wait_for, execute_js
+    - Додати connect_over_cdp до існуючого Chrome (зберігає авторизацію користувача)
+    - Документувати як запускати Chrome з `--remote-debugging-port=9222`
+
+- [ ] Додати browser-tools в schema
+  - Пріоритет: P1
+
+- [ ] Зареєструвати browser handler в TaskRunner
+  - Пріоритет: P1
+
+- [ ] Тести (`tests/test_tools_browser_cdp.py`, ~200 рядків)
+  - Пріоритет: P1
+  - Моки Playwright API
+
+**Оцінка:** ~200 нових рядків + ~50 змін + ~200 тестів. Складність: середня.
+
+---
+
+#### ЕТАП 6: REPAIR LOOP — АДАПТИВНІСТЬ ПРИ ПОМИЛКАХ
+
+**Ціль:** Коли крок провалився — LLM аналізує контекст і пропонує модифікований план.
+
+- [ ] Перевірити та доробити `logic_repair_loop.py`
+  - Пріоритет: P1
+  - Деталі:
+    - `class StepRepairer` з методом `repair(failed_step, plan, expect_results) → Optional[Plan]`
+    - Бюджет: max 3 repair-спроби на сесію
+    - Промпт містить: що очікувалось (Expectation), що отримано (stdout, error, скріншот опис), попередні кроки
+    - Інтеграція з `AgentLoop._execute_single_step` — викликати repair при `consecutive_failures >= 2`
+
+- [ ] Тести (`tests/test_logic_repair_loop.py`, ~150 рядків)
+  - Пріоритет: P1
+
+**Оцінка:** ~100-150 нових рядків (якщо вже частково є) + ~50 змін. Складність: низька.
+
+---
+
+#### ЕТАП 7: CHECKPOINT/RESUME — НАДІЙНІСТЬ ДОВГИХ СЕСІЙ
+
+**Ціль:** При краші 6-годинної сесії — продовжити з останньої точки.
+
+- [ ] Перевірити `core_checkpoint.py` та інтеграцію з `AgentLoop`
+  - Пріоритет: P2
+  - Деталі:
+    - `CheckpointManager.save/load/delete` вже існує
+    - В `AgentLoop._save_checkpoint` — додати збереження observations[-3:] (останні 3 спостереження для контексту)
+    - В `_load_checkpoint` — відновити `_compiled_plan` якщо був
+    - CLI `python run.py --resume <task_id>` для запуску з checkpoint
+
+- [ ] Тести (`tests/test_core_checkpoint.py` якщо ще немає)
+  - Пріоритет: P2
+
+**Оцінка:** ~50-100 нових рядків + ~30 змін. Складність: низька.
+
+---
+
+#### ЕТАП 8: SELF-TESTING ЦИКЛ — МАРК тестує себе
+
+**Ціль:** Об'єднати всі етапи у workflow: МАРК робить зміну в коді → запускає GUITester → отримує звіт → робить висновок.
+
+- [ ] Створити `functions/self_test_workflow.py` (~300 рядків)
+  - Пріоритет: P1
+  - Деталі:
+    - Метод `test_my_changes(changes_description)` — головний workflow
+    - Крок 1: Прочитати changes (через `git_diff` або переданий опис)
+    - Крок 2: Визначити які сценарії запускати (по changed files)
+    - Крок 3: Запустити `GUITester.test_scenario()` для кожного
+    - Крок 4: Згенерувати агрегований звіт
+    - Крок 5: Якщо є помилки — викликати LLM для діагностики ("що пішло не так і як виправити")
+    - Крок 6: Повернути вердикт: "✅ Все ок" / "❌ Треба доробити: ..."
+
+- [ ] Інтеграція в GUI як кнопка "🧪 Протестувати зміни"
+  - Пріоритет: P1
+  - Файл: `core_gui_pyqt6/main_window.py`
+
+- [ ] Документувати workflow в `tests.md`
+  - Пріоритет: P1
+
+**Оцінка:** ~300 нових рядків + ~50 змін.
+
+---
+
+#### ЕТАП 9: ТЕСТИ + CI
+
+- [ ] Додати відсутні unit-тести (Phase 2-4 інструменти)
+  - Пріоритет: P1
+  - Файли:
+    - `tests/test_tools_screen_capture.py` (~200 рядків)
+    - `tests/test_tools_ui_detector.py` (~200 рядків)
+    - `tests/test_tools_app_recognizer.py` (~200 рядків)
+    - `tests/test_agent_loop_full.py` (~300 рядків) — повний цикл з моками
+
+- [ ] Налаштувати GitHub Actions CI
+  - Пріоритет: P2
+  - Файл: `.github/workflows/ci.yml`
+  - Кроки: ruff check, pytest, coverage report
+  - Окремий Windows job для UIA-тестів
+
+- [ ] Pre-commit config
+  - Пріоритет: P2
+  - Файл: `.pre-commit-config.yaml`
+  - Hooks: ruff (--fix), pytest pre-push
+
+**Оцінка:** ~900 нових рядків тестів + конфіги.
+
+---
+
+#### ПРІОРИТЕТИ ТА ЗАЛЕЖНОСТІ
+
+```
+ЕТАП 1 (Agent Loop + LLM tool-calling) ← КРИТИЧНИЙ, основа всього
+  ├→ ЕТАП 3 (UIA посилення) — підсилює observe/act
+  ├→ ЕТАП 4 (Vision-LLM) — підсилює decide
+  ├→ ЕТАП 5 (Browser) — нові capabilities
+  ├→ ЕТАП 6 (Repair Loop) — стійкість
+  ├→ ЕТАП 7 (Checkpoint) — надійність
+  └→ ЕТАП 2 (GUI Tester) — використовує AgentLoop
+       └→ ЕТАП 8 (Self-Testing) — використовує GUITester
+ЕТАП 9 (Тести + CI) ← паралельно з усім
+```
+
+#### СУМАРНА ОЦІНКА
+
+| Етап | Нових рядків | Змін | Нових файлів | Час |
+|------|-------------|------|--------------|-----|
+| 1. Agent Loop + Tools Schema | ~560 | ~80 | 1 | 2-3 дні |
+| 2. GUI Tester | ~700 | ~50 | 2-3 | 2 дні |
+| 3. UIA посилення | ~150 | ~100 | 0 | 1 день |
+| 4. Vision-LLM | ~200 | ~50 | 0 | 1 день |
+| 5. Browser | ~200 | ~50 | 0 | 1 день |
+| 6. Repair Loop | ~100 | ~50 | 0 | 0.5 дня |
+| 7. Checkpoint | ~50 | ~30 | 0 | 0.3 дня |
+| 8. Self-Testing | ~300 | ~50 | 1 | 1 день |
+| 9. Тести + CI | ~900 | конфіги | 4+ | 2 дні |
+| **РАЗОМ** | **~3160** | **~460** | **8+** | **~10-12 днів** |
+
+---
+
 ### P0: Стабільність і узгодженість контрактів
 
 - [ ] Полагодити trunk stability
@@ -111,6 +458,151 @@
     - Meta-agent вирішує хто виконує (local vs API)
     - Коли передати іншому провайдеру
     - Вирішує на основі типу задачі (gui/code/web/desktop)
+
+### P1: GUI ПОКРАЩЕННЯ ТА НАЛАШТУВАННЯ
+
+#### Обов'язкове тестування та логування GUI-функцій
+
+- [ ] Створити стандарт для GUI-функцій: тест + логування
+  - Пріоритет: P0
+  - Деталі:
+    - Будь-яка нова функція, пов'язана з чатом, введенням тексту або іншими GUI-елементами, має бути протестована автоматичним тестом для GUI
+    - Функція має створюватися із логуванням з самого початку
+    - Тест має включати сценарій для запуску і перевірки даної функції
+    - Додати в `tests.md` інструкцію: "Стандарт розробки GUI-функцій"
+    - Додати чек-лист в `CONTRIBUTING.md` (якщо є) або створити
+
+#### Авто озвучення відповіді (TTS) - чекбокс на головному екрані
+
+- [ ] Додати чекбокс "🔊 Озвучувати відповіді" на головному екрані чату
+  - Пріоритет: P1
+  - Файли: `core_gui_pyqt6/main_window.py`, `core_gui_pyqt6/chat_panel_qt.py`
+  - Деталі:
+    - Чекбокс в control_frame поруч з кнопками STT/Agent/Send
+    - Встановлений: TTS вмикається навіть якщо в загальних налаштуваннях вимкнено
+    - Знятий: TTS вимикається навіть якщо в загальних налаштуваннях ввімкнено
+    - Зберігається в runtime налаштуваннях (не персистентно, для відладки)
+    - Логування: `[GUI] TTS override: enabled/disabled`
+    - Інтеграція з `logic_tts.py` — перевіряти чекбокс перед викликом TTS
+
+- [ ] Автоматичний тест для TTS чекбокса
+  - Пріоритет: P1
+  - Файл: `tests/test_tts_checkbox.py`
+  - Деталі:
+    - Запуск GUI, натискання чекбокса, перевірка що TTS оверрайд працює
+    - Перевірка логування
+
+**Оцінка:** ~80 нових рядків + ~50 змін. Складність: низька.
+
+#### Керування вводом (STT) - чекбокс на головному екрані
+
+- [ ] Додати чекбокс "🎙 Голосовий ввід" на головному екрані чату
+  - Пріоритет: P1
+  - Файли: `core_gui_pyqt6/main_window.py`, `core_gui_pyqt6/chat_panel_qt.py`
+  - Деталі:
+    - Чекбокс в control_frame поруч з кнопкою STT
+    - Встановлений: STT вмикається навіть якщо в загальних налаштуваннях вимкнено
+    - Знятий: STT вимикається навіть якщо в загальних налаштуваннях ввімкнено
+    - Зберігається в runtime налаштуваннях (не персистентно, для відладки)
+    - Логування: `[GUI] STT override: enabled/disabled`
+    - Інтеграція з `core_stt_listener.py` — перевіряти чекбокс перед запуском STT
+
+- [ ] Автоматичний тест для STT чекбокса
+  - Пріоритет: P1
+  - Файл: `tests/test_stt_checkbox.py`
+  - Деталі:
+    - Запуск GUI, натискання чекбокса, перевірка що STT оверрайд працює
+    - Перевірка логування
+
+**Оцінка:** ~80 нових рядків + ~50 змін. Складність: низька.
+
+#### Керування геометрією вікна в налаштуваннях
+
+- [ ] Додати налаштування геометрії вікна (позиція + розміри)
+  - Пріоритет: P1
+  - Файли: `core_gui_pyqt6/settings_tab_qt.py`, `core_gui_pyqt6/main_window.py`, `SETTINGS_SCHEMA`
+  - Деталі:
+    - Додати новий акордеон "Вікно" в налаштуваннях GUI
+    - Поля:
+      - `GUI_WINDOW_X` (int, default: None) — позиція X при старті
+      - `GUI_WINDOW_Y` (int, default: None) — позиція Y при старті
+      - `GUI_WINDOW_WIDTH` (int, default: 1200) — ширина при старті
+      - `GUI_WINDOW_HEIGHT` (int, default: 800) — висота при старті
+      - `GUI_WINDOW_MAXIMIZED` (bool, default: False) — чи відкривати в повноекранному режимі
+      - `GUI_SAVE_GEOMETRY` (bool, default: True) — чи зберігати геометрію при закритті
+    - При закритті вікна: зберігати поточну геометрію в налаштуваннях (якщо `GUI_SAVE_GEOMETRY=True`)
+    - При відкритті вікна: відновлювати геометрію з налаштувань
+    - Логування: `[GUI] Window geometry restored: x={x}, y={y}, w={w}, h={h}`
+
+- [ ] Автоматичний тест для геометрії вікна
+  - Пріоритет: P1
+  - Файл: `tests/test_window_geometry.py`
+  - Деталі:
+    - Встановити налаштування геометрії, відкрити GUI, перевірити позицію/розміри
+    - Закрити GUI, перевірити що геометрія збереглась
+    - Перевірка логування
+
+**Оцінка:** ~150 нових рядків + ~100 змін. Складність: середня.
+
+#### Реорганізація вікна налаштувань
+
+- [ ] Проаналізувати і покращити структуру вікна налаштувань
+  - Пріоритет: P2
+  - Файли: `core_gui_pyqt6/settings_tab_qt.py`
+  - Деталі:
+    - Проаналізувати поточні акордеони та поля
+    - Групувати пов'язані налаштування логічніше
+    - Додати пошук по налаштуваннях (QLineEdit з фільтрацією)
+    - Додати кнопку "Скинути до дефолтів" для кожного акордеона
+    - Додати tooltips з описом кожного налаштування
+    - Розглянути використання QFormLayout замість QVBoxLayout для кращого вирівнювання
+
+- [ ] Документація нової структури
+  - Пріоритет: P2
+  - Файл: `TASKS.md` або окремий `SETTINGS_GUIDE.md`
+  - Деталі:
+    - Опис всіх акордеонів та полів
+    - Пояснення що робить кожне налаштування
+    - Рекомендовані значення для різних сценаріїв
+
+**Оцінка:** ~200-300 нових рядків + ~150 змін. Складність: середня.
+
+#### Відображення вкладки "План" - показувати/приховувати
+
+- [ ] Додати налаштування показу вкладки "План"
+  - Пріоритет: P1
+  - Файли: `core_gui_pyqt6/main_window.py`, `core_gui_pyqt6/plan_panel_qt.py`, `SETTINGS_SCHEMA`
+  - Деталі:
+    - Додати налаштування `GUI_SHOW_PLAN_TAB` (bool, default: True) в SETTINGS_SCHEMA
+    - Якщо `False`: вкладка "План" приховується (QTabWidget.removeTab або setVisible(False))
+    - Якщо `True`: вкладка "План" показується
+    - Додати чекбокс "Показувати вкладку План" в налаштуваннях GUI (акордеон "Вікно")
+    - Логування: `[GUI] Plan tab visibility: shown/hidden`
+
+- [ ] Автоматичний тест для вкладки План
+  - Пріоритет: P1
+  - Файл: `tests/test_plan_tab_visibility.py`
+  - Деталі:
+    - Встановити `GUI_SHOW_PLAN_TAB=False`, відкрити GUI, перевірити що вкладка прихована
+    - Змінити на True, перевірити що вкладка з'явилась
+    - Перевірка логування
+
+**Оцінка:** ~60 нових рядків + ~40 змін. Складність: низька.
+
+#### Доцільність блоку "План" (низький пріоритет)
+
+- [ ] Оцінити доцільність вкладки "План" після підключення нового планера
+  - Пріоритет: P3
+  - Деталі:
+    - Після повного підключення і відтестованого нового планера (AgentLoop)
+    - Проаналізувати чи потрібна вкладка "План" в GUI
+    - Якщо AgentLoop показує прогрес в чаті — можливо вкладка не потрібна
+    - Якщо планер генерує складні багатокрокові плани — вкладка може бути корисною
+    - Зробити висновок і оновити TASKS.md
+
+**Оцінка:** Аналіз, без коду.
+
+---
 
 ### P1: Міграція GUI на PyQt6
 

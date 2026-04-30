@@ -197,6 +197,11 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "desc": "Увімкнути глобальне голосове введення (Windows hooks + STT).",
         "default": False, "user_only": True,
     },
+    "USE_UIA_FIRST": {
+        "type": "bool", "group": "GUI", "label": "UIA пріоритет над OCR",
+        "desc": "Спочатку використовувати UI Automation API для пошуку кнопок/полів, потім OCR+CV fallback. Стабільніше для DPI/тем/мови.",
+        "default": True, "user_only": True,
+    },
 
     # --- Аудіо-фільтри ---
     "AGC_ENABLED": {

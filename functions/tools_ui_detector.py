@@ -15,6 +15,13 @@ import colorsys
 from functions.tools_screen_capture import ScreenCapture
 from functions.tools_ocr import ScreenOCR
 
+# UIA fallback support
+try:
+    from functions.tools_ui_accessibility import get_uia_wrapper
+    UIA_AVAILABLE = True
+except ImportError:
+    UIA_AVAILABLE = False
+
 
 class UIDetector:
     """Детектор UI-елементів на екрані."""
@@ -195,23 +202,43 @@ class UIDetector:
             return [{"error": str(e)}]
 
     def find_input_field(self, region: Optional[Tuple[int, int, int, int]] = None,
-                         min_width: int = 80, min_height: int = 20) -> List[Dict[str, Any]]:
+                         min_width: int = 80, min_height: int = 20, use_uia_first: bool = True) -> List[Dict[str, Any]]:
         """
-        Знайти поля вводу (input fields) на екрані.
+        Знайти поля вводу (input fields) на екрані (UIA fallback, потім CV).
 
         Args:
             region: Область для пошуку
             min_width: Мінімальна ширина поля
             min_height: Мінімальна висота поля
+            use_uia_first: Спочатку спробувати UIA (default: True)
 
         Returns:
-            Список {"x", "y", "width", "height"}
+            Список {"x", "y", "width", "height", "method": "uia"|"cv"}
         """
+        # UIA fallback для list_all_inputs
+        if use_uia_first and UIA_AVAILABLE:
+            try:
+                wrapper = get_uia_wrapper()
+                if wrapper.is_available():
+                    inputs = wrapper.list_all_inputs(max_count=50)
+                    if inputs:
+                        return [{
+                            "x": elem.rect.get("left", 0),
+                            "y": elem.rect.get("top", 0),
+                            "width": elem.rect.get("width", 0),
+                            "height": elem.rect.get("height", 0),
+                            "center_x": elem.rect.get("left", 0) + elem.rect.get("width", 0) // 2,
+                            "center_y": elem.rect.get("top", 0) + elem.rect.get("height", 0) // 2,
+                            "method": "uia"
+                        } for elem in inputs if elem.rect]
+            except Exception:
+                pass  # Fallback на CV
+
+        # CV fallback
         try:
             screenshot = self._get_screenshot(region)
             gray = cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
 
-            # Шукаємо прямокутні контури з характерним співвідношенням
             edges = cv2.Canny(gray, 50, 150)
             contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -219,9 +246,7 @@ class UIDetector:
             for cnt in contours:
                 x, y, w, h = cv2.boundingRect(cnt)
 
-                # Поле вводу: широкий прямокутник невеликої висоти
                 if w >= min_width and 20 <= h <= 40 and w > h * 2:
-                    # Перевіряємо чи має рамку (характерно для input)
                     if self._has_border(gray, x, y, w, h):
                         offset_x = region[0] if region else 0
                         offset_y = region[1] if region else 0
@@ -231,7 +256,8 @@ class UIDetector:
                             "width": w,
                             "height": h,
                             "center_x": x + offset_x + w // 2,
-                            "center_y": y + offset_y + h // 2
+                            "center_y": y + offset_y + h // 2,
+                            "method": "cv"
                         })
 
             return fields
@@ -288,26 +314,48 @@ class UIDetector:
     # ==================== КОМБІНОВАНИЙ OCR + CV ПОШУК ====================
 
     def find_button_by_text(self, text: str, region: Optional[Tuple[int, int, int, int]] = None,
-                            confidence: float = 0.7) -> Optional[Dict[str, Any]]:
+                            confidence: float = 0.7, use_uia_first: bool = True) -> Optional[Dict[str, Any]]:
         """
-        Знайти кнопку за текстом (OCR + CV евристики).
+        Знайти кнопку за текстом (UIA fallback, потім OCR + CV евристики).
 
         Args:
             text: Текст на кнопці
             region: Область для пошуку
             confidence: Мінімальна впевненість OCR
+            use_uia_first: Спочатку спробувати UIA (default: True)
 
         Returns:
-            {"x", "y", "center_x", "center_y", "text", "confidence"} або None
+            {"x", "y", "center_x", "center_y", "text", "confidence", "method": "uia"|"ocr"} або None
         """
+        # Спочатку UIA (якщо доступний і включений)
+        if use_uia_first and UIA_AVAILABLE:
+            try:
+                wrapper = get_uia_wrapper()
+                if wrapper.is_available():
+                    elem = wrapper.find_element_by_name(text)
+                    if elem and elem.rect:
+                        rect = elem.rect
+                        return {
+                            "x": rect.get("left", 0),
+                            "y": rect.get("top", 0),
+                            "center_x": rect.get("left", 0) + rect.get("width", 0) // 2,
+                            "center_y": rect.get("top", 0) + rect.get("height", 0) // 2,
+                            "width": rect.get("width", 0),
+                            "height": rect.get("height", 0),
+                            "text": elem.name,
+                            "confidence": 1.0,
+                            "method": "uia"
+                        }
+            except Exception:
+                pass  # Fallback на OCR+CV
+
+        # Fallback на OCR+CV
         try:
-            # Спочатку шукаємо текст через OCR
             ocr_result = self.ocr.find_text_on_screen(text, region, case_sensitive=False)
 
             if ocr_result and ocr_result.get("success"):
                 for match in ocr_result.get("matches", []):
                     if match.get("confidence", 0) >= confidence:
-                        # Перевіряємо чи це схоже на кнопку (прямокутна область з рамкою)
                         x, y, w, h = match["x"], match["y"], match["width"], match["height"]
 
                         return {
@@ -318,7 +366,8 @@ class UIDetector:
                             "width": w,
                             "height": h,
                             "text": match.get("text", text),
-                            "confidence": match.get("confidence", 0)
+                            "confidence": match.get("confidence", 0),
+                            "method": "ocr"
                         }
 
             return None
@@ -582,9 +631,9 @@ def find_checkbox(region: Optional[Tuple[int, int, int, int]] = None,
 
 
 def find_input_field(region: Optional[Tuple[int, int, int, int]] = None,
-                     min_width: int = 80, min_height: int = 20) -> Dict[str, Any]:
-    """Знайти поля вводу на екрані."""
-    result = get_ui_detector().find_input_field(region, min_width, min_height)
+                     min_width: int = 80, min_height: int = 20, use_uia_first: bool = True) -> Dict[str, Any]:
+    """Знайти поля вводу на екрані (UIA fallback, потім CV)."""
+    result = get_ui_detector().find_input_field(region, min_width, min_height, use_uia_first)
     if not result:
         return {"success": False, "message": "No input fields found"}
     if len(result) == 1 and "error" in result[0]:
@@ -604,14 +653,33 @@ def find_progress_bar(region: Optional[Tuple[int, int, int, int]] = None,
 
 
 def find_button_by_text(text: str, region: Optional[Tuple[int, int, int, int]] = None,
-                        confidence: float = 0.7) -> Dict[str, Any]:
-    """Знайти кнопку за текстом (OCR + CV)."""
-    result = get_ui_detector().find_button_by_text(text, region, confidence)
+                        confidence: float = 0.7, use_uia_first: bool = True) -> Dict[str, Any]:
+    """Знайти кнопку за текстом (UIA fallback, потім OCR + CV)."""
+    result = get_ui_detector().find_button_by_text(text, region, confidence, use_uia_first)
     if result is None:
         return {"success": False, "message": f"Button with text '{text}' not found"}
     if isinstance(result, dict) and "error" in result:
         return {"success": False, "error": result["error"]}
     return {"success": True, "button": result}
+
+
+def click_text(text: str, region: Optional[Tuple[int, int, int, int]] = None,
+               confidence: float = 0.7, use_uia_first: bool = True) -> Dict[str, Any]:
+    """Знайти і клікнути на текст (UIA fallback, потім OCR + CV)."""
+    result = get_ui_detector().find_button_by_text(text, region, confidence, use_uia_first)
+    if result is None:
+        return {"success": False, "message": f"Text '{text}' not found"}
+    if isinstance(result, dict) and "error" in result:
+        return {"success": False, "error": result["error"]}
+
+    try:
+        import pyautogui
+        x = result["center_x"]
+        y = result["center_y"]
+        pyautogui.click(x, y)
+        return {"success": True, "clicked": {"x": x, "y": y, "method": result.get("method", "cv")}}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 def find_label(text: str, region: Optional[Tuple[int, int, int, int]] = None) -> Dict[str, Any]:

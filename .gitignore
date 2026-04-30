@@ -12,7 +12,7 @@ logs/
 TTS/
 tts_cache/
 voices/
-KOD_pereclad/
+
 *.bak
 *.rar
 *.bat
