@@ -215,3 +215,61 @@ class TestAgentLoopRun:
 
         assert result["steps"] >= 1
         assert "duration" in result
+
+
+class TestAgentLoopRepairIntegration:
+    """Тести інтеграції AgentLoop з StepRepairer."""
+
+    def test_repairer_reset_on_run(self):
+        """repairer.reset() викликається при loop.run()."""
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=FakeAssistant(), max_repairs=2)
+        repairer._repairs_used = 2
+        registry = FakeRegistry()
+        assistant = FakeAssistant()
+        assistant.planner = MagicMock()
+        assistant.planner.create_plan.return_value = [
+            {"action": "noop", "args": {}, "goal": "done"},
+        ]
+        loop = AgentLoop(assistant, registry, repairer=repairer, config=AgentLoopConfig(max_steps=3))
+        loop.run("test")
+        assert repairer._repairs_used == 0
+
+    def test_repairer_not_called_on_success(self):
+        """При успіху repairer не викликається."""
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=FakeAssistant(), max_repairs=2)
+        repairer.repair = MagicMock(return_value=None)
+        registry = FakeRegistry(actions={"noop": lambda a: {"ok": True}})
+        assistant = FakeAssistant()
+        assistant.planner = MagicMock()
+        assistant.planner.create_plan.return_value = [
+            {"action": "noop", "args": {}, "goal": "ok"},
+        ]
+        loop = AgentLoop(
+            assistant, registry, repairer=repairer,
+            config=AgentLoopConfig(max_steps=3, enable_repair=True, repair_after_failures=1),
+        )
+        loop.run("test")
+        repairer.repair.assert_not_called()
+
+    def test_repairer_stop_ends_loop(self):
+        """Repair STOP зупиняє цикл."""
+        from functions.logic_repair_loop import StepRepairer, RepairDecision, RepairAction
+        repairer = StepRepairer(assistant=FakeAssistant(), max_repairs=2)
+        repairer.repair = MagicMock(
+            return_value=RepairDecision(action=RepairAction.STOP, reason="fatal")
+        )
+        registry = FakeRegistry(actions={"fail": lambda a: {"ok": False, "error": "err"}})
+        assistant = FakeAssistant()
+        assistant.planner = MagicMock()
+        assistant.planner.create_plan.return_value = [
+            {"action": "fail", "args": {}, "goal": "x"},
+        ]
+        loop = AgentLoop(
+            assistant, registry, repairer=repairer,
+            config=AgentLoopConfig(max_steps=5, enable_repair=True, repair_after_failures=1),
+        )
+        result = loop.run("test")
+        assert result["ok"] is False
+        assert repairer.repair.call_count >= 1

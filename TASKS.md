@@ -232,28 +232,49 @@
 
 ---
 
-#### ЕТАП 5: БРАУЗЕРНА АВТОМАТИЗАЦІЯ (ВЕБ-ЗАДАЧІ)
+#### ЕТАП 5: БРАУЗЕРНА АВТОМАТИЗАЦІЯ (ВЕБ-ЗАДАЧІ) — DONE ✅
 
 **Ціль:** МАРК може працювати з веб-сайтами через Playwright/CDP як людина.
 
-- [ ] Перевірити та доробити `tools_browser_cdp.py` + `tools_playwright.py`
+- [x] Перевірити та доробити `tools_browser_cdp.py` + `tools_playwright.py`
   - Пріоритет: P1
   - Деталі:
-    - Перевірити що реалізовано: open_url, click_text, click_role, fill, screenshot, extract_text, wait_for, execute_js
-    - Додати connect_over_cdp до існуючого Chrome (зберігає авторизацію користувача)
-    - Документувати як запускати Chrome з `--remote-debugging-port=9222`
+    - Реалізовано: 15 CDP tools (cdp_ensure_chrome, cdp_list_tabs, cdp_open_tab, cdp_switch_tab, cdp_type_text, cdp_get_response, cdp_get_page_text, cdp_click, cdp_click_text, cdp_wait_for_text, cdp_fill, cdp_screenshot, cdp_evaluate_js, cdp_send_to_ai, cdp_disconnect)
+    - Додано: `cdp_click_text` (Playwright get_by_text/get_by_role/xpath fallback)
+    - Додано: `cdp_wait_for_text` (Playwright wait_for + polling fallback)
+    - Додано: `cdp_fill` (CSS/label/placeholder fallback)
+    - connect_over_cdp до існуючого Chrome (зберігає авторизацію)
+    - Auto-launch Chrome на порту 9222 з C:\Temp\chrome_debug_profile
+    - AI_REFUSAL_MARKERS + retry для cdp_send_to_ai (KOD_pereclad патерни)
 
-- [ ] Додати browser-tools в schema
-  - Пріоритет: P1
+- [x] Browser-tools у schema (`logic_agent_tools_schema.py`)
+  - 6 alias-tools: browser_open_url, browser_click_text, browser_fill, browser_screenshot, browser_extract_text, browser_wait_for
+  - TOOL_NAME_ALIASES виправлено: browser_click_text → cdp_click_text, browser_fill → cdp_fill, browser_wait_for → cdp_wait_for_text
 
-- [ ] Зареєструвати browser handler в TaskRunner
-  - Пріоритет: P1
+- [x] Browser handler в TOOL_POLICIES (`core_tool_runtime.py`)
+  - 15 cdp_* tools з risk/category/idempotent
 
-- [ ] Тести (`tests/test_tools_browser_cdp.py`, ~200 рядків)
-  - Пріоритет: P1
-  - Моки Playwright API
+- [x] Тести (`tests/test_tools_browser_cdp.py`, 23 тести)
+  - TestAIRefusal (5), TestConnection (2), TestClickText (3), TestWaitForText (4), TestFill (3), TestOpenTab (1), TestRegistration (5)
+  - Моки Playwright API (MagicMock на page/browser/locator)
+  - 23/23 pass
 
-**Оцінка:** ~200 нових рядків + ~50 змін + ~200 тестів. Складність: середня.
+**Статус:** Виконано 30.04.2026.
+
+**Файли змінено:**
+- `functions/tools_browser_cdp.py` — додано `cdp_click_text`, `cdp_wait_for_text`, `cdp_fill` (~140 рядків)
+- `functions/core_tool_runtime.py` — додано 3 tools у TOOL_POLICIES
+- `functions/logic_agent_tools_schema.py` — виправлено TOOL_NAME_ALIASES (browser_click_text→cdp_click_text, browser_fill→cdp_fill)
+- `tests/test_tools_browser_cdp.py` — новий файл з 23 тестами
+
+---
+
+#### ЕТАП 5 LEGACY (вже виконано вище — секція збережена для історії)
+
+- [x] tools_browser_cdp.py + tools_playwright.py — open_url, click_text, click_role, fill, screenshot, extract_text, wait_for, execute_js
+- [x] Browser-tools в schema (логіка в logic_agent_tools_schema.py)
+- [x] Browser handler в TOOL_POLICIES (core_tool_runtime.py)
+- [x] Тести (tests/test_tools_browser_cdp.py — 23 тести)
 
 ---
 
@@ -261,15 +282,17 @@
 
 **Ціль:** Коли крок провалився — LLM аналізує контекст і пропонує модифікований план.
 
-- [ ] Перевірити та доробити `logic_repair_loop.py`
+- [x] Перевірити та доробити `logic_repair_loop.py`
   - Пріоритет: P1
   - Деталі:
-    - `class StepRepairer` з методом `repair(failed_step, plan, expect_results) → Optional[Plan]`
+    - `class StepRepairer` з методом `repair(failed_action, act_result, observation, history) → Optional[RepairDecision]`
     - Бюджет: max 3 repair-спроби на сесію
     - Промпт містить: що очікувалось (Expectation), що отримано (stdout, error, скріншот опис), попередні кроки
     - Інтеграція з `AgentLoop._execute_single_step` — викликати repair при `consecutive_failures >= 2`
+    - RepairDecision: retry / skip / replan / stop з reason та optional modified_action
+    - Скидання бюджету repair у `AgentLoop.run()`
 
-- [ ] Тести (`tests/test_logic_repair_loop.py`, ~150 рядків)
+- [x] Тести (`tests/test_logic_repair_loop.py`, ~150 рядків)
   - Пріоритет: P1
 
 **Оцінка:** ~100-150 нових рядків (якщо вже частково є) + ~50 змін. Складність: низька.

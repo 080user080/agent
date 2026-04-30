@@ -235,3 +235,193 @@ class RepairLoop:
         else:
             logger.warning("Невідомий repair action: %s", proposal.action)
             return RepairAction.STOP, None
+
+
+# ─── StepRepairer (для AgentLoop) ──────────────────────────────────────────────
+
+@dataclass
+class RepairDecision:
+    """Рішення StepRepairer для AgentLoop."""
+    action: RepairAction  # retry / skip / replan / stop
+    reason: str
+    modified_action: Optional[Dict[str, Any]] = None  # {"action": "...", "args": {...}}
+
+
+class StepRepairer:
+    """Адаптивний repair для `AgentLoop._execute_single_step`.
+
+    Викликається при `consecutive_failures >= threshold`. Аналізує контекст
+    (failed_action, act_result, observation, history) через LLM і пропонує:
+    - RETRY з модифікованими args
+    - SKIP крок
+    - REPLAN всю стратегію
+    - STOP
+
+    Має бюджет: `max_repairs_per_session` (default 3) — захист від нескінченного циклу.
+    """
+
+    DEFAULT_MAX_REPAIRS = 3
+
+    def __init__(self, assistant=None, max_repairs: int = DEFAULT_MAX_REPAIRS):
+        self.assistant = assistant
+        self.max_repairs = max_repairs
+        self._repairs_used = 0
+
+    def reset(self) -> None:
+        """Скинути лічильник (новий запуск AgentLoop)."""
+        self._repairs_used = 0
+
+    @property
+    def repairs_remaining(self) -> int:
+        return max(0, self.max_repairs - self._repairs_used)
+
+    @property
+    def is_available(self) -> bool:
+        """Чи можна ще робити repair (бюджет + LLM доступний)."""
+        if self._repairs_used >= self.max_repairs:
+            return False
+        if self.assistant is None:
+            return False
+        return True
+
+    def repair(
+        self,
+        failed_action: Dict[str, Any],
+        act_result: Optional[Dict[str, Any]],
+        observation: Optional[Any],
+        history: List[Dict[str, Any]],
+        expectations: Optional[List[Dict[str, Any]]] = None,
+    ) -> Optional[RepairDecision]:
+        """Запропонувати repair-рішення.
+
+        Args:
+            failed_action: {"action": str, "args": dict, "reasoning": str}
+            act_result: результат виконання (ok, error, output)
+            observation: Observation (опційно — для опису екрану)
+            history: список останніх дій (action, args, act_result, check_result)
+            expectations: очікування які не пройшли (опційно)
+
+        Returns:
+            RepairDecision або None якщо бюджет вичерпано / LLM недоступний.
+        """
+        if not self.is_available:
+            logger.info("StepRepairer: бюджет вичерпано (%s/%s) або немає LLM",
+                        self._repairs_used, self.max_repairs)
+            return None
+
+        self._repairs_used += 1
+        prompt = self._build_prompt(failed_action, act_result, observation, history, expectations)
+
+        try:
+            response = ask_llm_with_tools(
+                assistant=self.assistant,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "Ти — repair strategist для GUI-агента. Крок провалився. "
+                            "Проаналізуй контекст і поверни JSON-об'єкт:\n"
+                            '{"action": "retry|skip|replan|stop", "reason": "...", '
+                            '"modified_action": {"action": "...", "args": {...}} (тільки для retry)}\n'
+                            "- retry: якщо проблему можна виправити іншими аргументами (інші координати, селектор, текст).\n"
+                            "- skip: якщо крок не критичний.\n"
+                            "- replan: якщо потрібна нова стратегія цілком.\n"
+                            "- stop: якщо ціль недосяжна або помилка фатальна."
+                        ),
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                tools=None,
+                response_format={"type": "json_object"},
+            )
+
+            if getattr(response, "error", None):
+                logger.warning("StepRepairer LLM error: %s", response.error)
+                return RepairDecision(action=RepairAction.STOP, reason=f"LLM error: {response.error}")
+
+            return self._parse_decision(getattr(response, "raw", None) or {})
+
+        except Exception as e:
+            logger.warning("StepRepairer error: %s", e)
+            return RepairDecision(action=RepairAction.STOP, reason=str(e))
+
+    def _build_prompt(
+        self,
+        failed_action: Dict[str, Any],
+        act_result: Optional[Dict[str, Any]],
+        observation: Optional[Any],
+        history: List[Dict[str, Any]],
+        expectations: Optional[List[Dict[str, Any]]],
+    ) -> str:
+        """Побудувати промпт для repair."""
+        lines = ["Останній крок провалився.\n"]
+
+        # Дія яка провалилась
+        lines.append("FAILED ACTION:")
+        lines.append(f"  action: {failed_action.get('action', '?')}")
+        lines.append(f"  args: {failed_action.get('args', {})}")
+        if failed_action.get("reasoning"):
+            lines.append(f"  reasoning: {failed_action['reasoning']}")
+
+        # Результат виконання
+        lines.append("\nACT RESULT:")
+        if act_result:
+            lines.append(f"  ok: {act_result.get('ok', False)}")
+            if act_result.get("error"):
+                lines.append(f"  error: {act_result['error']}")
+            if act_result.get("output"):
+                output = str(act_result["output"])[:300]
+                lines.append(f"  output: {output}")
+        else:
+            lines.append("  (немає результату)")
+
+        # Очікування
+        if expectations:
+            lines.append("\nEXPECTATIONS (не пройшли):")
+            for exp in expectations[:5]:
+                lines.append(f"  - {exp}")
+
+        # Опис екрану (якщо є)
+        if observation is not None:
+            window = getattr(observation, "active_window_title", None)
+            if window:
+                lines.append(f"\nACTIVE WINDOW: {window}")
+            vision_desc = getattr(observation, "vision_description", None)
+            if vision_desc:
+                lines.append(f"SCREEN DESCRIPTION: {str(vision_desc)[:300]}")
+            ocr_text = getattr(observation, "ocr_text", None)
+            if ocr_text:
+                lines.append(f"OCR (скорочено): {str(ocr_text)[:300]}")
+
+        # Останні кроки
+        if history:
+            lines.append("\nRECENT HISTORY (останні 3 кроки):")
+            for entry in history[-3:]:
+                act = entry.get("action", "?")
+                ok = entry.get("act_result", {}).get("ok") if isinstance(entry.get("act_result"), dict) else None
+                lines.append(f"  - {act} (ok={ok})")
+
+        lines.append(
+            "\nПоверни JSON: action (retry/skip/replan/stop), reason, "
+            "modified_action (для retry, з полями action і args)."
+        )
+        return "\n".join(lines)
+
+    def _parse_decision(self, raw: Dict[str, Any]) -> RepairDecision:
+        """Парсити JSON-відповідь LLM у RepairDecision."""
+        try:
+            action_str = str(raw.get("action", "stop")).lower()
+            try:
+                action = RepairAction(action_str)
+            except ValueError:
+                logger.warning("Unknown action '%s' — fallback to STOP", action_str)
+                action = RepairAction.STOP
+
+            return RepairDecision(
+                action=action,
+                reason=str(raw.get("reason", "")),
+                modified_action=raw.get("modified_action") if action == RepairAction.RETRY else None,
+            )
+        except Exception as e:
+            logger.warning("Parse repair decision error: %s", e)
+            return RepairDecision(action=RepairAction.STOP, reason=f"parse error: {e}")

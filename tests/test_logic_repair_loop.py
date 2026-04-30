@@ -403,3 +403,156 @@ class TestRepairLoop:
 
         assert action == RepairAction.STOP
         assert modified_args is None
+
+
+class TestStepRepairer:
+    """Тести для StepRepairer (ETAP 6 — інтеграція з AgentLoop)."""
+
+    def test_init(self):
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=Mock(), max_repairs=3)
+        assert repairer.max_repairs == 3
+        assert repairer._repairs_used == 0
+        assert repairer.is_available is True
+
+    def test_budget_decreases(self):
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=Mock(), max_repairs=2)
+        assert repairer.repairs_remaining == 2
+        repairer._repairs_used = 1
+        assert repairer.repairs_remaining == 1
+        assert repairer.is_available is True
+
+    def test_budget_exhausted(self):
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=Mock(), max_repairs=1)
+        repairer._repairs_used = 1
+        assert repairer.is_available is False
+        assert repairer.repairs_remaining == 0
+
+    def test_no_assistant_not_available(self):
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=None, max_repairs=5)
+        assert repairer.is_available is False
+
+    def test_reset(self):
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=Mock(), max_repairs=3)
+        repairer._repairs_used = 2
+        repairer.reset()
+        assert repairer._repairs_used == 0
+        assert repairer.repairs_remaining == 3
+
+    def test_repair_budget_exhausted_returns_none(self):
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=Mock(), max_repairs=1)
+        repairer._repairs_used = 1
+        result = repairer.repair(
+            failed_action={"action": "click", "args": {}},
+            act_result={"ok": False, "error": "Not found"},
+            observation=None,
+            history=[],
+        )
+        assert result is None
+
+    @patch("functions.logic_repair_loop.ask_llm_with_tools")
+    def test_repair_retry(self, mock_ask):
+        from functions.logic_repair_loop import StepRepairer
+        mock_ask.return_value = MagicMock(
+            error=None,
+            raw={
+                "action": "retry",
+                "reason": "Неправильні координати",
+                "modified_action": {"action": "click", "args": {"x": 100, "y": 200}},
+            },
+        )
+        repairer = StepRepairer(assistant=Mock(), max_repairs=3)
+        result = repairer.repair(
+            failed_action={"action": "click", "args": {"x": 0, "y": 0}},
+            act_result={"ok": False, "error": "not found"},
+            observation=None,
+            history=[],
+        )
+        assert result is not None
+        assert result.action == RepairAction.RETRY
+        assert result.modified_action == {"action": "click", "args": {"x": 100, "y": 200}}
+        assert repairer._repairs_used == 1
+
+    @patch("functions.logic_repair_loop.ask_llm_with_tools")
+    def test_repair_skip(self, mock_ask):
+        from functions.logic_repair_loop import StepRepairer
+        mock_ask.return_value = MagicMock(error=None, raw={"action": "skip", "reason": "Крок не критичний"})
+        repairer = StepRepairer(assistant=Mock(), max_repairs=3)
+        result = repairer.repair(
+            failed_action={"action": "click", "args": {}},
+            act_result={"ok": False},
+            observation=None,
+            history=[],
+        )
+        assert result is not None
+        assert result.action == RepairAction.SKIP
+        assert result.modified_action is None
+
+    @patch("functions.logic_repair_loop.ask_llm_with_tools")
+    def test_repair_stop(self, mock_ask):
+        from functions.logic_repair_loop import StepRepairer
+        mock_ask.return_value = MagicMock(error=None, raw={"action": "stop", "reason": "Фатальна помилка"})
+        repairer = StepRepairer(assistant=Mock(), max_repairs=3)
+        result = repairer.repair(
+            failed_action={"action": "open_app", "args": {}},
+            act_result={"ok": False, "error": "App crashed"},
+            observation=None,
+            history=[],
+        )
+        assert result is not None
+        assert result.action == RepairAction.STOP
+
+    @patch("functions.logic_repair_loop.ask_llm_with_tools")
+    def test_repair_llm_error(self, mock_ask):
+        from functions.logic_repair_loop import StepRepairer
+        mock_ask.return_value = MagicMock(error="connection timeout", raw=None)
+        repairer = StepRepairer(assistant=Mock(), max_repairs=3)
+        result = repairer.repair(
+            failed_action={"action": "click", "args": {}},
+            act_result={"ok": False},
+            observation=None,
+            history=[],
+        )
+        assert result is not None
+        assert result.action == RepairAction.STOP
+
+    def test_build_prompt_structure(self):
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=Mock(), max_repairs=3)
+        obs = MagicMock()
+        obs.active_window_title = "TestWindow"
+        obs.vision_description = "screen desc"
+        obs.ocr_text = "some text"
+
+        prompt = repairer._build_prompt(
+            failed_action={"action": "click", "args": {"x": 1}, "reasoning": "r"},
+            act_result={"ok": False, "error": "err"},
+            observation=obs,
+            history=[{"action": "click", "act_result": {"ok": False}}],
+            expectations=[{"text": "OK"}],
+        )
+        assert "FAILED ACTION" in prompt
+        assert "click" in prompt
+        assert "ACT RESULT" in prompt
+        assert "err" in prompt
+        assert "EXPECTATIONS" in prompt
+        assert "TestWindow" in prompt
+        assert "screen desc" in prompt
+        assert "RECENT HISTORY" in prompt
+
+    def test_parse_decision_unknown_action(self):
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=Mock(), max_repairs=3)
+        decision = repairer._parse_decision({"action": "magic", "reason": "test"})
+        assert decision.action == RepairAction.STOP
+
+    def test_parse_decision_empty(self):
+        from functions.logic_repair_loop import StepRepairer
+        repairer = StepRepairer(assistant=Mock(), max_repairs=3)
+        decision = repairer._parse_decision({})
+        assert decision.action == RepairAction.STOP

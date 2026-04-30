@@ -287,9 +287,6 @@ class FunctionRegistry:
             'create_file', 'edit_file', 'list_directory',
             'mouse_click', 'keyboard_type', 'take_screenshot', 'ocr_screen',
             'click_text', 'list_windows', 'find_window_by_title', 'activate_window',
-            'playwright_navigate', 'playwright_click', 'playwright_type',
-            'playwright_screenshot', 'playwright_get_text', 'playwright_evaluate',
-            'playwright_close', 'open_browser_playwright',
             'cdp_ensure_chrome', 'cdp_open_tab', 'cdp_switch_tab', 'cdp_type_text',
             'cdp_get_response', 'cdp_send_to_ai', 'cdp_list_tabs', 'cdp_get_page_text'
         ]

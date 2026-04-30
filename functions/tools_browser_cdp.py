@@ -734,6 +734,141 @@ def cdp_click(selector: str, force: bool = False) -> Dict[str, Any]:
 
 
 @llm_function(
+    name="cdp_click_text",
+    description="Клікнути по елементу з вказаним текстом (через Playwright get_by_text — стійкіше за CSS).",
+    parameters={
+        "text": "Текст всередині елемента (точний або частковий, регістронезалежно)",
+        "exact": "True — точний збіг; False — частковий (за замовчуванням)",
+        "timeout": "Таймаут пошуку у секундах (за замовчуванням 5)",
+    }
+)
+def cdp_click_text(text: str, exact: bool = False, timeout: int = 5) -> Dict[str, Any]:
+    """Клікнути по тексту на сторінці (без CSS-селектора)."""
+    try:
+        page = _get_or_find_page()
+        if not page:
+            return make_tool_result(False, "❌ Немає активної сторінки")
+
+        timeout_ms = int(timeout * 1000)
+
+        # Спроба 1: Playwright get_by_text (нативний, найстійкіший)
+        try:
+            loc = page.get_by_text(text, exact=exact)
+            if loc.count() > 0:
+                loc.first.click(timeout=timeout_ms)
+                return make_tool_result(True, f"✅ Клікнуто (text): {text}", data={"method": "get_by_text"})
+        except Exception:
+            pass
+
+        # Спроба 2: get_by_role з name
+        for role in ("button", "link", "menuitem", "tab"):
+            try:
+                loc = page.get_by_role(role, name=text, exact=exact)
+                if loc.count() > 0:
+                    loc.first.click(timeout=timeout_ms)
+                    return make_tool_result(True, f"✅ Клікнуто (role={role}): {text}", data={"method": f"role:{role}"})
+            except Exception:
+                continue
+
+        # Спроба 3: XPath fallback
+        try:
+            xpath = f"//*[contains(normalize-space(.), '{text}')]" if not exact else f"//*[normalize-space(.)='{text}']"
+            page.click(f"xpath={xpath}", timeout=timeout_ms)
+            return make_tool_result(True, f"✅ Клікнуто (xpath): {text}", data={"method": "xpath"})
+        except Exception as e:
+            return make_tool_result(False, f"❌ Текст '{text}' не знайдено або клік не вдався: {e}", error=str(e))
+    except Exception as e:
+        return make_tool_result(False, f"❌ {e}", error=str(e), retryable=True)
+
+
+@llm_function(
+    name="cdp_wait_for_text",
+    description="Чекати появи тексту на сторінці (для синхронізації з динамічним контентом).",
+    parameters={
+        "text": "Текст для очікування",
+        "timeout": "Максимальний час очікування у секундах (за замовчуванням 30)",
+    }
+)
+def cdp_wait_for_text(text: str, timeout: int = 30) -> Dict[str, Any]:
+    """Чекати поки на сторінці з'явиться вказаний текст."""
+    try:
+        page = _get_or_find_page()
+        if not page:
+            return make_tool_result(False, "❌ Немає активної сторінки")
+
+        timeout_ms = int(timeout * 1000)
+
+        # Спроба 1: get_by_text + wait_for visible
+        try:
+            loc = page.get_by_text(text)
+            loc.first.wait_for(state="visible", timeout=timeout_ms)
+            return make_tool_result(True, f"✅ Текст '{text}' з'явився", data={"method": "get_by_text"})
+        except Exception:
+            pass
+
+        # Спроба 2: polling через JS
+        start = time.time()
+        poll = 0.5
+        while time.time() - start < timeout:
+            try:
+                content = page.inner_text("body")
+                if text in content:
+                    return make_tool_result(True, f"✅ Текст '{text}' знайдено в body", data={"method": "polling"})
+            except Exception:
+                pass
+            time.sleep(poll)
+
+        return make_tool_result(False, f"❌ Текст '{text}' не з'явився за {timeout}с", error="timeout")
+    except Exception as e:
+        return make_tool_result(False, f"❌ {e}", error=str(e))
+
+
+@llm_function(
+    name="cdp_fill",
+    description="Заповнити поле за CSS-селектором або міткою (label) текстом (через Playwright fill).",
+    parameters={
+        "selector_or_label": "CSS-селектор (наприклад input[name='q']) або текст мітки поля",
+        "text": "Текст для введення",
+    }
+)
+def cdp_fill(selector_or_label: str, text: str) -> Dict[str, Any]:
+    """Заповнити поле через Playwright fill (надійніше за keyboard.type)."""
+    try:
+        page = _get_or_find_page()
+        if not page:
+            return make_tool_result(False, "❌ Немає активної сторінки")
+
+        # Спроба 1: як CSS-селектор
+        try:
+            page.fill(selector_or_label, text, timeout=5000)
+            return make_tool_result(True, f"✅ Заповнено '{selector_or_label}' ({len(text)} символів)", data={"method": "css"})
+        except Exception:
+            pass
+
+        # Спроба 2: як label
+        try:
+            loc = page.get_by_label(selector_or_label)
+            if loc.count() > 0:
+                loc.first.fill(text, timeout=5000)
+                return make_tool_result(True, f"✅ Заповнено label '{selector_or_label}'", data={"method": "label"})
+        except Exception:
+            pass
+
+        # Спроба 3: placeholder
+        try:
+            loc = page.get_by_placeholder(selector_or_label)
+            if loc.count() > 0:
+                loc.first.fill(text, timeout=5000)
+                return make_tool_result(True, f"✅ Заповнено placeholder '{selector_or_label}'", data={"method": "placeholder"})
+        except Exception:
+            pass
+
+        return make_tool_result(False, f"❌ Поле '{selector_or_label}' не знайдено")
+    except Exception as e:
+        return make_tool_result(False, f"❌ {e}", error=str(e), retryable=True)
+
+
+@llm_function(
     name="cdp_screenshot",
     description="Зробити скріншот поточної сторінки Chrome",
     parameters={
@@ -918,6 +1053,9 @@ ALL_CDP_TOOLS = [
     cdp_get_response,
     cdp_get_page_text,
     cdp_click,
+    cdp_click_text,
+    cdp_wait_for_text,
+    cdp_fill,
     cdp_screenshot,
     cdp_evaluate_js,
     cdp_send_to_ai,

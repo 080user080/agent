@@ -87,6 +87,8 @@ class AgentLoopConfig:
     screen_diff_threshold: float = 0.01
     history_max_entries: int = 10
     replan_after_failures: int = 3
+    repair_after_failures: int = 2  # Викликати repairer при N consecutive failures
+    enable_repair: bool = True
 
 
 class ActionDecider:
@@ -319,6 +321,7 @@ class AgentLoop:
         config: Optional[AgentLoopConfig] = None,
         ask_user_callback: Optional[Callable[[str, List[str]], str]] = None,
         decider: Optional[ActionDecider] = None,
+        repairer: Optional[Any] = None,  # StepRepairer (опційно)
     ):
         self.assistant = assistant
         self.registry = registry
@@ -327,6 +330,7 @@ class AgentLoop:
         self._compiled_plan = None
         self.ask_user_callback = ask_user_callback
         self.decider = decider
+        self.repairer = repairer  # StepRepairer для адаптивного відновлення
         self._prev_screen_hash = ""
         self._prev_screen_path = ""
         self._checkpoint_enabled = self.config.enable_checkpoint
@@ -994,6 +998,8 @@ class AgentLoop:
         if self._stop_flag:
             logger.info("Stop requested by user")
             return True
+        if state.done:
+            return True
         if state.step >= self.config.max_steps:
             return True
         if time.time() - start_time > self.config.max_duration_seconds:
@@ -1077,9 +1083,78 @@ class AgentLoop:
                     action, state.consecutive_failures, check_result.get("detail", ""),
                 )
 
+            # Repair Loop: спробувати адаптивне відновлення
+            if (
+                self.config.enable_repair
+                and self.repairer is not None
+                and state.consecutive_failures >= self.config.repair_after_failures
+                and getattr(self.repairer, "is_available", False)
+            ):
+                self._try_repair(action, args, reasoning, act_result, obs, state, expectations)
+
         state.step += 1
         time.sleep(0.3)
         return True
+
+    def _try_repair(
+        self,
+        action: str,
+        args: Dict[str, Any],
+        reasoning: str,
+        act_result: Dict[str, Any],
+        obs: Observation,
+        state: AgentState,
+        expectations: Optional[List[Dict[str, Any]]],
+    ) -> None:
+        """Викликати StepRepairer для адаптивного відновлення.
+
+        Модифікує state на основі рішення:
+        - RETRY: додає модифіковану дію в actions_history із прапором "repair_retry"
+                 (наступна ітерація plan() використає її через decider context)
+        - SKIP: ресетить consecutive_failures (продовжуємо)
+        - REPLAN: ресетить consecutive_failures (decider зробить replan на наступному кроці)
+        - STOP: ставить state.done=True із summary
+        """
+        try:
+            decision = self.repairer.repair(
+                failed_action={"action": action, "args": args, "reasoning": reasoning},
+                act_result=act_result,
+                observation=obs,
+                history=state.actions_history,
+                expectations=expectations,
+            )
+        except Exception as e:
+            logger.warning("Repair call failed: %s", e)
+            return
+
+        if decision is None:
+            return
+
+        from .logic_repair_loop import RepairAction
+        logger.info("Repair decision: %s — %s", decision.action.value, decision.reason)
+        self._gui_msg('update_status', f'🔧 Repair: {decision.action.value} — {decision.reason[:60]}')
+
+        if decision.action == RepairAction.RETRY and decision.modified_action:
+            # Додаємо «підказку» для наступного planning кроку
+            modified = decision.modified_action
+            state.actions_history.append({
+                "step": state.step,
+                "action": "_repair_hint",
+                "args": modified,
+                "act_result": {"ok": True, "result": "repair retry"},
+                "check_result": {"success": True, "detail": decision.reason},
+                "from_repairer": True,
+            })
+            state.consecutive_failures = 0
+        elif decision.action == RepairAction.SKIP:
+            state.consecutive_failures = 0
+        elif decision.action == RepairAction.REPLAN:
+            # Виставляємо лічильник на поріг replan, щоб decider зробив replan на наступній ітерації
+            state.consecutive_failures = self.config.replan_after_failures
+        elif decision.action == RepairAction.STOP:
+            state.done = True
+            state.success = False
+            state.done_summary = f"Зупинено repair-стратегом: {decision.reason}"
 
     def _cleanup_checkpoint(self) -> None:
         """Видалити чекпоїнт після завершення."""
@@ -1117,6 +1192,12 @@ class AgentLoop:
         """
         self._current_task = task
         self._stop_flag = False
+        # Скидаємо бюджет repair-спроб для нової сесії
+        if self.repairer is not None and hasattr(self.repairer, "reset"):
+            try:
+                self.repairer.reset()
+            except Exception:
+                pass
         state = self._load_checkpoint() or AgentState()
         start_time = time.time()
 

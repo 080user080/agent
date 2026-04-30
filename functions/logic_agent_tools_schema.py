@@ -483,9 +483,10 @@ TOOL_NAME_ALIASES: Dict[str, str] = {
     "uia_list_inputs": "uia_list_inputs",
     "uia_wait_for_element": "uia_wait_for_element",
     # Browser
+    "open_browser": "cdp_ensure_chrome",
     "browser_open_url": "cdp_open_tab",
-    "browser_click_text": "cdp_click",
-    "browser_fill": "cdp_type_text",
+    "browser_click_text": "cdp_click_text",
+    "browser_fill": "cdp_fill",
     "browser_screenshot": "cdp_screenshot",
     "browser_extract_text": "cdp_get_page_text",
     "browser_wait_for": "cdp_wait_for_text",

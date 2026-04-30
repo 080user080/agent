@@ -909,7 +909,7 @@ class AssistantCore:
                 import traceback
                 traceback.print_exc()
 
-        # --- AgentLoop init (Phase 12.1+: observe → plan → act → check + LLM tool-calling) ---
+        # --- AgentLoop init (Phase 12.1+: observe → plan → act → check + LLM tool-calling + Repair Loop) ---
         try:
             from functions.agent_loop import AgentLoop, AgentLoopConfig, build_default_decider
 
@@ -921,6 +921,14 @@ class AssistantCore:
             )
             decider_status = "з LLM tool-calling" if (decider and decider.is_available) else "без LLM (fallback на CompiledPlan)"
 
+            # Repair Loop (адаптивне відновлення при провалах)
+            repairer = None
+            try:
+                from functions.logic_repair_loop import StepRepairer
+                repairer = StepRepairer(assistant=self.assistant, max_repairs=3)
+            except Exception as repair_err:
+                print(f"{Fore.YELLOW}⚠️  StepRepairer недоступний: {repair_err}")
+
             self.agent_loop = AgentLoop(
                 assistant=self.assistant,
                 registry=self.registry,
@@ -930,11 +938,15 @@ class AssistantCore:
                     enable_ocr=True,
                     enable_llm_decider=True,
                     enable_ui_elements=True,
+                    enable_repair=True,
+                    repair_after_failures=2,
                 ),
                 decider=decider,
+                repairer=repairer,
             )
             self.agent_loop.gui_cb = lambda msg_type, data: self.log_to_gui(msg_type, data)
-            print(f"{Fore.GREEN}✅ AgentLoop готовий ({decider_status})")
+            repair_status = "+ repair" if repairer else ""
+            print(f"{Fore.GREEN}✅ AgentLoop готовий ({decider_status}{repair_status})")
         except Exception as e:
             self.agent_loop = None
             print(f"{Fore.YELLOW}⚠️  AgentLoop недоступний: {e}")

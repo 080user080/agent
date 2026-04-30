@@ -270,7 +270,7 @@ def _execute_single_action(registry, action_dict):
         "list_windows": "list_windows",
         "keyboard_type": "keyboard_type",
         "press_key": "press_key",
-        "open_browser": "open_browser_playwright",
+        "open_browser": "cdp_ensure_chrome",
         "playwright_navigate": "playwright_navigate",
         "playwright_click": "playwright_click",
         "playwright_type": "playwright_type",
