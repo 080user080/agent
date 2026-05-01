@@ -194,10 +194,16 @@ class FunctionRegistry:
 - `git_status(directory)` — статус git-репозиторію
 - `git_diff(directory, staged)` — показати зміни
 
+ДОСТУПНІ BROWSER-TOOLS:
+- `open_browser(url)` — відкрити браузер (CDP)
+- `browser_open_url(url)` — відкрити URL у браузері
+- `browser_click_text(text)` — клікнути на текст на сторінці
+
 ВЗІРЦІ (КОРОТКІ ПРИКЛАДИ):
 - "Знайди TODO в коді" → {{"action":"search_in_code","pattern":"TODO","directory":"."}}
 - "Покажи git зміни" → {{"action":"git_diff","directory":"."}}
 - "Прочитай файл config.py" → {{"action":"read_code_file","filepath":"config.py"}}
+- "відкрий браузер" → {{"action":"open_browser","url":"https://google.com"}}
 - "Активуй вікно і напиши текст" → ДВА action підряд:
   {{"action":"activate_window_by_title","title":"Notepad"}}
   {{"action":"keyboard_type","text":"Привіт!"}}
@@ -224,12 +230,20 @@ class FunctionRegistry:
 ЗАВЖДИ ПОВЕРТАЙ JSON З action!
 """
         if self.functions:
-            prompt += "\n\nДОСТУПНІ ФУНКЦІЇ:\n"
+            prompt += "\n\nДОСТУПНІ ФУНКЦІЇ (перші 15):\n"
+            # Обмежуємо кількість функцій для зменшення розміру промпта
+            MAX_FUNCTIONS_IN_PROMPT = 15
+            count = 0
             for _func_name, func_info in sorted(self.functions.items()):
+                if count >= MAX_FUNCTIONS_IN_PROMPT:
+                    break
                 prompt += f"\n🔧 {func_info['name']}: {func_info['description']}\n"
                 if func_info['parameters']:
                     for pname, pdesc in func_info['parameters'].items():
                         prompt += f"   • {pname}: {pdesc}\n"
+                count += 1
+            if len(self.functions) > MAX_FUNCTIONS_IN_PROMPT:
+                prompt += f"\n... та ще {len(self.functions) - MAX_FUNCTIONS_IN_PROMPT} функцій"
 
         return prompt
 

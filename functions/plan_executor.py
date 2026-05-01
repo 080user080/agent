@@ -321,6 +321,20 @@ class PlanExecutor:
     def _execute_action(self, action: str, args: Dict[str, Any]) -> str:
         """Виконати одну дію через VoiceAssistant."""
         try:
+            # Конвертація параметрів для сумісності з planner
+            # Planner використовує інші імена параметрів ніж функції
+            param_mapping = {
+                "list_directory": {"path": "directory"},
+                "read_code_file": {"path": "filepath"},
+                "search_in_code": {"path": "directory"},
+                "edit_file": {"path": "filepath"},
+                "create_file": {"path": "filename"},
+            }
+            if action in param_mapping:
+                for old_name, new_name in param_mapping[action].items():
+                    if old_name in args and new_name not in args:
+                        args[new_name] = args.pop(old_name)
+
             # Спробувати через execute_action (якщо є)
             if hasattr(self.assistant, 'execute_action'):
                 return self.assistant.execute_action(action, args)

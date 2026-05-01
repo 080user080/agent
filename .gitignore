@@ -225,3 +225,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Постійні тести для діагностики (НЕ ВИДАЛЯТИ)
+# test_llm_endpoint.py - тест LLM endpoint
+# test_duplication_direct.py - тест GUI автоматизації

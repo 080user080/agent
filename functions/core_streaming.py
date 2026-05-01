@@ -164,22 +164,41 @@ class StreamingHandler:
                     continue
 
                 chunk_count = 0
+                total_content = ""
                 for line in response.iter_lines():
                     if line:
                         line = line.decode('utf-8')
                         if line.startswith('data: '):
                             data = line[6:]
                             if data == '[DONE]':
-                                print(f"[DEBUG] Stream DONE, total chunks: {chunk_count}")
+                                print(f"[DEBUG] Stream DONE, total chunks: {chunk_count}, total content length: {len(total_content)}")
+                                if not total_content:
+                                    print(f"[DEBUG] WARNING: No content received from endpoint")
                                 return  # Успішно завершено
                             try:
                                 json_data = json.loads(data)
+                                # Обробка помилки від endpoint
+                                if 'error' in json_data:
+                                    error_msg = json_data['error'].get('message', str(json_data['error']))
+                                    print(f"[DEBUG] Endpoint error: {error_msg}")
+                                    last_error = f"Endpoint error: {error_msg}"
+                                    raise Exception(last_error)
                                 delta = json_data['choices'][0]['delta']
                                 if 'content' in delta:
                                     chunk_count += 1
-                                    callback(delta['content'])
-                            except (json.JSONDecodeError, KeyError, IndexError):
-                                pass
+                                    content = delta['content']
+                                    total_content += content
+                                    print(f"[DEBUG] Chunk {chunk_count}: '{content[:50]}...' (total: {len(total_content)})")
+                                    callback(content)
+                                else:
+                                    print(f"[DEBUG] Chunk {chunk_count}: no content field, delta keys: {list(delta.keys())}")
+                            except (json.JSONDecodeError, KeyError, IndexError) as e:
+                                print(f"[DEBUG] Parse error on line: {data[:100]}... Error: {e}")
+                                # Якщо це помилка endpoint - зберігаємо і перериваємо
+                                if 'error' in data:
+                                    error_data = json.loads(data)
+                                    last_error = f"Endpoint error: {error_data.get('error', {}).get('message', data)}"
+                                    raise Exception(last_error)
 
                 return  # Успішно завершено
 

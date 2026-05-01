@@ -1,5 +1,5 @@
 # Поточні задачі МАРК
-> Останнє оновлення: 30.04.2026
+> Останнє оновлення: 30.04.2026 (23:26)
 
 ---
 
@@ -25,6 +25,61 @@
 - Прибрано виклик `assistant_stream_chunk` в `flush_buffer` - не додає текст через streaming
 - Прибрано виклик `stream_end` - не завершує streaming
 - Всі відповіді тепер додаватимуться через `log_to_gui` без дублювання префікса
+
+---
+
+## НЕДАВНІ ВИПРАВЛЕННЯ (30.04.2026, 23:26)
+
+### Виправлено LLM Context Overflow
+**Проблема:** Промпт LLM був занадто великим (12636 токенів > 12032 контекст DeepSeek Coder)
+
+**Виправлено:**
+- `functions/logic_core.py`: Обмежено `get_coding_system_prompt()` до 15 функцій (раніше 100+)
+- Додано browser tools та приклад "відкрий браузер" в промпт
+- DeepSeek Coder: max_tokens зменшено з 6000 до 2048
+
+### Виправлено Browser Automation
+**Проблема:** Команда "відкрий браузер" використовувала legacy Playwright launch з помилкою
+
+**Виправлено:**
+- `functions/llm/response_parser.py`: alias `open_browser` → `cdp_ensure_chrome`
+- `functions/logic_agent_tools_schema.py`: додано alias mapping
+- `functions/logic_core.py`: видалено legacy `open_browser_playwright` з priority_funcs
+
+**Результат:** Команда "відкрий браузер" працює через Chrome DevTools Protocol (CDP)
+
+### Виправлено Planner для аналізу коду (частково)
+**Проблема:** Команда "проаналізуй код d:\Python\agent\" не тригерила planner
+
+**Виправлено:**
+- `functions/core_planner.py`: додано маркери "проаналізуй", "аналізуй", "аналіз"
+- Зменшено поріг слів для команд з шляхами файлів
+- Додано приклад з правильними параметрами в промпт
+
+**Результат:**
+- ✅ Planner тригериться (should_plan: True)
+- ✅ Planner створює коректний план з параметром `directory`
+- ⚠️ Виконання плану не завершено — тест закриває програму до виконання кроку
+- Потрібно додати більше часу для виконання плану або змінити логіку тесту
+
+### Виправлено PlanExecutor
+**Проблеми:** Конфлікт імен параметрів (path vs directory), repair зависання
+
+**Виправлено:**
+- `functions/plan_executor.py`: конвертація параметрів (path → directory, filepath, filename)
+- `functions/core_planner.py`: спеціальна перевірка для `list_directory` в validation
+- `functions/logic_commands.py`: відключено repair для простих дій (list_directory, read_code_file, search_in_code)
+
+**Результат:** Кроки виконуються без repair зависання
+
+### Постійні тести
+- Позначено `test_llm_endpoint.py` та `test_duplication_direct.py` як невидаляємі
+- Додано документацію в README.md (розділ "🧪 Діагностичні тести")
+- Обидва тести працюють коректно
+
+### DeepSeek Coder відновлено як primary
+- `runtime/user_settings_copy.json`: role="1", enabled=true, max_tokens=2048
+- Gemini змінено на role="2" (secondary)
 
 ---
 

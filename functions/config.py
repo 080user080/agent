@@ -115,19 +115,19 @@ LM_STUDIO_URL = "http://localhost:1234/v1/chat/completions"
 LLM_ENDPOINTS = [
     {
         "id": "llm1",
-        "name": "LM Studio (deepseek-coder-v2-lite-instruct)",
+        "name": "Gemini",
         "enabled": True,
-        "role": "primary",
-        "type": "openai_compatible",
-        "url": "http://localhost:1234/v1/chat/completions",  # OpenAI-compatible API для стрімінгу
-        "model": "deepseek-coder-v2-lite-instruct",
+        "role": "1",
+        "type": "script",
+        "url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "model": "gemini-3.1-flash-lite-preview",
         "api_key": "",
         "temperature": 0.1,
-        "max_tokens": 8000,
+        "max_tokens": 2048,
         "timeout": 60,
         "script_command": "",
         "script_output_file": "",
-        "rate_limit_mode": "unlimited",  # unlimited | rpm | total
+        "rate_limit_mode": "unlimited",
         "rate_limit_rpm": 60,
         "rate_limit_total": 10000,
     },

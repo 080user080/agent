@@ -70,6 +70,9 @@ class Planner:
             "відредагуй",
             "зміни код",
             "перевір код",
+            "проаналізуй",
+            "аналізуй",
+            "аналіз",
             "git",
             "refactor",
             "рефактор",
@@ -83,6 +86,9 @@ class Planner:
             "задавати питання",
             "рефакторинг",
         )
+        # Зменшуємо поріг слів для команд з шляхами файлів (наприклад "проаналізуй код d:\path")
+        if any(c in normalized for c in [":", "\\", "/"]):
+            return any(marker in normalized for marker in markers)
         return len(normalized.split()) >= 5 and any(marker in normalized for marker in markers)
 
     def _is_coding_task(self, task: str) -> bool:
@@ -293,7 +299,10 @@ class Planner:
 1. "Створи файл test.txt з текстом 'hello'"
    [{{"action":"create_file","args":{{"filename":"test.txt","content":"hello"}},"goal":"створити файл","validation":"файл існує"}}]
 
-2. "Напиши питання у вікно" / "Задай питання у вікні X"
+2. "Проаналізуй код в директорії d:\\Python\\agent\\"
+   [{{"action":"list_directory","args":{{"directory":"d:\\Python\\agent\\"}},"goal":"переглянути вміст директорії","validation":"список файлів отримано"}}]
+
+3. "Напиши питання у вікно" / "Задай питання у вікні X"
    [
      {{"action":"activate_window_by_title","args":{{"title":"<назва_вікна>"}},"goal":"активувати вікно","validation":"вікно активне"}},
      {{"action":"keyboard_type","args":{{"text":"<питання>"}},"goal":"ввести текст","validation":"текст введено"}},
@@ -540,6 +549,10 @@ JSON:"""
 
         if action == "close_program":
             return ("успішно" in result.lower() or "закрита" in result.lower()), result
+
+        if action == "list_directory":
+            # list_directory успішний якщо результат не починається з помилки
+            return not result.startswith("❌"), result
 
         if action == "confirm_action":
             return ('"status": "confirmed"' in result or "confirmed" in result.lower() or "cancelled" in result.lower()), result

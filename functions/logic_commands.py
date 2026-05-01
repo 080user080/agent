@@ -344,7 +344,10 @@ class VoiceAssistant:
                         MAX_REPLAN_ATTEMPTS = 1
 
                         # === Багатоетапний repair цикл ===
-                        if not success and not self.executor.stop_requested:
+                        # Відключити repair для простих дій які не потребують виправлення
+                        SKIP_REPAIR_ACTIONS = {"list_directory", "read_code_file", "search_in_code"}
+
+                        if not success and not self.executor.stop_requested and action not in SKIP_REPAIR_ACTIONS:
                             if tool_meta and tool_meta.get("needs_confirmation"):
                                 return {
                                     "action": action,

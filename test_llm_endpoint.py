@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Тест для діагностики LLM endpoint."""
+"""
+Тест для діагностики LLM endpoint.
+
+ПОСТІЙНИЙ ТЕСТ - НЕ ВИДАЛЯТИ!
+Використовується для перевірки доступності та роботи LLM endpoints.
+"""
 import sys
 import os
 sys.path.insert(0, r"d:\Python\agent")
@@ -43,7 +48,7 @@ def test_endpoint():
     # Тестуємо endpoint через provider
     try:
         from functions.providers_openai_compatible import OpenAICompatibleProvider
-        from functions.providers_types import ChatRequest, ChatMessage
+        from functions.logic_ai_adapter import ChatRequest, ChatMessage
         
         provider = OpenAICompatibleProvider(
             base_url=primary.get("url").replace("/chat/completions", ""),
