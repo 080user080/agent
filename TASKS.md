@@ -1,5 +1,5 @@
 # Поточні задачі МАРК
-> Останнє оновлення: 30.04.2026 (23:26)
+> Останнє оновлення: 01.05.2026 (22:20)
 
 ---
 
@@ -48,7 +48,7 @@
 
 **Результат:** Команда "відкрий браузер" працює через Chrome DevTools Protocol (CDP)
 
-### Виправлено Planner для аналізу коду (частково)
+### Виправлено Planner для аналізу коду (повністю)
 **Проблема:** Команда "проаналізуй код d:\Python\agent\" не тригерила planner
 
 **Виправлено:**
@@ -59,8 +59,9 @@
 **Результат:**
 - ✅ Planner тригериться (should_plan: True)
 - ✅ Planner створює коректний план з параметром `directory`
-- ⚠️ Виконання плану не завершено — тест закриває програму до виконання кроку
-- Потрібно додати більше часу для виконання плану або змінити логіку тесту
+- ✅ Крок виконується успішно (success=True)
+- ✅ Отримано повний список файлів директорії
+- ✅ Task завершується з LLM summary
 
 ### Виправлено PlanExecutor
 **Проблеми:** Конфлікт імен параметрів (path vs directory), repair зависання
@@ -80,6 +81,39 @@
 ### DeepSeek Coder відновлено як primary
 - `runtime/user_settings_copy.json`: role="1", enabled=true, max_tokens=2048
 - Gemini змінено на role="2" (secondary)
+
+---
+
+## В процесі
+
+### Проблема: Дублювання виконання (planner + AgentLoop)
+**Статус:** Відстеження (01.05.2026, 22:20)
+
+**Симптоми:**
+- ✅ Planner тригериться (should_plan: True)
+- ✅ План створюється коректно з параметром `directory`
+- ✅ Крок виконується успішно (success=True, result_len=1146)
+- ✅ on_plan_complete викликається успішно
+- ⚠️ Через 4.0с після завершення плану спрацьовує ще AgentLoop (TaskSpecCompiler)
+- ⚠️ Помилка: "TaskSpec: 'dict' object has no attribute 'action'"
+- ⚠️ Помилка: "list index out of range"
+
+**Причина:**
+- Конфлікт двох шляхів виконання:
+  1. Planner шлях: `process_command` → `should_plan` → `create_plan` → `execute_plan_async` → `on_plan_complete`
+  2. AgentLoop шлях: `run_agent_loop` → TaskSpecCompiler → AgentLoop
+- Після завершення planner шляху спрацьовує ще AgentLoop з тим самим планом
+
+**Дії:**
+- Додано debug логування в `on_plan_complete` (logic_commands.py)
+- Додано debug логування в `run_agent_loop` (main.py)
+- Потрібно знайти джерело автоматичного виклику AgentLoop
+
+**Файли:**
+- `functions/logic_commands.py` - planner шлях виконання
+- `main.py` - AgentLoop шлях виконання
+- `core_gui_pyqt6/main_window.py` - GUI callbacks
+- `core_gui_pyqt6/plan_panel_qt.py` - plan panel callbacks
 
 ---
 

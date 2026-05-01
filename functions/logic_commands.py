@@ -333,6 +333,7 @@ class VoiceAssistant:
                             time.sleep(1.0)
                         success, validation_message = self.planner._validate_step(action, args, result, context)
                         tool_meta = getattr(self.registry, "last_tool_result", None)
+                        print(f"[DEBUG] Step executed: action={action}, success={success}, result_len={len(result)}")
 
                         repair_step = None
                         replanned_steps = None
@@ -446,10 +447,12 @@ class VoiceAssistant:
                         return step_outcome
 
                     def on_plan_complete(results):
+                        print(f"[DEBUG] on_plan_complete called with {len(results)} results")
                         self.memory.update_task(command_text, plan, results)
                         error_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "error")
                         blocked_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "blocked")
                         confirm_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "needs_confirmation")
+                        print(f"[DEBUG] error_count={error_count}, blocked_count={blocked_count}, confirm_count={confirm_count}")
 
                         # Визначити фінальний статус задачі
                         if blocked_count:
@@ -463,7 +466,8 @@ class VoiceAssistant:
 
                         # Завершити TaskMemory (згенерує LLM summary)
                         self.memory.finish_task(final_status)
-                        # Короткий фінальний підсумок у чат (панель показує деталі)
+
+                        # Показати результати виконання в чаті
                         if blocked_count:
                             self.log_to_gui("assistant", f"⛔ Зупинено політикою безпеки.")
                         elif confirm_count:
@@ -471,6 +475,15 @@ class VoiceAssistant:
                         elif error_count:
                             self.log_to_gui("assistant", f"⚠️ Виконано з помилками.")
                         else:
+                            # Показати результати успішних кроків
+                            for item in results:
+                                if isinstance(item, dict) and item.get("status") == "ok":
+                                    result = item.get("result", "")
+                                    if result and isinstance(result, str) and len(result) > 0:
+                                        # Обрізати дуже довгі результати
+                                        if len(result) > 2000:
+                                            result = result[:2000] + "\n... (обрізано)"
+                                        self.log_to_gui("assistant", f"📊 Результат:\n{result}")
                             self.log_to_gui("assistant", f"✅ Готово.")
 
                     self.executor.execute_plan_async(plan, execute_step, on_plan_complete)

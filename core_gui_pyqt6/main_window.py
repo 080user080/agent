@@ -166,14 +166,6 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         self.mic_button.clicked.connect(self.on_mic_clicked)
         input_layout.addWidget(self.mic_button)
 
-        # Кнопка агент 🤖
-        self.agent_button = QPushButton("🤖")
-        self.agent_button.setObjectName("agent_button")
-        self.agent_button.setFixedSize(48, 48)
-        self.agent_button.setToolTip("Запустити AgentLoop (observe → plan → act → check)")
-        self.agent_button.clicked.connect(self.run_agent_loop)
-        input_layout.addWidget(self.agent_button)
-
         # Кнопка відправки ➤
         self.send_button = QPushButton("➤")
         self.send_button.setObjectName("send_button")
@@ -288,8 +280,6 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
             QPushButton:pressed{ background: #0d47a1; }
             QPushButton#mic_button   { background: #9e9e9e; }
             QPushButton#mic_button:hover  { background: #757575; }
-            QPushButton#agent_button { background: #2e7d32; }
-            QPushButton#agent_button:hover { background: #1b5e20; }
             QPushButton#restart_button { background: #ff9800; }
             QPushButton#restart_button:hover { background: #f57c00; }
             QPushButton#stop_button, QPushButton#plan_stop_btn { background: #e65100; }
@@ -322,15 +312,6 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         self.input_text.clear()
         if self.assistant_callback:
             self.assistant_callback("process_text", command)
-
-    def run_agent_loop(self) -> None:
-        """Запустити AgentLoop напряму для тексту з поля вводу."""
-        command = self.input_text.toPlainText().strip()
-        if not command:
-            return
-        self.input_text.clear()
-        if self.assistant_callback:
-            self.assistant_callback("run_agent", command)
 
     def stop_execution(self) -> None:
         if self.assistant_callback:
@@ -512,7 +493,6 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
     def show_stop_button(self) -> None:
         self.send_button.hide()
         self.mic_button.hide()
-        self.agent_button.hide()
         self.restart_button.hide()
         self.stop_button.show()
         self.status_label.setText("⏳ Виконання... (Стоп для переривання)")
@@ -520,7 +500,6 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
     def hide_stop_button(self) -> None:
         self.stop_button.hide()
         self.mic_button.show()
-        self.agent_button.show()
         self.send_button.show()
         self.restart_button.show()
         self.progress_bar.hide()

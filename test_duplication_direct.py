@@ -71,36 +71,39 @@ def main():
     time.sleep(6)
     
     # 4. Активація вікна агента та вставка тексту (РОБОЧІ МЕТОДИ)
-    print("\n📝 Активація вікна агента та вставка тексту 'відкрий браузер'...")
+    print("\n📝 Активація вікна агента та вставка тексту 'проаналізуй код d:\\Python\\agent'...")
     try:
         from functions.aaa_voice_input import activate_window_by_title
         from functions.tools_mouse_keyboard import keyboard_type, keyboard_press
-        
+
         # Затримки для ініціалізації агента
         time.sleep(6)
-        
+
         # Активація вікна агента
-        print("📝 Активація вікна агента та вставка тексту 'відкрий браузер'...")
+        print("📝 Активація вікна агента та вставка тексту 'проаналізуй код d:\\Python\\agent'...")
         result = activate_window_by_title(title="МАРК — Асистент (PyQt6)")
         print(f"🔓 Активація вікна агента...")
         print(f"✅ Вікно активовано: {result}")
-        
+
         # Вставка тексту
         time.sleep(1)
-        text = "відкрий браузер"
+        text = "проаналізуй код d:\\Python\\agent"
         print(f"⌨️ Вставка тексту '{text}'...")
         result = keyboard_type(text=text)
         print(f"✅ Текст вставлено: {result}")
-        
+
         # Натискання Enter
-        time.sleep(0.5)
+        time.sleep(2)
         print(f"⏎ Натискання Enter...")
         result = keyboard_press(key="Enter")
         print(f"✅ Enter натиснуто: {result}")
-        
-        # Зачекати відповіді
-        print(f"⏳ Зачекайте 20 секунду для відповіді...")
-        time.sleep(20)
+
+        # Зачекати відповіді (для виконання плану + LLM summary)
+        print(f"⏳ Зачекайте 25 секунд для виконання плану + LLM summary...")
+        for i in range(45): # 25 секунд НЕЗМІНЮВАТИ! (для тестування вистачає 25 секунд)
+            time.sleep(1)
+            if i % 10 == 0:
+                print(f"⏳ Пройшло {i} секунд...")
     except Exception as e:
         print(f"❌ Помилка при вставці тексту: {e}")
     

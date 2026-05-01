@@ -404,13 +404,12 @@ class AssistantCore:
             return False
     
     def process_text_command(self, text):
-        """Обробити текстову команду з GUI"""
+        """Обробити текстову команду з GUI - тепер через AgentLoop."""
         if not text or len(text.strip()) == 0:
             return
 
-        # Лог команди виводиться в process_command (щоб не дублювалося)
-        if self.assistant:
-            self.assistant.process_command(text, from_gui=True)
+        # Основний шлях: AgentLoop (observe → plan → act → check)
+        self.run_agent_loop(text)
     
     def stop_execution(self):
         """Остановить текущее выполнение плана."""
@@ -441,6 +440,7 @@ class AssistantCore:
 
         Пріоритет: TaskSpecCompiler → AgentLoop → PlanExecutor (legacy)
         """
+        print(f"[DEBUG] run_agent_loop called with task: {task[:50]}...")
         if not task:
             if self.gui_queue:
                 self.gui_queue.put(('add_message', ('assistant', '❌ Немає задачі для виконання.')))
@@ -451,42 +451,44 @@ class AssistantCore:
         execution_steps = []
 
         try:
-            # Спробувати TaskSpecCompiler (S3)
-            if getattr(self, 'task_spec_compiler', None):
-                if self.gui_queue:
-                    self.gui_queue.put(('update_status', '📝 Компілюю TaskSpec...'))
-                try:
-                    spec = self.task_spec_compiler.parse(task)
-                    compiled_plan = self.task_spec_compiler.compile(spec)
-                    is_valid, msg = self.task_spec_compiler.validate_plan(compiled_plan)
+            # Спробувати TaskSpecCompiler (S3) - ВИМКНЕНО НАРАЗІ ДЛЯ ТЕСТУ
+            # if getattr(self, 'task_spec_compiler', None):
+            #     if self.gui_queue:
+            #         self.gui_queue.put(('update_status', '📝 Компілюю TaskSpec...'))
+            #     try:
+            #         spec = self.task_spec_compiler.parse(task)
+            #         print(f"[DEBUG] TaskSpec parsed: domain={spec.domain}, description={spec.description[:50]}...")
+            #         compiled_plan = self.task_spec_compiler.compile(spec)
+            #         print(f"[DEBUG] Compiled plan: {len(compiled_plan.steps)} steps")
+            #         is_valid, msg = self.task_spec_compiler.validate_plan(compiled_plan)
 
-                    if is_valid and compiled_plan.steps:
-                        execution_steps = [
-                            {"action": step.action, "goal": step.goal}
-                            for step in compiled_plan.steps
-                        ]
-                        if self.gui_queue:
-                            self.gui_queue.put(('add_message', ('assistant', f'📋 План: {len(compiled_plan.steps)} кроків (домен: {spec.domain.value})')))
+            #         if is_valid and compiled_plan.steps:
+            #             execution_steps = [
+            #                 {"action": step.get("action"), "goal": step.get("goal")}
+            #                 for step in compiled_plan.steps
+            #             ]
+            #             if self.gui_queue:
+            #                 self.gui_queue.put(('add_message', ('assistant', f'📋 План: {len(compiled_plan.steps)} кроків (домен: {spec.domain.value})')))
 
-                        # Встановити план в AgentLoop і запустити
-                        if getattr(self, 'agent_loop', None):
-                            self.agent_loop.set_compiled_plan(compiled_plan)
-                            if self.gui_queue:
-                                self.gui_queue.put(('update_status', '🤖 AgentLoop: observe → plan → act → check'))
-                            result = self.agent_loop.run(task)
-                            execution_success = True
-                        # Fallback до PlanExecutor
-                        elif getattr(self, 'plan_executor', None):
-                            self.plan_executor.execute_plan(compiled_plan.steps, task)
-                            execution_success = True
-                        return
-                    else:
-                        if self.gui_queue:
-                            self.gui_queue.put(('add_message', ('assistant', f'⚠️ {msg}')))
-                except Exception as e:
-                    execution_error = str(e)
-                    if self.gui_queue:
-                        self.gui_queue.put(('add_message', ('assistant', f'⚠️ TaskSpec: {e}')))
+            #             # Встановити план в AgentLoop і запустити
+            #             if getattr(self, 'agent_loop', None):
+            #                 self.agent_loop.set_compiled_plan(compiled_plan)
+            #                 if self.gui_queue:
+            #                     self.gui_queue.put(('update_status', '🤖 AgentLoop: observe → plan → act → check'))
+            #                 result = self.agent_loop.run(task)
+            #                 execution_success = True
+            #             # Fallback до PlanExecutor
+            #             elif getattr(self, 'plan_executor', None):
+            #                 self.plan_executor.execute_plan(compiled_plan.steps, task)
+            #                 execution_success = True
+            #             return
+            #         else:
+            #             if self.gui_queue:
+            #                 self.gui_queue.put(('add_message', ('assistant', f'⚠️ {msg}')))
+            #     except Exception as e:
+            #         execution_error = str(e)
+            #         if self.gui_queue:
+            #             self.gui_queue.put(('add_message', ('assistant', f'⚠️ TaskSpec: {e}')))
 
             # AgentLoop без CompiledPlan
             if getattr(self, 'agent_loop', None):

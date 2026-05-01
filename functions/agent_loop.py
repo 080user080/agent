@@ -106,11 +106,13 @@ class ActionDecider:
     SYSTEM_PROMPT = (
         "Ти — агент, який керує комп'ютером користувача (миша, клавіатура, екран). "
         "Тобі дано задачу і поточне спостереження екрану (скріншот описано через OCR/UIA). "
-        "Твоя робота — повернути ОДИН наступний крок як виклик інструменту. "
-        "Не описуй план словами, відразу виклич потрібний tool. "
-        "Коли задача виконана — виклич `done` з summary. "
-        "Якщо потрібна додаткова інформація від користувача — виклич `ask_user`. "
-        "Будь обережним: не виконуй незворотних дій без потреби."
+        "Твоя робота — повернути ОДИН наступний крок як JSON об'єкт. "
+        "Формат: {\"action\": \"ім'я_інструменту\", \"args\": {...}, \"reasoning\": \"пояснення\"}. "
+        "Доступні інструменти: list_directory, read_code_file, done, ask_user, та інші. "
+        "Коли задача виконана — action=\"done\", args={\"summary\": \"результат\"}. "
+        "Якщо потрібна додаткова інформація від користувача — action=\"ask_user\". "
+        "Будь обережним: не виконуй незворотних дій без потреби. "
+        "ВІДПОВІДАЙ ТІЛЬКИ JSON, без markdown, без пояснень поза JSON."
     )
 
     def __init__(
@@ -224,7 +226,7 @@ class ActionDecider:
         history: List[Dict[str, Any]],
         last_result: Optional[Dict[str, Any]] = None,
     ) -> AgentAction:
-        """Один крок рішення через LLM tool-calling."""
+        """Один крок рішення через LLM (JSON parsing fallback)."""
         if not self.is_available:
             return AgentAction(name="noop", reasoning="LLM decider unavailable")
 
@@ -243,6 +245,7 @@ class ActionDecider:
             logger.warning("ActionDecider LLM error: %s", response.error)
             return AgentAction(name="noop", reasoning=f"LLM error: {response.error}")
 
+        # 1) Спробувати tool_calls (OpenAI-compatible)
         tool_calls = getattr(response, "tool_calls", None) or []
         if tool_calls:
             tc = tool_calls[0]
@@ -253,8 +256,39 @@ class ActionDecider:
                 tool_call_id=str(getattr(tc, "id", "") or "") or None,
             )
 
-        # LLM не викликав інструмент — інтерпретуємо як завершення
+        # 2) Fallback — парсити JSON з content
         content = str(getattr(response, "content", "") or "").strip()
+
+        # Видалити markdown code blocks якщо є
+        if content.startswith("```"):
+            # ```json ... ``` → взяти вміст
+            lines = content.splitlines()
+            # Пропустити перший рядок (```json або ```)
+            json_lines = []
+            for line in lines[1:]:
+                if line.strip().startswith("```"):
+                    break
+                json_lines.append(line)
+            content = "\n".join(json_lines).strip()
+
+        # Спробувати парсити як JSON
+        if content.startswith("{"):
+            try:
+                parsed = json.loads(content)
+                action_name = parsed.get("action", "noop")
+                args = parsed.get("args", {})
+                if not isinstance(args, dict):
+                    args = {}
+                reasoning = parsed.get("reasoning", "")
+                return AgentAction(
+                    name=str(action_name),
+                    arguments=args,
+                    reasoning=str(reasoning) + "\n[JSON parsed]",
+                )
+            except json.JSONDecodeError:
+                logger.warning("ActionDecider: JSON parse failed for: %s...", content[:100])
+
+        # 3) Якщо не вдалося — інтерпретувати як done
         return AgentAction(
             name="done",
             arguments={"summary": content or "Задачу завершено без додаткових дій."},
@@ -762,11 +796,12 @@ class AgentLoop:
         """Отримати наступний крок з CompiledPlan."""
         if not self._compiled_plan or not self._compiled_plan.steps:
             return None
-        
+
         steps = self._compiled_plan.steps
         if state.step < len(steps):
             return self._get_step_from_plan(steps[state.step], state, len(steps), True)
         else:
+            logger.warning(f"Step {state.step} out of range for compiled plan (len={len(steps)})")
             return {
                 "action": "noop",
                 "args": {},
@@ -786,6 +821,7 @@ class AgentLoop:
         
         steps = planner.create_plan(task)
         if not steps or len(steps) == 0:
+            logger.warning("Planner returned empty plan")
             return None
         
         first_step = steps[0]
@@ -796,11 +832,19 @@ class AgentLoop:
         """Отримати наступний крок з історії планів."""
         if state.step == 0 or len(state.actions_history) == 0:
             return None
-        
+
+        if not isinstance(state.actions_history[0], dict):
+            logger.warning("actions_history[0] is not a dict")
+            return None
+
         last_plan = state.actions_history[0].get("plan", [])
+        if not isinstance(last_plan, list) or len(last_plan) == 0:
+            logger.warning("last_plan is not a list or is empty")
+            return None
+
         if state.step < len(last_plan):
             return self._get_step_from_plan(last_plan[state.step], state, len(last_plan), False)
-        
+
         return None
 
     def _plan_from_decider(
@@ -1021,7 +1065,14 @@ class AgentLoop:
             state.observations = state.observations[-5:]
 
         # 2. Plan
-        plan = self.plan(task, obs, state)
+        try:
+            plan = self.plan(task, obs, state)
+        except Exception as e:
+            logger.error(f"Error in plan(): {e}", exc_info=True)
+            state.done = True
+            state.success = False
+            state.done_summary = f"Помилка планування: {e}"
+            return False
         if plan.get("done"):
             summary = plan.get("summary") or plan.get("args", {}).get("summary", "")
             success = plan.get("success", True)
@@ -1040,7 +1091,8 @@ class AgentLoop:
 
         status_msg = f'▶ Крок {state.step + 1}/{self.config.max_steps}: {action}'
         if reasoning:
-            short = str(reasoning).strip().splitlines()[0][:80]
+            lines = str(reasoning).strip().splitlines()
+            short = lines[0][:80] if lines else ""
             if short:
                 status_msg += f' — {short}'
         self._gui_msg('update_status', status_msg)
