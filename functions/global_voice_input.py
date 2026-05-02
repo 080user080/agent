@@ -353,6 +353,17 @@ class GlobalVoiceInput:
     def _on_hotkey_pressed(self):
         """Обробити натискання hotkey — toggle запис."""
         print(f"[GVI] _on_hotkey_pressed викликано! is_listening={self.is_listening}")
+        
+        # Відпустити модифікатори щоб уникнути випадкового Ctrl+V
+        try:
+            import pyautogui
+            pyautogui.keyUp("ctrl")
+            pyautogui.keyUp("shift")
+            pyautogui.keyUp("alt")
+            pyautogui.keyUp("win")
+        except Exception as e:
+            print(f"[GVI] Помилка відпускання модифікаторів: {e}")
+        
         with self._toggle_lock:
             if self.is_listening:
                 # Вже слухаємо — зупинити
@@ -370,23 +381,18 @@ class GlobalVoiceInput:
     def _start_recording(self):
         """Почати запис і розпізнавання."""
         try:
-            # 1. Запам'ятати активне вікно (заголовок)
+            # 1. Запам'ятати активне вікно (заголовок) та позицію курсора
             hwnd = user32.GetForegroundWindow()
             length = user32.GetWindowTextLengthW(hwnd)
             buffer = ctypes.create_unicode_buffer(length + 1)
             user32.GetWindowTextW(hwnd, buffer, length + 1)
             self._last_window_title = buffer.value
             self._last_window_hwnd = hwnd
-            try:
-                import pyautogui
-                pos = pyautogui.position()
-                self._last_cursor_pos = (pos.x, pos.y)
-            except Exception:
-                self._last_cursor_pos = None
-            print(
-                f"[GVI] Zapamiatovane aktyvnae vakno: hwnd={hwnd}, "
-                f"title='{self._last_window_title}', cursor={self._last_cursor_pos}"
-            )
+            
+            # Запам'ятати позицію курсора
+            import pyautogui
+            self._last_cursor_pos = pyautogui.position()
+            print(f"[GVI] Zapamiatovane aktyvnae vakno: hwnd={hwnd}, title='{self._last_window_title}', cursor={self._last_cursor_pos}")
 
             # 2. Оновити статус
             self._update_tray_status(VoiceStatus.RECORDING, "Slukhau...")
@@ -451,8 +457,8 @@ class GlobalVoiceInput:
             else:
                 print(f"[GVI] Фокус паспяхова адноўлены")
 
-        # 2. Уставіць тэкст
-        success = self._insert_text(text)
+        # 2. Уставіць тэкст через скрипт користувача (Shift+F10)
+        success = self._insert_text_with_script(text)
         if not success:
             print("[GVI] Nie atrymalasia ustaŭić tekst")
 
@@ -479,6 +485,46 @@ class GlobalVoiceInput:
             print(f"[GVI] Pamylka Win32 paste: {e}")
             return False
 
+    def _insert_text_with_script(self, text: str) -> bool:
+        """Універсальна вставка: копіювати в буфер, натиснути Shift+F10, чекати 2 сек, очистити буфер."""
+        try:
+            # 1. Копіювати текст в буфер обміну
+            from functions.tools_mouse_keyboard import clipboard_copy_text
+            copy_result = clipboard_copy_text(text)
+            print(f"[GVI] Текст скопійовано в буфер: {copy_result}")
+            
+            if not copy_result or not copy_result.get("success"):
+                return False
+            
+            time.sleep(0.1)
+            
+            # 2. Натиснути Shift+F10 для запуску скрипта користувача
+            try:
+                import pyautogui
+                pyautogui.hotkey('shift', 'f10')
+                print(f"[GVI] Натиснуто Shift+F10")
+            except Exception as e:
+                print(f"[GVI] Помилка натискання Shift+F10: {e}")
+                return False
+            
+            # 3. Чекати 2 секунди щоб скрипт вставив текст
+            time.sleep(2.0)
+            print(f"[GVI] Чекання завершено")
+            
+            # 4. Очистити буфер обміну
+            try:
+                import pyperclip
+                pyperclip.copy("")
+                print(f"[GVI] Буфер обміну очищено")
+            except Exception as e:
+                print(f"[GVI] Помилка очищення буфера: {e}")
+            
+            print(f"[GVI] Текст вставлено через скрипт: {text[:50]}...")
+            return True
+        except Exception as e:
+            print(f"[GVI] Помилка _insert_text_with_script: {e}")
+            return False
+
     def _insert_text(self, text: str) -> bool:
         """Уставіць тэкст у мэтавае вакно праз clipboard + Ctrl+V.
 
@@ -495,26 +541,23 @@ class GlobalVoiceInput:
             title = self._last_window_title
             print(f"[GVI] Устаўка тэксту ў вакно '{title}'")
 
-            # 1. Актываваць вакно праз activate_window_by_title (з AttachThreadInput)
-            from functions.aaa_voice_input import activate_window_by_title
-            result = activate_window_by_title(title)
-            print(f"[GVI] Актывацыя вакна: {result}")
-            time.sleep(0.25)
+            # 1. Для Chrome не використовуємо activate_window_by_title —
+            # він не може знайти вікно через кракозябри в заголовку і скидає фокус.
+            # Фокус вже відновлено через SetForegroundWindow + клік в _on_text_recognized.
+            if "chrome" not in title.lower():
+                from functions.aaa_voice_input import activate_window_by_title
+                result = activate_window_by_title(title)
+                print(f"[GVI] Актывацыя вакна: {result}")
+                time.sleep(0.25)
+            else:
+                print(f"[GVI] Chrome: пропускаємо activate_window_by_title, фокус вже є")
+                time.sleep(0.1)
 
-            # Після активації top-level вікна треба повернутися саме в ту точку,
-            # де був курсор у полі вводу перед hotkey. Для браузерних чатів це
-            # критично: без цього Ctrl+V може піти не в input, а "в нікуди".
-            if self._last_cursor_pos:
-                try:
-                    import pyautogui
-                    x, y = self._last_cursor_pos
-                    pyautogui.click(x, y)
-                    time.sleep(0.2)
-                    print(f"[GVI] Click back to cursor position after activate: {self._last_cursor_pos}")
-                except Exception as e:
-                    print(f"[GVI] Pamylka click-back after activate: {e}")
+            # 2. keyboard_type через pyautogui не підтримує кирилицю —
+            # вставляє сміття ("_.", "  !"). Для всіх вікон, включно з Chrome,
+            # використовуємо clipboard + Ctrl+V (кроки 4-6 нижче).
 
-            # 2. Дати Windows дорозпустити модифікатори глобального hotkey
+            # 3. Дати Windows дорозпустити модифікатори глобального hotkey
             try:
                 import pyautogui
                 pyautogui.keyUp("ctrl")
@@ -525,23 +568,25 @@ class GlobalVoiceInput:
                 print(f"[GVI] Памылка пры адпусканні мадыфікатараў: {e}")
             time.sleep(0.1)
 
-            # 3. Зберегти clipboard, вставити потрібний текст, потім відновити.
+            # 4. Зберегти clipboard, вставити потрібний текст, потім відновити.
             old_clipboard = None
             try:
                 old_clipboard = pyperclip.paste()
             except Exception as e:
                 print(f"[GVI] Nie atrymалася прачытаць clipboard: {e}")
 
-            from functions.tools_mouse_keyboard import keyboard_hotkey, keyboard_type
+            from functions.tools_mouse_keyboard import clipboard_copy_text, keyboard_hotkey
 
-            clipboard_ok = self._set_clipboard_text_verified(text)
-            print(f"[GVI] clipboard_set_verified result: {clipboard_ok}")
-            if not clipboard_ok:
+            copy_result = clipboard_copy_text(text)
+            print(f"[GVI] clipboard_copy_text result: {copy_result}")
+            if not copy_result or not copy_result.get("success"):
                 return False
 
             time.sleep(0.1)
             paste_ok = False
             used_ctrl_v_fallback = False
+            
+            # 5. Спробувати Win32 paste для деяких класів вікон
             if self._last_window_hwnd:
                 target_hwnd, target_class = self._resolve_focus_target(self._last_window_hwnd)
                 insert_strategy = self._get_insert_strategy(target_class, title)
@@ -552,16 +597,129 @@ class GlobalVoiceInput:
                 else:
                     print(f"[GVI] Win32 paste skipped for class='{target_class}' title='{title}'")
 
+            # 6. Fallback на Ctrl+V
             if not paste_ok:
                 used_ctrl_v_fallback = True
                 paste_result = keyboard_hotkey("ctrl", "v")
                 print(f"[GVI] keyboard_hotkey(ctrl+v) result: {paste_result}")
                 paste_ok = bool(paste_result and paste_result.get("success"))
 
+            # 7. Fallback на keyboard_type
             if not paste_ok:
+                from functions.tools_mouse_keyboard import keyboard_type
                 type_result = keyboard_type(text=text)
                 print(f"[GVI] keyboard_type fallback result: {type_result}")
                 paste_ok = bool(type_result and type_result.get("success"))
+
+            # 8. Fallback на PowerShell SendKeys (для Chrome)
+            if not paste_ok:
+                try:
+                    import subprocess
+                    # Escape text for PowerShell
+                    escaped_text = text.replace('"', '`"').replace('$', '`$').replace('`', '``')
+                    ps_script = f'[System.Windows.Forms.SendKeys]::SendWait("{escaped_text}")'
+                    result = subprocess.run(
+                        ['powershell', '-Command', f'Add-Type -AssemblyName System.Windows.Forms; {ps_script}'],
+                        capture_output=True,
+                        text=True,
+                        timeout=5
+                    )
+                    paste_ok = result.returncode == 0
+                    print(f"[GVI] PowerShell SendKeys result: {paste_ok}")
+                except Exception as e:
+                    print(f"[GVI] PowerShell SendKeys error: {e}")
+
+            # 9. Fallback на AutoHotkey скрипт (найнадійніший для Chrome)
+            if not paste_ok:
+                try:
+                    import subprocess
+                    import os
+                    ahk_script = os.path.join(os.path.dirname(__file__), '..', 'paste_text.ahk')
+                    if os.path.exists(ahk_script):
+                        result = subprocess.run(
+                            [ahk_script, text],
+                            capture_output=True,
+                            text=True,
+                            timeout=5
+                        )
+                        paste_ok = result.returncode == 0
+                        print(f"[GVI] AutoHotkey result: {paste_ok}")
+                    else:
+                        print(f"[GVI] AutoHotkey скрипт не знайдено: {ahk_script}")
+                except Exception as e:
+                    print(f"[GVI] AutoHotkey error: {e}")
+
+            # 10. Fallback на UIA для Chrome (пряма вставка в елемент)
+            if not paste_ok:
+                try:
+                    from .tools_ui_accessibility import UIAWrapper, uia_get_focused_element
+                    uia = UIAWrapper()
+                    if uia.is_available():
+                        # Отримати сфокусований елемент
+                        focused = uia_get_focused_element({})
+                        if focused.get("ok"):
+                            # Спробувати вставити через ValuePattern
+                            try:
+                                element = focused.get("element")
+                                if element and hasattr(element, 'GetPattern'):
+                                    from uiautomation import ValuePattern
+                                    value_pattern = element.GetPattern(ValuePattern)
+                                    if value_pattern:
+                                        current_value = value_pattern.CurrentValue or ""
+                                        value_pattern.SetValue(current_value + text)
+                                        paste_ok = True
+                                        print(f"[GVI] UIA ValuePattern вставка успішна")
+                            except Exception as e:
+                                print(f"[GVI] UIA ValuePattern error: {e}")
+                except Exception as e:
+                    print(f"[GVI] UIA fallback error: {e}")
+
+            # 11. Fallback на SendInput з Unicode (для Chrome)
+            if not paste_ok:
+                try:
+                    import ctypes
+                    from ctypes import wintypes
+                    
+                    # SendInput структури
+                    class KEYBDINPUT(ctypes.Structure):
+                        _fields_ = [
+                            ("wVk", wintypes.WORD),
+                            ("wScan", wintypes.WORD),
+                            ("dwFlags", wintypes.DWORD),
+                            ("time", wintypes.DWORD),
+                            ("dwExtraInfo", ctypes.POINTER(wintypes.ULONG)),
+                        ]
+                    
+                    class INPUT(ctypes.Structure):
+                        class _INPUT(ctypes.Union):
+                            _fields_ = [("ki", KEYBDINPUT)]
+                        _anonymous_ = ("_input",)
+                        _fields_ = [
+                            ("type", wintypes.DWORD),
+                            ("_input", _INPUT),
+                        ]
+                    
+                    KEYEVENTF_UNICODE = 0x0004
+                    KEYEVENTF_KEYUP = 0x0002
+                    
+                    inputs = []
+                    for char in text:
+                        # Key down
+                        ki = KEYBDINPUT(0, ord(char), KEYEVENTF_UNICODE, 0, None)
+                        inp = INPUT(1, ki)
+                        inputs.append(inp)
+                        # Key up
+                        ki = KEYBDINPUT(0, ord(char), KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, None)
+                        inp = INPUT(1, ki)
+                        inputs.append(inp)
+                    
+                    n_inputs = len(inputs)
+                    input_array = (INPUT * n_inputs)(*inputs)
+                    sent = user32.SendInput(n_inputs, ctypes.byref(input_array), ctypes.sizeof(INPUT))
+                    paste_ok = sent == n_inputs
+                    print(f"[GVI] SendInput Unicode result: {paste_ok}, sent={sent}/{n_inputs}")
+                except Exception as e:
+                    print(f"[GVI] SendInput Unicode error: {e}")
 
             if paste_ok:
                 print(f"[GVI] Текст устаўлены: {text[:50]}...")
@@ -574,8 +732,10 @@ class GlobalVoiceInput:
                         print(f"[GVI] Nie atrymалася аднавіць clipboard: {e}")
                 return True
 
-            print("[GVI] Paste не ўдалося")
-            return False
+            # Якщо всі методи не спрацювали - повідомити користувача
+            print(f"[GVI] ⚠️ Автоматична вставка не вдалася. Текст скопійовано в буфер обміну. Натисніть Ctrl+V для вставки.")
+            # Текст вже в буфері, не відновлюємо old_clipboard
+            return True  # Повертаємо True бо текст в буфері
 
         except Exception as e:
             print(f"[GVI] Памылка ўстаўкі: {e}")

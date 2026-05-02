@@ -47,17 +47,27 @@ cd /d D:\Python\agent
   - Додано перевірку `GetForegroundWindow()` після `SetForegroundWindow()`
 - Змінено метод запам'ятовування вікна в `_start_recording`:
   - Тепер запам'ятовує заголовок вікна через `GetWindowTextW`
+  - Запам'ятовує позицію курсора для кліку
   - Заголовок надійніший для активації ніж hwnd
-- Змінено метод вставки `_insert_text` на надійний метод з test_duplication_direct.py:
+- Змінено метод вставки `_insert_text` на clipboard + Ctrl+V з багатьма fallbacks:
   - Використовує `activate_window_by_title(title)` для активації вікна (з AttachThreadInput)
-  - Використовує `keyboard_type(text)` для вставки тексту
-  - Це підтверджені робочі методи з автоматизованого тесту
+  - Зберігає старий буфер обміну, копіює новий текст, вставляє, відновлює старий
+  - Win32 paste для деяких класів вікон (Edit, RichEdit)
+  - Ctrl+V fallback для браузерів
+  - keyboard_type fallback
+  - PowerShell SendKeys fallback
+  - AutoHotkey скрипт fallback
+  - UIA ValuePattern fallback
+  - SendInput Unicode fallback
+- Для Chrome: якщо всі методи не спрацювали - текст залишається в буфері, користувач натискає Ctrl+V вручну
 - ВИДАЛЕНО callback виклик з `_on_text_recognized`:
   - Глобальне голосове введення не відправляє текст в агента
   - Текст вставляється тільки в запам'ятоване вікно користувача
 
 **Файли:**
-- `functions/global_voice_input.py` - покращено логіку відновлення фокусу, змінено метод вставки на activate_window_by_title + keyboard_type, видалено callback(text="привіт")
+- `functions/global_voice_input.py` - покращено логіку відновлення фокусу, змінено метод вставки на clipboard + Ctrl+V з багатьма fallbacks, видалено callback
+- `paste_text.ahk` - AutoHotkey скрипт для вставки (fallback)
+- `paste_text.cpp` - C++ програма для вставки (fallback)(text="привіт")
 
 **Скрипт:** `test_duplication_direct.py` - автоматизований тест для перевірки дублювання повідомлень
 
