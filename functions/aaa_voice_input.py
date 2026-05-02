@@ -117,7 +117,6 @@ def activate_window_by_title(title):
         try:
             import win32gui
             import win32con
-            import win32api
             import ctypes
 
             # Розгорнути якщо згорнуте
@@ -139,11 +138,15 @@ def activate_window_by_title(title):
                 user32.AttachThreadInput(target_thread, current_thread, True)
                 attached = True
 
+            focus_error = None
             try:
                 win32gui.BringWindowToTop(hwnd)
                 win32gui.SetForegroundWindow(hwnd)
                 win32gui.SetActiveWindow(hwnd)
-                win32gui.SetFocus(hwnd)
+                try:
+                    win32gui.SetFocus(hwnd)
+                except Exception as e:
+                    focus_error = str(e)
             finally:
                 if attached:
                     user32.AttachThreadInput(fg_thread, current_thread, False)
@@ -156,6 +159,7 @@ def activate_window_by_title(title):
                 "hwnd": hwnd,
                 "title": window.title,
                 "foreground": actual_fg == hwnd,
+                "focus_error": focus_error,
             }
         except ImportError:
             # Fallback на pygetwindow

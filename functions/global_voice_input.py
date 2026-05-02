@@ -43,6 +43,7 @@ VK_SHIFT = 0x10
 VK_G = 0x47
 VK_V = 0x56
 VK_LWIN = 0x5B
+WM_PASTE = 0x0302
 
 # KBDLLHOOKSTRUCT для правильного читання vkCode
 class KBDLLHOOKSTRUCT(ctypes.Structure):
@@ -52,6 +53,23 @@ class KBDLLHOOKSTRUCT(ctypes.Structure):
         ("flags", ctypes.c_uint),
         ("time", ctypes.c_uint),
         ("dwExtraInfo", ctypes.c_ulonglong),
+    ]
+
+
+class GUITHREADINFO(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", ctypes.c_uint),
+        ("flags", ctypes.c_uint),
+        ("hwndActive", ctypes.c_void_p),
+        ("hwndFocus", ctypes.c_void_p),
+        ("hwndCapture", ctypes.c_void_p),
+        ("hwndMenuOwner", ctypes.c_void_p),
+        ("hwndMoveSize", ctypes.c_void_p),
+        ("hwndCaret", ctypes.c_void_p),
+        ("rcCaret_left", ctypes.c_long),
+        ("rcCaret_top", ctypes.c_long),
+        ("rcCaret_right", ctypes.c_long),
+        ("rcCaret_bottom", ctypes.c_long),
     ]
 
 
@@ -212,9 +230,86 @@ class GlobalVoiceInput:
         # Запам'ятовування активного вікна для повернення фокусу
         self._last_window_hwnd = None
         self._last_window_title = None
+        self._last_cursor_pos = None
         # Захист від подвійного спрацьовування (debounce)
         self._toggle_lock = threading.Lock()
         self._stop_requested = False
+
+    def _get_window_class_name(self, hwnd: int) -> str:
+        """Отримати Win32 class name вікна/контрола."""
+        try:
+            buf = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(hwnd, buf, 255)
+            return buf.value or ""
+        except Exception:
+            return ""
+
+    def _resolve_focus_target(self, hwnd: int) -> tuple[int, str]:
+        """Знайти фокусований контрол усередині вікна."""
+        try:
+            thread_id = user32.GetWindowThreadProcessId(hwnd, None)
+            target_hwnd = hwnd
+
+            if thread_id:
+                gui = GUITHREADINFO()
+                gui.cbSize = ctypes.sizeof(GUITHREADINFO)
+                if user32.GetGUIThreadInfo(thread_id, ctypes.byref(gui)):
+                    if gui.hwndFocus:
+                        target_hwnd = gui.hwndFocus
+
+            class_name = self._get_window_class_name(target_hwnd)
+            return int(target_hwnd or 0), class_name
+        except Exception:
+            return int(hwnd or 0), self._get_window_class_name(hwnd)
+
+    def _get_insert_strategy(self, class_name: str, title: str) -> str:
+        """Обрати стратегію вставки залежно від типу вікна/контрола.
+
+        Повертає:
+        - `win32_paste` для класичних edit-контролів;
+        - `ctrl_v` для браузерних/чатових поверхонь;
+        - `ctrl_v` як універсальний fallback.
+        """
+        class_name = (class_name or "").lower()
+        title = (title or "").lower()
+
+        safe_classes = {
+            "edit",
+            "richeditd2dpt",
+            "richedit20w",
+            "richedit50w",
+            "akeleditw",
+            "scintilla",
+        }
+        browserish_classes = {
+            "chrome_widgetwin_1",
+            "chrome_renderwidgethosthwnd",
+            "mozillawindowclass",
+        }
+
+        if class_name in browserish_classes:
+            return "ctrl_v"
+        if "gemini" in title or "chatgpt" in title or "windsurf" in title:
+            return "ctrl_v"
+        if class_name in safe_classes:
+            return "win32_paste"
+        return "ctrl_v"
+
+    def _set_clipboard_text_verified(self, text: str, retries: int = 10, delay: float = 0.05) -> bool:
+        """Покласти текст у clipboard і переконатися, що саме він там лежить."""
+        try:
+            pyperclip.copy(text)
+            for _ in range(retries):
+                time.sleep(delay)
+                try:
+                    if pyperclip.paste() == text:
+                        return True
+                except Exception:
+                    pass
+            return False
+        except Exception as e:
+            print(f"[GVI] Pamylka set clipboard: {e}")
+            return False
 
     def _update_status(self, status: str):
         """Оновити статус."""
@@ -282,7 +377,16 @@ class GlobalVoiceInput:
             user32.GetWindowTextW(hwnd, buffer, length + 1)
             self._last_window_title = buffer.value
             self._last_window_hwnd = hwnd
-            print(f"[GVI] Zapamiatovane aktyvnae vakno: hwnd={hwnd}, title='{self._last_window_title}'")
+            try:
+                import pyautogui
+                pos = pyautogui.position()
+                self._last_cursor_pos = (pos.x, pos.y)
+            except Exception:
+                self._last_cursor_pos = None
+            print(
+                f"[GVI] Zapamiatovane aktyvnae vakno: hwnd={hwnd}, "
+                f"title='{self._last_window_title}', cursor={self._last_cursor_pos}"
+            )
 
             # 2. Оновити статус
             self._update_tray_status(VoiceStatus.RECORDING, "Slukhau...")
@@ -328,8 +432,9 @@ class GlobalVoiceInput:
             
             # Паспрабаваць аднавіць мінімізаванае вакно
             SW_RESTORE = 9
-            user32.ShowWindow(self._last_window_hwnd, SW_RESTORE)
-            time.sleep(0.1)
+            if user32.IsIconic(self._last_window_hwnd):
+                user32.ShowWindow(self._last_window_hwnd, SW_RESTORE)
+                time.sleep(0.1)
             
             # Прывесці вакно наперад
             user32.BringWindowToTop(self._last_window_hwnd)
@@ -361,6 +466,19 @@ class GlobalVoiceInput:
             except Exception as e:
                 print(f"[GVI] Pamylka callback: {e}")
 
+    def _paste_into_window(self, hwnd: int) -> bool:
+        """Вставити clipboard у фокусований контрол конкретного вікна через Win32."""
+        try:
+            target_hwnd, _class_name = self._resolve_focus_target(hwnd)
+            if not target_hwnd:
+                return False
+
+            user32.SendMessageW(target_hwnd, WM_PASTE, 0, 0)
+            return True
+        except Exception as e:
+            print(f"[GVI] Pamylka Win32 paste: {e}")
+            return False
+
     def _insert_text(self, text: str) -> bool:
         """Уставіць тэкст у мэтавае вакно праз clipboard + Ctrl+V.
 
@@ -383,6 +501,19 @@ class GlobalVoiceInput:
             print(f"[GVI] Актывацыя вакна: {result}")
             time.sleep(0.25)
 
+            # Після активації top-level вікна треба повернутися саме в ту точку,
+            # де був курсор у полі вводу перед hotkey. Для браузерних чатів це
+            # критично: без цього Ctrl+V може піти не в input, а "в нікуди".
+            if self._last_cursor_pos:
+                try:
+                    import pyautogui
+                    x, y = self._last_cursor_pos
+                    pyautogui.click(x, y)
+                    time.sleep(0.2)
+                    print(f"[GVI] Click back to cursor position after activate: {self._last_cursor_pos}")
+                except Exception as e:
+                    print(f"[GVI] Pamylka click-back after activate: {e}")
+
             # 2. Дати Windows дорозпустити модифікатори глобального hotkey
             try:
                 import pyautogui
@@ -401,28 +532,49 @@ class GlobalVoiceInput:
             except Exception as e:
                 print(f"[GVI] Nie atrymалася прачытаць clipboard: {e}")
 
-            from functions.tools_mouse_keyboard import clipboard_copy_text, keyboard_hotkey
+            from functions.tools_mouse_keyboard import keyboard_hotkey, keyboard_type
 
-            copy_result = clipboard_copy_text(text)
-            print(f"[GVI] clipboard_copy_text result: {copy_result}")
-            if not copy_result or not copy_result.get("success"):
+            clipboard_ok = self._set_clipboard_text_verified(text)
+            print(f"[GVI] clipboard_set_verified result: {clipboard_ok}")
+            if not clipboard_ok:
                 return False
 
             time.sleep(0.1)
-            paste_result = keyboard_hotkey("ctrl", "v")
-            print(f"[GVI] keyboard_hotkey(ctrl+v) result: {paste_result}")
+            paste_ok = False
+            used_ctrl_v_fallback = False
+            if self._last_window_hwnd:
+                target_hwnd, target_class = self._resolve_focus_target(self._last_window_hwnd)
+                insert_strategy = self._get_insert_strategy(target_class, title)
+                print(f"[GVI] Focus target: hwnd={target_hwnd}, class='{target_class}', strategy='{insert_strategy}'")
+                if insert_strategy == "win32_paste":
+                    paste_ok = self._paste_into_window(self._last_window_hwnd)
+                    print(f"[GVI] Win32 paste result: {paste_ok}")
+                else:
+                    print(f"[GVI] Win32 paste skipped for class='{target_class}' title='{title}'")
 
-            if paste_result and paste_result.get("success"):
+            if not paste_ok:
+                used_ctrl_v_fallback = True
+                paste_result = keyboard_hotkey("ctrl", "v")
+                print(f"[GVI] keyboard_hotkey(ctrl+v) result: {paste_result}")
+                paste_ok = bool(paste_result and paste_result.get("success"))
+
+            if not paste_ok:
+                type_result = keyboard_type(text=text)
+                print(f"[GVI] keyboard_type fallback result: {type_result}")
+                paste_ok = bool(type_result and type_result.get("success"))
+
+            if paste_ok:
                 print(f"[GVI] Текст устаўлены: {text[:50]}...")
                 if old_clipboard is not None:
                     try:
-                        time.sleep(0.05)
+                        restore_delay = 1.0 if used_ctrl_v_fallback else 0.05
+                        time.sleep(restore_delay)
                         pyperclip.copy(old_clipboard)
                     except Exception as e:
                         print(f"[GVI] Nie atrymалася аднавіць clipboard: {e}")
                 return True
 
-            print(f"[GVI] Ctrl+V не ўдалося: {paste_result}")
+            print("[GVI] Paste не ўдалося")
             return False
 
         except Exception as e:

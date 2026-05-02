@@ -1037,21 +1037,13 @@ class AssistantCore:
                 hotkey = get_setting("GLOBAL_VOICE_HOTKEY", "ctrl+shift+v")
                 print(f"\n{Fore.CYAN}🎙️  Ініціалізація глобального голосового вводу (hotkey: {hotkey})...")
 
-                def on_voice_text(text: str):
-                    """Callback для розпізнаного тексту."""
-                    print(f"{Fore.GREEN}🎯 Глобальний голосовий ввод: '{text}'")
-                    # Додаємо в GUI чат і обробляємо через process_text_command (звичайний LLM)
-                    if self.gui_queue:
-                        self.gui_queue.put(('add_message', ('user', text)))
-                    self.process_text_command(text)
-
                 def on_voice_status(status: str):
                     """Callback для статусу."""
                     print(f"{Fore.CYAN}   [Global Voice] {status}")
 
                 self.global_voice_input = GlobalVoiceInput(
                     hotkey=hotkey,
-                    callback=on_voice_text,
+                    callback=None,
                     status_callback=on_voice_status
                 )
 
