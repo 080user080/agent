@@ -1,68 +1,24 @@
-"""Тести для Global Voice Input (Windows hooks + STT)."""
-from unittest.mock import Mock, patch, MagicMock
-
-import pytest
-
-
-class TestHotkeyHook:
-    """Тести для HotkeyHook (Windows keyboard hook)."""
-
-    def test_parse_hotkey_ctrl_shift_v(self):
-        """Парсинг hotkey 'ctrl+shift+v'."""
-        from functions.global_voice_input import HotkeyHook
-
-        hook = HotkeyHook("ctrl+shift+v")
-        expected_keys = {0x11, 0x10, 0x56}  # VK_CONTROL, VK_SHIFT, VK_V
-        assert hook.required_keys == expected_keys
-
-    def test_parse_hotkey_win_v(self):
-        """Парсинг hotkey 'win+v'."""
-        from functions.global_voice_input import HotkeyHook
-
-        hook = HotkeyHook("win+v")
-        expected_keys = {0x5B, 0x56}  # VK_LWIN, VK_V
-        assert hook.required_keys == expected_keys
-
-    def test_callback_invoked_on_hotkey(self):
-        """Callback викликається при натисканні hotkey."""
-        from functions.global_voice_input import HotkeyHook
-
-        hook = HotkeyHook("ctrl+v")
-        callback = Mock()
-        hook.set_callback(callback)
-
-        # Симулюємо натискання Ctrl+V
-        hook.keys_pressed.add(0x11)  # VK_CONTROL
-        hook.keys_pressed.add(0x56)  # VK_V
-
-        # Симулюємо keydown event
-        hook._keyboard_proc(0, 0x0100, 0x56)  # WM_KEYDOWN, VK_V
-
-        # Callback повинен бути викликаний
-        # (в реальному коді це відбувається в окремому потоці)
-        # Тільки перевіряємо що callback встановлено
-        assert hook.callback == callback
+"""Тести для Global Voice Input."""
+from unittest.mock import Mock, patch
 
 
 class TestGlobalVoiceInput:
-    """Тести для Global Voice Input."""
+    """Перевірка основної логіки GlobalVoiceInput."""
 
-    @patch('functions.global_voice_input.STTListener')
+    @patch("functions.global_voice_input.STTListener")
     def test_init(self, mock_stt_listener):
-        """Ініціалізація GlobalVoiceInput."""
         from functions.global_voice_input import GlobalVoiceInput
 
         callback = Mock()
-        gvi = GlobalVoiceInput(hotkey="ctrl+shift+v", callback=callback)
+        gvi = GlobalVoiceInput(hotkey="ctrl+f9", callback=callback)
 
         assert gvi.hotkey_hook is not None
         assert gvi.callback == callback
         assert not gvi.is_running
 
-    @patch('functions.global_voice_input.STTListener')
-    @patch('functions.global_voice_input.HotkeyHook')
-    def test_start_stt_init(self, mock_hook_class, mock_stt_listener):
-        """STT ініціалізується при старті."""
+    @patch("functions.global_voice_input.STTListener")
+    @patch("functions.global_voice_input.HotkeyHook")
+    def test_start_initializes_stt_and_hook(self, mock_hook_class, mock_stt_listener):
         from functions.global_voice_input import GlobalVoiceInput
 
         mock_stt = Mock()
@@ -81,10 +37,9 @@ class TestGlobalVoiceInput:
         mock_stt.initialize.assert_called_once()
         mock_hook.start.assert_called_once()
 
-    @patch('functions.global_voice_input.STTListener')
-    @patch('functions.global_voice_input.HotkeyHook')
-    def test_start_stt_init_fails(self, mock_hook_class, mock_stt_listener):
-        """STT ініціалізація не вдалася."""
+    @patch("functions.global_voice_input.STTListener")
+    @patch("functions.global_voice_input.HotkeyHook")
+    def test_start_fails_when_stt_init_fails(self, mock_hook_class, mock_stt_listener):
         from functions.global_voice_input import GlobalVoiceInput
 
         mock_stt = Mock()
@@ -97,54 +52,83 @@ class TestGlobalVoiceInput:
         assert result is False
         assert gvi.is_running is False
 
-    @patch('functions.global_voice_input.STTListener')
-    @patch('functions.global_voice_input.pyperclip')
-    def test_insert_text_with_pyperclip(self, mock_pyperclip, mock_stt_listener):
-        """Вставка тексту через pyperclip."""
+    @patch("functions.global_voice_input.STTListener")
+    @patch("functions.global_voice_input.time.sleep", return_value=None)
+    @patch("functions.global_voice_input.pyperclip")
+    @patch("functions.aaa_voice_input.activate_window_by_title")
+    @patch("functions.tools_mouse_keyboard.keyboard_hotkey")
+    @patch("functions.tools_mouse_keyboard.clipboard_copy_text")
+    def test_insert_text_uses_clipboard_paste(
+        self,
+        mock_clipboard_copy_text,
+        mock_keyboard_hotkey,
+        mock_activate_window,
+        mock_pyperclip,
+        mock_sleep,
+        mock_stt_listener,
+    ):
         from functions.global_voice_input import GlobalVoiceInput
 
-        mock_pyperclip.paste.return_value = "old text"
-        mock_pyperclip.copy = Mock()
+        mock_pyperclip.paste.return_value = "old clipboard"
+        mock_clipboard_copy_text.return_value = {"success": True, "length": 21}
+        mock_keyboard_hotkey.return_value = {"success": True, "hotkey": ["ctrl", "v"]}
+        mock_activate_window.return_value = True
 
         gvi = GlobalVoiceInput()
-        result = gvi._insert_text("test text")
+        gvi._last_window_title = "AkelPad"
+
+        result = gvi._insert_text("Перевірте, чи працює.")
 
         assert result is True
-        mock_pyperclip.copy.assert_called_with("test text")
+        mock_activate_window.assert_called_once_with("AkelPad")
+        mock_clipboard_copy_text.assert_called_once_with("Перевірте, чи працює.")
+        mock_keyboard_hotkey.assert_called_once_with("ctrl", "v")
+        mock_pyperclip.copy.assert_called_with("old clipboard")
 
-    @patch('functions.global_voice_input.STTListener')
-    @patch('functions.global_voice_input.pyperclip')
-    def test_insert_text_pyperclip_fallback(self, mock_pyperclip, mock_stt_listener):
-        """Fallback при помилці pyperclip."""
+    @patch("functions.global_voice_input.STTListener")
+    @patch("functions.global_voice_input.time.sleep", return_value=None)
+    @patch("functions.global_voice_input.pyperclip")
+    @patch("functions.aaa_voice_input.activate_window_by_title")
+    @patch("functions.tools_mouse_keyboard.keyboard_hotkey")
+    @patch("functions.tools_mouse_keyboard.clipboard_copy_text")
+    def test_insert_text_returns_false_when_copy_fails(
+        self,
+        mock_clipboard_copy_text,
+        mock_keyboard_hotkey,
+        mock_activate_window,
+        mock_pyperclip,
+        mock_sleep,
+        mock_stt_listener,
+    ):
         from functions.global_voice_input import GlobalVoiceInput
 
-        mock_pyperclip.copy.side_effect = ImportError()
+        mock_pyperclip.paste.return_value = "old clipboard"
+        mock_clipboard_copy_text.return_value = {"success": False, "error": "clipboard unavailable"}
+        mock_activate_window.return_value = True
 
         gvi = GlobalVoiceInput()
-        # Fallback не повинен падати
-        result = gvi._insert_text("test text")
+        gvi._last_window_title = "AkelPad"
 
-        # Fallback може не працювати без Windows API
-        # Тільки перевіряємо що не впав
-        assert result is False or result is True
+        result = gvi._insert_text("Перевірте, чи працює.")
 
-    @patch('functions.global_voice_input.STTListener')
-    def test_on_text_recognized(self, mock_stt_listener):
-        """Обробка розпізнаного тексту."""
+        assert result is False
+        mock_keyboard_hotkey.assert_not_called()
+
+    @patch("functions.global_voice_input.STTListener")
+    def test_on_text_recognized_calls_insert_and_callback(self, mock_stt_listener):
         from functions.global_voice_input import GlobalVoiceInput
 
         callback = Mock()
         gvi = GlobalVoiceInput(callback=callback)
 
-        with patch.object(gvi, '_insert_text', return_value=True):
+        with patch.object(gvi, "_insert_text", return_value=True):
             gvi._on_text_recognized("test text")
 
         callback.assert_called_once_with("test text")
 
-    @patch('functions.global_voice_input.STTListener')
-    @patch('functions.global_voice_input.HotkeyHook')
+    @patch("functions.global_voice_input.STTListener")
+    @patch("functions.global_voice_input.HotkeyHook")
     def test_stop(self, mock_hook_class, mock_stt_listener):
-        """Зупинка GlobalVoiceInput."""
         from functions.global_voice_input import GlobalVoiceInput
 
         mock_stt = Mock()

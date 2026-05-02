@@ -218,11 +218,11 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "desc": "Придушення шуму нейромережею.",
     },
 
-    # --- Прихований stateful (не рендериться в UI) ---
+    # --- GUI ---
     "WINDOW_GEOMETRY": {
-        "type": "str", "group": "_hidden", "label": "Розмір і позиція вікна",
+        "type": "str", "group": "GUI", "label": "Розмір і позиція вікна",
         "desc": "Формат WxH+X+Y. Зберігається автоматично при закритті.",
-        "user_only": True, "hidden": True,
+        "user_only": True,
     },
 }
 

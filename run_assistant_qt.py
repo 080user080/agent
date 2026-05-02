@@ -69,6 +69,23 @@ class AssistantAppQt:
             self.core.start_windsurf_watch()
         elif action == 'stop_windsurf_watch':
             self.core.stop_windsurf_watch()
+        elif action == 'restart':
+            log_console("🔁 Перезавантаження агента...")
+            import subprocess
+            import os
+            root_dir = os.path.dirname(os.path.abspath(__file__))
+            run_script = os.path.join(root_dir, "run_assistant_qt.py")
+            subprocess.Popen(
+                [sys.executable, run_script],
+                cwd=root_dir,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0,
+            )
+            # Закрити поточне вікно
+            if self.gui:
+                from PyQt6.QtWidgets import QApplication
+                app = QApplication.instance()
+                if app:
+                    app.quit()
 
     # ─── Диспетчер: gui_queue → Qt signal ─────────────────────────────────────
 

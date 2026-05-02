@@ -9,10 +9,18 @@ from typing import Optional
 try:
     from PyQt6.QtWidgets import QSystemTrayIcon, QApplication
     from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QFont
-    from PyQt6.QtCore import Qt, QObject, pyqtSignal
+    from PyQt6.QtCore import Qt, QObject, pyqtSignal, QEvent
     PYQT6_AVAILABLE = True
 except ImportError:
     PYQT6_AVAILABLE = False
+
+
+class _StatusUpdateEvent(QEvent):
+    """Кастомний QEvent для оновлення статусу tray icon."""
+    def __init__(self, status: VoiceStatus, text: str):
+        super().__init__(QEvent.Type.User)
+        self.status = status
+        self.text = text
 
 
 class VoiceStatus(Enum):
@@ -45,8 +53,6 @@ class VoiceTrayIcon(QObject):
         self.app: Optional[QApplication] = None
         self._event_loop_thread: Optional[threading.Thread] = None
         self._should_run = False
-        # Підключити сигнал до слота з QueuedConnection для міжпотокової безпеки
-        self._update_requested.connect(self._do_set_status, Qt.ConnectionType.QueuedConnection)
 
     def initialize(self) -> bool:
         """Ініціалізувати tray icon."""
@@ -101,27 +107,25 @@ class VoiceTrayIcon(QObject):
                 time.sleep(0.01)
 
     def set_status(self, status: VoiceStatus, text: str = ""):
-        """Встановити статус tray icon (потокобезпечно)."""
-        thread_name = threading.current_thread().name
-        print(f"[TrayIcon] set_status викликано з потоку {thread_name}: {status.value} - {text}")
-        # Використовуємо QTimer.singleShot для оновлення в основному потоці Qt
-        try:
-            from PyQt6.QtCore import QTimer
-            QTimer.singleShot(0, lambda s=status, t=text: self._do_set_status(s, t))
-            print(f"[TrayIcon] QTimer.singleShot заплановано")
-        except Exception as e:
-            print(f"[TrayIcon] QTimer.singleShot не вдалося: {e}, оновлюю напряму")
-            # Fallback: оновлюємо напряму якщо Qt недоступний
-            self._do_set_status(status, text)
+        """Встановити статус tray icon (потокобезпечно через postEvent)."""
+        if not self.app:
+            return
+        # Створити і відправити кастомний event в Qt event loop
+        event = _StatusUpdateEvent(status, text)
+        QApplication.postEvent(self, event)
+
+    def customEvent(self, event: QEvent):
+        """Обробити кастомний event для оновлення статусу."""
+        if isinstance(event, _StatusUpdateEvent):
+            self._do_set_status(event.status, event.text)
+        else:
+            super().customEvent(event)
 
     def _do_set_status(self, status: VoiceStatus, text: str = ""):
         """Внутрішній метод - виконується в основному потоці Qt."""
-        thread_name = threading.current_thread().name
-        print(f"[TrayIcon] _do_set_status викликано з потоку {thread_name}: {status.value} - {text}")
         self.current_status = status
 
         if not self.tray_icon:
-            print(f"[TrayIcon] tray_icon = None, не можу оновити статус")
             return
 
         # Створити іконку з кольором статусу
@@ -133,8 +137,6 @@ class VoiceTrayIcon(QObject):
         # Встановити tooltip
         tooltip = self._get_tooltip(status, text)
         self.tray_icon.setToolTip(tooltip)
-
-        print(f"[TrayIcon] Статус оновлено: {status.value} - {text}")
 
         # Відправити сигнал
         self.status_changed.emit(status.value)

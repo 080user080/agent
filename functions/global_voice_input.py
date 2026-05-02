@@ -20,6 +20,7 @@ import time
 from typing import Callable, Optional
 
 import numpy as np
+import pyperclip
 import sounddevice as sd
 
 from .core_stt_listener import STTListener
@@ -210,6 +211,7 @@ class GlobalVoiceInput:
 
         # Запам'ятовування активного вікна для повернення фокусу
         self._last_window_hwnd = None
+        self._last_window_title = None
         # Захист від подвійного спрацьовування (debounce)
         self._toggle_lock = threading.Lock()
         self._stop_requested = False
@@ -273,9 +275,14 @@ class GlobalVoiceInput:
     def _start_recording(self):
         """Почати запис і розпізнавання."""
         try:
-            # 1. Запам'ятати активне вікно
-            self._last_window_hwnd = user32.GetForegroundWindow()
-            print(f"[GVI] Zapamiatovane aktyvnae vakno: {self._last_window_hwnd}")
+            # 1. Запам'ятати активне вікно (заголовок)
+            hwnd = user32.GetForegroundWindow()
+            length = user32.GetWindowTextLengthW(hwnd)
+            buffer = ctypes.create_unicode_buffer(length + 1)
+            user32.GetWindowTextW(hwnd, buffer, length + 1)
+            self._last_window_title = buffer.value
+            self._last_window_hwnd = hwnd
+            print(f"[GVI] Zapamiatovane aktyvnae vakno: hwnd={hwnd}, title='{self._last_window_title}'")
 
             # 2. Оновити статус
             self._update_tray_status(VoiceStatus.RECORDING, "Slukhau...")
@@ -318,8 +325,26 @@ class GlobalVoiceInput:
         # 1. Аднавіць фокус у запамятаванае акно
         if self._last_window_hwnd:
             print(f"[GVI] Adnaŭlieńnie fokusu: {self._last_window_hwnd}")
+            
+            # Паспрабаваць аднавіць мінімізаванае вакно
+            SW_RESTORE = 9
+            user32.ShowWindow(self._last_window_hwnd, SW_RESTORE)
+            time.sleep(0.1)
+            
+            # Прывесці вакно наперад
+            user32.BringWindowToTop(self._last_window_hwnd)
+            time.sleep(0.1)
+            
+            # Устанавіць фокус
             user32.SetForegroundWindow(self._last_window_hwnd)
-            time.sleep(0.2)  # Час на аднаўленне фокусу
+            time.sleep(0.5)  # Дастатковы час на аднаўленне фокусу
+            
+            # Праверыць, што фокус сапраўды там
+            current_hwnd = user32.GetForegroundWindow()
+            if current_hwnd != self._last_window_hwnd:
+                print(f"[GVI] Папярэджанне: фокус не адноўлены (current={current_hwnd}, expected={self._last_window_hwnd})")
+            else:
+                print(f"[GVI] Фокус паспяхова адноўлены")
 
         # 2. Уставіць тэкст
         success = self._insert_text(text)
@@ -330,26 +355,78 @@ class GlobalVoiceInput:
         self._update_tray_status(VoiceStatus.IDLE, "Gatavy")
         self._update_status("[GVI] Gatavy")
 
-        # Callback
         if self.callback:
-            self.callback(text)
+            try:
+                self.callback(text)
+            except Exception as e:
+                print(f"[GVI] Pamylka callback: {e}")
 
     def _insert_text(self, text: str) -> bool:
-        """Уставіць тэкст праз keyboard_type."""
+        """Уставіць тэкст у мэтавае вакно праз clipboard + Ctrl+V.
+
+        Для глобального hotkey це надійніше за посимвольний `typewrite()`:
+        модифікатори гарячої клавіші можуть ще бути затиснуті ОС, а поточна
+        розкладка може спотворити символи. Clipboard paste обходить обидві
+        проблеми і стабільно вставляє український текст.
+        """
         try:
-            from functions.tools_mouse_keyboard import keyboard_type
-            result = keyboard_type(text=text)
-            if result and result.get('success'):
-                print(f"[GVI] Текст вставлено через keyboard_type: {text[:50]}...")
-                return True
-            else:
-                print(f"[GVI] keyboard_type не вдалося: {result}")
+            if not self._last_window_title:
+                print("[GVI] Няма запамятаванага загалоўка вакна")
                 return False
-        except ImportError as e:
-            print(f"[GVI] keyboard_type не доступний: {e}")
+
+            title = self._last_window_title
+            print(f"[GVI] Устаўка тэксту ў вакно '{title}'")
+
+            # 1. Актываваць вакно праз activate_window_by_title (з AttachThreadInput)
+            from functions.aaa_voice_input import activate_window_by_title
+            result = activate_window_by_title(title)
+            print(f"[GVI] Актывацыя вакна: {result}")
+            time.sleep(0.25)
+
+            # 2. Дати Windows дорозпустити модифікатори глобального hotkey
+            try:
+                import pyautogui
+                pyautogui.keyUp("ctrl")
+                pyautogui.keyUp("shift")
+                pyautogui.keyUp("alt")
+                pyautogui.keyUp("win")
+            except Exception as e:
+                print(f"[GVI] Памылка пры адпусканні мадыфікатараў: {e}")
+            time.sleep(0.1)
+
+            # 3. Зберегти clipboard, вставити потрібний текст, потім відновити.
+            old_clipboard = None
+            try:
+                old_clipboard = pyperclip.paste()
+            except Exception as e:
+                print(f"[GVI] Nie atrymалася прачытаць clipboard: {e}")
+
+            from functions.tools_mouse_keyboard import clipboard_copy_text, keyboard_hotkey
+
+            copy_result = clipboard_copy_text(text)
+            print(f"[GVI] clipboard_copy_text result: {copy_result}")
+            if not copy_result or not copy_result.get("success"):
+                return False
+
+            time.sleep(0.1)
+            paste_result = keyboard_hotkey("ctrl", "v")
+            print(f"[GVI] keyboard_hotkey(ctrl+v) result: {paste_result}")
+
+            if paste_result and paste_result.get("success"):
+                print(f"[GVI] Текст устаўлены: {text[:50]}...")
+                if old_clipboard is not None:
+                    try:
+                        time.sleep(0.05)
+                        pyperclip.copy(old_clipboard)
+                    except Exception as e:
+                        print(f"[GVI] Nie atrymалася аднавіць clipboard: {e}")
+                return True
+
+            print(f"[GVI] Ctrl+V не ўдалося: {paste_result}")
             return False
+
         except Exception as e:
-            print(f"[GVI] Помилка вставки: {e}")
+            print(f"[GVI] Памылка ўстаўкі: {e}")
             import traceback
             traceback.print_exc()
             return False

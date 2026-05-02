@@ -124,33 +124,22 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         self.notebook = QTabWidget()
         root_layout.addWidget(self.notebook, stretch=1)
 
-        # --- Tab 1: Chat (чата з планом) ---
+        # --- Tab 1: Chat (тільки чат) ---
         chat_tab = QWidget()
         chat_layout = QVBoxLayout(chat_tab)
         chat_layout.setContentsMargins(0, 0, 0, 0)
         chat_layout.setSpacing(4)
 
-        # Splitter: чат | план
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        chat_layout.addWidget(splitter, stretch=1)
-
-        # Ліва частина: чат
-        chat_container = QWidget()
-        chat_container_layout = QVBoxLayout(chat_container)
-        chat_container_layout.setContentsMargins(0, 0, 0, 0)
-        chat_container_layout.setSpacing(4)
-
         self.chat_history = QTextEdit()
         self.chat_history.setReadOnly(True)
         self.chat_history.setFont(QFont("Segoe UI", 10))
         self.chat_history.setObjectName("chat_history")
-        chat_container_layout.addWidget(self.chat_history, stretch=1)
+        chat_layout.addWidget(self.chat_history, stretch=1)
 
         # Поле вводу + кнопки
         input_frame = QFrame()
         input_layout = QHBoxLayout(input_frame)
         input_layout.setContentsMargins(0, 4, 0, 0)
-        input_layout.setSpacing(4)
 
         self.input_text = QTextEdit()
         self.input_text.setPlaceholderText("Введіть команду... (Enter = відправити, Shift+Enter = новий рядок)")
@@ -170,66 +159,35 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         self.send_button = QPushButton("➤")
         self.send_button.setObjectName("send_button")
         self.send_button.setFixedSize(48, 48)
-        self.send_button.clicked.connect(self.send_text_command)
+        self.send_button.clicked.connect(self.on_send_clicked)
         input_layout.addWidget(self.send_button)
 
-        # Кнопка перезавантаження � (для відладки)
-        self.restart_button = QPushButton("🔄")
-        self.restart_button.setObjectName("restart_button")
-        self.restart_button.setFixedSize(48, 48)
-        self.restart_button.setToolTip("Перезавантажити агента (без підтвердження)")
-        self.restart_button.clicked.connect(self._on_restart_agent)
-        input_layout.addWidget(self.restart_button)
+        # Кнопка агента 🤖
+        self.agent_button = QPushButton("🤖")
+        self.agent_button.setObjectName("agent_button")
+        self.agent_button.setFixedSize(48, 48)
+        self.agent_button.clicked.connect(self.on_agent_clicked)
+        input_layout.addWidget(self.agent_button)
 
         # Кнопка стоп ⬛
-        self.stop_button = QPushButton("⬛ СТОП")
+        self.stop_button = QPushButton("⬛")
         self.stop_button.setObjectName("stop_button")
-        self.stop_button.setFixedHeight(48)
-        self.stop_button.clicked.connect(self.stop_execution)
+        self.stop_button.setFixedSize(48, 48)
+        self.stop_button.clicked.connect(self.on_stop_clicked)
         self.stop_button.hide()
         input_layout.addWidget(self.stop_button)
 
-        chat_container_layout.addWidget(input_frame)
-        splitter.addWidget(chat_container)
+        # Кнопка перезавантаження 🔄
+        self.restart_button = QPushButton("🔄")
+        self.restart_button.setObjectName("restart_button")
+        self.restart_button.setFixedSize(48, 48)
+        self.restart_button.clicked.connect(self.on_restart_clicked)
+        input_layout.addWidget(self.restart_button)
 
-        # Права частина: план-панель
-        plan_container = QWidget()
-        plan_layout = QVBoxLayout(plan_container)
-        plan_layout.setContentsMargins(4, 0, 0, 0)
-
-        plan_header = QLabel("📋 План")
-        plan_header.setFont(QFont("Segoe UI", 11, QFont.Weight.Bold))
-        plan_layout.addWidget(plan_header)
-
-        self.plan_list = QListWidget()
-        self.plan_list.setObjectName("plan_list")
-        plan_layout.addWidget(self.plan_list, stretch=1)
-
-        plan_buttons = QHBoxLayout()
-        self.plan_run_btn = QPushButton("▶ Виконати")
-        self.plan_run_btn.setObjectName("plan_run_btn")
-        self.plan_run_btn.clicked.connect(self._on_run_plan)
-        plan_buttons.addWidget(self.plan_run_btn)
-
-        self.plan_stop_btn = QPushButton("⏹ Стоп")
-        self.plan_stop_btn.setObjectName("plan_stop_btn")
-        self.plan_stop_btn.clicked.connect(self._on_stop_plan)
-        self.plan_stop_btn.hide()
-        plan_buttons.addWidget(self.plan_stop_btn)
-
-        plan_layout.addLayout(plan_buttons)
-        splitter.addWidget(plan_container)
-        splitter.setSizes([750, 350])
-
+        chat_layout.addWidget(input_frame)
         self.notebook.addTab(chat_tab, "💬 Чат")
 
-        # --- Tab 2: Plan (поки що порожньо, план показується в чат-вкладці) ---
-        plan_tab = QWidget()
-        plan_tab_layout = QVBoxLayout(plan_tab)
-        plan_tab_layout.addWidget(QLabel("План-панель доступна у вкладці '💬 Чат' (справа)."))
-        self.notebook.addTab(plan_tab, "📋 План")
-
-        # --- Tab 3: Settings ---
+        # --- Tab 2: Settings ---
         self.settings_container = QWidget()
         self.notebook.addTab(self.settings_container, "⚙️ Налаштування")
         self.notebook.currentChanged.connect(self._on_tab_changed)
@@ -312,6 +270,28 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         self.input_text.clear()
         if self.assistant_callback:
             self.assistant_callback("process_text", command)
+
+    def on_send_clicked(self) -> None:
+        """Обробник натискання кнопки відправки."""
+        self.send_text_command()
+
+    def on_agent_clicked(self) -> None:
+        """Обробник натискання кнопки агента."""
+        command = self.input_text.toPlainText().strip()
+        if not command:
+            return
+        self.input_text.clear()
+        if self.assistant_callback:
+            self.assistant_callback("run_agent", command)
+
+    def on_stop_clicked(self) -> None:
+        """Обробник натискання кнопки стоп."""
+        self.stop_execution()
+
+    def on_restart_clicked(self) -> None:
+        """Обробник натискання кнопки перезавантаження."""
+        if self.assistant_callback:
+            self.assistant_callback("restart", None)
 
     def stop_execution(self) -> None:
         if self.assistant_callback:

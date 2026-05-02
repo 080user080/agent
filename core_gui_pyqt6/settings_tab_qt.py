@@ -46,8 +46,8 @@ class SettingsTabQtMixin:
 
     def _on_tab_changed(self, index: int) -> None:
         """Викликається при перемиканні вкладок. Ліниво будує Settings."""
-        # Вкладка Settings = індекс 2 (Chat=0, Plan=1, Settings=2)
-        if index == 2 and not self._settings_built:
+        # Вкладка Settings = індекс 1 (Chat=0, Settings=1)
+        if index == 1 and not self._settings_built:
             self._build_settings_tab()
             self._settings_built = True
 

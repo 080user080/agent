@@ -286,51 +286,15 @@ class MouseKeyboardController:
             print(f"[DEBUG] keybd_event failed ({e}), fallback to pyautogui")
             return False
 
-    def _type_non_ascii(self, text: str) -> None:
-        """Ввести не-ASCII текст через clipboard + Ctrl+V."""
-        old_clipboard = None
-        try:
-            old_clipboard = pyperclip.paste()
-        except Exception:
-            pass
-
-        pyperclip.copy(text)
-        time.sleep(0.1)
-
-        # Перевірка clipboard
-        try:
-            actual = pyperclip.paste()
-            if actual != text:
-                print(f"[DEBUG] clipboard mismatch! got '{actual[:30]}'")
-        except Exception:
-            pass
-
-        # Ctrl+V
-        if not self._paste_via_win32():
-            pyautogui.hotkey('ctrl', 'v')
-
-        time.sleep(0.2)
-
-        # Відновити старий clipboard
-        if old_clipboard is not None:
-            try:
-                pyperclip.copy(old_clipboard)
-            except Exception:
-                pass
-
     def keyboard_type(self, text: str, interval: float = 0.02) -> Dict[str, Any]:
         """
-        Ввести текст у активне вікно (clipboard + Ctrl+V для не-ASCII, typewrite для ASCII).
+        Ввести текст у активне вікно через pyautogui.typewrite (Unicode-ready).
         """
         try:
             fg_title = self._get_foreground_window_title()
             print(f"[DEBUG] keyboard_type: foreground='{fg_title}', text='{text[:50]}', len={len(text)}")
 
-            is_ascii = all(ord(c) < 128 for c in text)
-            if is_ascii:
-                pyautogui.typewrite(text, interval=interval)
-            else:
-                self._type_non_ascii(text)
+            pyautogui.typewrite(text, interval=interval)
 
             return {
                 "success": True,
