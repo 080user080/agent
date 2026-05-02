@@ -1,86 +1,16 @@
 # Поточні задачі МАРК
-> Останнє оновлення: 01.05.2026 (22:20)
+> Останнє оновлення: 02.05.2026
 
----
+**ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
 
-## РОБОЧІ МЕТОДИ АВТОМАТИЗАЦІЇ ДЛЯ PYQT6 GUI (підтверджено)
+```bash
+# Активація віртуального середовища
+cd /d D:\Python\TEXT\LLM_model
+call venv\Scripts\activate.bat
+cd /d D:\Python\agent
+```
 
-**Автоматизована вставка тексту в PyQt6 GUI:**
-- `activate_window_by_title(title="МАРК — Асистент (PyQt6)")` з `functions.aaa_voice_input`
-- `keyboard_type(text="привіт")` з `functions.tools_mouse_keyboard`
-- `keyboard_press(key="Enter")` з `functions.tools_mouse_keyboard`
-
-**Затримки:**
-- 2 секунди до вставки тексту
-- 20 секунд до перевірки відповіді
-
-**Скрипт:** `test_duplication_direct.py` - автоматизований тест для перевірки дублювання повідомлень
-
-**Фільтрація JSON:**
-- Додана фільтрація JSON чанків в `append_stream_chunk` в `core_gui_pyqt6/main_window.py`
-- JSON чанки не відображаються в чаті, але зберігаються в буфері для парсингу
-
-**Виправлення дублювання в чаті GUI:**
-- Прибрано виклик `stream_start` в `functions/logic_commands.py` - не додає порожній префікс "⚡ МАРК:"
-- Прибрано виклик `assistant_stream_chunk` в `flush_buffer` - не додає текст через streaming
-- Прибрано виклик `stream_end` - не завершує streaming
-- Всі відповіді тепер додаватимуться через `log_to_gui` без дублювання префікса
-
----
-
-## НЕДАВНІ ВИПРАВЛЕННЯ (30.04.2026, 23:26)
-
-### Виправлено LLM Context Overflow
-**Проблема:** Промпт LLM був занадто великим (12636 токенів > 12032 контекст DeepSeek Coder)
-
-**Виправлено:**
-- `functions/logic_core.py`: Обмежено `get_coding_system_prompt()` до 15 функцій (раніше 100+)
-- Додано browser tools та приклад "відкрий браузер" в промпт
-- DeepSeek Coder: max_tokens зменшено з 6000 до 2048
-
-### Виправлено Browser Automation
-**Проблема:** Команда "відкрий браузер" використовувала legacy Playwright launch з помилкою
-
-**Виправлено:**
-- `functions/llm/response_parser.py`: alias `open_browser` → `cdp_ensure_chrome`
-- `functions/logic_agent_tools_schema.py`: додано alias mapping
-- `functions/logic_core.py`: видалено legacy `open_browser_playwright` з priority_funcs
-
-**Результат:** Команда "відкрий браузер" працює через Chrome DevTools Protocol (CDP)
-
-### Виправлено Planner для аналізу коду (повністю)
-**Проблема:** Команда "проаналізуй код d:\Python\agent\" не тригерила planner
-
-**Виправлено:**
-- `functions/core_planner.py`: додано маркери "проаналізуй", "аналізуй", "аналіз"
-- Зменшено поріг слів для команд з шляхами файлів
-- Додано приклад з правильними параметрами в промпт
-
-**Результат:**
-- ✅ Planner тригериться (should_plan: True)
-- ✅ Planner створює коректний план з параметром `directory`
-- ✅ Крок виконується успішно (success=True)
-- ✅ Отримано повний список файлів директорії
-- ✅ Task завершується з LLM summary
-
-### Виправлено PlanExecutor
-**Проблеми:** Конфлікт імен параметрів (path vs directory), repair зависання
-
-**Виправлено:**
-- `functions/plan_executor.py`: конвертація параметрів (path → directory, filepath, filename)
-- `functions/core_planner.py`: спеціальна перевірка для `list_directory` в validation
-- `functions/logic_commands.py`: відключено repair для простих дій (list_directory, read_code_file, search_in_code)
-
-**Результат:** Кроки виконуються без repair зависання
-
-### Постійні тести
-- Позначено `test_llm_endpoint.py` та `test_duplication_direct.py` як невидаляємі
-- Додано документацію в README.md (розділ "🧪 Діагностичні тести")
-- Обидва тести працюють коректно
-
-### DeepSeek Coder відновлено як primary
-- `runtime/user_settings_copy.json`: role="1", enabled=true, max_tokens=2048
-- Gemini змінено на role="2" (secondary)
+**ПРИМІТКА:** Виконані завдання перенесено в [TASKS_Done.md](TASKS_Done.md).
 
 ---
 
@@ -117,9 +47,7 @@
 
 ---
 
-## В процесі
-
-### P0: COMPUTER USE АГЕНТ — МАРК як людина за комп'ютером
+## P0: COMPUTER USE АГЕНТ — МАРК як людина за комп'ютером
 
 > Базовий план: див. `PLAN_COMPUTER_USE.md` (1138 рядків, аудит коду 26.04.2026)
 > Мета: Перетворити МАРК з "набору інструментів з планером" на агента, який користується ПК як людина і може тестувати GUI як QA-інженер.
@@ -141,62 +69,6 @@
 - ✅ LLM tool-calling низькорівневий (`logic_llm_tools.py`)
 - � **Gap**: GUITester для тестування GUI як QA-інженер — відсутній (ЕТАП 2)
 - � **Gap**: Vision-LM, UIA, Browser capabilities в decider — вимкнені за замовчуванням (треба ввімкнути в config)
-
----
-
-#### ЕТАП 1: ПОВНОЦІННИЙ AGENT LOOP З LLM TOOL-CALLING (КРИТИЧНИЙ)
-
-**Ціль:** AgentLoop приймає рішення через LLM tool-calling замість попередньо складеного плану.
-
-- [x] Створити `functions/logic_agent_tools_schema.py` (~440 рядків) — DONE 30.04.2026
-  - Пріоритет: P0
-  - Деталі:
-    - OpenAI tool-calling schema для всіх GUI-дій
-    - Покриває: `mouse_click`, `click_text`, `keyboard_type`, `keyboard_hotkey`, `take_screenshot`, `ocr_screen`, `open_program`, `fill_form`, `wait_for_text`, `find_button_by_text`, `done`
-    - Окрема група vision-tools: `describe_screen`, `find_element_by_description`, `is_screen_correct`
-    - Окрема група UIA-tools: `uia_click_by_name`, `uia_type_in_element`, `uia_get_value`, `uia_list_buttons`
-    - Окрема група browser-tools: `browser_open_url`, `browser_click_text`, `browser_fill`, `browser_screenshot`, `browser_extract_text`
-    - Експортує `AGENT_TOOLS`, `VISION_TOOLS`, `UIA_TOOLS`, `BROWSER_TOOLS` константи
-
-- [x] Розширити `functions/agent_loop.py` — додати `ActionDecider` (~220 рядків) — DONE 30.04.2026
-  - Пріоритет: P0
-  - Деталі:
-    - `class ActionDecider` з методом `decide(goal, observation, history, last_result) → AgentAction`
-    - Використовує `logic_llm_tools.ask_llm_with_tools()` (вже існує)
-    - Будує промпт з: цілі, скріншот опису, OCR тексту, UIA дерева (якщо доступно), історії дій (max 10), останнього результату
-    - Метод `replan(state)` — переосмислити підхід після 3 невдач підряд
-    - Інтегрується в `AgentLoop.plan()` як ПЕРШИЙ пріоритет (вище CompiledPlan)
-    - Fallback на CompiledPlan/Planner якщо LLM tool-calling недоступний
-
-- [x] Розширити `functions/agent_loop.py` — посилити `observe()` (~120 рядків) — DONE 30.04.2026
-  - Пріоритет: P0
-  - Деталі:
-    - Додати збір UI елементів через `tools_ui_detector.find_button_by_text("*")`, `find_input_field()`, `find_checkbox()`
-    - Додати UIA дерево через `tools_ui_accessibility.get_ui_tree()` коли доступно
-    - Додати vision-опис через `providers_vision` (опційно, через config flag)
-    - `Observation` має містити: screenshot_path, ocr_text, ui_elements, uia_tree, vision_description, active_app
-    - Кешування скріншоту (не робити новий якщо screen_hash не змінився > N мс)
-
-- [x] Покращити `check()` в `agent_loop.py` (~140 рядків) — DONE 30.04.2026
-  - Пріоритет: P0
-  - Деталі:
-    - Зараз: тільки порівняння screen_hash (примітив)
-    - Додати: перевірка через `logic_expectations.ExpectRegistry` (17 evaluator-ів)
-    - Додати: перевірка появи очікуваного тексту/елемента
-    - Додати: visual diff regions (чи змінилось саме потрібне місце)
-    - Повертає `ExpectationResult` сумісний з Phase 11
-
-- [x] Виправити інтеграцію `AgentLoop` з GUI (~30 рядків змін у main.py) — DONE 30.04.2026
-  - Пріоритет: P0
-  - Файли: `core_gui_pyqt6/main_window.py`, `run_assistant_qt.py`, `main.py`
-  - Деталі:
-    - Кнопка "🤖 Агент" вже існує в PyQt6 GUI — перевірити що вона викликає `run_agent_loop()`
-    - `AssistantCore.run_agent_loop()` має ініціалізувати `ActionDecider` з LLM
-    - `AgentLoop.gui_cb` має передавати кожен крок (action+result) в чат GUI як stream messages
-    - Додати скріншот thumbnail у GUI на кожному кроці (через signal)
-    - Кнопка "⬛ Стоп" має викликати `agent_loop.request_stop()`
-
-**Оцінка:** ~560 нових рядків, ~80 змін. Складність: висока.
 
 ---
 
@@ -239,7 +111,7 @@
     - `scenarios/test_browser_basic.json` — базова веб-автоматизація
     - JSON-формат: `name`, `app_name`, `setup_steps`, `test_cases[]{name, goal, expectations[]}`, `teardown_steps`
 
-- [ ] Інтегрувати GUITester в GUI як вкладку "Тестування"
+- [ ] Інтегрувати GUITester в GUI як вкладка "Тестування"
   - Пріоритет: P2
   - Файли: `core_gui_pyqt6/main_window.py`, новий `core_gui_pyqt6/test_panel_qt.py`
   - Деталі:
@@ -252,42 +124,6 @@
   - Пріоритет: P1
 
 **Оцінка:** ~700 нових рядків + ~50 змін + ~200 тестів. Складність: середня (використовує AgentLoop).
-
----
-
-#### ЕТАП 3: ПОСИЛЕННЯ UIA (СТАБІЛЬНІСТЬ КЛІКІВ) — DONE ✅
-
-**Ціль:** Перевести GUI-кліки з OCR+template matching на UIA для стабільності проти DPI/тем/мови.
-
-- [x] Доробити `tools_ui_accessibility.py` (потрібні методи)
-  - Пріоритет: P1
-  - Деталі:
-    - Реалізовано: `uia_list_elements`, `uia_find_button`, `uia_click_element`, `uia_set_text`, `uia_get_value`, `uia_wait_for_element`
-    - Додано: `get_ui_tree(hwnd, depth)` що повертає JSON-friendly дерево для LLM
-    - Додано: `list_all_buttons()`, `list_all_inputs()`, `list_all_checkboxes()` для observe()
-    - Додано: `get_value()`, `wait_for_element()`
-
-- [x] Додати UIA fallback у `tools_ui_detector.py` (~100 рядків змін)
-  - Пріоритет: P1
-  - Деталі:
-    - `find_button_by_text(text)` — спочатку UIA (якщо доступний), fallback на OCR+CV
-    - `find_input_field(label)` — те саме
-    - `click_text(text)` — те саме
-    - Додано feature-flag `USE_UIA_FIRST` в SETTINGS_SCHEMA (default: True)
-
-- [x] Smoke-тести UIA на Windows (`tests/test_tools_ui_accessibility.py`, ~200 рядків)
-  - Пріоритет: P1
-  - Деталі:
-    - 30 unit-тестів з моками (TestUIElement, TestUIAWrapper, TestLLMTools, TestUIAFallbackIntegration)
-    - Всі тести pass (30/30)
-
-**Статус:** Виконано 30.04.2026.
-
-**Файли змінено:**
-- `functions/tools_ui_accessibility.py` — додано `get_ui_tree()`, `list_all_buttons()`, `list_all_inputs()`, `list_all_checkboxes()`, `get_value()`, `wait_for_element()`, реалізовано LLM tools
-- `functions/tools_ui_detector.py` — додано UIA fallback для `find_button_by_text()`, `find_input_field()`, додано `click_text()`
-- `functions/core_settings.py` — додано `USE_UIA_FIRST` setting (default: True)
-- `tests/test_tools_ui_accessibility.py` — новий файл з 30 тестами
 
 ---
 
@@ -318,73 +154,6 @@
   - Моки HTTP-викликів OpenAI/Anthropic/Ollama
 
 **Оцінка:** ~200 нових рядків + ~50 змін + ~150 тестів. Складність: середня. Залежність: API key або Ollama.
-
----
-
-#### ЕТАП 5: БРАУЗЕРНА АВТОМАТИЗАЦІЯ (ВЕБ-ЗАДАЧІ) — DONE ✅
-
-**Ціль:** МАРК може працювати з веб-сайтами через Playwright/CDP як людина.
-
-- [x] Перевірити та доробити `tools_browser_cdp.py` + `tools_playwright.py`
-  - Пріоритет: P1
-  - Деталі:
-    - Реалізовано: 15 CDP tools (cdp_ensure_chrome, cdp_list_tabs, cdp_open_tab, cdp_switch_tab, cdp_type_text, cdp_get_response, cdp_get_page_text, cdp_click, cdp_click_text, cdp_wait_for_text, cdp_fill, cdp_screenshot, cdp_evaluate_js, cdp_send_to_ai, cdp_disconnect)
-    - Додано: `cdp_click_text` (Playwright get_by_text/get_by_role/xpath fallback)
-    - Додано: `cdp_wait_for_text` (Playwright wait_for + polling fallback)
-    - Додано: `cdp_fill` (CSS/label/placeholder fallback)
-    - connect_over_cdp до існуючого Chrome (зберігає авторизацію)
-    - Auto-launch Chrome на порту 9222 з C:\Temp\chrome_debug_profile
-    - AI_REFUSAL_MARKERS + retry для cdp_send_to_ai (KOD_pereclad патерни)
-
-- [x] Browser-tools у schema (`logic_agent_tools_schema.py`)
-  - 6 alias-tools: browser_open_url, browser_click_text, browser_fill, browser_screenshot, browser_extract_text, browser_wait_for
-  - TOOL_NAME_ALIASES виправлено: browser_click_text → cdp_click_text, browser_fill → cdp_fill, browser_wait_for → cdp_wait_for_text
-
-- [x] Browser handler в TOOL_POLICIES (`core_tool_runtime.py`)
-  - 15 cdp_* tools з risk/category/idempotent
-
-- [x] Тести (`tests/test_tools_browser_cdp.py`, 23 тести)
-  - TestAIRefusal (5), TestConnection (2), TestClickText (3), TestWaitForText (4), TestFill (3), TestOpenTab (1), TestRegistration (5)
-  - Моки Playwright API (MagicMock на page/browser/locator)
-  - 23/23 pass
-
-**Статус:** Виконано 30.04.2026.
-
-**Файли змінено:**
-- `functions/tools_browser_cdp.py` — додано `cdp_click_text`, `cdp_wait_for_text`, `cdp_fill` (~140 рядків)
-- `functions/core_tool_runtime.py` — додано 3 tools у TOOL_POLICIES
-- `functions/logic_agent_tools_schema.py` — виправлено TOOL_NAME_ALIASES (browser_click_text→cdp_click_text, browser_fill→cdp_fill)
-- `tests/test_tools_browser_cdp.py` — новий файл з 23 тестами
-
----
-
-#### ЕТАП 5 LEGACY (вже виконано вище — секція збережена для історії)
-
-- [x] tools_browser_cdp.py + tools_playwright.py — open_url, click_text, click_role, fill, screenshot, extract_text, wait_for, execute_js
-- [x] Browser-tools в schema (логіка в logic_agent_tools_schema.py)
-- [x] Browser handler в TOOL_POLICIES (core_tool_runtime.py)
-- [x] Тести (tests/test_tools_browser_cdp.py — 23 тести)
-
----
-
-#### ЕТАП 6: REPAIR LOOP — АДАПТИВНІСТЬ ПРИ ПОМИЛКАХ
-
-**Ціль:** Коли крок провалився — LLM аналізує контекст і пропонує модифікований план.
-
-- [x] Перевірити та доробити `logic_repair_loop.py`
-  - Пріоритет: P1
-  - Деталі:
-    - `class StepRepairer` з методом `repair(failed_action, act_result, observation, history) → Optional[RepairDecision]`
-    - Бюджет: max 3 repair-спроби на сесію
-    - Промпт містить: що очікувалось (Expectation), що отримано (stdout, error, скріншот опис), попередні кроки
-    - Інтеграція з `AgentLoop._execute_single_step` — викликати repair при `consecutive_failures >= 2`
-    - RepairDecision: retry / skip / replan / stop з reason та optional modified_action
-    - Скидання бюджету repair у `AgentLoop.run()`
-
-- [x] Тести (`tests/test_logic_repair_loop.py`, ~150 рядків)
-  - Пріоритет: P1
-
-**Оцінка:** ~100-150 нових рядків (якщо вже частково є) + ~50 змін. Складність: низька.
 
 ---
 
@@ -461,31 +230,27 @@
 #### ПРІОРИТЕТИ ТА ЗАЛЕЖНОСТІ
 
 ```
-ЕТАП 1 (Agent Loop + LLM tool-calling) ← КРИТИЧНИЙ, основа всього
-  ├→ ЕТАП 3 (UIA посилення) — підсилює observe/act
-  ├→ ЕТАП 4 (Vision-LLM) — підсилює decide
-  ├→ ЕТАП 5 (Browser) — нові capabilities
-  ├→ ЕТАП 6 (Repair Loop) — стійкість
-  ├→ ЕТАП 7 (Checkpoint) — надійність
-  └→ ЕТАП 2 (GUI Tester) — використовує AgentLoop
-       └→ ЕТАП 8 (Self-Testing) — використовує GUITester
-ЕТАП 9 (Тести + CI) ← паралельно з усім
+ЕТАП 1 (Agent Loop + LLM tool-calling) ← КРИТИЧНИЙ, основа всього [DONE]
+  ├→ ЕТАП 3 (UIA посилення) — підсилює observe/act [DONE]
+  ├→ ЕТАП 4 (Vision-LLM) — підсилює decide [PENDING]
+  ├→ ЕТАП 5 (Browser) — нові capabilities [DONE]
+  ├→ ЕТАП 6 (Repair Loop) — стійкість [DONE]
+  ├→ ЕТАП 7 (Checkpoint) — надійність [PENDING]
+  └→ ЕТАП 2 (GUI Tester) — використовує AgentLoop [PENDING]
+       └→ ЕТАП 8 (Self-Testing) — використовує GUITester [PENDING]
+ЕТАП 9 (Тести + CI) ← паралельно з усім [PENDING]
 ```
 
-#### СУМАРНА ОЦІНКА
+#### СУМАРНА ОЦІНКА (ЗАЛИШИЛОСЯ)
 
 | Етап | Нових рядків | Змін | Нових файлів | Час |
 |------|-------------|------|--------------|-----|
-| 1. Agent Loop + Tools Schema | ~560 | ~80 | 1 | 2-3 дні |
 | 2. GUI Tester | ~700 | ~50 | 2-3 | 2 дні |
-| 3. UIA посилення | ~150 | ~100 | 0 | 1 день |
 | 4. Vision-LLM | ~200 | ~50 | 0 | 1 день |
-| 5. Browser | ~200 | ~50 | 0 | 1 день |
-| 6. Repair Loop | ~100 | ~50 | 0 | 0.5 дня |
 | 7. Checkpoint | ~50 | ~30 | 0 | 0.3 дня |
 | 8. Self-Testing | ~300 | ~50 | 1 | 1 день |
 | 9. Тести + CI | ~900 | конфіги | 4+ | 2 дні |
-| **РАЗОМ** | **~3160** | **~460** | **8+** | **~10-12 днів** |
+| **РАЗОМ** | **~2150** | **~180** | **7+** | **~6-7 днів** |
 
 ---
 
@@ -498,12 +263,6 @@
     - Повернути сумісність між тестами й `logic_task_runner`
     - Добитися, щоб `pytest` хоча б повністю проходив collection
     - Зафіксувати публічні API для parser/runner/plan-об'єктів
-
-- [x] Визначити відповідність між проєктом та external AI-архітектурою
-  - Статус: Завершено
-  - Дата: 28.04.2026
-  - Опис: Порівняно поточний стан з external AI-архітектурою (observe → decide → act → check → repeat)
-  - Результат: Виявлено що основний цикл (AgentLoop) вже реалізовано (Phase 12.1), але потребує кращої інтеграції з GUI
 
 - [ ] Синхронізувати документацію з реальним кодом
   - Статус: Не розпочато
@@ -557,11 +316,6 @@
     - Мінімум для `tools_window_manager`, `tools_screen_capture`, `tools_mouse_keyboard`, `tools_ui_accessibility`
 
 ### P1: Оркестрація (кілька агентів)
-
-- [x] Створити AI actors для делегування
-  - Статус: Завершено
-  - Дата: 26.04.2026
-  - Опис: AIActor база, ActorRegistry, автоматичний fallback між провайдерами (S5)
 
 - [ ] Створити router для вибору агента
   - Статус: Не розпочато
@@ -716,203 +470,9 @@
 
 ---
 
-### P1: Міграція GUI на PyQt6
+### P1: Міграція GUI на PyQt6 — DONE ✅
 
-- [ ] Міграція GUI на PyQt6
-  - Статус: В роботі (Phase A+B+D — MVP working, Phase C — pending)
-  - Пріоритет: P1
-  - Стратегія: **поступова, паралельна** (Tkinter і PyQt6 співіснують через feature-flag `GUI_BACKEND`)
-  - PyQt6 6.11.0 встановлено, додано в `requirements.txt`
-  - Поточний стан Tkinter GUI: 11 модулів у `core_gui/` (~120KB), включає chat, plan, confirmation, settings, windsurf, llm-editor, tray
-  - Поточний стан PyQt6 GUI: повноцінне `MainWindowPyQt6` (~410 рядків) з API-сумісністю до Tkinter
-
-  **Phase A — Підготовка та feature-flag (P1) — DONE:**
-  - [x] Перевірити що PyQt6 встановлено (6.11.0)
-  - [x] Додати `PyQt6>=6.6.0` в `requirements.txt`
-  - [x] Додати setting `GUI_BACKEND` (`tkinter` | `pyqt6`, default: `tkinter`)
-  - [x] Створити точку входу `run.py` з вибором бекенда (підтримка `--qt`/`--tk` CLI)
-  - [x] Спільний контракт API GUI: `add_message`, `update_progress`, `queue_message`, `set_assistant`, `set_stt_controller`, `show_stop_button`/`hide_stop_button`, `start_stream_message`/`append_stream_chunk`/`end_stream_message`, `show_plan_panel`/`update_plan_step`/`finish_plan_panel`, `show_confirmation`, `run`
-
-  **Phase B — Ядро PyQt6 (P1) — DONE:**
-  - [x] `MainWindowPyQt6` з повним функціоналом:
-    - Чат-історія (QTextEdit) з форматуванням повідомлень
-    - Поле вводу (QTextEdit, multi-line, Enter=send, Shift+Enter=новий рядок)
-    - Кнопки: 🎤 STT, 🤖 Agent, ➤ Send, ⬛ Stop
-    - Status label + QProgressBar
-    - Plan panel (QListWidget зі статусами ⏸/▶/✅/❌)
-    - Splitter chat/plan
-  - [x] Потокобезпечна черга через Qt signal `message_received` (замість `queue.Queue + after()`)
-  - [x] QSS стилі (порт `core_gui/styles.py`)
-
-  **Phase C — Модулі (P1) — DONE:**
-  - [x] `settings_tab_qt.py` — SettingsTabQtMixin з динамічним рендерингом SETTINGS_SCHEMA (DONE)
-  - [x] `llm_endpoints_editor_qt.py` — LLMEndpointsEditor для PyQt6 (DONE)
-  - [x] `chat_panel_qt.py` — ChatPanelQtMixin (історія, ввід, clipboard, стрімінг, контекстні меню) (DONE)
-  - [x] `plan_panel_qt.py` — PlanPanelQtMixin (кроки, прогрес, статуси) (DONE)
-  - [x] `confirmation_qt.py` — ConfirmationQtMixin (кастомні діалоги підтвердження з таймаутом) (DONE)
-  - [ ] `windsurf_panel_qt.py` (зараз відсутнє в Tkinter)
-  - [ ] `tray_icon_qt.py` (QSystemTrayIcon, зараз відсутнє в Tkinter)
-
-  **Phase D — Інтеграція (P1) — DONE:**
-  - [x] `AssistantAppQt` у `run_assistant_qt.py` — паралельний до `AssistantApp`
-  - [x] Реалізовано queue_dispatcher (фоновий потік: `gui_queue` → Qt-сигнал)
-  - [x] Callbacks: `process_text`, `run_agent`, `run_plan`, `stop_plan`, `stop_execution`, mic
-  - [x] Smoke test: 17 unit-тестів (`tests/test_pyqt6_gui.py`)
-  - [x] Реальний запуск з ядром асистента (manual test з `python run.py --qt`)
-
-  **Phase E — Deprecate Tkinter (P2):**
-  - [ ] Після стабілізації PyQt6 — позначити Tkinter як deprecated
-  - [ ] Перевести default `GUI_BACKEND` на `pyqt6`
-  - [ ] Видалити `core_gui/` після перевірки feature parity
-
-- [ ] Перетягнути LLM налаштування зі старого GUI в новий GUI
-  - Статус: Не розпочато
-  - Пріоритет: P1
-  - Деталі:
-    - Забезпечити **feature parity** між `core_gui/llm_endpoints_editor.py` і `core_gui_pyqt6/llm_endpoints_editor_qt.py`
-    - Перевірити, що всі поля endpoint-ів доступні й однаково зберігаються/редагуються в новому GUI
-    - Гарантувати, що існуючі LLM endpoint-и та пов'язані settings коректно підтягуються в PyQt6 без ручного перевнесення
-    - Якщо потрібно — додати явну логіку copy/migrate existing settings при першому запуску нового GUI
-    - Окремо перевірити: `name`, `enabled`, `role`, `type`, `url`, `model`, `api_key`, `temperature`, `max_tokens`, `timeout`, `script_command`, `script_output_file`, `rate_limit_*`
-
-- [ ] Перевірити статус-бар і готовність LLM у новому GUI
-  - Статус: Не розпочато
-  - Пріоритет: P1
-  - Деталі:
-    - Узгодити поведінку статусу готовності між Tkinter і PyQt6
-    - Перевірити, що в новому GUI коректно показуються назва LLM, час відповіді та стан готовності
-    - Цільовий формат: `⚡ МАРК: ✅ Готовий до роботи! (0.7с)` або еквівалентний status-bar без втрати змісту
-
-### P1: Глобальне голосове введення (global hook)
-
-- [x] Створено модуль `functions/global_voice_input.py` — Global Voice Input (Windows hooks + STT)
-  - HotkeyHook — Windows low-level keyboard hook для перехоплення гарячих клавіш
-  - GlobalVoiceInput — клас для глобального голосового введення
-  - Використовує існуючий STTListener для розпізнавання
-  - Вставка тексту через clipboard (pyperclip) або SendInput fallback
-  - Hotkey за замовчуванням: Ctrl+Shift+V
-- [x] Додано налаштування GLOBAL_VOICE_HOTKEY та GLOBAL_VOICE_ENABLED в SETTINGS_SCHEMA
-- [x] Інтегровано GlobalVoiceInput в main.py (автоматичний запуск при GLOBAL_VOICE_ENABLED=True)
-- [x] Створено unit-тести в `tests/test_global_voice_input.py`
-- [x] Тестування на реальній Windows системі з включеним GLOBAL_VOICE_ENABLED
-
-### P1: Самонавчання
-
-- [x] Створено модуль `functions/self_learning.py` — SelfLearning (логування, аналіз помилок, skills база)
-  - log_execution() — логування виконання задач (task, result, success, error, steps)
-  - analyze_errors() — аналіз останніх помилок
-  - generate_rules_from_errors() — генерування правил з помилок (heuristic + LLM)
-  - add_skill() / get_skill() — skills база для накопичення досвіду
-  - get_stats() — статистика виконань
-- [x] Інтегровано SelfLearning в AssistantCore (main.py)
-  - Ініціалізація в initialize()
-  - Логування виконання в run_agent_loop()
-- [ ] Тестування та покращення правил на основі реальних помилок
-
----
-
-## Перевірка правильності (P1, high priority) — DONE ✅
-
-### CHECK: P1 Глобальне голосове введення — PASSED
-
-- [x] `functions/global_voice_input.py` — HotkeyHook парсить `ctrl+shift+v` правильно ({0x11, 0x10, 0x56})
-  - HotkeyHook: `set_callback`, `start`, `stop`, `_keyboard_proc`, `_message_loop`
-  - GlobalVoiceInput: `start`, `stop`, `_on_hotkey_pressed`, `_on_text_recognized`, `_insert_text`, `_simulate_paste`
-- [x] SETTINGS_SCHEMA містить `GLOBAL_VOICE_HOTKEY` (str, "ctrl+shift+v") та `GLOBAL_VOICE_ENABLED` (bool, False)
-- [x] `main.py` імпортує `GlobalVoiceInput`, ініціалізує `self.global_voice_input` при `GLOBAL_VOICE_ENABLED=True`
-
-### CHECK: P1 Самонавчання — PASSED
-
-- [x] `functions/self_learning.py` — всі методи присутні: `log_execution`, `analyze_errors`, `generate_rules_from_errors`, `add_skill`, `get_skill`, `get_stats`
-- [x] `AssistantCore` (main.py): імпорт `get_self_learning`, ініціалізація в `initialize()`, виклик `log_execution` в `run_agent_loop` (try/except/finally)
-- [x] JSONL логи пишуться в `D:\Python\agent\runtime\self_learning\execution_logs.jsonl` (виправлено `data_dir` шлях: `parent.parent` замість `parent.parent.parent`)
-
----
-
-## Модульна перевірка PyQt6 (P1, high priority) — DONE ✅
-
-### MODULAR CHECK: main_window.py — PASSED (10/10)
-
-- [x] Імпорт та клас MainWindowPyQt6
-- [x] Міксини успадковані: SettingsTabQtMixin, ChatPanelQtMixin, PlanPanelQtMixin, ConfirmationQtMixin
-- [x] Qt-сигнал message_received присутній
-- [x] __init__ параметри: assistant_callback
-- [x] API методи: add_message, send_text_command, show_plan_panel, update_plan_step, finish_plan_panel, show_confirmation, set_assistant, set_stt_controller, run
-- [x] _on_tab_change присутній
-- [x] _apply_styles присутній
-- [x] _scroll_chat_to_end присутній
-- [x] eventFilter присутній
-- [x] _on_message присутній
-
-### MODULAR CHECK: chat_panel_qt.py — PASSED (8/8)
-
-- [x] Імпорт та клас ChatPanelQtMixin
-- [x] API методи: add_message, start_stream_message, append_stream_chunk, end_stream_message
-- [x] Методи чату: focus_input, _setup_clipboard_and_menus, _show_input_context_menu, _show_chat_context_menu
-- [x] Методи clipboard: _clipboard_copy, _clipboard_cut, _clipboard_paste, _clipboard_select_all
-- [x] Методи стрімінгу: start_stream_message, append_stream_chunk, end_stream_message
-- [x] add_message використовує chat_history
-- [x] ANSI токен очищення присутнє (re.sub)
-- [x] Контекстні меню реалізовані (QMenu)
-
-### MODULAR CHECK: plan_panel_qt.py — PASSED (6/6)
-
-- [x] Імпорт та клас PlanPanelQtMixin
-- [x] API методи: show_plan_panel, update_plan_step, finish_plan_panel, on_plan_execution_started, on_plan_execution_finished
-- [x] Методи кнопок: _on_run_plan, _on_stop_plan
-- [x] Іконки статусів: pending, running, ok, error, blocked, needs_confirmation, skipped
-- [x] show_plan_panel використовує plan_list
-- [x] finish_plan_panel має приховування
-
-### MODULAR CHECK: settings_tab_qt.py — PASSED (8/8)
-
-- [x] Імпорт та клас SettingsTabQtMixin
-- [x] API методи: _on_tab_changed, _build_settings_tab, _toggle_group, _save_all_settings, _reset_all_settings, _reload_settings_tab
-- [x] Методи створення віджетів: _create_settings_widget, _apply_settings_filter
-- [x] Методи дій: _clear_command_cache, _restart_agent
-- [x] _build_settings_tab використовує SETTINGS_SCHEMA
-- [x] _create_settings_widget використовує schema
-- [x] _toggle_group має логіку акордеонів
-- [x] update_watcher_status присутній
-
-### MODULAR CHECK: confirmation_qt.py — PASSED (6/6)
-
-- [x] Імпорт: ConfirmationQtMixin та ConfirmationDialog
-- [x] API методи: show_confirmation, hide_confirmation
-- [x] ConfirmationDialog методи: __init__, _update_countdown, _on_yes, _on_no, _on_auto
-- [x] Таймер присутній в _update_countdown
-- [x] show_confirmation використовує callback
-- [x] Кнопки ТАК/НІ присутні
-
-### MODULAR CHECK: llm_endpoints_editor_qt.py — PASSED (6/6)
-
-- [x] Імпорт та клас LLMEndpointsEditor
-- [x] API методи: get, set
-- [x] Методи діалогу: __init__, _init_ui, _refresh_list, _add_item, _edit_item, _remove_item
-- [x] QListWidget використовується
-- [x] Кнопки присутні (add, edit, remove)
-- [x] Базовий клас: QFrame
-
-### INTEGRATION CHECK: run_assistant_qt.py — PASSED (7/7)
-
-- [x] Імпорт та клас AssistantAppQt
-- [x] API методи: __init__, gui_callback, start
-- [x] AssistantAppQt використовує MainWindowPyQt6
-- [x] gui_callback використовує self.core
-- [x] queue_dispatcher присутній і використовує gui_queue
-- [x] gui_queue присутній
-- [x] self.gui використовується в start()
-
-### END-TO-END CHECK: синтаксис та інтеграція — PASSED (6/6)
-
-- [x] Всі PyQt6 файли мають коректний синтаксис (7 файлів)
-- [x] AssistantCore імпортується з main.py
-- [x] GUI_BACKEND присутній в SETTINGS_SCHEMA
-- [x] run.py має коректний синтаксис
-- [x] AssistantCore має необхідні методи для інтеграції (initialize, run_agent_loop)
-- [x] PyQt6 unit-тести пройдені (14/14)
-
-**Всього перевірено:** 8 модулів, 57 перевірок, все PASSED ✅
+**Виконані етапи перенесено в TASKS_Done.md**
 
 ---
 
@@ -980,35 +540,10 @@
 
 ---
 
-## Завершено
-
-### GUI інтеграція
-
-- [x] Додати назву LLM та час виконання в статус GUI
-  - Дата: 28.04.2026
-  - Опис: Статус-бар показує назву LLM, час виконання та час завершення відповіді
-
-### LLM конфігурація
-
-- [x] Виправити помилку `llm_time` referenced before assignment
-  - Дата: 28.04.2026
-  - Опис: Розрахунок `llm_time` перенесено перед використанням в GUI update
-
-- [x] Додати `name` в `_normalize_endpoint`
-  - Дата: 28.04.2026
-  - Опис: Endpoint зберігає назву LLM для відображення в GUI
-
-### Кодування
-
-- [x] Виправити кодування виводу Python-скрипта на Windows
-  - Дата: 28.04.2026
-  - Опис: Додано UTF-8 encoding для stdout/stderr у Python sandbox/скриптах
-
----
-
 ## Правила ведення цього файлу
 
 - Тут лише **актуальні задачі**, без довгих історичних фаз і PR-хронології.
+- Виконані завдання перенесено в [TASKS_Done.md](TASKS_Done.md).
 - `status.md` відповідає на питання **"де ми зараз?"**
 - `TASKS.md` відповідає на питання **"що робимо далі?"**
 - `ARCHITECTURE.md` відповідає на питання **"чому саме так і в якому технічному порядку?"**

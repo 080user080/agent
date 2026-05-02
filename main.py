@@ -408,6 +408,15 @@ class AssistantCore:
         if not text or len(text.strip()) == 0:
             return
 
+        # Якщо agent_loop ще не ініціалізовано — додати в чергу
+        if not getattr(self, 'agent_loop', None):
+            if not hasattr(self, '_pending_tasks'):
+                self._pending_tasks = []
+            self._pending_tasks.append(text)
+            if self.gui_queue:
+                self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації AgentLoop...')))
+            return
+
         # Основний шлях: AgentLoop (observe → plan → act → check)
         self.run_agent_loop(text)
     
@@ -491,12 +500,34 @@ class AssistantCore:
             #             self.gui_queue.put(('add_message', ('assistant', f'⚠️ TaskSpec: {e}')))
 
             # AgentLoop без CompiledPlan
-            if getattr(self, 'agent_loop', None):
+            agent_loop = getattr(self, 'agent_loop', None)
+            print(f"[DEBUG] agent_loop exists: {agent_loop is not None}")
+            if agent_loop:
+                print(f"[DEBUG] AgentLoop available, calling run() in thread with task: {task[:50]}...")
                 if self.gui_queue:
                     self.gui_queue.put(('update_status', '🤖 AgentLoop: observe → plan → act → check'))
-                result = self.agent_loop.run(task)
+
+                # Виконуємо в окремому потоці щоб не блокувати GUI
+                import threading
+                def run_agent_loop_thread():
+                    try:
+                        result = self.agent_loop.run(task)
+                        if self.gui_queue:
+                            self.gui_queue.put(('add_message', ('assistant', f'📊 Agent loop завершено: {result.get("steps", 0)} кроків за {result.get("duration", 0):.1f}с ✅ Успішно' if result.get("ok") else f'❌ Помилка: {result.get("summary", "")}')))
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        if self.gui_queue:
+                            self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка AgentLoop: {e}')))
+
+                thread = threading.Thread(target=run_agent_loop_thread, daemon=False)
+                thread.start()
+                # Чекаємо завершення з таймаутом 45 секунд
+                thread.join(timeout=45)
                 execution_success = True
                 return
+            else:
+                print(f"[DEBUG] AgentLoop not available, falling back to PlanExecutor")
 
             # Fallback до PlanExecutor (legacy)
             steps = None
@@ -937,11 +968,13 @@ class AssistantCore:
                 config=AgentLoopConfig(
                     max_steps=50,
                     max_duration_seconds=3600.0,
-                    enable_ocr=True,
+                    enable_ocr=False,  # Вимкнено для тестування
+                    enable_vision=False,  # Вимкнено щоб уникнути нескінченного циклу LLM
                     enable_llm_decider=True,
-                    enable_ui_elements=True,
+                    enable_ui_elements=False,  # Вимкнено для тестування
                     enable_repair=True,
                     repair_after_failures=2,
+                    enable_checkpoint=False,  # Вимкнено checkpointing для тестування
                 ),
                 decider=decider,
                 repairer=repairer,
@@ -949,6 +982,13 @@ class AssistantCore:
             self.agent_loop.gui_cb = lambda msg_type, data: self.log_to_gui(msg_type, data)
             repair_status = "+ repair" if repairer else ""
             print(f"{Fore.GREEN}✅ AgentLoop готовий ({decider_status}{repair_status})")
+
+            # Виконати чергу задач, якщо є
+            if hasattr(self, '_pending_tasks') and self._pending_tasks:
+                for task in self._pending_tasks:
+                    print(f"[DEBUG] Виконую чергову задачу: {task[:50]}...")
+                    self.run_agent_loop(task)
+                self._pending_tasks = []
         except Exception as e:
             self.agent_loop = None
             print(f"{Fore.YELLOW}⚠️  AgentLoop недоступний: {e}")
@@ -1000,10 +1040,10 @@ class AssistantCore:
                 def on_voice_text(text: str):
                     """Callback для розпізнаного тексту."""
                     print(f"{Fore.GREEN}🎯 Глобальний голосовий ввод: '{text}'")
-                    # Відправити в GUI як команду
+                    # Додаємо в GUI чат і обробляємо через process_text_command (звичайний LLM)
                     if self.gui_queue:
                         self.gui_queue.put(('add_message', ('user', text)))
-                        self.process_text_command(text)
+                    self.process_text_command(text)
 
                 def on_voice_status(status: str):
                     """Callback для статусу."""

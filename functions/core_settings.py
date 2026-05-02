@@ -188,14 +188,14 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "default": "tkinter", "user_only": True,
     },
     "GLOBAL_VOICE_HOTKEY": {
-        "type": "str", "group": "GUI", "label": "Гаряча клавіша голосового вводу",
-        "desc": "Гаряча клавіша для глобального голосового введення (наприклад: ctrl+shift+v, win+v). Працює в будь-якій програмі.",
-        "default": "ctrl+shift+v", "user_only": True,
+        "type": "str", "group": "Global Voice Input", "label": "Гаряча клавіша для глобального голосового введення",
+        "desc": "Комбінація клавіш для активації голосового введення в будь-якій програмі (наприклад: ctrl+f9, ctrl+shift+v, win+v)",
+        "default": "ctrl+f9", "user_only": True,
     },
     "GLOBAL_VOICE_ENABLED": {
         "type": "bool", "group": "GUI", "label": "Глобальне голосове введення",
         "desc": "Увімкнути глобальне голосове введення (Windows hooks + STT).",
-        "default": False, "user_only": True,
+        "default": True, "user_only": True,
     },
     "USE_UIA_FIRST": {
         "type": "bool", "group": "GUI", "label": "UIA пріоритет над OCR",

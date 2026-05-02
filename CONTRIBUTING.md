@@ -41,7 +41,14 @@ tests/             # Тести
 
 ### 3. Запуск для розробки
 
+**ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
+
 ```bash
+# Активація віртуального середовища
+cd /d D:\Python\TEXT\LLM_model
+call venv\Scripts\activate.bat
+cd /d D:\Python\agent
+
 # З логуванням
 python agent.py --debug
 
@@ -55,6 +62,8 @@ python -m pytest tests/ -v
 flake8 functions/
 black functions/
 ```
+
+Для зручності використовуйте `Start_main_qt.bat` для запуску GUI версії через venv.
 
 ---
 

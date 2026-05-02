@@ -181,7 +181,14 @@ agent/
 
 ## 🧪 Тести
 
+**ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
+
 ```bash
+# Активація віртуального середовища
+cd /d D:\Python\TEXT\LLM_model
+call venv\Scripts\activate.bat
+cd /d D:\Python\agent
+
 # Запуск всіх тестів
 python -m pytest tests/ -v
 
@@ -192,6 +199,8 @@ python -m pytest tests/test_core_planner.py -v
 coverage run -m pytest tests/
 coverage report
 ```
+
+Для зручності використовуйте `Start_main_qt.bat` для запуску GUI версії через venv.
 
 ---
 
@@ -299,6 +308,7 @@ coverage report
 
 - [status.md](status.md) — поточний стан проєкту та пріоритети
 - [TASKS.md](TASKS.md) — поточні задачі та їх статус
+- [TASKS_Done.md](TASKS_Done.md) — виконані задачі
 - [ARCHITECTURE.md](ARCHITECTURE.md) — архітектурний стан та план рефакторингу
 - [tests.md](tests.md) — тестові сценарії та чеклісти
 - [CONTRIBUTING.md](CONTRIBUTING.md) — як внести внесок в проєкт

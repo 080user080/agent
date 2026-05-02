@@ -24,27 +24,38 @@ import sounddevice as sd
 
 from .core_stt_listener import STTListener
 from .config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, SILENCE_DURATION, MICROPHONE_DEVICE_ID
+from .voice_tray_icon import get_voice_tray_icon, VoiceStatus
 
 
 # Windows API для hooks
 user32 = ctypes.windll.user32
 kernel32 = ctypes.windll.kernel32
 
-WH_KEYBOARD_LL = 13
-WM_KEYDOWN = 0x0100
-WM_KEYUP = 0x0101
-WM_SYSKEYDOWN = 0x0104
-WM_SYSKEYUP = 0x0105
+WM_HOTKEY = 0x0312
+MOD_CONTROL = 0x0002
+MOD_SHIFT = 0x0004
+MOD_WIN = 0x0008
 
 # Virtual key codes
 VK_CONTROL = 0x11
 VK_SHIFT = 0x10
+VK_G = 0x47
 VK_V = 0x56
 VK_LWIN = 0x5B
 
+# KBDLLHOOKSTRUCT для правильного читання vkCode
+class KBDLLHOOKSTRUCT(ctypes.Structure):
+    _fields_ = [
+        ("vkCode", ctypes.c_uint),
+        ("scanCode", ctypes.c_uint),
+        ("flags", ctypes.c_uint),
+        ("time", ctypes.c_uint),
+        ("dwExtraInfo", ctypes.c_ulonglong),
+    ]
+
 
 class HotkeyHook:
-    """Windows low-level keyboard hook для перехоплення гарячих клавіш."""
+    """Windows hotkey через pynput (працює без прав адміністратора)."""
 
     def __init__(self, hotkey: str):
         """
@@ -52,100 +63,118 @@ class HotkeyHook:
             hotkey: Гаряча клавіша (наприклад "ctrl+shift+v", "win+v")
         """
         self.hotkey = hotkey.lower()
-        self.keys_pressed = set()
         self.callback: Optional[Callable] = None
-        self.hook_id = None
+        self.listener = None
+        self.pynput_available = False
 
-        # Парсинг hotkey
-        self.required_keys = self._parse_hotkey(hotkey)
+        # Стан модифікаторів
+        self.ctrl_pressed = False
+        self.shift_pressed = False
+        self.win_pressed = False
 
-    def _parse_hotkey(self, hotkey: str) -> set[int]:
-        """Перетворити hotkey string в set VK codes."""
-        keys = set()
-        parts = hotkey.split('+')
-        for part in parts:
-            part = part.strip().lower()
-            if part == 'ctrl' or part == 'control':
-                keys.add(VK_CONTROL)
-            elif part == 'shift':
-                keys.add(VK_SHIFT)
-            elif part == 'win' or part == 'windows' or part == 'meta':
-                keys.add(VK_LWIN)
-            elif len(part) == 1:
-                # Single letter
-                vk = ord(part.upper())
-                keys.add(vk)
-        return keys
+        try:
+            from pynput import keyboard
+            self.pynput_available = True
+            self.keyboard = keyboard
+        except ImportError:
+            print("⚠️ pynput не встановлено - hotkey не працюватиме")
 
     def set_callback(self, callback: Callable) -> None:
         """Встановити callback при натисканні hotkey."""
         self.callback = callback
 
-    def _keyboard_proc(self, n_code, w_param, l_param):
-        """Callback для keyboard hook."""
-        if n_code < 0:
-            return user32.CallNextHookExW(self.hook_id, n_code, w_param, l_param)
+    def _on_press(self, key):
+        """Обробити натискання клавіші."""
+        try:
+            from pynput.keyboard import Key
 
-        if w_param == WM_KEYDOWN or w_param == WM_SYSKEYDOWN:
-            vk_code = l_param & 0xFF
-            self.keys_pressed.add(vk_code)
+            # Оновити стан модифікаторів
+            if key == Key.ctrl_l or key == Key.ctrl_r:
+                self.ctrl_pressed = True
+                return
+            elif key == Key.shift_l or key == Key.shift_r:
+                self.shift_pressed = True
+                return
+            elif key == Key.cmd or key == Key.cmd_l or key == Key.cmd_r:
+                self.win_pressed = True
+                return
 
-            # Перевіряємо чи натиснута гаряча клавіша
-            if self.required_keys.issubset(self.keys_pressed):
-                if self.callback:
-                    # Викликаємо callback в окремому потоці
-                    threading.Thread(target=self.callback, daemon=True).start()
-                # Не блокуємо клавішу (пропускаємо далі)
+            # Парсинг hotkey
+            parts = self.hotkey.split('+')
+            ctrl_needed = any(p.strip().lower() in ['ctrl', 'control'] for p in parts)
+            shift_needed = any(p.strip().lower() == 'shift' for p in parts)
+            win_needed = any(p.strip().lower() in ['win', 'windows', 'meta'] for p in parts)
+            letter_needed = None
+            f_key_needed = None
+            for p in parts:
+                p = p.strip().lower()
+                if len(p) == 1 and p not in ['ctrl', 'shift', 'win', 'control', 'windows', 'meta']:
+                    letter_needed = p.upper()
+                elif p.startswith('f') and p[1:].isdigit():
+                    f_key_needed = int(p[1:])
 
-        elif w_param == WM_KEYUP or w_param == WM_SYSKEYUP:
-            vk_code = l_param & 0xFF
-            self.keys_pressed.discard(vk_code)
+            # Перевірити умови
+            if ctrl_needed and not self.ctrl_pressed:
+                return
+            if shift_needed and not self.shift_pressed:
+                return
+            if win_needed and not self.win_pressed:
+                return
 
-        return user32.CallNextHookExW(self.hook_id, n_code, w_param, l_param)
+            # Перевірити букву або F-клавішу
+            if letter_needed:
+                if hasattr(key, 'char') and key.char and key.char.upper() == letter_needed:
+                    print(f"[HotkeyHook] ✅ Hotkey спрацював: {self.hotkey}")
+                    if self.callback:
+                        threading.Thread(target=self.callback, daemon=True).start()
+            elif f_key_needed:
+                # Перевірити F-клавішу
+                f_key_map = {
+                    1: Key.f1, 2: Key.f2, 3: Key.f3, 4: Key.f4, 5: Key.f5,
+                    6: Key.f6, 7: Key.f7, 8: Key.f8, 9: Key.f9, 10: Key.f10,
+                    11: Key.f11, 12: Key.f12
+                }
+                if f_key_needed in f_key_map and key == f_key_map[f_key_needed]:
+                    print(f"[HotkeyHook] ✅ Hotkey спрацював: {self.hotkey}")
+                    if self.callback:
+                        threading.Thread(target=self.callback, daemon=True).start()
+        except Exception as e:
+            pass  # Тихо ігноруємо помилки
+
+    def _on_release(self, key):
+        """Обробити відпускання клавіші."""
+        try:
+            from pynput.keyboard import Key
+
+            if key == Key.ctrl_l or key == Key.ctrl_r:
+                self.ctrl_pressed = False
+            elif key == Key.shift_l or key == Key.shift_r:
+                self.shift_pressed = False
+            elif key == Key.cmd or key == Key.cmd_l or key == Key.cmd_r:
+                self.win_pressed = False
+        except Exception as e:
+            pass
 
     def start(self) -> bool:
-        """Запустити hook."""
-        if self.hook_id:
+        """Запустити hotkey через pynput."""
+        if not self.pynput_available:
+            print("❌ pynput не доступний")
             return False
 
-        # Define hook callback type
-        HOOKPROC = ctypes.CFUNCTYPE(
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p
-        )
-
-        self._hook_callback = HOOKPROC(self._keyboard_proc)
-
-        self.hook_id = user32.SetWindowsHookExW(
-            WH_KEYBOARD_LL,
-            self._hook_callback,
-            kernel32.GetModuleHandleW(None),
-            0
-        )
-
-        if not self.hook_id:
+        try:
+            self.listener = self.keyboard.Listener(on_press=self._on_press, on_release=self._on_release)
+            self.listener.start()
+            print(f"✅ Hotkey запущено через pynput: {self.hotkey}")
+            return True
+        except Exception as e:
+            print(f"❌ Помилка запуску hotkey: {e}")
             return False
-
-        # Start message loop
-        self._thread = threading.Thread(target=self._message_loop, daemon=True)
-        self._thread.start()
-
-        return True
-
-    def _message_loop(self):
-        """Message loop для hook."""
-        msg = ctypes.wintypes.MSG()
-        while user32.GetMessageW(ctypes.byref(msg), None, 0, 0):
-            user32.TranslateMessage(ctypes.byref(msg))
-            user32.DispatchMessageW(ctypes.byref(msg))
 
     def stop(self):
-        """Зупинити hook."""
-        if self.hook_id:
-            user32.UnhookWindowsHookEx(self.hook_id)
-            self.hook_id = None
+        """Зупинити hotkey."""
+        if self.listener:
+            self.listener.stop()
+            self.listener = None
 
 
 class GlobalVoiceInput:
@@ -153,13 +182,13 @@ class GlobalVoiceInput:
 
     def __init__(
         self,
-        hotkey: str = "ctrl+shift+v",
+        hotkey: str = "ctrl+shift+g",
         callback: Optional[Callable[[str], None]] = None,
         status_callback: Optional[Callable[[str], None]] = None
     ):
         """
         Args:
-            hotkey: Гаряча клавіша (наприклад "ctrl+shift+v")
+            hotkey: Гаряча клавіша (наприклад "ctrl+shift+g")
             callback: Функція, яка викликається з розпізнаним текстом
             status_callback: Функція для статусу (listening, processing, idle)
         """
@@ -176,6 +205,15 @@ class GlobalVoiceInput:
         self.is_running = False
         self.is_listening = False
 
+        # Tray Icon
+        self.tray_icon = get_voice_tray_icon()
+
+        # Запам'ятовування активного вікна для повернення фокусу
+        self._last_window_hwnd = None
+        # Захист від подвійного спрацьовування (debounce)
+        self._toggle_lock = threading.Lock()
+        self._stop_requested = False
+
     def _update_status(self, status: str):
         """Оновити статус."""
         if self.status_callback:
@@ -184,141 +222,172 @@ class GlobalVoiceInput:
             except Exception:
                 pass
 
+    def _update_tray_status(self, voice_status: VoiceStatus, text: str = ""):
+        """Оновити статус tray icon."""
+        if self.tray_icon:
+            try:
+                self.tray_icon.set_status(voice_status, text)
+            except Exception as e:
+                print(f"[TrayIcon] Error: {e}")
+
     def _on_stt_status(self, status: str, data=None):
         """Статус STT."""
         if status == "listening":
             self.is_listening = True
-            self._update_status("🎤 Слухаю...")
+            self._stop_requested = False
+            self._update_status("[GVI] Slukhau...")
+            self._update_tray_status(VoiceStatus.RECORDING, "Zapis...")
         elif status == "processing":
-            self._update_status("🔍 Розпізнаю...")
+            self._update_status("[GVI] Raspiznavannie...")
+            self._update_tray_status(VoiceStatus.PROCESSING, "Raspiznavannie...")
         elif status == "idle":
             self.is_listening = False
-            self._update_status("✅ Готовий")
+            self._update_status("[GVI] Gatavy")
+            self._update_tray_status(VoiceStatus.IDLE, "Gatavy")
         elif status == "error":
             self.is_listening = False
-            self._update_status("❌ Помилка")
+            self._update_status("[GVI] Pamylka")
+            self._update_tray_status(VoiceStatus.ERROR, "Pamylka")
+        elif status == "no_microphone":
+            self.is_listening = False
+            self._update_status("[GVI] Nemaie dostupu do mikrofona")
+            self._update_tray_status(VoiceStatus.NO_MIC, "Nemaie mikrofona")
+
+    def _on_hotkey_pressed(self):
+        """Обробити натискання hotkey — toggle запис."""
+        print(f"[GVI] _on_hotkey_pressed викликано! is_listening={self.is_listening}")
+        with self._toggle_lock:
+            if self.is_listening:
+                # Вже слухаємо — зупинити
+                print("[GVI] Hotkey: зупинка запису...")
+                self._stop_requested = True
+                self.stt_listener.stop()
+                self.is_listening = False
+                self._update_tray_status(VoiceStatus.IDLE, "Зупинено")
+                self._update_status("[GVI] Зупинено")
+            else:
+                # Почати запис
+                print("[GVI] Hotkey: початок запису...")
+                self._start_recording()
+
+    def _start_recording(self):
+        """Почати запис і розпізнавання."""
+        try:
+            # 1. Запам'ятати активне вікно
+            self._last_window_hwnd = user32.GetForegroundWindow()
+            print(f"[GVI] Zapamiatovane aktyvnae vakno: {self._last_window_hwnd}")
+
+            # 2. Оновити статус
+            self._update_tray_status(VoiceStatus.RECORDING, "Slukhau...")
+            self._update_status("[GVI] Slukhau...")
+
+            # 3. Прослухати і розпізнати (у фонавым патоку)
+            self._stop_requested = False
+            threading.Thread(target=self._record_and_recognize, daemon=True).start()
+        except Exception as e:
+            print(f"[GVI] Pamylka pachatku zapisu: {e}")
+            import traceback
+            traceback.print_exc()
+            self._update_tray_status(VoiceStatus.ERROR, "Pamylka")
+
+    def _record_and_recognize(self):
+        """Запісаць і распазнаць у фонавым патоку."""
+        try:
+            self.is_listening = True
+            # Выклікаем listen_once, які блакуецца пакуль не скончыць запіс
+            text = self.stt_listener.listen_once(duration=LISTEN_DURATION, wait_for_speech=True)
+            if text and not self._stop_requested:
+                self._on_text_recognized(text)
+            elif self._stop_requested:
+                print("[GVI] Zapyniena karystalnikam")
+                self.is_listening = False
+                self._update_tray_status(VoiceStatus.IDLE, "Gatavy")
+        except Exception as e:
+            print(f"[GVI] Pamylka raspaznawania: {e}")
+            import traceback
+            traceback.print_exc()
+            self.is_listening = False
+            self._update_tray_status(VoiceStatus.ERROR, "Pamylka")
 
     def _on_text_recognized(self, text: str):
-        """Обробити розпізнаний текст."""
+        """Апрацаваць распазнаны тэкст."""
         self.is_listening = False
-        self._update_status(f"✅ Розпізнано: {text}")
+        self._update_status(f"[GVI] Raspaznana: {text}")
+        self._update_tray_status(VoiceStatus.PROCESSING, "Ustaŭka...")
 
-        # Вставити в активне поле
-        self._insert_text(text)
+        # 1. Аднавіць фокус у запамятаванае акно
+        if self._last_window_hwnd:
+            print(f"[GVI] Adnaŭlieńnie fokusu: {self._last_window_hwnd}")
+            user32.SetForegroundWindow(self._last_window_hwnd)
+            time.sleep(0.2)  # Час на аднаўленне фокусу
+
+        # 2. Уставіць тэкст
+        success = self._insert_text(text)
+        if not success:
+            print("[GVI] Nie atrymalasia ustaŭić tekst")
+
+        # 3. Вярнуць статус IDLE
+        self._update_tray_status(VoiceStatus.IDLE, "Gatavy")
+        self._update_status("[GVI] Gatavy")
 
         # Callback
         if self.callback:
             self.callback(text)
 
     def _insert_text(self, text: str) -> bool:
-        """Вставити текст в активне поле через clipboard."""
+        """Уставіць тэкст праз keyboard_type."""
         try:
-            import pyperclip
-            # Зберігаємо поточний clipboard
-            old_clipboard = pyperclip.paste() if pyperclip else ""
-
-            # Копіюємо новий текст
-            pyperclip.copy(text)
-
-            # Симулюємо Ctrl+V
-            self._simulate_paste()
-
-            # Відновлюємо старий clipboard (опціонально)
-            if old_clipboard:
-                time.sleep(0.1)
-                pyperclip.copy(old_clipboard)
-
-            return True
-        except ImportError:
-            # Fallback без pyperclip
-            return self._insert_text_fallback(text)
+            from functions.tools_mouse_keyboard import keyboard_type
+            result = keyboard_type(text=text)
+            if result and result.get('success'):
+                print(f"[GVI] Текст вставлено через keyboard_type: {text[:50]}...")
+                return True
+            else:
+                print(f"[GVI] keyboard_type не вдалося: {result}")
+                return False
+        except ImportError as e:
+            print(f"[GVI] keyboard_type не доступний: {e}")
+            return False
         except Exception as e:
-            print(f"Помилка вставки тексту: {e}")
+            print(f"[GVI] Помилка вставки: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
-    def _insert_text_fallback(self, text: str) -> bool:
-        """Fallback вставка через Windows API clipboard."""
-        try:
-            # Windows clipboard API
-            CF_UNICODETEXT = 13
-            if user32.OpenClipboard(0):
-                user32.EmptyClipboard()
-                # Allocate memory
-                size = (len(text) + 1) * 2
-                handle = kernel32.GlobalAlloc(0x42, size)  # GMEM_MOVEABLE
-                ptr = kernel32.GlobalLock(handle)
-                # Write text
-                ctypes.create_unicode_buffer(text, len(text))
-                kernel32.GlobalUnlock(handle)
-                user32.SetClipboardData(CF_UNICODETEXT, handle)
-                user32.CloseClipboard()
-
-                # Simulate Ctrl+V
-                self._simulate_paste()
-                return True
-        except Exception as e:
-            print(f"Fallback помилка: {e}")
-        return False
-
-    def _simulate_paste(self):
-        """Симулювати Ctrl+V через SendInput."""
-        try:
-            # SendInput API
-            INPUT = ctypes.c_ubyte * 40
-            inputs = (INPUT * 2)()
-
-            # Ctrl down
-            inputs[0][0] = 1  # INPUT_KEYBOARD
-            inputs[0][2] = VK_CONTROL
-
-            # V down
-            inputs[1][0] = 1  # INPUT_KEYBOARD
-            inputs[1][2] = VK_V
-
-            user32.SendInput(2, inputs, ctypes.sizeof(INPUT))
-
-            # Ctrl up
-            inputs[0][0] = 1  # INPUT_KEYBOARD
-            inputs[0][4] = 2  # KEYEVENTF_KEYUP
-            inputs[0][2] = VK_CONTROL
-
-            # V up
-            inputs[1][0] = 1  # INPUT_KEYBOARD
-            inputs[1][4] = 2  # KEYEVENTF_KEYUP
-            inputs[1][2] = VK_V
-
-            user32.SendInput(2, inputs, ctypes.sizeof(INPUT))
-        except Exception as e:
-            print(f"Помилка SendInput: {e}")
-
-    def _on_hotkey_pressed(self):
-        """Обробити натискання hotkey."""
-        if self.is_listening:
-            return
-
-        if not self.stt_listener.stt_engine:
-            if not self.stt_listener.initialize():
-                return
-
-        # Записати і розпізнати
-        text = self.stt_listener.listen_once(duration=LISTEN_DURATION, wait_for_speech=True)
-        if text:
-            self._on_text_recognized(text)
 
     def start(self) -> bool:
         """Запустити глобальне голосове введення."""
         if self.is_running:
+            print("⚠️ GlobalVoiceInput вже запущено")
             return False
 
+        print("🎙️ GlobalVoiceInput: ініціалізація STT Listener...")
         if not self.stt_listener.initialize():
+            print("❌ GlobalVoiceInput: STT Listener не ініціалізовано")
             return False
+        print("✅ GlobalVoiceInput: STT Listener готовий")
+
+        # Ініціалізувати tray icon
+        print("🎙️ GlobalVoiceInput: ініціалізація tray icon...")
+        if self.tray_icon:
+            if not self.tray_icon.initialize():
+                print("⚠️ Не вдалося ініціалізувати tray icon")
+            else:
+                self._update_tray_status(VoiceStatus.IDLE, "Готовий")
+                print("✅ GlobalVoiceInput: tray icon готовий")
+        else:
+            print("⚠️ GlobalVoiceInput: tray icon недоступний")
 
         # Налаштувати hotkey callback
+        print(f"🎙️ GlobalVoiceInput: налаштування hotkey {self.hotkey_hook.hotkey}...")
         self.hotkey_hook.set_callback(self._on_hotkey_pressed)
 
         # Запустити hook
+        print("🎙️ GlobalVoiceInput: запуск hook...")
         if not self.hotkey_hook.start():
+            print("❌ GlobalVoiceInput: hook не запустився")
             return False
+        print("✅ GlobalVoiceInput: hook запущено")
 
         self.is_running = True
         self._update_status(f"✅ Готово (hotkey: {self.hotkey_hook.hotkey})")
@@ -330,3 +399,7 @@ class GlobalVoiceInput:
         self.stt_listener.stop()
         self.is_running = False
         self._update_status("⏹️ Зупинено")
+
+        # Очистити tray icon
+        if self.tray_icon:
+            self.tray_icon.cleanup()

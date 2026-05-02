@@ -104,14 +104,20 @@ class ActionDecider:
     """
 
     SYSTEM_PROMPT = (
-        "Ти — агент, який керує комп'ютером користувача (миша, клавіатура, екран). "
-        "Тобі дано задачу і поточне спостереження екрану (скріншот описано через OCR/UIA). "
+        "Ти — агент, який аналізує код і виконує задачі на комп'ютері. "
+        "Тобі дано задачу і поточний стан (скріншот, файли, історія дій). "
         "Твоя робота — повернути ОДИН наступний крок як JSON об'єкт. "
         "Формат: {\"action\": \"ім'я_інструменту\", \"args\": {...}, \"reasoning\": \"пояснення\"}. "
-        "Доступні інструменти: list_directory, read_code_file, done, ask_user, та інші. "
-        "Коли задача виконана — action=\"done\", args={\"summary\": \"результат\"}. "
-        "Якщо потрібна додаткова інформація від користувача — action=\"ask_user\". "
-        "Будь обережним: не виконуй незворотних дій без потреби. "
+        "ВАЖЛИВО: args ОБОВ'ЯЗКОВО має бути словником з параметрами інструменту. "
+        "Доступні інструменти з параметрами: "
+        "- list_directory: args={\"directory\": \"шлях_до_директорії\"} "
+        "- read_code_file: args={\"filepath\": \"шлях_до_файлу\"} "
+        "- done: args={\"summary\": \"короткий результат\"} "
+        "- ask_user: args={\"question\": \"питання\"} "
+        "ВАЖЛИВО: Виконуй не більше 3-5 дій для задачі аналізу коду. "
+        "Після 2-3 кроків обов'язково викликай done з summary. "
+        "Коли задача виконана — action=\"done\", args={\"summary\": \"короткий результат\"}. "
+        "Якщо потрібна інформація від користувача — action=\"ask_user\". "
         "ВІДПОВІДАЙ ТІЛЬКИ JSON, без markdown, без пояснень поза JSON."
     )
 
@@ -131,8 +137,9 @@ class ActionDecider:
 
     @property
     def is_available(self) -> bool:
-        """Чи можемо реально викликати LLM."""
-        return bool(self._ask_llm_with_tools) and bool(self._tools)
+        """Чи доступний LLM-шар для прийняття рішень."""
+        avail = self._ask_llm_with_tools is not None
+        return avail
 
     def resolve_alias(self, tool_name: str) -> str:
         """Перетворити alias імені інструменту на реальне ім'я в FunctionRegistry."""
@@ -192,9 +199,11 @@ class ActionDecider:
         history: List[Dict[str, Any]],
         last_result: Optional[Dict[str, Any]] = None,
         extra_instructions: str = "",
+        current_step: int = 0,
     ) -> List[Dict[str, str]]:
         user_parts = [
             f"ЗАДАЧА: {goal}",
+            f"ПОТОЧНИЙ КРОК: {current_step} (максимум 3-5 кроків для аналізу коду)",
             "",
             "ПОТОЧНЕ СПОСТЕРЕЖЕННЯ ЕКРАНУ:",
             self._format_observation(observation),
@@ -230,12 +239,14 @@ class ActionDecider:
         if not self.is_available:
             return AgentAction(name="noop", reasoning="LLM decider unavailable")
 
-        messages = self.build_messages(goal, observation, history, last_result)
+        messages = self.build_messages(goal, observation, history, last_result, current_step=len(history))
         try:
+            # Не передаємо tools — покладаємось на JSON parsing fallback
+            # (qwen3/deepseek не підтримують function-calling)
             response = self._ask_llm_with_tools(
                 messages=messages,
-                tools=self._tools,
-                tool_choice="auto",
+                tools=[],  # Порожній список — без function-calling
+                tool_choice=None,  # Без tool_choice
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("ActionDecider LLM call failed: %s", exc)
@@ -258,6 +269,7 @@ class ActionDecider:
 
         # 2) Fallback — парсити JSON з content
         content = str(getattr(response, "content", "") or "").strip()
+        logger.info("ActionDecider: LLM content=%s...", content[:200])
 
         # Видалити markdown code blocks якщо є
         if content.startswith("```"):
@@ -270,6 +282,7 @@ class ActionDecider:
                     break
                 json_lines.append(line)
             content = "\n".join(json_lines).strip()
+            logger.info("ActionDecider: Extracted from markdown: %s...", content[:200])
 
         # Спробувати парсити як JSON
         if content.startswith("{"):
@@ -280,6 +293,7 @@ class ActionDecider:
                 if not isinstance(args, dict):
                     args = {}
                 reasoning = parsed.get("reasoning", "")
+                logger.info("ActionDecider: Parsed JSON action=%s", action_name)
                 return AgentAction(
                     name=str(action_name),
                     arguments=args,
@@ -391,11 +405,12 @@ class AgentLoop:
 
     def observe(self) -> Observation:
         """Отримати поточний стан системи (скрін + OCR + UIA + UI elements + Vision-LM)."""
+        logger.info("AgentLoop.observe() called")
         obs = Observation(timestamp=time.time())
 
         try:
-            # 1. Скріншот
-            if _SCREEN_CAPTURE_AVAILABLE:
+            # 1. Скріншот (тільки якщо потрібен для vision/OCR)
+            if (self.config.enable_vision or self.config.enable_ocr) and _SCREEN_CAPTURE_AVAILABLE:
                 result = take_screenshot()
                 if result.get("ok") and result.get("path"):
                     obs.screenshot_path = result["path"]
@@ -1057,6 +1072,7 @@ class AgentLoop:
 
     def _execute_single_step(self, task: str, state: AgentState, start_time: float) -> bool:
         """Виконати одну ітерацію циклу. Повертає True якщо треба продовжувати."""
+        logger.info("AgentLoop._execute_single_step() step=%d", state.step)
         # 1. Observe
         obs = self.observe()
         state.observations.append(obs)
@@ -1073,6 +1089,7 @@ class AgentLoop:
             state.success = False
             state.done_summary = f"Помилка планування: {e}"
             return False
+
         if plan.get("done"):
             summary = plan.get("summary") or plan.get("args", {}).get("summary", "")
             success = plan.get("success", True)
@@ -1242,6 +1259,7 @@ class AgentLoop:
         Returns:
             dict з результатами виконання
         """
+        logger.info("AgentLoop.run() called with task: %s", task[:50])
         self._current_task = task
         self._stop_flag = False
         # Скидаємо бюджет repair-спроб для нової сесії
@@ -1258,6 +1276,7 @@ class AgentLoop:
 
         try:
             while not self._should_stop(state, start_time):
+                logger.info("AgentLoop: step=%d, max_steps=%d", state.step, self.config.max_steps)
                 if not self._execute_single_step(task, state, start_time):
                     break
         finally:
