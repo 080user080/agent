@@ -9,7 +9,7 @@ from typing import Optional
 try:
     from PyQt6.QtWidgets import QSystemTrayIcon, QApplication
     from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor, QFont
-    from PyQt6.QtCore import Qt, QObject, pyqtSignal, QEvent
+    from PyQt6.QtCore import Qt, QObject, pyqtSignal, QEvent, QTimer
     PYQT6_AVAILABLE = True
 except ImportError:
     PYQT6_AVAILABLE = False
@@ -107,12 +107,17 @@ class VoiceTrayIcon(QObject):
                 time.sleep(0.01)
 
     def set_status(self, status: VoiceStatus, text: str = ""):
-        """Встановити статус tray icon (потокобезпечно через postEvent)."""
+        """Встановити статус tray icon (потокобезпечно через QApplication.postEvent)."""
+        print(f"[TrayIcon] set_status викликано: status={status}, text={text}")
         if not self.app:
+            print(f"[TrayIcon] app is None, пропускаємо")
             return
-        # Створити і відправити кастомний event в Qt event loop
+        # Створити і відправити кастомний event через QApplication.postEvent
+        print(f"[TrayIcon] Створення _StatusUpdateEvent")
         event = _StatusUpdateEvent(status, text)
+        print(f"[TrayIcon] Відправка event через QApplication.postEvent")
         QApplication.postEvent(self, event)
+        print(f"[TrayIcon] Event відправлено")
 
     def customEvent(self, event: QEvent):
         """Обробити кастомний event для оновлення статусу."""
@@ -123,23 +128,30 @@ class VoiceTrayIcon(QObject):
 
     def _do_set_status(self, status: VoiceStatus, text: str = ""):
         """Внутрішній метод - виконується в основному потоці Qt."""
+        print(f"[TrayIcon] _do_set_status викликано: status={status}, text={text}")
         self.current_status = status
 
         if not self.tray_icon:
+            print(f"[TrayIcon] tray_icon is None, пропускаємо")
             return
 
         # Створити іконку з кольором статусу
+        print(f"[TrayIcon] Створення іконки для статусу {status}")
         icon = self._create_icon(status)
+        print(f"[TrayIcon] Іконка створена: {icon.isNull()=}")
 
         # Встановити іконку
         self.tray_icon.setIcon(icon)
+        print(f"[TrayIcon] Іконка встановлена")
 
         # Встановити tooltip
         tooltip = self._get_tooltip(status, text)
         self.tray_icon.setToolTip(tooltip)
+        print(f"[TrayIcon] Tooltip встановлено: {tooltip}")
 
         # Відправити сигнал
         self.status_changed.emit(status.value)
+        print(f"[TrayIcon] Сигнал status_changed відправлено: {status.value}")
 
     def _create_icon(self, status: VoiceStatus) -> QIcon:
         """Створити іконку мікрофона з кольором статусу."""

@@ -36,38 +36,27 @@ cd /d D:\Python\agent
 **Файли:**
 - `functions/tools_mouse_keyboard.py` - keyboard_type тепер завжди typewrite, видалено _type_non_ascii
 
-### Виправлено Global Voice Input - фокус вікна та callback
-**Проблема:** При глобальному голосовому введенні текст вставлявся у вікно агента замість активного вікна користувача
+### Виправлено Global Voice Input — архітектура через зовнішній макрос
+**Проблема:** Внутрішні методи вставки (clipboard+Ctrl+V, SendInput, keyboard_type) не працювали надійно у всіх програмах, особливо в браузерах Chrome/Gemini.
 
-**Виправлено:**
-- Покращено відновлення фокусу в `_on_text_recognized`:
-  - Додано `ShowWindow(SW_RESTORE)` для відновлення мінімізованих вікон
-  - Додано `BringWindowToTop()` для підняття вікна на передній план
-  - Збільшено затримку з 0.2 до 0.3 секунд
-  - Додано перевірку `GetForegroundWindow()` після `SetForegroundWindow()`
-- Змінено метод запам'ятовування вікна в `_start_recording`:
-  - Тепер запам'ятовує заголовок вікна через `GetWindowTextW`
-  - Запам'ятовує позицію курсора для кліку
-  - Заголовок надійніший для активації ніж hwnd
-- Змінено метод вставки `_insert_text` на clipboard + Ctrl+V з багатьма fallbacks:
-  - Використовує `activate_window_by_title(title)` для активації вікна (з AttachThreadInput)
-  - Зберігає старий буфер обміну, копіює новий текст, вставляє, відновлює старий
-  - Win32 paste для деяких класів вікон (Edit, RichEdit)
-  - Ctrl+V fallback для браузерів
-  - keyboard_type fallback
-  - PowerShell SendKeys fallback
-  - AutoHotkey скрипт fallback
-  - UIA ValuePattern fallback
-  - SendInput Unicode fallback
-- Для Chrome: якщо всі методи не спрацювали - текст залишається в буфері, користувач натискає Ctrl+V вручну
-- ВИДАЛЕНО callback виклик з `_on_text_recognized`:
-  - Глобальне голосове введення не відправляє текст в агента
-  - Текст вставляється тільки в запам'ятоване вікно користувача
+**Рішення (03.05.2026):**
+- **НЕ РЕДАГУЙТЕ логіку вставки в `global_voice_input.py` без узгодження!**
+- Архітектура змінена на делегування вставки **зовнішньому макросу** (Robotask / AutoHotkey / інший)
+
+**Алгоритм:**
+1. **Ctrl+F9** — запускає запис голосу, очищає буфер обміну
+2. Після розпізнавання — копіює текст у буфер, натискає **Shift+F10**
+3. **Зовнішній макрос** (Robotask) ловить Shift+F10 і виконує Ctrl+V у цільове вікно
+4. Чекає 2 сек, потім очищає буфер обміну
+
+**Чому так:**
+- Внутрішні методи (clipboard+Ctrl+V, SendInput, pyautogui.typewrite) мають обмеження з Unicode/кирилицею в різних програмах
+- Зовнішній макрос працює з правами користувача і надійніше вставляє текст
+- Для зміни поведінки вставки редагуйте **ЗОВНІШНІЙ макрос**, НЕ `global_voice_input.py`
 
 **Файли:**
-- `functions/global_voice_input.py` - покращено логіку відновлення фокусу, змінено метод вставки на clipboard + Ctrl+V з багатьма fallbacks, видалено callback
-- `paste_text.ahk` - AutoHotkey скрипт для вставки (fallback)
-- `paste_text.cpp` - C++ програма для вставки (fallback)(text="привіт")
+- `functions/global_voice_input.py` — тільки запис голосу + тригер Shift+F10 (логіку вставки НЕ змінювати)
+- Ваш зовнішній макрос (Robotask/AutoHotkey) — ловить Shift+F10 і виконує Ctrl+V
 
 **Скрипт:** `test_duplication_direct.py` - автоматизований тест для перевірки дублювання повідомлень
 
@@ -234,8 +223,10 @@ cd /d D:\Python\agent
   - HotkeyHook — Windows low-level keyboard hook для перехоплення гарячих клавіш
   - GlobalVoiceInput — клас для глобального голосового введення
   - Використовує існуючий STTListener для розпізнавання
-  - Вставка тексту через clipboard (pyperclip) або SendInput fallback
-  - Hotkey за замовчуванням: Ctrl+Shift+V
+  - ⚠️ **Вставка тексту делегується ЗОВНІШНЬОМУ макросу** (Robotask / AutoHotkey / інший)
+    - Алгоритм: Ctrl+F9 → запис → буфер обміну → Shift+F10 → макрос вставляє Ctrl+V
+    - Для зміни поведінки вставки редагуйте **ЗОВНІШНІЙ макрос**, НЕ `global_voice_input.py`
+  - Hotkey за замовчуванням: Ctrl+F9
 - [x] Додано налаштування GLOBAL_VOICE_HOTKEY та GLOBAL_VOICE_ENABLED в SETTINGS_SCHEMA
 - [x] Інтегровано GlobalVoiceInput в main.py (автоматичний запуск при GLOBAL_VOICE_ENABLED=True)
 - [x] Створено unit-тести в `tests/test_global_voice_input.py`
@@ -280,11 +271,17 @@ cd /d D:\Python\agent
 
 ## Перевірка правильності (P1, high priority) — DONE ✅
 
-### CHECK: P1 Глобальне голосове введення — PASSED
+### CHECK: P1 Глобальне голосове введення — PASSED (архітектура через зовнішній макрос)
 
-- [x] `functions/global_voice_input.py` — HotkeyHook парсить `ctrl+shift+v` правильно ({0x11, 0x10, 0x56})
-- [x] SETTINGS_SCHEMA містить `GLOBAL_VOICE_HOTKEY` (str, "ctrl+shift+v") та `GLOBAL_VOICE_ENABLED` (bool, False)
+- [x] `functions/global_voice_input.py` — HotkeyHook парсить `ctrl+f9` правильно
+- [x] SETTINGS_SCHEMA містить `GLOBAL_VOICE_HOTKEY` (str, "ctrl+f9") та `GLOBAL_VOICE_ENABLED` (bool, False)
 - [x] `main.py` імпортує `GlobalVoiceInput`, ініціалізує `self.global_voice_input` при `GLOBAL_VOICE_ENABLED=True`
+- [x] Архітектура вставки через **зовнішній макрос** (Robotask/AutoHotkey):
+  - Ctrl+F9 запускає запис, очищає буфер обміну
+  - Після розпізнавання: копіює текст → натискає **Shift+F10**
+  - Зовнішній макрос ловить Shift+F10 і виконує Ctrl+V
+  - Чекає 2 сек → очищає буфер обміну
+- [x] Для зміни поведінки вставки редагується **ЗОВНІШНІЙ макрос**, НЕ `global_voice_input.py`
 
 ### CHECK: P1 Самонавчання — PASSED
 

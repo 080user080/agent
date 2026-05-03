@@ -1,16 +1,15 @@
 """Global Voice Input — глобальне голосове введення в будь-яку програму.
 
-Використовує Windows hooks для перехоплення гарячої клавіші, STT для розпізнавання
-та SendInput/clipboard для вставки тексту в активне поле.
+⚠️ НЕ РЕДАГУЙТЕ логіку вставки без узгодження!
+Цей модуль працює ТІЛЬКИ через зовнішній макрос (Robotask / AutoHotkey / інший).
 
-Використання:
-    from functions.global_voice_input import GlobalVoiceInput
+Алгоритм:
+  1. Ctrl+F9 — запускає запис голосу, очищає буфер обміну
+  2. Після розпізнавання — копіює текст у буфер, натискає Shift+F10
+  3. Зовнішній макрос (Robotask) ловить Shift+F10 і виконує Ctrl+V у цільове вікно
+  4. Чекає 2 сек, потім очищає буфер обміну
 
-    def on_text(text):
-        print(f"Розпізнано: {text}")
-
-    gvi = GlobalVoiceInput(hotkey="ctrl+shift+v", callback=on_text)
-    gvi.start()
+Для зміни поведінки вставки — редагуйте ЗОВНІШНІЙ макрос, НЕ цей файл.
 """
 from __future__ import annotations
 
@@ -381,6 +380,14 @@ class GlobalVoiceInput:
     def _start_recording(self):
         """Почати запис і розпізнавання."""
         try:
+            # 0. Очистити буфер обміну перед записом
+            try:
+                import pyperclip
+                pyperclip.copy("")
+                print(f"[GVI] Буфер обміну очищено перед записом")
+            except Exception as e:
+                print(f"[GVI] Помилка очищення буфера: {e}")
+            
             # 1. Запам'ятати активне вікно (заголовок) та позицію курсора
             hwnd = user32.GetForegroundWindow()
             length = user32.GetWindowTextLengthW(hwnd)
@@ -456,6 +463,24 @@ class GlobalVoiceInput:
                 print(f"[GVI] Папярэджанне: фокус не адноўлены (current={current_hwnd}, expected={self._last_window_hwnd})")
             else:
                 print(f"[GVI] Фокус паспяхова адноўлены")
+
+        # 1.5. Очистити буфер і відпустити модифікатори перед вставкою
+        try:
+            import pyperclip
+            pyperclip.copy("")
+            print(f"[GVI] Буфер обміну очищено перед вставкою")
+        except Exception as e:
+            print(f"[GVI] Помилка очищення буфера: {e}")
+        try:
+            import pyautogui
+            pyautogui.keyUp("ctrl")
+            pyautogui.keyUp("shift")
+            pyautogui.keyUp("alt")
+            pyautogui.keyUp("win")
+            print(f"[GVI] Модифікатори відпущені")
+        except Exception as e:
+            print(f"[GVI] Помилка відпускання модифікаторів: {e}")
+        time.sleep(0.1)
 
         # 2. Уставіць тэкст через скрипт користувача (Shift+F10)
         success = self._insert_text_with_script(text)

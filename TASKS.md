@@ -76,6 +76,33 @@ cd /d D:\Python\agent
 
 
 
+### Проблема: Global Voice Input - tray icon не показує змін стану
+
+**Статус:** Виправлено (03.05.2026)
+
+**Симптоми:**
+- Tray icon відображається в system tray
+- При зміні стану (RECORDING, PROCESSING, IDLE) іконка НЕ змінюється
+- Логи показують що `_update_tray_status` викликається з правильним статусом
+
+**Причина:**
+- `postEvent` з кастомним `_StatusUpdateEvent` не оброблявся коректно коли використовується існуючий QApplication від GUI
+
+**Рішення:**
+- Замінено `postEvent` на сигнал `_update_requested.emit()` для потокобезпечного оновлення
+- Сигнал підключається в `initialize()` через `self._update_requested.connect(self._do_set_status)`
+- Qt автоматично маршалізує сигнали в основний потік
+
+**Файли:**
+- `functions/voice_tray_icon.py` - змінено `set_status()` на `emit()`, додано підключення сигналу в `initialize()`
+- `tests/test_voice_tray_icon.py` - створено повний набір тестів (13 passed, 1 skipped)
+
+
+
+---
+
+
+
 ### Проблема: Global Voice Input - не запам'ятовує розмір і позицію вікна
 
 **Статус:** Відстеження (02.05.2026, 19:33)
@@ -109,6 +136,34 @@ cd /d D:\Python\agent
 **Файли:**
 
 - `functions/global_voice_input.py` - GlobalVoiceInput._start_recording, _on_text_recognized
+
+
+
+---
+
+
+
+### Архітектура: Global Voice Input — вставка через зовнішній макрос
+
+**Статус:** Реалізовано (03.05.2026)
+
+**Архітектура:**
+- `global_voice_input.py` — тільки запис голосу + тригер Shift+F10
+- **Зовнішній макрос** (Robotask / AutoHotkey) — ловить Shift+F10 і виконує Ctrl+V
+
+**Алгоритм:**
+1. Ctrl+F9 — запускає запис, очищає буфер обміну
+2. Після розпізнавання — копіює текст у буфер, натискає **Shift+F10**
+3. Зовнішній макрос ловить Shift+F10 і виконує Ctrl+V у цільове вікно
+4. Чекає 2 сек, потім очищає буфер обміну
+
+**Важливо:**
+- ⚠️ **НЕ РЕДАГУЙТЕ** логіку вставки в `global_voice_input.py` без узгодження
+- Для зміни поведінки вставки — редагуйте **ЗОВНІШНІЙ макрос**
+
+**Файли:**
+- `functions/global_voice_input.py` — запис голосу + тригер Shift+F10
+- Ваш зовнішній макрос (Robotask/AutoHotkey) — ловить Shift+F10 і виконує Ctrl+V
 
 
 
