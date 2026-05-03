@@ -78,12 +78,17 @@ LEGACY СТЕК (працює через GUI):
 - `core_macro.py` (293 рядки) — MacroRecorder + MacroPlayer є, але не підключені до GUI
 
 **🔴 Відсутнє (ні коду, ні модулів):**
-- `tools_browser.py` — Playwright/CDP для реальної браузерної автоматизації
-- `tools_ui_accessibility.py` — UIA (Windows Accessibility API) через pywinauto
-- `providers_vision.py` — Vision-LLM (GPT-4V / Claude Vision / LLaVA)
 - `logic_step_repair.py` — LLM repair loop на expect_failed (Phase 12.2)
-- `logic_agent_loop.py` — головний цикл observe→decide→act→check→repeat
 - CI/CD — GitHub Actions, pre-commit config
+
+**✅ Готово (не потребує реалізації):**
+- `tools_browser_cdp.py` — Playwright/CDP для реальної браузерної автоматизації (1071 рядок, 12 інструментів)
+- `tools_playwright.py` — інтеграція Playwright
+- `logic_agent_loop.py` — головний цикл observe→decide→act→check→repeat (AgentLoop)
+- `tools_ui_accessibility.py` — UIA Windows Accessibility API (774 рядки, dual-backend uiautomation+pywinauto, 10+ LLM інструментів, інтеграція з AgentLoop)
+
+**🟡 MVP (потребує доопрацювання):**
+- `providers_vision.py` — Vision-LM (331 рядок, analyze_image реалізовано для OpenAI/Claude/Gemini, detect_ui_elements/suggest_actions — stubs)
 
 ---
 
@@ -765,93 +770,75 @@ def find_button_by_text(text, region=None, confidence=0.7):
 
 **Ціль:** Агент може подивитись на скріншот і зрозуміти що на ньому
 
-#### 4.1 Файл: `functions/providers_vision.py` (НОВИЙ, ~300 рядків)
+**Статус:** 🟡 MVP — `analyze_image` готовий для 3 провайдерів, `detect_ui_elements`/`suggest_actions` — stubs, LLM tools — не підключені
 
-```python
-"""Vision-LLM провайдери для аналізу скріншотів.
+#### 4.1 Файл: `functions/providers_vision.py` (331 рядок) — реальний стан
 
-Pluggable: GPT-4V, Claude Vision, LLaVA (Ollama), Qwen-VL.
-"""
+**✅ Реалізовано (робочий код):**
 
-class VisionProvider(Protocol):
-    def describe(self, image_path: str, prompt: str) -> str: ...
-    def plan_action(self, image_path: str, goal: str) -> Dict: ...
+| Компонент | Рядки | Статус | Опис |
+|-----------|-------|--------|------|
+| `VisionQuery` / `VisionResponse` dataclasses | 21-42 | ✅ | Повні dataclasses з `__post_init__` |
+| `VisionLMProvider.__init__` + `_init_vision()` | 54-97 | ✅ | Читає `VISION_PROVIDER`, `VISION_API_KEY`, `VISION_MODEL` з налаштувань. Підтримує: `none`, `openai`, `claude`, `gemini` |
+| `is_available()` | 99-101 | ✅ | Повертає `_available` |
+| `analyze_image(query)` | 103-132 | ✅ | **Головний метод**. Кодує PNG → base64, викликає `_analyze_*` відповідно до `provider_type` |
+| `_analyze_openai()` | 134-164 | ✅ | GPT-4V через OpenAI API (`chat/completions` з `image_url` base64). Повертає `VisionResponse(text, confidence=0.8)` |
+| `_analyze_claude()` | 166-201 | ✅ | Claude 3.5 Sonnet через Anthropic API (`messages` з `image` base64). Повертає `VisionResponse(text, confidence=0.8)` |
+| `_analyze_gemini()` | 203-231 | ✅ | Gemini Pro Vision через Google API (`generateContent` з `inline_data`). Повертає `VisionResponse(text, confidence=0.8)` |
+| `get_vision_provider()` singleton | 283-288 | ✅ | Глобальний singleton instance |
 
-class OpenAIVisionProvider:
-    """GPT-4V / GPT-4o через OpenAI API."""
-    def describe(self, image_path, prompt):
-        base64_img = encode_image(image_path)
-        response = openai.chat.completions.create(
-            model="gpt-4o",
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64_img}"}}
-                ]
-            }]
-        )
-        return response.choices[0].message.content
+**🟡 Stub (є код, але неповний):**
 
-class OllamaVisionProvider:
-    """LLaVA / Qwen-VL через Ollama (локально)."""
-    def describe(self, image_path, prompt):
-        base64_img = encode_image(image_path)
-        response = requests.post("http://localhost:11434/api/generate", json={
-            "model": "llava",
-            "prompt": prompt,
-            "images": [base64_img],
-        })
-        return response.json()["response"]
-```
+| Компонент | Рядки | Статус | Проблема |
+|-----------|-------|--------|----------|
+| `detect_ui_elements(image_path)` | 233-251 | 🟡 Stub | Викликає `analyze_image()` з промптом для UI-елементів, але **завжди повертає `[]`** — немає парсингу відповіді LLM в структуровані дані (`[{"type": "button", "name": "Submit", ...}]`) |
+| `suggest_actions(image_path, goal)` | 253-275 | 🟡 Stub | Викликає `analyze_image()` з промптом для дій, але **повертає `response.suggested_actions`** (порожній список з `VisionResponse.__post_init__`) — немає парсингу відповіді |
+
+**❌ Не реалізовано:**
+
+| Компонент | Рядки | Статус | Проблема |
+|-----------|-------|--------|----------|
+| `vision_analyze_screenshot()` LLM tool | 293-304 | ❌ | Повертає `{"ok": False, "error": "Vision-LM потребує ініціалізації через get_vision_provider(assistant)"}`. Не може отримати `assistant` instance в контексті tool_runtime |
+| `vision_detect_ui()` LLM tool | 307-317 | ❌ | `{"ok": False, "error": "Not implemented yet"}` |
+| `vision_suggest_actions()` LLM tool | 320-330 | ❌ | `{"ok": False, "error": "Not implemented yet"}` |
 
 #### 4.2 Інтеграція з `ActionDecider`
 
-```python
-# В logic_agent_loop.py → ActionDecider.decide():
-def decide(self, goal, observation, history, last_result):
-    # Якщо є vision-провайдер — надіслати скріншот
-    if self.vision_provider:
-        screen_description = self.vision_provider.describe(
-            observation.screenshot_path,
-            f"Опиши що бачиш на екрані. Задача: {goal}"
-        )
-        observation.vision_description = screen_description
-    
-    # LLM вирішує на основі тексту + vision опису
-    ...
-```
-
-#### 4.3 Нові tools для Vision
+**Вже є в `functions/agent_loop.py:461-469`:**
 
 ```python
-VISION_TOOLS = [
-    {
-        "name": "describe_screen",
-        "description": "Подивитись на екран і описати що бачиш",
-        "parameters": {"prompt": {"type": "string"}}
-    },
-    {
-        "name": "find_element_by_description",
-        "description": "Знайти елемент на екрані за описом (використовує зір)",
-        "parameters": {"description": {"type": "string"}}
-    },
-    {
-        "name": "is_screen_correct",
-        "description": "Перевірити чи екран виглядає правильно для даної задачі",
-        "parameters": {"expected_state": {"type": "string"}}
-    },
-]
+# В AgentLoop.observe():
+if self.config.enable_vision and obs.screenshot_path:
+    try:
+        vision_provider = get_vision_provider(self)
+        if vision_provider.is_available():
+            vision_query = VisionQuery(
+                image_path=obs.screenshot_path,
+                question=f"Опиши що бачиш на екрані. Задача: {goal}",
+            )
+            vision_response = vision_provider.analyze_image(vision_query)
+            obs.vision_description = vision_response.text
+    except Exception as e:
+        logger.debug("Vision-LM error: %s", e)
 ```
 
-**Оцінка:** ~300-400 рядків нового коду  
-**Складність:** Середня  
-**Залежність:** OpenAI API key або Ollama  
+**Але:** `enable_vision=False` за замовчуванням в `AgentLoopConfig`. Щоб ввімкнути — треба передати `enable_vision=True` в `build_default_decider()`.
+
+#### 4.3 Що треба доробити
+
+1. **Парсинг відповіді `detect_ui_elements`** — після виклику `analyze_image()` треба розпарсити текстову відповідь LLM і витягти структуровані UI-елементи
+2. **Парсинг відповіді `suggest_actions`** — аналогічно, витягти список дій з текстової відповіді
+3. **Підключення LLM tools** — `vision_analyze_screenshot`, `vision_detect_ui`, `vision_suggest_actions` треба ініціалізувати з `assistant` instance (не singleton, а через registry callback)
+4. **Ввімкнення в AgentLoop** — `enable_vision=True` в `build_default_decider()` при наявності API ключа
+
+**Оцінка:** ~200 рядків нового коду (парсинг + підключення tools)  
+**Складність:** Низька  
+**Залежність:** OpenAI API key / Claude API key / Gemini API key  
 **Результат:** Агент "розуміє" що бачить, може оцінити незнайомий UI
 
 ---
 
-### ЕТАП 5: БРАУЗЕРНА АВТОМАТИЗАЦІЯ (Playwright) — ВЕБ-ЗАДАЧІ
+### ЕТАП 5: БРАУЗЕРНА АВТОМАТИЗАЦІЯ (Playwright CDP) — ГОТОВО
 
 **Ціль:** Повноцінна взаємодія з браузером (клік, ввід тексту, витяг даних)
 

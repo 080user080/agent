@@ -107,17 +107,24 @@ class VoiceTrayIcon(QObject):
                 time.sleep(0.01)
 
     def set_status(self, status: VoiceStatus, text: str = ""):
-        """Встановити статус tray icon (потокобезпечно через QApplication.postEvent)."""
+        """Встановити статус tray icon (потокобезпечно)."""
         print(f"[TrayIcon] set_status викликано: status={status}, text={text}")
         if not self.app:
             print(f"[TrayIcon] app is None, пропускаємо")
             return
-        # Створити і відправити кастомний event через QApplication.postEvent
-        print(f"[TrayIcon] Створення _StatusUpdateEvent")
-        event = _StatusUpdateEvent(status, text)
-        print(f"[TrayIcon] Відправка event через QApplication.postEvent")
-        QApplication.postEvent(self, event)
-        print(f"[TrayIcon] Event відправлено")
+        
+        # Якщо використовуємо існуючий QApplication від GUI - викликати напряму
+        # Qt thread-safe для простих операцій з QSystemTrayIcon
+        if not self._needs_own_event_loop:
+            print(f"[TrayIcon] Виклик _do_set_status напряму (існуючий QApplication)")
+            self._do_set_status(status, text)
+        else:
+            # Якщо створили свій QApplication - використовувати event loop
+            print(f"[TrayIcon] Створення _StatusUpdateEvent")
+            event = _StatusUpdateEvent(status, text)
+            print(f"[TrayIcon] Відправка event через QApplication.postEvent")
+            QApplication.postEvent(self, event)
+            print(f"[TrayIcon] Event відправлено")
 
     def customEvent(self, event: QEvent):
         """Обробити кастомний event для оновлення статусу."""
@@ -143,6 +150,11 @@ class VoiceTrayIcon(QObject):
         # Встановити іконку
         self.tray_icon.setIcon(icon)
         print(f"[TrayIcon] Іконка встановлена")
+
+        # Примусове оновлення system tray (Windows кешує іконки)
+        self.tray_icon.hide()
+        self.tray_icon.show()
+        print(f"[TrayIcon] Іконка оновлена через hide()/show()")
 
         # Встановити tooltip
         tooltip = self._get_tooltip(status, text)

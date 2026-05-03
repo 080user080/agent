@@ -77,23 +77,33 @@ def main():
         from functions.tools_mouse_keyboard import keyboard_type, keyboard_press
 
         # Затримки для ініціалізації агента
+        print("⏳ Затримка 6 секунд для ініціалізації агента...")
         time.sleep(6)
+        print("✅ Затримка завершена")
 
         # Активація вікна агента
-        print("📝 Активація вікна агента та вставка тексту 'проаналізуй код d:\\Python\\agent'...")
+        print("📝 Активація вікна агента...")
         result = activate_window_by_title(title="МАРК — Асистент (PyQt6)")
-        print(f"🔓 Активація вікна агента...")
         print(f"✅ Вікно активовано: {result}")
+        print(f"   - hwnd: {result.get('hwnd')}")
+        print(f"   - title: {result.get('title')}")
+        print(f"   - foreground: {result.get('foreground')}")
+        print(f"   - focus_error: {result.get('focus_error')}")
 
         # Вставка тексту
+        print("⏳ Затримка 1 секунда перед вставкою тексту...")
         time.sleep(1)
+        print("✅ Затримка завершена")
+        
         text = "проаналізуй код d:\\Python\\agent"
-        print(f"⌨️ Вставка тексту '{text}'...")
+        print(f"⌨️ Початок вставки тексту '{text}' через keyboard_type...")
         result = keyboard_type(text=text)
         print(f"✅ Текст вставлено: {result}")
 
         # Натискання Enter
+        print("⏳ Затримка 2 секунди перед Enter...")
         time.sleep(2)
+        print("✅ Затримка завершена")
         print(f"⏎ Натискання Enter...")
         result = keyboard_press(key="Enter")
         print(f"✅ Enter натиснуто: {result}")

@@ -535,16 +535,19 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
             item.setText(f"{icon} {parts[1]}")
 
     def finish_plan_panel(self, data: Any = None) -> None:
-        self.plan_stop_btn.hide()
-        self.plan_run_btn.show()
+        if hasattr(self, 'plan_stop_btn') and hasattr(self, 'plan_run_btn'):
+            self.plan_stop_btn.hide()
+            self.plan_run_btn.show()
 
     def on_plan_execution_started(self) -> None:
-        self.plan_run_btn.hide()
-        self.plan_stop_btn.show()
+        if hasattr(self, 'plan_run_btn') and hasattr(self, 'plan_stop_btn'):
+            self.plan_run_btn.hide()
+            self.plan_stop_btn.show()
 
     def on_plan_execution_finished(self) -> None:
-        self.plan_stop_btn.hide()
-        self.plan_run_btn.show()
+        if hasattr(self, 'plan_run_btn') and hasattr(self, 'plan_stop_btn'):
+            self.plan_stop_btn.hide()
+            self.plan_run_btn.show()
 
     # ─── API: підтвердження ───────────────────────────────────────────────────
 

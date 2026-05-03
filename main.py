@@ -404,21 +404,35 @@ class AssistantCore:
             return False
     
     def process_text_command(self, text):
-        """Обробити текстову команду з GUI - тепер через AgentLoop."""
+        """Обробити текстову команду з GUI - LLM вирішує чи запускати AgentLoop або чат."""
         if not text or len(text.strip()) == 0:
             return
 
-        # Якщо agent_loop ще не ініціалізовано — додати в чергу
-        if not getattr(self, 'agent_loop', None):
-            if not hasattr(self, '_pending_tasks'):
-                self._pending_tasks = []
-            self._pending_tasks.append(text)
-            if self.gui_queue:
-                self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації AgentLoop...')))
-            return
-
-        # Основний шлях: AgentLoop (observe → plan → act → check)
-        self.run_agent_loop(text)
+        # Ключові слова які вказують на задачу для виконання
+        task_keywords = [
+            "зроби", "створи", "аналізуй", "знайди", "пошук", "відкрий", "запиши",
+            "видал", "зміни", "онови", "завантаж", "збереж", "прочитай",
+            "виконай", "запусти", "зупини", "перевір", "протестуй", "налаштуй",
+            "do", "create", "analyze", "find", "search", "open", "write",
+            "delete", "change", "update", "download", "save", "read",
+            "execute", "run", "stop", "check", "test", "configure"
+        ]
+        
+        text_lower = text.lower()
+        is_task = any(keyword in text_lower for keyword in task_keywords)
+        
+        if is_task:
+            # Це задача для виконання - запускаємо AgentLoop
+            print(f"[DEBUG] Виявлено задачу для виконання, запускаю AgentLoop")
+            self.run_agent_loop(text)
+        else:
+            # Це просте повідомлення - звичайний чат
+            print(f"[DEBUG] Звичайне повідомлення, чат з LLM")
+            if self.assistant:
+                self.assistant.process_command(text, from_gui=True)
+            else:
+                if self.gui_queue:
+                    self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації асистента...')))
     
     def stop_execution(self):
         """Остановить текущее выполнение плана."""
@@ -454,6 +468,10 @@ class AssistantCore:
             if self.gui_queue:
                 self.gui_queue.put(('add_message', ('assistant', '❌ Немає задачі для виконання.')))
             return
+
+        # Логуємо повідомлення користувача в GUI
+        if self.gui_queue:
+            self.gui_queue.put(('add_message', ('user', task)))
 
         execution_success = False
         execution_error = None
@@ -979,7 +997,7 @@ class AssistantCore:
                 decider=decider,
                 repairer=repairer,
             )
-            self.agent_loop.gui_cb = lambda msg_type, data: self.log_to_gui(msg_type, data)
+            self.agent_loop.gui_cb = lambda msg_type, data: self.gui_queue.put((msg_type, data)) if self.gui_queue else None
             repair_status = "+ repair" if repairer else ""
             print(f"{Fore.GREEN}✅ AgentLoop готовий ({decider_status}{repair_status})")
 

@@ -77,15 +77,25 @@ cd /d D:\Python\agent
    У [functions/tools_ui_accessibility.py](D:/Python/agent/functions/tools_ui_accessibility.py)
    частина LLM-facing функцій ще повертає заглушки `Not implemented yet`.
 
-3. **Phase 13 ще не доведений до реального "ТЗ -> готовий артефакт".**
-   У [functions/pipeline_code.py](D:/Python/agent/functions/pipeline_code.py) кодогенерація все ще
-   створює scaffold/placeholder, а не повноцінний результат.
+3. **Vision-LM MVP, але неповний.**
+   У [functions/providers_vision.py](D:/Python/agent/functions/providers_vision.py) `analyze_image()` готовий для OpenAI/Claude/Gemini,
+   але `detect_ui_elements()` і `suggest_actions()` — stubs (завжди повертають `[]`).
+   LLM tools `vision_analyze_screenshot`, `vision_detect_ui`, `vision_suggest_actions` — не підключені (Not implemented yet).
+   Потрібен: парсинг відповіді LLM + ініціалізація tools з `assistant` instance.
 
-4. **Windows-first проєкт покритий CI переважно на Linux.**
+4. **Phase 13 ще не доведений до реального "ТЗ -> готовий артефакт".**
+   У [functions/pipeline_code.py](d:\Python\agent/functions/pipeline_code.py) кодогенерація все ще
+   створює scaffold/placeholder, а не повноцінний результат.
+   - `_scaffold_content()` генерує порожні заглушки (docstring + TODO + `raise NotImplementedError`)
+   - S9 (cross-AI actors) не підключено — немає інтеграції з `ai_actors.py` для реальної кодогенерації
+   - `ai_actors.py` має інтерфейс для Codex/Windsurf/Cursor/ChatGPT/Claude/Gemini, але `_execute_windsurf()` і `_execute_cursor()` — заглушки
+   - Деталі: див. TASKS.md ЕТАП 10
+
+5. **Windows-first проєкт покритий CI переважно на Linux.**
    Поточний [ci.yml](D:/Python/agent/.github/workflows/ci.yml) корисний для логіки, але не закриває
    реальні ризики `pywin32`, DPI, UIA, віконного менеджменту та GUI automation.
 
-5. **Структура коду вже надто плоска й важка для підтримки.**
+6. **Структура коду вже надто плоска й важка для підтримки.**
    У `functions/` 96 файлів; найбільші модулі стали "центрами тяжіння":
    [main.py](D:/Python/agent/main.py),
    [logic_commands.py](D:/Python/agent/functions/logic_commands.py),

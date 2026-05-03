@@ -78,24 +78,43 @@ cd /d D:\Python\agent
 
 ### Проблема: Global Voice Input - tray icon не показує змін стану
 
-**Статус:** Виправлено (03.05.2026)
+**Статус:** Відстеження (03.05.2026)
 
 **Симптоми:**
 - Tray icon відображається в system tray
-- При зміні стану (RECORDING, PROCESSING, IDLE) іконка НЕ змінюється
-- Логи показують що `_update_tray_status` викликається з правильним статусом
+- При зміні стану (RECORDING, PROCESSING, IDLE) іконка НЕ змінюється візуально
+- Логи показують що `_do_set_status` викликається коректно:
+  - Іконка створюється: `icon.isNull()=False`
+  - Іконка встановлюється: `Іконка встановлена`
+  - Tooltip встановлюється: `🔴 Запис...`
 
 **Причина:**
-- `postEvent` з кастомним `_StatusUpdateEvent` не оброблявся коректно коли використовується існуючий QApplication від GUI
+- Windows кешує іконки system tray і не оновлює їх автоматично
+- `QSystemTrayIcon.setIcon()` не завжди оновлює візуальне відображення в Windows
 
-**Рішення:**
-- Замінено `postEvent` на сигнал `_update_requested.emit()` для потокобезпечного оновлення
-- Сигнал підключається в `initialize()` через `self._update_requested.connect(self._do_set_status)`
-- Qt автоматично маршалізує сигнали в основний потік
+**Спроби вирішення:**
+1. **postEvent з кастомним _StatusUpdateEvent** - не працювало з існуючим QApplication від GUI
+2. **pyqtSignal _update_requested.emit()** - сигнал не оброблявся через відсутність підключення до Qt event loop
+3. **QTimer.singleShot** - не працювало через те ж саме
+4. **QApplication.postEvent** - не оброблявся customEvent
+5. **Прямий виклик _do_set_status для існуючого QApplication** - працює, логи показують що іконка встановлюється
+6. **hide()/show() для примусового оновлення** - додано для примусового оновлення system tray
+
+**Поточний стан:**
+- `_do_set_status` викликається коректно при натисканні Ctrl+F9
+- Іконка створюється і встановлюється (підтверджено логами)
+- Візуально іконка НЕ змінюється в system tray (можливо проблема Windows кешування)
 
 **Файли:**
-- `functions/voice_tray_icon.py` - змінено `set_status()` на `emit()`, додано підключення сигналу в `initialize()`
+- `functions/voice_tray_icon.py` - змінено `set_status()` на прямий виклик для існуючого QApplication, додано hide()/show()
 - `tests/test_voice_tray_icon.py` - створено повний набір тестів (13 passed, 1 skipped)
+- `TEST_GUI/test_tray_icon_with_logs.py` - тест з логуванням (працює)
+- `TEST_GUI/test_tray_icon_hotkey.py` - тест через Ctrl+F9 hotkey (працює, логи підтверджують виклик _do_set_status)
+
+**Можливі рішення:**
+- Використати інший спосіб відображення статусу (наприклад, зміна tooltip замість кольору іконки)
+- Використати іншу бібліотеку для tray icon (наприклад, pystray)
+- Додати механізм примусового оновлення Windows system tray через Win32 API
 
 
 
@@ -261,9 +280,9 @@ cd /d D:\Python\agent
 
 - ✅ Phase 11+ стек (TaskRunner, PermissionGate, Expectations, ExecutionReport, SessionBudget, PlanCritic)
 
-- ✅ UIA через pywinauto (`tools_ui_accessibility.py`)
+- ✅ UIA dual-backend (`tools_ui_accessibility.py`) — uiautomation (основний) + pywinauto fallback, 10+ LLM інструментів (uia_list_elements, uia_click_element, uia_set_text тощо), інтеграція з AgentLoop.observe() для UIA-дерева
 
-- ✅ Vision providers (`providers_vision.py`)
+- ✅ Vision providers (`providers_vision.py`) — analyze_image для OpenAI/Claude/Gemini, detect_ui_elements/suggest_actions — MVP stubs
 
 - ✅ Browser CDP + Playwright (`tools_browser_cdp.py`, `tools_playwright.py`)
 
@@ -273,9 +292,9 @@ cd /d D:\Python\agent
 
 - ✅ LLM tool-calling низькорівневий (`logic_llm_tools.py`)
 
-- � **Gap**: GUITester для тестування GUI як QA-інженер — відсутній (ЕТАП 2)
+- 🟡 **Gap**: GUITester для тестування GUI як QA-інженер — відсутній (ЕТАП 2)
 
-- � **Gap**: Vision-LM, UIA, Browser capabilities в decider — вимкнені за замовчуванням (треба ввімкнути в config)
+- 🟡 **Gap**: Vision-LM, Browser capabilities в decider — вимкнені за замовчуванням (треба ввімкнути в config). UIA вже інтегровано.
 
 
 
@@ -545,6 +564,50 @@ cd /d D:\Python\agent
 
 #### ЕТАП 9: ТЕСТИ + CI
 
+---
+
+#### ЕТАП 10: PHASE 13 — КОДОГЕНЕРАЦІЯ (S9 CROSS-AI ACTORS)
+
+**Ціль:** Реальне "ТЗ → готовий артефакт" через cross-AI actors (Codex/ChatGPT/Windsurf)
+
+**Поточний стан:**
+
+- ✅ `pipeline_code.py` (330 рядків) — scaffold система для `DOMAIN_CODE`
+  - `CodePipeline.compile(spec)` — генерує Plan з кроками: mkdir, write_file, pytest, ruff
+  - `_scaffold_content()` — створює **placeholder** (docstring + TODO + `raise NotImplementedError`)
+  - `required_tools()` — повертає список потрібних інструментів
+
+- ✅ `ai_actors.py` (420 рядків) — інтерфейс для зовнішніх провайдерів
+  - `AIActor.execute()` — базовий метод
+  - Підтримувані провайдери: Codex, Windsurf, Cursor, ChatGPT, Claude, Gemini
+
+- 🟡 `_execute_codex()` — використовує primary endpoint як Codex API (але це не справжній Codex)
+
+- ❌ `_execute_windsurf()`, `_execute_cursor()` — не реалізовано (тільки заглушки)
+
+- ❌ **S9 не підключено** — немає інтеграції `pipeline_code.py` з `ai_actors.py` для реальної кодогенерації
+
+**Проблема:**
+- `_scaffold_content()` генерує порожні заглушки, а не реальний код
+- В коментарях написано: `"TODO: implement. Real code-generation is wired in S9 via cross-AI actors (Codex/ChatGPT/Windsurf)"`
+- Реальне "ТЗ → готовий артефакт" не працює
+
+**Що треба доробити:**
+
+- [ ] Реалізувати `_execute_windsurf()` — інтеграція з Windsurf (можливо через CLI або API)
+- [ ] Реалізувати `_execute_cursor()` — інтеграція з Cursor (можливо через CLI або API)
+- [ ] Замінити `_scaffold_content()` на реальну кодогенерацію через `AIActor.execute()`
+- [ ] Додати параметр `CodePipeline.use_ai_actors` для перемикання між scaffold і реальною кодогенерацією
+- [ ] Інтегрувати `ai_actors.py` в `pipeline_code.py` для виклику S9
+- [ ] Тести для `ai_actors.py` (моки для зовнішніх API)
+- [ ] Тести для `pipeline_code.py` з AI actors (інтеграційні)
+
+**Оцінка:** ~300-400 рядків нового коду + ~200 рядків тестів. Складність: середня (залежить від доступності Windsurf/Cursor API).
+
+---
+
+#### ЕТАП 11: ТЕСТИ + CI
+
 
 
 - [ ] Додати відсутні unit-тести (Phase 2-4 інструменти)
@@ -603,7 +666,7 @@ cd /d D:\Python\agent
 
   ├→ ЕТАП 3 (UIA посилення) — підсилює observe/act [DONE]
 
-  ├→ ЕТАП 4 (Vision-LLM) — підсилює decide [PENDING]
+  ├→ ЕТАП 4 (Vision-LLM) — підсилює decide [MVP — analyze_image для OpenAI/Claude/Gemini готовий, detect_ui_elements/suggest_actions — stubs]
 
   ├→ ЕТАП 5 (Browser) — нові capabilities [DONE]
 
@@ -615,7 +678,9 @@ cd /d D:\Python\agent
 
        └→ ЕТАП 8 (Self-Testing) — використовує GUITester [PENDING]
 
-ЕТАП 9 (Тести + CI) ← паралельно з усім [PENDING]
+ЕТАП 10 (Phase 13 — Кодогенерація) ← незалежний, використовує ai_actors [PENDING]
+
+ЕТАП 11 (Тести + CI) ← паралельно з усім [PENDING]
 
 ```
 
