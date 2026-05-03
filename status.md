@@ -1,5 +1,5 @@
 # Проєкт: Асистент МАРК
-> Останнє оновлення: 28.04.2026
+> Останнє оновлення: 03.05.2026
 
 **ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
 
@@ -38,14 +38,20 @@ cd /d D:\Python\agent
 ### Що вже реально є в коді
 
 - GUI на Tkinter у `core_gui/`, запуск через [run_assistant.py](D:/Python/agent/run_assistant.py).
+- GUI на PyQt6 у `core_gui_pyqt6/`, запуск через [run.py](D:/Python/agent/run.py) --qt.
 - Основний runtime у [main.py](D:/Python/agent/main.py).
 - Planner / executor / memory / cache / safety / audit.
 - `TaskRunner`, `PermissionGate`, `ExecutionReport`, `SessionBudget`, `Watcher`.
 - LLM tool-calling та новий LLM-шар у `functions/llm/`.
+  - `router.py` — RequestRouter для класифікації запитів
+  - `provider_chain.py` — ProviderChain з fallback ланцюгом
 - GUI automation: mouse/keyboard, windows, screenshot, OCR, UI detection, visual diff.
 - Browser automation: Playwright CDP.
 - AI actors / provider registry / repair loop / checkpoint infrastructure.
-- 57 тестових файлів у [tests](D:/Python/agent/tests).
+- Global voice input (Windows hook) — глобальне голосове введення.
+- Self-learning — модуль самонавчання з аналізом помилок і skills базою.
+- Plan executor — GUI-інтеграція для виконання планів.
+- 57+ тестових файлів у [tests](D:/Python/agent/tests).
 - CI та lint конфіг уже існують: [pyproject.toml](D:/Python/agent/pyproject.toml), [ci.yml](D:/Python/agent/.github/workflows/ci.yml).
 
 ### Що оновлено відносно старих версій статусу
@@ -91,12 +97,20 @@ cd /d D:\Python\agent
    - `ai_actors.py` має інтерфейс для Codex/Windsurf/Cursor/ChatGPT/Claude/Gemini, але `_execute_windsurf()` і `_execute_cursor()` — заглушки
    - Деталі: див. TASKS.md ЕТАП 10
 
-5. **Windows-first проєкт покритий CI переважно на Linux.**
+5. **ЕТАП 12 (Оркестрація ШІ) — частково реалізовано.**
+   - ✅ `functions/llm/router.py` (122 рядків) — RequestRouter з keyword-based класифікацією
+   - ✅ `functions/llm/provider_chain.py` (128 рядків) — ProviderChain з fallback ланцюгом
+   - ✅ `tests/test_router.py` (12 тестів pass)
+   - ❌ НЕ інтегровано в logic_commands.py і AgentLoop
+   - ❌ НЕ налаштовано LLM_ENDPOINTS для GPT-OSS 20B, Gemini, DeepSeek
+   - Деталі: див. TASKS.md ЕТАП 12
+
+6. **Windows-first проєкт покритий CI переважно на Linux.**
    Поточний [ci.yml](D:/Python/agent/.github/workflows/ci.yml) корисний для логіки, але не закриває
    реальні ризики `pywin32`, DPI, UIA, віконного менеджменту та GUI automation.
 
-6. **Структура коду вже надто плоска й важка для підтримки.**
-   У `functions/` 96 файлів; найбільші модулі стали "центрами тяжіння":
+7. **Структура коду вже надто плоска й важка для підтримки.**
+   У `functions/` 90 файлів; найбільші модулі стали "центрами тяжіння":
    [main.py](D:/Python/agent/main.py),
    [logic_commands.py](D:/Python/agent/functions/logic_commands.py),
    [core_planner.py](D:/Python/agent/functions/core_planner.py),

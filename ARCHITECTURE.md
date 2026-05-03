@@ -1,5 +1,5 @@
 # Архітектура МАРК: поточний стан і напрямок
-> Оновлено: 28.04.2026
+> Оновлено: 03.05.2026
 
 **ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
 
@@ -47,13 +47,16 @@ cd /d D:\Python\agent
 - `functions/logic_*` — orchestration, task running, scenarios, expectations, repair, watchers.
 - `functions/tools_*` — desktop/browser/media tools.
 - `functions/providers_*` + `functions/llm/` — LLM/provider layer.
+  - `functions/llm/router.py` — RequestRouter для класифікації запитів (CODE/DEBUG/GUI/WEB/GENERAL/QUICK)
+  - `functions/llm/provider_chain.py` — ProviderChain з fallback ланцюгом і quota tracking
 - `functions/aaa_*` — legacy / wrapper-oriented tool layer.
 - `tests/` — unit і integration-style тести.
 
 ### Спостереження
 
-- Проєкт уже не малий: у `functions/` 96 файлів.
-- З'явився новий LLM-пакет `functions/llm/`, але стара термінологія ще лишилася в документації й частині модулів.
+- Проєкт уже не малий: у `functions/` 90 файлів.
+- З'явився новий LLM-пакет `functions/llm/` з router.py, provider_chain.py для оркестрації ШІ.
+- Стара термінологія ще лишилася в документації й частині модулів.
 - Новий orchestration-стек існує поруч із legacy-шарами.
 
 ---

@@ -387,6 +387,18 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
 
     # ─── API: повідомлення в чат ──────────────────────────────────────────────
 
+    def _should_skip_json_message(self, text: str) -> bool:
+        """Перевірити чи повідомлення є JSON/markdown, який слід пропустити."""
+        stripped_msg = text.strip()
+        # Якщо повідомлення це JSON з response полем або markdown код блок, пропускаємо його повністю
+        if stripped_msg.startswith('{"response":') or stripped_msg.startswith('{"response"') or stripped_msg.startswith('```json') or stripped_msg.startswith('```'):
+            import datetime
+            log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] main_window: Пропускаємо JSON/markdown: {stripped_msg[:50]}...\n"
+            with open(r"d:\Python\agent\debug_logs\main_window.log", "a", encoding="utf-8") as f:
+                f.write(log_msg)
+            return True
+        return False
+    
     def add_message(self, sender: str, message: Any) -> None:
         if message is None:
             return
@@ -394,17 +406,12 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
 
         # Пропускаємо JSON відповіді (вони будуть замінені на розпарсений текст)
         if sender == "assistant":
-            stripped_msg = text.strip()
             # Логування для відстеження
             import datetime
-            log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] main_window add_message: sender={sender}, message={stripped_msg[:100]}...\n"
+            log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] main_window add_message: sender={sender}, message={text.strip()[:100]}...\n"
             with open(r"d:\Python\agent\debug_logs\main_window.log", "a", encoding="utf-8") as f:
                 f.write(log_msg)
-            # Якщо повідомлення це JSON з response полем або markdown код блок, пропускаємо його повністю
-            if stripped_msg.startswith('{"response":') or stripped_msg.startswith('{"response"') or stripped_msg.startswith('```json') or stripped_msg.startswith('```'):
-                log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] main_window: Пропускаємо JSON/markdown: {stripped_msg[:50]}...\n"
-                with open(r"d:\Python\agent\debug_logs\main_window.log", "a", encoding="utf-8") as f:
-                    f.write(log_msg)
+            if self._should_skip_json_message(text):
                 return
 
         if sender == "user":
@@ -440,11 +447,7 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
             self.start_stream_message()
         
         # Фільтрація JSON чанків - не вставляємо в чат
-        stripped_chunk = chunk.strip()
-        if (stripped_chunk.startswith('{"response":') or 
-            stripped_chunk.startswith('{"response"') or 
-            stripped_chunk.startswith('```json') or 
-            stripped_chunk.startswith('```')):
+        if self._should_skip_json_message(chunk):
             self._stream_buffer += chunk  # Зберігаємо в буфер для парсингу, але не виводимо в чат
             self._scroll_chat_to_end()
             return
@@ -580,13 +583,8 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
                 with open(r"d:\Python\agent\debug_logs\_on_message.log", "a", encoding="utf-8") as f:
                     f.write(log_msg)
                 # Пропускаємо JSON відповіді (вони будуть замінені на розпарсений текст)
-                if sender == "assistant":
-                    stripped_msg = str(text).strip()
-                    if stripped_msg.startswith('{"response":') or stripped_msg.startswith('{"response"') or stripped_msg.startswith('```json') or stripped_msg.startswith('```'):
-                        log_msg = f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] _on_message: Пропускаємо JSON/markdown: {stripped_msg[:50]}...\n"
-                        with open(r"d:\Python\agent\debug_logs\_on_message.log", "a", encoding="utf-8") as f:
-                            f.write(log_msg)
-                        return
+                if sender == "assistant" and self._should_skip_json_message(str(text)):
+                    return
                 self.add_message(sender, text)
             elif msg_type == "show_confirmation":
                 question, cb = data

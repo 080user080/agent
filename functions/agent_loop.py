@@ -107,23 +107,36 @@ class ActionDecider:
         "Ти — агент, який аналізує екран, код і виконує задачі на комп'ютері. "
         "Тобі дано задачу і поточний стан (скріншот, файли, історія дій). "
         "Твоя робота — повернути ОДИН наступний крок як JSON об'єкт. "
-        "Формат: {\"action\": \"ім'я_інструменту\", \"args\": {...}, \"reasoning\": \"пояснення\"}. "
-        "ВАЖЛИВО: args ОБОВ'ЯЗКОВО має бути словником з параметрами інструменту. "
-        "Доступні інструменти з параметрами: "
-        "- take_screenshot: args={} — Зробити скріншот екрану. Використовуй коли задача про ЕКРАН, робочий стіл, вікна. "
-        "- ocr_screen: args={\"lang\": \"ukr+eng\"} — Прочитати видимий текст з екрану. Використовуй після take_screenshot для аналізу екрану. "
-        "- find_text_on_screen: args={\"text\": \"шуканий текст\"} — Знайти координати тексту на екрані. "
-        "- list_directory: args={\"directory\": \"шлях_до_директорії\"} — Переглянути файли. "
-        "- read_code_file: args={\"filepath\": \"шлях_до_файлу\"} — Прочитати файл. "
-        "- done: args={\"summary\": \"короткий результат\"} — Завершити задачу. "
-        "- ask_user: args={\"question\": \"питання\"} — Запитати користувача. "
-        "ВАЖЛИВО: Якщо задача про «аналіз екрану» — спочатку take_screenshot, потім ocr_screen, потім done з summary. "
-        "Не використовуй list_directory для аналізу екрану — це аналізує файли, не екран! "
-        "Виконуй не більше 3-5 дій для задачі аналізу. "
-        "Після 2-3 кроків обов'язково викликай done з summary. "
-        "Коли задача виконана — action=\"done\", args={\"summary\": \"короткий результат\"}. "
-        "Якщо потрібна інформація від користувача — action=\"ask_user\". "
-        "ВІДПОВІДАЙ ТІЛЬКИ JSON, без markdown, без пояснень поза JSON."
+        "\n"
+        "ВАЖЛИВО: You MUST respond with ONLY valid JSON. No markdown, no explanations outside JSON.\n"
+        "Format:\n"
+        "{\n"
+        '  "action": "<tool_name>",\n'
+        '  "args": {...},\n'
+        '  "reasoning": "explanation"\n'
+        "}\n"
+        "\n"
+        "Available actions:\n"
+        "- take_screenshot: args={} — Capture current screen. Use when task is about SCREEN, desktop, windows.\n"
+        "- ocr_screen: args={\"lang\": \"ukr+eng\"} — Read visible text from screen. Use after take_screenshot for screen analysis.\n"
+        "- find_text_on_screen: args={\"text\": \"search_text\"} — Find coordinates of text on screen.\n"
+        "- list_directory: args={\"directory\": \"path\"} — List files in directory.\n"
+        "- read_code_file: args={\"filepath\": \"path\"} — Read file from disk.\n"
+        "- done: args={\"summary\": \"short_result\"} — Complete the task.\n"
+        "- ask_user: args={\"question\": \"question\"} — Ask user for information.\n"
+        "\n"
+        "CRITICAL RULES:\n"
+        "1. If you don't know what to do — use \"take_screenshot\"\n"
+        "2. Never return empty or noop unless absolutely necessary\n"
+        "3. If task is about \"screen analysis\" — first take_screenshot, then ocr_screen, then done with summary\n"
+        "4. Do not use list_directory for screen analysis — it analyzes files, not screen!\n"
+        "5. Execute at most 3-5 actions for analysis tasks\n"
+        "6. After 2-3 steps, you must call done with summary\n"
+        "7. When task is complete — action=\"done\", args={\"summary\": \"short result\"}\n"
+        "8. If you need information from user — action=\"ask_user\"\n"
+        "9. DO NOT invent new tools — use only the ones listed above\n"
+        "\n"
+        "RESPOND WITH ONLY JSON. NO MARKDOWN. NO EXPLANATIONS OUTSIDE JSON."
     )
 
     def __init__(
@@ -246,20 +259,23 @@ class ActionDecider:
 
         messages = self.build_messages(goal, observation, history, last_result, current_step=len(history))
         try:
-            # Не передаємо tools — покладаємось на JSON parsing fallback
-            # (qwen3/deepseek не підтримують function-calling)
+            # Спочатку спробуємо без tools (JSON parsing fallback)
+            # LM Studio може не підтримувати function-calling або конфліктувати з ним
             response = self._ask_llm_with_tools(
                 messages=messages,
                 tools=[],  # Порожній список — без function-calling
-                tool_choice=None,  # Без tool_choice
+                tool_choice=None,
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("ActionDecider LLM call failed: %s", exc)
             return AgentAction(name="noop", reasoning=f"LLM error: {exc}")
 
         if getattr(response, "error", None):
-            logger.warning("ActionDecider LLM error: %s", response.error)
-            return AgentAction(name="noop", reasoning=f"LLM error: {response.error}")
+            error_msg = str(response.error)
+            logger.warning("ActionDecider LLM error: %s", error_msg)
+            # Якщо помилка 400 про structured output — це конфлікт з tools
+            # Повертаємо noop, LLM має генерувати JSON з content
+            return AgentAction(name="noop", reasoning=f"LLM error: {error_msg}")
 
         # 1) Спробувати tool_calls (OpenAI-compatible)
         tool_calls = getattr(response, "tool_calls", None) or []
@@ -274,7 +290,7 @@ class ActionDecider:
 
         # 2) Fallback — парсити JSON з content
         content = str(getattr(response, "content", "") or "").strip()
-        logger.info("ActionDecider: LLM content=%s...", content[:200])
+        logger.info("ActionDecider: LLM content (full)=%s", content)
 
         # Видалити markdown code blocks якщо є
         if content.startswith("```"):
@@ -288,6 +304,28 @@ class ActionDecider:
                 json_lines.append(line)
             content = "\n".join(json_lines).strip()
             logger.info("ActionDecider: Extracted from markdown: %s...", content[:200])
+
+        # Спробувати знайти JSON через regex (пост-обробка)
+        import re
+        # Знаходимо JSON об'єкт, що починається з { і містить "action"
+        # Простий підхід: знайти { і потім знайти відповідну }
+        brace_count = 0
+        start_idx = -1
+        for i, char in enumerate(content):
+            if char == '{' and start_idx == -1:
+                start_idx = i
+                brace_count = 1
+            elif char == '{':
+                brace_count += 1
+            elif char == '}':
+                brace_count -= 1
+                if brace_count == 0 and start_idx != -1:
+                    # Знайшли повний JSON об'єкт
+                    candidate = content[start_idx:i+1]
+                    if '"action"' in candidate:
+                        content = candidate
+                        logger.info("ActionDecider: Extracted JSON via brace matching: %s...", content[:200])
+                        break
 
         # Спробувати парсити як JSON
         if content.startswith("{"):
@@ -307,11 +345,12 @@ class ActionDecider:
             except json.JSONDecodeError:
                 logger.warning("ActionDecider: JSON parse failed for: %s...", content[:100])
 
-        # 3) Якщо не вдалося — інтерпретувати як done
+        # 3) Fallback → якщо не розпарсилось → take_screenshot
+        logger.warning("ActionDecider: JSON parsing failed, fallback to take_screenshot")
         return AgentAction(
-            name="done",
-            arguments={"summary": content or "Задачу завершено без додаткових дій."},
-            reasoning=content,
+            name="take_screenshot",
+            arguments={},
+            reasoning="JSON parsing failed, taking screenshot as fallback",
         )
 
     def replan(
@@ -901,7 +940,22 @@ class AgentLoop:
             )
 
         if action.name == "noop":
-            return None  # Дозволити fallback на CompiledPlan/Planner
+            # Fallback на take_screenshot тільки якщо LLM явно повернув JSON з action="noop"
+            # Якщо це помилка або недоступність — дозволяємо fallback на наступні пріоритети
+            if "error" in action.reasoning or "unavailable" in action.reasoning:
+                return None  # Дозволити fallback на CompiledPlan/Planner/plan_from_history
+            # LLM явно повернув noop → force take_screenshot
+            logger.warning("ActionDecider returned noop (from LLM), forcing take_screenshot")
+            return {
+                "action": "take_screenshot",
+                "args": {},
+                "replan": False,
+                "done": False,
+                "reasoning": "Forced take_screenshot instead of noop",
+                "from_decider": True,
+            }
+
+        logger.info("ActionDecider: Parsed action=%s, args=%s", action.name, action.arguments)
 
         # Спеціальні дії
         if action.name == "done":
@@ -1047,8 +1101,8 @@ class AgentLoop:
             if action == "noop":
                 return {"ok": True, "result": "noop"}
 
-            # Виконати через registry
-            result = self.registry.execute_function(action, args)
+            # Виконати через registry (auto_create=False — AgentLoop не створює нові функції)
+            result = self.registry.execute_function(action, args, auto_create=False)
             if isinstance(result, dict):
                 return result
             return {"ok": True, "result": str(result)}

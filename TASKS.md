@@ -1,6 +1,6 @@
 # Поточні задачі МАРК
 
-> Останнє оновлення: 02.05.2026
+> Останнє оновлення: 03.05.2026
 
 
 
@@ -606,6 +606,59 @@ cd /d D:\Python\agent
 
 ---
 
+#### ЕТАП 12: ОРКЕСТРАЦІЯ ШІ (ROUTER + PROVIDER CHAIN)
+
+**Ціль:** Повна оркестрація ШІ з класифікацією запитів, fallback ланцюгом і quota tracking.
+
+**Архітектура (3 рівні):**
+- **Рівень 1 — Router:** Класифікація запитів за типом (CODE/DEBUG/GUI/WEB/GENERAL/QUICK), вибір провайдера
+- **Рівень 2 — Provider Chain:** Послідовний fallback ланцюг (Primary → Secondary → Fallback)
+- **Рівень 3 — Result Handler:** Валідація результатів, graceful degradation
+
+**Поточний стан:**
+
+- ✅ `functions/llm/router.py` (122 рядків) — RequestRouter з keyword-based класифікацією
+  - TaskType enum: CODE, DEBUG, GUI, WEB, GENERAL, QUICK
+  - RoutingDecision з fallback ланцюгом і context budget
+  - Keyword-based класифікація (швидко, без LLM)
+
+- ✅ `functions/llm/provider_chain.py` (128 рядків) — ProviderChain з fallback
+  - Послідовний fallback ланцюг
+  - Quota tracking (consecutive errors limiter)
+  - Health-check для LM Studio
+  - Structured logging через `mark.orchestration` logger
+
+- ✅ `tests/test_router.py` (12 тестів pass) — тести класифікації і маршрутизації
+
+- ❌ НЕ інтегровано в logic_commands.py (process_command)
+- ❌ НЕ налаштовано LLM_ENDPOINTS для GPT-OSS 20B, Gemini, DeepSeek
+- ❌ НЕ реалізовано context_budget обрізання conversation history
+- ❌ НЕ написано тести для provider_chain
+
+**Ролі моделей:**
+- **Orchestrator (GPT-OSS 20B, LM Studio):** Primary для загальних запитів, планування, об'єднання результатів
+- **Code Generator (Gemini 3.1 Flash Lite):** Secondary для кодогенерації (швидка API)
+- **Debugger (DeepSeek):** Fallback для відладки/аналізу помилок
+
+**Що треба доробити:**
+
+- [ ] Інтегрувати Router + ProviderChain в logic_commands.py (process_command) замість прямого ask_llm
+- [ ] Налаштувати LLM_ENDPOINTS в config.py: orchestrator (GPT-OSS 20B), code_generator (Gemini), debugger (DeepSeek)
+- [ ] Реалізувати context_budget обрізання conversation history при зміні провайдера
+- [ ] Додати health-check для LM Studio перед запитами (ConnectionRefused обробка)
+- [ ] Тести для provider_chain (fallback, quota, health-check)
+- [ ] Інтегрувати в AgentLoop (ActionDecider використовує Router)
+- [ ] GUI для оркестрації: відображення активної моделі, моніторинг квот
+
+**Обладнання:**
+- Відеокарта: RTX 5060 Ti (12GB VRAM)
+- LM Studio: `http://localhost:1234/v1/chat/completions`
+- Підтримує: CUDA, float16, квантування
+
+**Оцінка:** ~200-300 рядків інтеграції + ~100 рядків тестів. Складність: середня (залежить від налаштування LM Studio).
+
+---
+
 #### ЕТАП 11: ТЕСТИ + CI
 
 
@@ -679,6 +732,8 @@ cd /d D:\Python\agent
        └→ ЕТАП 8 (Self-Testing) — використовує GUITester [PENDING]
 
 ЕТАП 10 (Phase 13 — Кодогенерація) ← незалежний, використовує ai_actors [PENDING]
+
+ЕТАП 12 (Оркестрація ШІ) ← Router + Provider Chain, інтегрується в AgentLoop [PENDING]
 
 ЕТАП 11 (Тести + CI) ← паралельно з усім [PENDING]
 
@@ -856,7 +911,35 @@ cd /d D:\Python\agent
 
 ### P1: GUI ПОКРАЩЕННЯ ТА НАЛАШТУВАННЯ
 
+#### Chunked streaming для LLM відповідей (40-80 токенів)
 
+- [ ] Реалізувати chunked streaming в GUI для LLM відповідей
+
+  - Пріоритет: P1
+
+  - Файли: `core_streaming.py`, `core_gui/chat_panel.py`, `core_gui_pyqt6/chat_panel_qt.py`
+
+  - Деталі:
+
+    - Вивід від LLM має бути по 40-80 токенів (chunked streaming)
+
+    - Замість повного виводу всієї відповіді — виводити частинами по 40-80 токенів
+
+    - Це дає кращий UX: користувач бачить прогрес генерації в реальному часі
+
+    - Реалізувати в `core_streaming.py` — додати параметр `chunk_size` (за замовчуванням 60 токенів)
+
+    - GUI має обробляти chunks і додавати їх до чату поступово
+
+    - Логування: `[Streaming] Chunk {i}: {tokens} tokens`
+
+  - Тести:
+
+    - Перевірити що chunks виводяться по 40-80 токенів
+
+    - Перевірити що GUI оновлюється поступово
+
+    - Перевірити що повна відповідь збирається коректно
 
 #### Обов'язкове тестування та логування GUI-функцій
 

@@ -19,9 +19,12 @@ class FakeRegistry:
     def __init__(self, actions=None):
         self.actions = actions or {}
 
-    def execute_function(self, action, args):
+    def execute_function(self, action, args, auto_create=True):
         if action in self.actions:
             return self.actions[action](args)
+        # Якщо auto_create=False і дія не знайдена — повертаємо помилку
+        if not auto_create:
+            return {"ok": False, "error": f"Function {action} not found"}
         return {"ok": True, "result": f"{action} done"}
 
 
@@ -183,8 +186,9 @@ class TestAgentLoopAct:
         plan = {"action": "bad_action", "args": {}}
         result = loop.act(plan)
 
-        # Registry повертає fallback result
-        assert result["ok"] is True
+        # З auto_create=False, невідома функція повертає помилку
+        assert result["ok"] is False
+        assert "error" in result
 
 
 class TestAgentLoopRun:

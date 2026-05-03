@@ -204,6 +204,94 @@ class AssistantCore:
             print(f"   ❌ Помилка завантаження моделей STT: {e}")
             raise
     
+    def _init_stt_engine(self):
+        """Ініціалізувати STT двигун (спільний метод для initialize та initialize_without_listener)."""
+        from functions.core_settings import get_setting
+        stt_enabled = get_setting("STT_ENABLED", False)
+        
+        if stt_enabled:
+            if self.gui_queue:
+                print(f"{Fore.CYAN}[GUI] Відправка повідомлення: 🔊 Завантаження STT моделей...")
+                self.gui_queue.put(('update_status', '🔊 Завантаження STT моделей...'))
+                self.gui_queue.put(('add_message', ('assistant', '🔊 Завантаження STT моделей... зачекайте')))
+            print(f"\n{Fore.CYAN}🔊 Завантаження STT моделей...")
+            start_time = time.time()
+            
+            try:
+                self.stt_engine = self.load_stt_model()
+                stt_time = time.time() - start_time
+                self.stt_load_time = stt_time
+                print(f"{Fore.LIGHTBLACK_EX}⏱️  {stt_time:.2f}с")
+                if self.gui_queue:
+                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ✅ STT готовий")
+                    self.gui_queue.put(('update_status', f'✅ STT готовий ({stt_time:.1f}с)'))
+                    self.gui_queue.put(('add_message', ('assistant', f'✅ STT готовий! ({stt_time:.1f}с)')))
+                return True
+            except Exception as e:
+                print(f"{Fore.RED}❌ Не вдалося завантажити модель розпізнавання мови")
+                print(f"{Fore.RED}   Деталі: {e}")
+                if self.gui_queue:
+                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ Помилка STT")
+                    self.gui_queue.put(('update_status', '❌ Помилка STT'))
+                    self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка завантаження STT: {e}')))
+                self.stt_engine = None
+                return False
+        else:
+            print(f"\n{Fore.YELLOW}⏭️  STT вимкнено в налаштуваннях")
+            self.stt_engine = None
+            return True
+    
+    def _init_tts_engine(self):
+        """Ініціалізувати TTS двигун (спільний метод для initialize та initialize_without_listener)."""
+        from functions.config import TTS_ENABLED
+        self.tts_engine = None
+        
+        if TTS_ENABLED:
+            if self.gui_queue:
+                print(f"{Fore.CYAN}[GUI] Відправка повідомлення: 🔊 Ініціалізація TTS двигуна...")
+                self.gui_queue.put(('update_status', '🔊 Ініціалізація TTS двигуна...'))
+                self.gui_queue.put(('add_message', ('assistant', '🔊 Ініціалізація TTS двигуна... зачекайте')))
+            print(f"\n{Fore.CYAN}🔊 Ініціалізація TTS двигуна...")
+            start_time = time.time()
+            
+            try:
+                self.tts_engine = TTSEngine()
+                tts_time = time.time() - start_time
+                self.tts_load_time = tts_time
+                if self.tts_engine.is_ready:
+                    print(f"{Fore.GREEN}✅ TTS двигун готовий")
+                    print(f"{Fore.CYAN}   Голоси: {', '.join(self.tts_engine.get_voices())}")
+                    print(f"{Fore.CYAN}   Швидкість: {self.tts_engine.speech_rate}")
+                    print(f"{Fore.CYAN}   Гучність: {self.tts_engine.volume}")
+                    print(f"{Fore.CYAN}   Пристрій: {self.tts_engine.device}")
+                    print(f"{Fore.LIGHTBLACK_EX}⏱️  {tts_time:.2f}с")
+                    if self.gui_queue:
+                        print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ✅ TTS готовий")
+                        self.gui_queue.put(('update_status', f'✅ TTS готовий ({tts_time:.1f}с)'))
+                        self.gui_queue.put(('add_message', ('assistant', f'✅ TTS готовий! ({tts_time:.1f}с)')))
+                    return True
+                else:
+                    print(f"{Fore.RED}❌ TTS двигун не готовий")
+                    self.tts_engine = None
+                    if self.gui_queue:
+                        print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ TTS не готовий")
+                        self.gui_queue.put(('update_status', '❌ TTS не готовий'))
+                        self.gui_queue.put(('add_message', ('assistant', '❌ TTS не готовий')))
+                    return False
+            except Exception as e:
+                print(f"{Fore.RED}❌ Помилка ініціалізації TTS: {e}")
+                import traceback
+                traceback.print_exc()
+                self.tts_engine = None
+                if self.gui_queue:
+                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ Помилка TTS")
+                    self.gui_queue.put(('update_status', '❌ Помилка TTS'))
+                    self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка ініціалізації TTS: {e}')))
+                return False
+        else:
+            print(f"\n{Fore.YELLOW}⚠️  TTS вимкнено в налаштуваннях")
+            return True
+    
     def transcribe_audio(self, audio, stt_engine, audio_filter):
         """Транскрибувати аудіо через STT двигун"""
         try:
@@ -645,37 +733,9 @@ class AssistantCore:
         print_audio_diagnostics()
         run_audio_smoke_test()
 
-        # Перевірка чи увімкнено STT
-        from functions.core_settings import get_setting
-        stt_enabled = get_setting("STT_ENABLED", False)
-
-        if stt_enabled:
-            if self.gui_queue:
-                print(f"{Fore.CYAN}[GUI] Відправка повідомлення: 🔊 Завантаження STT моделей...")
-                self.gui_queue.put(('update_status', '🔊 Завантаження STT моделей...'))
-                self.gui_queue.put(('add_message', ('assistant', '🔊 Завантаження STT моделей... зачекайте')))
-            print(f"\n{Fore.CYAN}🔊 Завантаження STT моделей...")
-            start_time = time.time()
-
-            try:
-                self.stt_engine = self.load_stt_model()
-                stt_time = time.time() - start_time
-                print(f"{Fore.LIGHTBLACK_EX}⏱️  {stt_time:.2f}с")
-                if self.gui_queue:
-                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ✅ STT готовий")
-                    self.gui_queue.put(('update_status', f'✅ STT готовий ({stt_time:.1f}с)'))
-                    self.gui_queue.put(('add_message', ('assistant', f'✅ STT готовий! ({stt_time:.1f}с)')))
-            except Exception as e:
-                print(f"{Fore.RED}❌ Не вдалося завантажити модель розпізнавання мови")
-                print(f"{Fore.RED}   Деталі: {e}")
-                if self.gui_queue:
-                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ Помилка STT")
-                    self.gui_queue.put(('update_status', '❌ Помилка STT'))
-                    self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка завантаження STT: {e}')))
-                return False
-        else:
-            print(f"\n{Fore.YELLOW}⏭️  STT вимкнено в налаштуваннях")
-            self.stt_engine = None
+        # Ініціалізація STT двигуна
+        if not self._init_stt_engine():
+            return False
         
         # Ініціалізація аудіо фільтра
         print(f"\n{Fore.CYAN}🎛️  Ініціалізація аудіо фільтрів...")
@@ -699,48 +759,9 @@ class AssistantCore:
             print(f"{Fore.YELLOW}⚠️  Не вдалося ініціалізувати self-learning: {e}")
             self.self_learning = None
         
-        # Ініціалізація TTS
-        self.tts_engine = None
-        if TTS_ENABLED:
-            if self.gui_queue:
-                print(f"{Fore.CYAN}[GUI] Відправка повідомлення: 🔊 Ініціалізація TTS двигуна...")
-                self.gui_queue.put(('update_status', '🔊 Ініціалізація TTS двигуна...'))
-                self.gui_queue.put(('add_message', ('assistant', '🔊 Ініціалізація TTS двигуна... зачекайте')))
-            print(f"\n{Fore.CYAN}🔊 Ініціалізація TTS двигуна...")
-            start_time = time.time()
-
-            try:
-                self.tts_engine = TTSEngine()
-                tts_time = time.time() - start_time
-                if self.tts_engine.is_ready:
-                    print(f"{Fore.GREEN}✅ TTS двигун готовий")
-                    print(f"{Fore.CYAN}   Голоси: {', '.join(self.tts_engine.get_voices())}")
-                    print(f"{Fore.CYAN}   Швидкість: {self.tts_engine.speech_rate}")
-                    print(f"{Fore.CYAN}   Гучність: {self.tts_engine.volume}")
-                    print(f"{Fore.CYAN}   Пристрій: {self.tts_engine.device}")
-                    print(f"{Fore.LIGHTBLACK_EX}⏱️  {tts_time:.2f}с")
-                    if self.gui_queue:
-                        print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ✅ TTS готовий")
-                        self.gui_queue.put(('update_status', f'✅ TTS готовий ({tts_time:.1f}с)'))
-                        self.gui_queue.put(('add_message', ('assistant', f'✅ TTS готовий! ({tts_time:.1f}с)')))
-                else:
-                    print(f"{Fore.RED}❌ TTS двигун не готовий")
-                    self.tts_engine = None
-                    if self.gui_queue:
-                        print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ TTS не готовий")
-                        self.gui_queue.put(('update_status', '❌ TTS не готовий'))
-                        self.gui_queue.put(('add_message', ('assistant', '❌ TTS не готовий')))
-            except Exception as e:
-                print(f"{Fore.RED}❌ Помилка ініціалізації TTS: {e}")
-                import traceback
-                traceback.print_exc()
-                self.tts_engine = None
-                if self.gui_queue:
-                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ Помилка TTS")
-                    self.gui_queue.put(('update_status', '❌ Помилка TTS'))
-                    self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка ініціалізації TTS: {e}')))
-        else:
-            print(f"\n{Fore.YELLOW}⚠️  TTS вимкнено в налаштуваннях")
+        # Ініціалізація TTS двигуна
+        if not self._init_tts_engine():
+            return False
         
         print(f"\n{Fore.CYAN}🔌 Підключення до LM Studio...")
         if not self.check_lm_studio():
@@ -821,73 +842,19 @@ class AssistantCore:
         print(f"{Fore.CYAN}🔧 Завантаження функцій...")
         self.registry = FunctionRegistry()
 
-        # Перевірка STT
-        from functions.core_settings import get_setting
-        stt_enabled = get_setting("STT_ENABLED", False)
-
-        if stt_enabled:
-            if self.gui_queue:
-                print(f"{Fore.CYAN}[GUI] Відправка повідомлення: 🔊 Завантаження STT моделей...")
-                self.gui_queue.put(('update_status', '🔊 Завантаження STT моделей...'))
-                self.gui_queue.put(('add_message', ('assistant', '🔊 Завантаження STT моделей... зачекайте')))
-            print(f"\n{Fore.CYAN}🔊 Завантаження STT...")
-            start_time = time.time()
-            try:
-                self.stt_engine = self.load_stt_model()
-                stt_time = time.time() - start_time
-                self.stt_load_time = stt_time  # Зберігаємо час завантаження STT
-                print(f"{Fore.GREEN}✅ STT готовий")
-                if self.gui_queue:
-                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ✅ STT готовий")
-                    self.gui_queue.put(('update_status', f'✅ STT готовий ({stt_time:.1f}с)'))
-                    self.gui_queue.put(('add_message', ('assistant', f'✅ STT готовий! ({stt_time:.1f}с)')))
-            except Exception as e:
-                print(f"{Fore.YELLOW}⚠️  STT недоступний: {e}")
-                self.stt_engine = None
-                if self.gui_queue:
-                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ Помилка STT")
-                    self.gui_queue.put(('update_status', '❌ Помилка STT'))
-                    self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка завантаження STT: {e}')))
-        else:
-            self.stt_engine = None
-            print(f"\n{Fore.YELLOW}⏭️  Автозапуск STT вимкнено в налаштуваннях")
+        # Ініціалізація STT двигуна
+        if not self._init_stt_engine():
+            return False
 
         # Аудіо фільтр
         self.audio_filter = get_audio_filter(SAMPLE_RATE)
 
-        # TTS
-        self.tts_engine = None
-        if TTS_ENABLED:
-            if self.gui_queue:
-                print(f"{Fore.CYAN}[GUI] Відправка повідомлення: 🔊 Ініціалізація TTS двигуна...")
-                self.gui_queue.put(('update_status', '🔊 Ініціалізація TTS двигуна...'))
-                self.gui_queue.put(('add_message', ('assistant', '🔊 Ініціалізація TTS двигуна... зачекайте')))
-            print(f"\n{Fore.CYAN}🔊 Ініціалізація TTS...")
-            start_time = time.time()
-            try:
-                self.tts_engine = TTSEngine()
-                tts_time = time.time() - start_time
-                self.tts_load_time = tts_time  # Зберігаємо час завантаження TTS
-                if not self.tts_engine.is_ready:
-                    self.tts_engine = None
-                    if self.gui_queue:
-                        print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ TTS не готовий")
-                        self.gui_queue.put(('update_status', '❌ TTS не готовий'))
-                        self.gui_queue.put(('add_message', ('assistant', '❌ TTS не готовий')))
-                else:
-                    print(f"{Fore.GREEN}✅ TTS готовий")
-                    if self.gui_queue:
-                        print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ✅ TTS готовий")
-                        self.gui_queue.put(('update_status', f'✅ TTS готовий ({tts_time:.1f}с)'))
-                        self.gui_queue.put(('add_message', ('assistant', f'✅ TTS готовий! ({tts_time:.1f}с)')))
-                        self.gui_queue.put(('add_message', ('assistant', f'✅ Готовий до роботи! Введіть команду.')))
-            except Exception as e:
-                print(f"{Fore.YELLOW}⚠️  TTS недоступний: {e}")
-                self.tts_engine = None
-                if self.gui_queue:
-                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ Помилка TTS")
-                    self.gui_queue.put(('update_status', '❌ Помилка TTS'))
-                    self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка ініціалізації TTS: {e}')))
+        # Ініціалізація TTS двигуна
+        if not self._init_tts_engine():
+            return False
+        
+        if self.gui_queue and self.tts_engine:
+            self.gui_queue.put(('add_message', ('assistant', '✅ Готовий до роботи! Введіть команду.')))
 
         # LM Studio
         print(f"\n{Fore.CYAN}🔌 Підключення до LM Studio...")
@@ -942,6 +909,8 @@ class AssistantCore:
             print(f"{Fore.YELLOW}⚠️  WindsurfWatcherExecutor недоступний: {e}")
 
         # --- Ініціалізація STT контролера для GUI (кнопка мікрофона) ---
+        from functions.core_settings import get_setting
+        stt_enabled = get_setting("STT_ENABLED", False)
         if stt_enabled and self.gui_queue is not None:
             try:
                 from functions.core_stt_listener import get_stt_controller
@@ -1025,25 +994,6 @@ class AssistantCore:
 
         if self.tts_engine:
             self.assistant.set_tts_engine(self.tts_engine)
-
-        # --- Ініціалізація STT контролера для GUI (кнопка мікрофона) ---
-        if stt_enabled and self.gui_queue is not None:
-            try:
-                from functions.core_stt_listener import get_stt_controller
-                print(f"\n{Fore.CYAN}🎤 Ініціалізація голосових команд для GUI...")
-                stt_controller = get_stt_controller(
-                    process_command_callback=self.process_text_command
-                )
-                if stt_controller:
-                    # GUI може ще не бути готовим - відкладене встановлення через чергу
-                    self._pending_stt_controller = stt_controller
-                    print(f"{Fore.GREEN}✅ STT контролер створено, буде передано в GUI")
-                else:
-                    print(f"{Fore.YELLOW}⚠️  STT контролер не створено")
-            except Exception as e:
-                print(f"{Fore.YELLOW}⚠️  Не вдалося ініціалізувати STT контролер: {e}")
-                import traceback
-                traceback.print_exc()
 
         # --- Ініціалізація Global Voice Input (глобальний hook для голосового вводу) ---
         try:

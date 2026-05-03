@@ -11,15 +11,16 @@
 - keyboard_press(key="Enter") - натискання Enter
 
 Затримки:
-- 6 секунд для ініціалізації
-- 1 секунда перед вставкою тексту
+- 30 секунд для ініціалізації
+- 2 секунди перед вставкою тексту
 - 2 секунди перед Enter
-- 45 секунд для виконання плану + LLM summary
+- 30 секунд для виконання плану + LLM summary
 """
 import subprocess
 import time
 import os
 import sys
+from datetime import datetime
 
 # Додаємо шлях до functions
 sys.path.insert(0, r"d:\Python\agent")
@@ -29,7 +30,24 @@ def main():
     print("Тест вставки через GlobalVoiceInput._insert_text")
     print("(GUI автоматизація через GVI)")
     print("=" * 60)
-    
+
+    # Створити папку для скріншотів
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    screenshots_dir = rf"d:\Python\agent\TEST_GUI\screenshots_{timestamp}"
+    os.makedirs(screenshots_dir, exist_ok=True)
+    print(f"📁 Папка для скріншотів: {screenshots_dir}")
+
+    # Функція для скріншота
+    def take_screenshot(name):
+        try:
+            from PIL import ImageGrab
+            screenshot = ImageGrab.grab()
+            path = os.path.join(screenshots_dir, f"{name}.png")
+            screenshot.save(path)
+            print(f"📸 Скріншот збережено: {name}.png")
+        except Exception as e:
+            print(f"❌ Помилка скріншота {name}: {e}")
+
     # 1. Очистити логи
     logs_dir = r"d:\Python\agent\debug_logs"
     if os.path.exists(logs_dir):
@@ -69,9 +87,10 @@ def main():
     output_thread.start()
     
     # 3. Затримка для ініціалізації
-    print("⏳ Зачекайте 6 секунд для ініціалізації...")
-    time.sleep(6)
-    
+    print("⏳ Зачекайте 30 секунд для ініціалізації...")
+    time.sleep(30)
+    take_screenshot("01_after_initialization")
+
     # 4. Активація вікна агента та вставка тексту через GlobalVoiceInput
     print("\n📝 Активація вікна агента та вставка тексту 'проаналізуй код d:\\Python\\agent' через GVI...")
     try:
@@ -79,10 +98,7 @@ def main():
         from functions.tools_mouse_keyboard import keyboard_press
         from functions.global_voice_input import GlobalVoiceInput
 
-        # Затримка для ініціалізації агента
-        print("⏳ Затримка 6 секунд для ініціалізації агента...")
-        time.sleep(6)
-        print("✅ Затримка завершена")
+        print("✅ Ініціалізація завершена")
 
         # Активація вікна агента
         print("📝 Активація вікна агента...")
@@ -92,10 +108,11 @@ def main():
         print(f"   - title: {result.get('title')}")
         print(f"   - foreground: {result.get('foreground')}")
         print(f"   - focus_error: {result.get('focus_error')}")
+        take_screenshot("02_window_activated")
 
         # Вставка тексту через GlobalVoiceInput._insert_text_with_script
-        print("⏳ Затримка 1 секунда перед вставкою тексту...")
-        time.sleep(1)
+        print("⏳ Затримка 2 секунди перед вставкою тексту...")
+        time.sleep(2)
         print("✅ Затримка завершена")
         
         text = "проаналізуй код d:\\Python\\agent"
@@ -110,6 +127,7 @@ def main():
         print("⌨️ Виклик gvi._insert_text_with_script(text)...")
         insert_result = gvi._insert_text_with_script(text)
         print(f"✅ Текст вставлено: {insert_result}")
+        take_screenshot("03_text_inserted")
 
         # Натискання Enter
         print("⏳ Затримка 2 секунди перед Enter...")
@@ -120,14 +138,18 @@ def main():
         print(f"✅ Enter натиснуто: {result}")
 
         # Зачекати відповіді (для виконання плану + LLM summary)
-        print(f"⏳ Зачекайте 45 секунд для виконання плану + LLM summary...")
-        for i in range(45):
+        print(f"⏳ Зачекайте 30 секунд для виконання плану + LLM summary...")
+        for i in range(30):
             time.sleep(1)
             if i % 10 == 0:
                 print(f"⏳ Пройшло {i} секунд...")
+                take_screenshot(f"04_agentloop_{i}s")
     except Exception as e:
         print(f"❌ Помилка при вставці тексту: {e}")
-    
+
+    # Фінальний скріншот перед закриттям
+    take_screenshot("05_before_close")
+
     # 7. Закриття програми
     print("❌ Закриття програми...")
     process.terminate()
@@ -158,7 +180,25 @@ def main():
                 print(f"❌ Помилка читання {log_file}: {e}")
     else:
         print("❌ Папка логів не існує")
-    
+
+    # Створити описовий файл
+    description_path = os.path.join(screenshots_dir, "README.txt")
+    with open(description_path, "w", encoding="utf-8") as f:
+        f.write(f"Тест розуміння екрану AgentLoop\n")
+        f.write(f"Дата: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Задача: проаналізуй код d:\\Python\\agent\n")
+        f.write(f"\nОпис скріншотів:\n")
+        f.write(f"- 01_after_initialization.png: Після ініціалізації агента (30 сек)\n")
+        f.write(f"- 02_window_activated.png: Після активації вікна агента\n")
+        f.write(f"- 03_text_inserted.png: Після вставки тексту через GVI\n")
+        f.write(f"- 04_agentloop_0s.png: AgentLoop запущено (0 сек)\n")
+        f.write(f"- 04_agentloop_10s.png: AgentLoop виконується (10 сек)\n")
+        f.write(f"- 04_agentloop_20s.png: AgentLoop виконується (20 сек)\n")
+        f.write(f"- 05_before_close.png: Перед закриттям програми\n")
+
+    print(f"\n📝 Опис збережено: {description_path}")
+    print(f"📁 Папка зі скріншотами: {screenshots_dir}")
+
     print("\n" + "=" * 60)
     print("ТЕСТ ЗАВЕРШЕНО")
     print("=" * 60)

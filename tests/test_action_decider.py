@@ -103,9 +103,10 @@ class TestActionDeciderAvailability:
         d = ActionDecider(ask_llm_with_tools_fn=None, tools_schema=AGENT_TOOLS)
         assert not d.is_available
 
-    def test_unavailable_without_tools(self):
+    def test_available_without_tools(self):
+        # tools не обов'язкові — LLM може працювати через JSON parsing
         d = ActionDecider(ask_llm_with_tools_fn=lambda **k: None, tools_schema=[])
-        assert not d.is_available
+        assert d.is_available
 
     def test_available_when_both_provided(self):
         d = _make_decider(llm_fn=lambda **k: None)
@@ -131,12 +132,14 @@ class TestActionDeciderDecide:
         assert action.tool_call_id == "c1"
 
     def test_decide_returns_done_when_no_tool_calls(self):
+        # З новою логікою fallback, якщо content не JSON → take_screenshot
         response = ChatToolsResponse(content="Готово!", tool_calls=[])
         llm_fn = MagicMock(return_value=response)
         d = _make_decider(llm_fn=llm_fn)
         action = d.decide(goal="test", observation=None, history=[])
-        assert action.name == "done"
-        assert "Готово" in action.arguments.get("summary", "")
+        # Fallback на take_screenshot при помилці парсингу
+        assert action.name == "take_screenshot"
+        assert "fallback" in action.reasoning
 
     def test_decide_handles_llm_error(self):
         response = ChatToolsResponse(error="network: connection refused")
@@ -205,7 +208,7 @@ class _FakeRegistry:
     def __init__(self):
         self.calls = []
 
-    def execute_function(self, name: str, args: Dict[str, Any]):
+    def execute_function(self, name: str, args: Dict[str, Any], auto_create: bool = False):
         self.calls.append((name, dict(args)))
         return {"ok": True, "result": f"executed {name}"}
 
@@ -336,3 +339,346 @@ class TestBuildDefaultDecider:
         decider = build_default_decider(enable_browser=True)
         assert decider is not None
         # Browser-tools мають бути в tools_schema (перевірка opaque, без api)
+
+
+# --------------------------------------------------------------------------- #
+# Long integration tests with different task types                              #
+# --------------------------------------------------------------------------- #
+
+
+class TestJSONParsingFallback:
+    """Тести для JSON parsing fallback (без function-calling)."""
+
+    def test_parse_valid_json_from_content(self):
+        """LLM повертає валідний JSON в content без tool_calls."""
+        response = ChatToolsResponse(
+            content='{"action":"take_screenshot","args":{},"reasoning":"Need to see screen"}',
+            tool_calls=[],
+        )
+        llm_fn = MagicMock(return_value=response)
+        d = _make_decider(llm_fn=llm_fn)
+        action = d.decide(goal="показати екран", observation=None, history=[])
+        assert action.name == "take_screenshot"
+        assert action.arguments == {}
+        assert "screen" in action.reasoning
+
+    def test_parse_json_with_args(self):
+        """JSON з складними аргументами."""
+        response = ChatToolsResponse(
+            content='{"action":"list_directory","args":{"directory":"d:\\\\Python\\\\agent"},"reasoning":"List files"}',
+            tool_calls=[],
+        )
+        llm_fn = MagicMock(return_value=response)
+        d = _make_decider(llm_fn=llm_fn)
+        action = d.decide(goal="показати файли", observation=None, history=[])
+        assert action.name == "list_directory"
+        assert action.arguments["directory"] == "d:\\Python\\agent"
+
+    def test_parse_json_from_markdown(self):
+        """JSON обгорнутий в ```json ... ```."""
+        response = ChatToolsResponse(
+            content='```json\n{"action":"ocr_screen","args":{"lang":"ukr+eng"},"reasoning":"Read text"}\n```',
+            tool_calls=[],
+        )
+        llm_fn = MagicMock(return_value=response)
+        d = _make_decider(llm_fn=llm_fn)
+        action = d.decide(goal="прочитати текст", observation=None, history=[])
+        assert action.name == "ocr_screen"
+        assert action.arguments["lang"] == "ukr+eng"
+
+    def test_fallback_to_take_screenshot_on_parse_error(self):
+        """При помилці парсингу fallback на take_screenshot."""
+        response = ChatToolsResponse(
+            content="not valid json at all",
+            tool_calls=[],
+        )
+        llm_fn = MagicMock(return_value=response)
+        d = _make_decider(llm_fn=llm_fn)
+        action = d.decide(goal="test", observation=None, history=[])
+        assert action.name == "take_screenshot"
+        assert "fallback" in action.reasoning
+
+    def test_regex_extraction_of_json(self):
+        """JSON витягується через regex з тексту."""
+        response = ChatToolsResponse(
+            content="Some text before {\"action\":\"done\",\"args\":{\"summary\":\"OK\"}} some after",
+            tool_calls=[],
+        )
+        llm_fn = MagicMock(return_value=response)
+        d = _make_decider(llm_fn=llm_fn)
+        action = d.decide(goal="test", observation=None, history=[])
+        assert action.name == "done"
+        assert action.arguments["summary"] == "OK"
+
+
+class TestAgentLoopLongTasks:
+    """Довгі інтеграційні тести для AgentLoop з різними типами задач."""
+
+    def test_code_analysis_task(self):
+        """Задача аналізу коду: list_directory → read_code_file → done."""
+        actions_sequence = [
+            ChatToolsResponse(
+                content='{"action":"list_directory","args":{"directory":"d:\\\\Python\\\\agent"},"reasoning":"List files"}',
+                tool_calls=[],
+            ),
+            ChatToolsResponse(
+                content='{"action":"read_code_file","args":{"filepath":"d:\\\\Python\\\\agent\\\\main.py"},"reasoning":"Read main file"}',
+                tool_calls=[],
+            ),
+            ChatToolsResponse(
+                content='{"action":"done","args":{"summary":"Code analyzed successfully"},"reasoning":"Task complete"}',
+                tool_calls=[],
+            ),
+        ]
+
+        call_count = [0]
+
+        def llm_fn(**kwargs):
+            response = actions_sequence[min(call_count[0], len(actions_sequence) - 1)]
+            call_count[0] += 1
+            return response
+
+        decider = _make_decider(llm_fn=llm_fn)
+        registry = _FakeRegistry()
+
+        loop = AgentLoop(
+            assistant=_FakeAssistant(),
+            registry=registry,
+            config=AgentLoopConfig(
+                enable_llm_decider=True,
+                enable_ocr=False,
+                max_steps=5,
+            ),
+            decider=decider,
+        )
+
+        result = loop.run("проаналізуй код d:\\Python\\agent")
+        assert result["ok"] is True
+        # done не викликається через registry, тому тільки 2 виклики
+        assert len(registry.calls) == 2
+        assert registry.calls[0][0] == "list_directory"
+        assert registry.calls[1][0] == "read_code_file"
+        assert result["summary"] == "Code analyzed successfully"
+
+    def test_gui_task_with_screenshot_and_ocr(self):
+        """GUI задача: take_screenshot → ocr_screen → click_text → done."""
+        actions_sequence = [
+            ChatToolsResponse(
+                content='{"action":"take_screenshot","args":{},"reasoning":"Capture screen"}',
+                tool_calls=[],
+            ),
+            ChatToolsResponse(
+                content='{"action":"ocr_screen","args":{"lang":"ukr+eng"},"reasoning":"Read text"}',
+                tool_calls=[],
+            ),
+            ChatToolsResponse(
+                content='{"action":"click_text","args":{"text":"Save"},"reasoning":"Click Save button"}',
+                tool_calls=[],
+            ),
+            ChatToolsResponse(
+                content='{"action":"done","args":{"summary":"File saved"},"reasoning":"Task complete"}',
+                tool_calls=[],
+            ),
+        ]
+
+        call_count = [0]
+
+        def llm_fn(**kwargs):
+            response = actions_sequence[min(call_count[0], len(actions_sequence) - 1)]
+            call_count[0] += 1
+            return response
+
+        decider = _make_decider(llm_fn=llm_fn)
+        registry = _FakeRegistry()
+
+        loop = AgentLoop(
+            assistant=_FakeAssistant(),
+            registry=registry,
+            config=AgentLoopConfig(
+                enable_llm_decider=True,
+                enable_ocr=False,
+                max_steps=5,
+            ),
+            decider=decider,
+        )
+
+        result = loop.run("збережи файл")
+        assert result["ok"] is True
+        # done не викликається через registry, тому тільки 3 виклики
+        assert len(registry.calls) == 3
+        assert registry.calls[0][0] == "take_screenshot"
+        assert registry.calls[1][0] == "ocr_screen"
+        assert registry.calls[2][0] == "click_text"
+        assert result["summary"] == "File saved"
+
+    def test_general_task_with_ask_user(self):
+        """Загальна задача з ask_user."""
+        actions_sequence = [
+            ChatToolsResponse(
+                content='{"action":"ask_user","args":{"question":"Який файл відкрити?"},"reasoning":"Need user input"}',
+                tool_calls=[],
+            ),
+            ChatToolsResponse(
+                content='{"action":"read_code_file","args":{"filepath":"d:\\\\Python\\\\agent\\\\README.md"},"reasoning":"Read README"}',
+                tool_calls=[],
+            ),
+            ChatToolsResponse(
+                content='{"action":"done","args":{"summary":"README read"},"reasoning":"Task complete"}',
+                tool_calls=[],
+            ),
+        ]
+
+        call_count = [0]
+
+        def llm_fn(**kwargs):
+            response = actions_sequence[min(call_count[0], len(actions_sequence) - 1)]
+            call_count[0] += 1
+            return response
+
+        decider = _make_decider(llm_fn=llm_fn)
+        registry = _FakeRegistry()
+
+        loop = AgentLoop(
+            assistant=_FakeAssistant(),
+            registry=registry,
+            config=AgentLoopConfig(
+                enable_llm_decider=True,
+                enable_ocr=False,
+                max_steps=5,
+            ),
+            decider=decider,
+        )
+
+        result = loop.run("прочитай документ")
+        assert result["ok"] is True
+        # ask_user без callback → noop (не викликається через registry)
+        # done не викликається через registry
+        assert len(registry.calls) == 1
+        assert registry.calls[0][0] == "read_code_file"
+        assert result["summary"] == "README read"
+
+    def test_task_with_retries_and_replan(self):
+        """Задача з повторними спробами і replan."""
+        # LLM завжди повертає mouse_click (для симуляції повторних спроб)
+        def llm_fn(**kwargs):
+            return ChatToolsResponse(
+                content='{"action":"mouse_click","args":{"x":100,"y":200},"reasoning":"Click button"}',
+                tool_calls=[],
+            )
+
+        decider = _make_decider(llm_fn=llm_fn)
+
+        class FailingThenSuccessRegistry:
+            def __init__(self):
+                self.calls = []
+                self.fail_count = 0
+
+            def execute_function(self, name, args, auto_create: bool = False):
+                self.calls.append((name, dict(args)))
+                if name == "mouse_click" and self.fail_count < 2:
+                    self.fail_count += 1
+                    return {"ok": False, "error": "click failed"}
+                return {"ok": True, "result": f"executed {name}"}
+
+        registry = FailingThenSuccessRegistry()
+
+        loop = AgentLoop(
+            assistant=_FakeAssistant(),
+            registry=registry,
+            config=AgentLoopConfig(
+                enable_llm_decider=True,
+                enable_ocr=False,
+                max_steps=10,
+                replan_after_failures=2,  # Replan після 2 невдач
+            ),
+            decider=decider,
+        )
+
+        result = loop.run("натисни кнопку")
+        # Перевіряємо, що були спроби і врешті успіх
+        assert registry.fail_count == 2  # 2 невдачі перед успіхом
+        assert len(registry.calls) == 2  # 2 невдачі, третя не встигає виконатися
+
+
+class TestDirectLLMWithoutAgentLoop:
+    """Тести для прямого виклику LLM без AgentLoop."""
+
+    def test_direct_llm_call_with_json_response(self):
+        """Прямий виклик LLM з JSON відповіддю."""
+        response = ChatToolsResponse(
+            content='{"action":"list_directory","args":{"directory":"d:\\\\Python\\\\agent"},"reasoning":"List files"}',
+            tool_calls=[],
+        )
+        llm_fn = MagicMock(return_value=response)
+        d = _make_decider(llm_fn=llm_fn)
+
+        action = d.decide(
+            goal="показати файли в d:\\Python\\agent",
+            observation=None,
+            history=[],
+        )
+
+        assert action.name == "list_directory"
+        assert action.arguments["directory"] == "d:\\Python\\agent"
+
+    def test_direct_llm_with_history_context(self):
+        """LLM враховує історію дій."""
+        response = ChatToolsResponse(
+            content='{"action":"read_code_file","args":{"filepath":"d:\\\\Python\\\\agent\\\\main.py"},"reasoning":"Read next file"}',
+            tool_calls=[],
+        )
+        llm_fn = MagicMock(return_value=response)
+        d = _make_decider(llm_fn=llm_fn)
+
+        history = [
+            {
+                "action": "list_directory",
+                "args": {"directory": "d:\\Python\\agent"},
+                "act_result": {"ok": True, "result": "files listed"},
+            }
+        ]
+
+        action = d.decide(
+            goal="прочитай основний файл",
+            observation=None,
+            history=history,
+        )
+
+        assert action.name == "read_code_file"
+        # Перевіряємо, що історія була передана в LLM
+        llm_fn.assert_called_once()
+        call_kwargs = llm_fn.call_args[1]
+        messages = call_kwargs["messages"]
+        assert len(messages) >= 2  # system + user
+        user_content = messages[1]["content"]
+        assert "list_directory" in user_content
+
+    def test_direct_llm_with_observation_context(self):
+        """LLM враховує observation (скріншот, OCR, UI elements)."""
+        response = ChatToolsResponse(
+            content='{"action":"click_text","args":{"text":"Save"},"reasoning":"Click Save button"}',
+            tool_calls=[],
+        )
+        llm_fn = MagicMock(return_value=response)
+        d = _make_decider(llm_fn=llm_fn)
+
+        obs = Observation(
+            ocr_text="File Edit View Save Exit",
+            active_window_title="Notepad",
+            ui_elements=[{"type": "button", "text": "Save", "x": 100, "y": 10}],
+        )
+
+        action = d.decide(
+            goal="збережи файл",
+            observation=obs,
+            history=[],
+        )
+
+        assert action.name == "click_text"
+        # Перевіряємо, що observation був переданий
+        llm_fn.assert_called_once()
+        call_kwargs = llm_fn.call_args[1]
+        messages = call_kwargs["messages"]
+        user_content = messages[1]["content"]
+        assert "Notepad" in user_content
+        assert "Save" in user_content
