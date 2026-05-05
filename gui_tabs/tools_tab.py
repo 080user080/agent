@@ -14,11 +14,6 @@ from .constants import TEST_TOOLS
 class ToolsTab(BaseTab):
     """Вкладка інструментів."""
 
-    def __init__(self, parent=None):
-        self.tools_table = None
-        self.execute_button = None
-        super().__init__(parent)
-
     def _build_content(self, layout):
         """Побудувати контент вкладки інструментів."""
         # Група: Доступні інструменти

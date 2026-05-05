@@ -1,6 +1,6 @@
 """Вкладка логів."""
 from datetime import datetime
-from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
@@ -18,13 +18,6 @@ from .constants import LOG_LEVELS, TEST_LOGS, LOG_LEVEL_COLORS
 
 class LogsTab(BaseTab):
     """Вкладка логів."""
-
-    def __init__(self, parent=None):
-        self.level_combo = None
-        self.search_input = None
-        self.clear_button = None
-        self.logs_table = None
-        super().__init__(parent)
 
     def _build_content(self, layout):
         """Побудувати контент вкладки логів."""
@@ -72,14 +65,10 @@ class LogsTab(BaseTab):
         self.logs_table.setItem(row, 3, QTableWidgetItem(message))
 
         # Кольорове виділення
-        color = LOG_LEVEL_COLORS.get(level, "#000000")
+        color_hex = LOG_LEVEL_COLORS.get(level, "#000000")
+        foreground = QColor(color_hex)
         for col in range(4):
-            self.logs_table.item(row, col).setForeground(
-                Qt.GlobalColor.black if color == "#000000"
-                else Qt.GlobalColor.red if level == "ERROR"
-                else Qt.GlobalColor.darkYellow if level == "WARNING"
-                else Qt.GlobalColor.gray
-            )
+            self.logs_table.item(row, col).setForeground(foreground)
 
     def clear_logs(self):
         """Очистити таблицю логів."""

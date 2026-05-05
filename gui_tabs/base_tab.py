@@ -1,5 +1,5 @@
 """Базовий клас для вкладок GUI."""
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QGroupBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QGroupBox
 
 
 class BaseTab(QWidget):
@@ -24,9 +24,3 @@ class BaseTab(QWidget):
         group = QGroupBox(title)
         parent_layout.addWidget(group)
         return group
-
-    def create_hbox(self, parent_layout: QVBoxLayout) -> QHBoxLayout:
-        """Створити горизонтальний layout."""
-        hbox = QHBoxLayout()
-        parent_layout.addLayout(hbox)
-        return hbox

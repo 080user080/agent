@@ -1,4 +1,5 @@
 """Вкладка налаштувань."""
+from PyQt6.QtCore import QSettings
 from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -25,19 +26,7 @@ class SettingsTab(BaseTab):
     """Вкладка налаштувань."""
 
     def __init__(self, parent=None):
-        self.language_combo = None
-        self.theme_combo = None
-        self.auto_save = None
-        self.model_combo = None
-        self.temperature_spin = None
-        self.max_tokens_spin = None
-        self.stream_response = None
-        self.max_steps_spin = None
-        self.max_time_spin = None
-        self.enable_ocr = None
-        self.enable_vision = None
-        self.save_button = None
-        self.reset_button = None
+        self._settings = QSettings("MARK", "Assistant")
         super().__init__(parent)
 
     def _build_content(self, layout):
@@ -137,6 +126,19 @@ class SettingsTab(BaseTab):
 
     def save_settings(self):
         """Зберегти налаштування."""
+        s = self._settings
+        s.setValue("language_index", self.language_combo.currentIndex())
+        s.setValue("theme_index", self.theme_combo.currentIndex())
+        s.setValue("auto_save", self.auto_save.isChecked())
+        s.setValue("model_index", self.model_combo.currentIndex())
+        s.setValue("temperature", self.temperature_spin.value())
+        s.setValue("max_tokens", self.max_tokens_spin.value())
+        s.setValue("stream_response", self.stream_response.isChecked())
+        s.setValue("max_steps", self.max_steps_spin.value())
+        s.setValue("max_time", self.max_time_spin.value())
+        s.setValue("enable_ocr", self.enable_ocr.isChecked())
+        s.setValue("enable_vision", self.enable_vision.isChecked())
+        s.sync()
         print("Налаштування збережено!")
 
     def reset_settings(self):

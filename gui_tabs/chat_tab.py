@@ -16,12 +16,6 @@ from .constants import ROLE_COLORS, QUICK_COMMANDS
 class ChatTab(BaseTab):
     """Вкладка чату для спілкування з LLM."""
 
-    def __init__(self, parent=None):
-        self.chat_history = None
-        self.message_input = None
-        self.send_button = None
-        super().__init__(parent)
-
     def _build_content(self, layout):
         """Побудувати контент вкладки чату."""
         # Історія повідомлень

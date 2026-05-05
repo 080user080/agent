@@ -1,10 +1,9 @@
 """Константи для GUI вкладок."""
 from dataclasses import dataclass
-from typing import Dict
 
 
 # Кольори для ролей в чаті
-ROLE_COLORS: Dict[str, str] = {
+ROLE_COLORS: dict[str, str] = {
     "user": "#0078d4",
     "assistant": "#107c10",
     "system": "#6c757d",
@@ -12,7 +11,7 @@ ROLE_COLORS: Dict[str, str] = {
 
 
 # Кольори для рівнів логів
-LOG_LEVEL_COLORS: Dict[str, str] = {
+LOG_LEVEL_COLORS: dict[str, str] = {
     "INFO": "#000000",
     "WARNING": "#d48806",
     "ERROR": "#c53030",
@@ -39,11 +38,11 @@ TAB_NAMES = {
 TEST_LOGS = [
     ("INFO", "agent_loop", "AgentLoop запущено"),
     ("INFO", "llm", "З'єднання з LLM встановлено"),
-    ("WARNING", "agent_loop", "Консек'ютівні невдачі: 2"),
+    ("WARNING", "agent_loop", "Послідовні невдачі: 2"),
     ("ERROR", "registry", "Функція не знайдена: unknown_function"),
     ("DEBUG", "decider", "JSON парсинг успішний"),
     ("INFO", "gui", "Вікно оновлено"),
-    ("WARNING", "llm", "Квота майто вичерпана"),
+    ("WARNING", "llm", "Квота майже вичерпана"),
     ("INFO", "agent_loop", "Завдання завершено успішно"),
 ]
 

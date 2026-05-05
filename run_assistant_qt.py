@@ -4,8 +4,6 @@
 Замість `queue.Queue + root.after()` (Tkinter) використовуємо Qt сигнали —
 вони thread-safe і викликають слот у GUI-потоці автоматично.
 """
-from __future__ import annotations
-
 import os
 import queue
 import sys
@@ -44,48 +42,52 @@ class AssistantAppQt:
 
     # ─── Callback від GUI ─────────────────────────────────────────────────────
 
+    def _handle_restart(self) -> None:
+        """Обробка перезапуску асистента."""
+        log_console("🔁 Перезавантаження агента...")
+        import subprocess
+        root_dir = os.path.dirname(os.path.abspath(__file__))
+        run_script = os.path.join(root_dir, "run_assistant_qt.py")
+        subprocess.Popen(
+            [sys.executable, run_script],
+            cwd=root_dir,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0,
+        )
+        # Закрити поточне вікно
+        if self.gui:
+            app = QApplication.instance()
+            if app:
+                app.quit()
+
     def gui_callback(self, action: str, data=None) -> None:
         if not self.core:
             return
-        if action == 'pause_listening':
-            self.core.pause_listening()
-        elif action == 'resume_listening':
-            self.core.resume_listening()
-        elif action == 'process_text':
-            threading.Thread(
+        
+        # Mapping дій до обробників
+        action_handlers = {
+            'pause_listening': lambda: self.core.pause_listening(),
+            'resume_listening': lambda: self.core.resume_listening(),
+            'process_text': lambda: threading.Thread(
                 target=self.core.process_text_command, args=(data,), daemon=True
-            ).start()
-        elif action == 'stop_execution':
-            threading.Thread(target=self.core.stop_execution, daemon=True).start()
-        elif action == 'run_plan':
-            threading.Thread(target=self.core.run_pending_plan, daemon=True).start()
-        elif action == 'run_agent':
-            threading.Thread(
+            ).start(),
+            'stop_execution': lambda: threading.Thread(
+                target=self.core.stop_execution, daemon=True
+            ).start(),
+            'run_plan': lambda: threading.Thread(
+                target=self.core.run_pending_plan, daemon=True
+            ).start(),
+            'run_agent': lambda: threading.Thread(
                 target=self.core.run_agent_loop, args=(data,), daemon=True
-            ).start()
-        elif action == 'stop_plan':
-            self.core.stop_plan_execution()
-        elif action == 'start_windsurf_watch':
-            self.core.start_windsurf_watch()
-        elif action == 'stop_windsurf_watch':
-            self.core.stop_windsurf_watch()
-        elif action == 'restart':
-            log_console("🔁 Перезавантаження агента...")
-            import subprocess
-            import os
-            root_dir = os.path.dirname(os.path.abspath(__file__))
-            run_script = os.path.join(root_dir, "run_assistant_qt.py")
-            subprocess.Popen(
-                [sys.executable, run_script],
-                cwd=root_dir,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0,
-            )
-            # Закрити поточне вікно
-            if self.gui:
-                from PyQt6.QtWidgets import QApplication
-                app = QApplication.instance()
-                if app:
-                    app.quit()
+            ).start(),
+            'stop_plan': lambda: self.core.stop_plan_execution(),
+            'start_windsurf_watch': lambda: self.core.start_windsurf_watch(),
+            'stop_windsurf_watch': lambda: self.core.stop_windsurf_watch(),
+            'restart': lambda: self._handle_restart(),
+        }
+        
+        handler = action_handlers.get(action)
+        if handler:
+            handler()
 
     # ─── Диспетчер: gui_queue → Qt signal ─────────────────────────────────────
 

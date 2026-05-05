@@ -141,30 +141,33 @@ class AssistantCore:
         self.command_queue = queue.Queue()
         self.message_queue = queue.Queue()
     
+    # Технічні події — передаються як сигнали, а не текст у чат
+    _TECHNICAL_EVENTS = frozenset({
+        'update_progress', 'update_status',
+        'execution_started', 'execution_finished',
+        'plan_started', 'step_update', 'plan_finished',
+        'show_confirmation',
+    })
+
+    # Маппінг стрімінгових подій
+    _STREAM_EVENTS = {
+        'assistant_stream_start': ('stream_start', None),
+        'assistant_stream_chunk': ('stream_chunk', '{message}'),
+        'assistant_stream_end': ('stream_end', None),
+    }
+
     def log_to_gui(self, sender, message):
         """Відправити повідомлення в GUI"""
         if self.gui_queue:
-            # --- Технічні події від TaskExecutor та planner (НЕ чат) ---
-            # Ці msg_type потрапляють у GUI як сигнали, а не текст
-            TECHNICAL_EVENTS = {
-                'update_progress', 'update_status',
-                'execution_started', 'execution_finished',
-                'plan_started', 'step_update', 'plan_finished',
-                'show_confirmation',
-            }
-            if sender in TECHNICAL_EVENTS:
+            if sender in self._TECHNICAL_EVENTS:
                 self.gui_queue.put((sender, message))
                 return
 
-            # Нові типи для стрімінгу
-            if sender == "assistant_stream_start":
-                self.gui_queue.put(('stream_start', None))
-                return
-            elif sender == "assistant_stream_chunk":
-                self.gui_queue.put(('stream_chunk', message))
-                return
-            elif sender == "assistant_stream_end":
-                self.gui_queue.put(('stream_end', None))
+            stream = self._STREAM_EVENTS.get(sender)
+            if stream:
+                msg_type, template = stream
+                data = message if '{' not in template else template.format(message=message)
+                self.gui_queue.put((msg_type, data))
                 return
 
             # Видаляємо префікси для assistant
@@ -175,15 +178,21 @@ class AssistantCore:
                         message = message.strip()[len(prefix):].strip()
                         break
             
-            # Відправляємо чисте повідомлення
             self.gui_queue.put(('add_message', (sender, message)))
         else:
-            # Fallback до консолі
             from functions.config import ASSISTANT_DISPLAY_NAME
             if sender == "user":
                 print(f"{Fore.CYAN}👑 ВИ: {Fore.WHITE}{message}")
             else:
                 print(f"{Fore.GREEN}{ASSISTANT_DISPLAY_NAME}: {Fore.WHITE}{message}")
+
+    def _gui_notify(self, status_msg: str, chat_msg: str | None = None):
+        """Допоміжний метод: відправити статус + чат-повідомлення в GUI."""
+        if not self.gui_queue:
+            return
+        self.gui_queue.put(('update_status', status_msg))
+        if chat_msg:
+            self.gui_queue.put(('add_message', ('assistant', chat_msg)))
     
     def load_stt_model(self):
         """Завантажити STT двигун"""
@@ -208,89 +217,68 @@ class AssistantCore:
         """Ініціалізувати STT двигун (спільний метод для initialize та initialize_without_listener)."""
         from functions.core_settings import get_setting
         stt_enabled = get_setting("STT_ENABLED", False)
-        
-        if stt_enabled:
-            if self.gui_queue:
-                print(f"{Fore.CYAN}[GUI] Відправка повідомлення: 🔊 Завантаження STT моделей...")
-                self.gui_queue.put(('update_status', '🔊 Завантаження STT моделей...'))
-                self.gui_queue.put(('add_message', ('assistant', '🔊 Завантаження STT моделей... зачекайте')))
-            print(f"\n{Fore.CYAN}🔊 Завантаження STT моделей...")
-            start_time = time.time()
-            
-            try:
-                self.stt_engine = self.load_stt_model()
-                stt_time = time.time() - start_time
-                self.stt_load_time = stt_time
-                print(f"{Fore.LIGHTBLACK_EX}⏱️  {stt_time:.2f}с")
-                if self.gui_queue:
-                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ✅ STT готовий")
-                    self.gui_queue.put(('update_status', f'✅ STT готовий ({stt_time:.1f}с)'))
-                    self.gui_queue.put(('add_message', ('assistant', f'✅ STT готовий! ({stt_time:.1f}с)')))
-                return True
-            except Exception as e:
-                print(f"{Fore.RED}❌ Не вдалося завантажити модель розпізнавання мови")
-                print(f"{Fore.RED}   Деталі: {e}")
-                if self.gui_queue:
-                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ Помилка STT")
-                    self.gui_queue.put(('update_status', '❌ Помилка STT'))
-                    self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка завантаження STT: {e}')))
-                self.stt_engine = None
-                return False
-        else:
+
+        if not stt_enabled:
             print(f"\n{Fore.YELLOW}⏭️  STT вимкнено в налаштуваннях")
             self.stt_engine = None
             return True
+
+        self._gui_notify('🔊 Завантаження STT моделей...', '🔊 Завантаження STT моделей... зачекайте')
+        print(f"\n{Fore.CYAN}🔊 Завантаження STT моделей...")
+        start_time = time.time()
+
+        try:
+            self.stt_engine = self.load_stt_model()
+            stt_time = time.time() - start_time
+            self.stt_load_time = stt_time
+            print(f"{Fore.LIGHTBLACK_EX}⏱️  {stt_time:.2f}с")
+            self._gui_notify(f'✅ STT готовий ({stt_time:.1f}с)', f'✅ STT готовий! ({stt_time:.1f}с)')
+            return True
+        except Exception as e:
+            print(f"{Fore.RED}❌ Не вдалося завантажити модель розпізнавання мови")
+            print(f"{Fore.RED}   Деталі: {e}")
+            self._gui_notify('❌ Помилка STT', f'❌ Помилка завантаження STT: {e}')
+            self.stt_engine = None
+            return False
     
     def _init_tts_engine(self):
         """Ініціалізувати TTS двигун (спільний метод для initialize та initialize_without_listener)."""
         from functions.config import TTS_ENABLED
         self.tts_engine = None
-        
-        if TTS_ENABLED:
-            if self.gui_queue:
-                print(f"{Fore.CYAN}[GUI] Відправка повідомлення: 🔊 Ініціалізація TTS двигуна...")
-                self.gui_queue.put(('update_status', '🔊 Ініціалізація TTS двигуна...'))
-                self.gui_queue.put(('add_message', ('assistant', '🔊 Ініціалізація TTS двигуна... зачекайте')))
-            print(f"\n{Fore.CYAN}🔊 Ініціалізація TTS двигуна...")
-            start_time = time.time()
-            
-            try:
-                self.tts_engine = TTSEngine()
-                tts_time = time.time() - start_time
-                self.tts_load_time = tts_time
-                if self.tts_engine.is_ready:
-                    print(f"{Fore.GREEN}✅ TTS двигун готовий")
-                    print(f"{Fore.CYAN}   Голоси: {', '.join(self.tts_engine.get_voices())}")
-                    print(f"{Fore.CYAN}   Швидкість: {self.tts_engine.speech_rate}")
-                    print(f"{Fore.CYAN}   Гучність: {self.tts_engine.volume}")
-                    print(f"{Fore.CYAN}   Пристрій: {self.tts_engine.device}")
-                    print(f"{Fore.LIGHTBLACK_EX}⏱️  {tts_time:.2f}с")
-                    if self.gui_queue:
-                        print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ✅ TTS готовий")
-                        self.gui_queue.put(('update_status', f'✅ TTS готовий ({tts_time:.1f}с)'))
-                        self.gui_queue.put(('add_message', ('assistant', f'✅ TTS готовий! ({tts_time:.1f}с)')))
-                    return True
-                else:
-                    print(f"{Fore.RED}❌ TTS двигун не готовий")
-                    self.tts_engine = None
-                    if self.gui_queue:
-                        print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ TTS не готовий")
-                        self.gui_queue.put(('update_status', '❌ TTS не готовий'))
-                        self.gui_queue.put(('add_message', ('assistant', '❌ TTS не готовий')))
-                    return False
-            except Exception as e:
-                print(f"{Fore.RED}❌ Помилка ініціалізації TTS: {e}")
-                import traceback
-                traceback.print_exc()
-                self.tts_engine = None
-                if self.gui_queue:
-                    print(f"{Fore.CYAN}[GUI] Відправка повідомлення: ❌ Помилка TTS")
-                    self.gui_queue.put(('update_status', '❌ Помилка TTS'))
-                    self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка ініціалізації TTS: {e}')))
-                return False
-        else:
+
+        if not TTS_ENABLED:
             print(f"\n{Fore.YELLOW}⚠️  TTS вимкнено в налаштуваннях")
             return True
+
+        self._gui_notify('🔊 Ініціалізація TTS двигуна...', '🔊 Ініціалізація TTS двигуна... зачекайте')
+        print(f"\n{Fore.CYAN}🔊 Ініціалізація TTS двигуна...")
+        start_time = time.time()
+
+        try:
+            self.tts_engine = TTSEngine()
+            tts_time = time.time() - start_time
+            self.tts_load_time = tts_time
+            if self.tts_engine.is_ready:
+                print(f"{Fore.GREEN}✅ TTS двигун готовий")
+                print(f"{Fore.CYAN}   Голоси: {', '.join(self.tts_engine.get_voices())}")
+                print(f"{Fore.CYAN}   Швидкість: {self.tts_engine.speech_rate}")
+                print(f"{Fore.CYAN}   Гучність: {self.tts_engine.volume}")
+                print(f"{Fore.CYAN}   Пристрій: {self.tts_engine.device}")
+                print(f"{Fore.LIGHTBLACK_EX}⏱️  {tts_time:.2f}с")
+                self._gui_notify(f'✅ TTS готовий ({tts_time:.1f}с)', f'✅ TTS готовий! ({tts_time:.1f}с)')
+                return True
+            else:
+                print(f"{Fore.RED}❌ TTS двигун не готовий")
+                self.tts_engine = None
+                self._gui_notify('❌ TTS не готовий', '❌ TTS не готовий')
+                return False
+        except Exception as e:
+            print(f"{Fore.RED}❌ Помилка ініціалізації TTS: {e}")
+            import traceback
+            traceback.print_exc()
+            self.tts_engine = None
+            self._gui_notify('❌ Помилка TTS', f'❌ Помилка ініціалізації TTS: {e}')
+            return False
     
     def transcribe_audio(self, audio, stt_engine, audio_filter):
         """Транскрибувати аудіо через STT двигун"""
@@ -566,46 +554,7 @@ class AssistantCore:
         execution_steps = []
 
         try:
-            # Спробувати TaskSpecCompiler (S3) - ВИМКНЕНО НАРАЗІ ДЛЯ ТЕСТУ
-            # if getattr(self, 'task_spec_compiler', None):
-            #     if self.gui_queue:
-            #         self.gui_queue.put(('update_status', '📝 Компілюю TaskSpec...'))
-            #     try:
-            #         spec = self.task_spec_compiler.parse(task)
-            #         print(f"[DEBUG] TaskSpec parsed: domain={spec.domain}, description={spec.description[:50]}...")
-            #         compiled_plan = self.task_spec_compiler.compile(spec)
-            #         print(f"[DEBUG] Compiled plan: {len(compiled_plan.steps)} steps")
-            #         is_valid, msg = self.task_spec_compiler.validate_plan(compiled_plan)
-
-            #         if is_valid and compiled_plan.steps:
-            #             execution_steps = [
-            #                 {"action": step.get("action"), "goal": step.get("goal")}
-            #                 for step in compiled_plan.steps
-            #             ]
-            #             if self.gui_queue:
-            #                 self.gui_queue.put(('add_message', ('assistant', f'📋 План: {len(compiled_plan.steps)} кроків (домен: {spec.domain.value})')))
-
-            #             # Встановити план в AgentLoop і запустити
-            #             if getattr(self, 'agent_loop', None):
-            #                 self.agent_loop.set_compiled_plan(compiled_plan)
-            #                 if self.gui_queue:
-            #                     self.gui_queue.put(('update_status', '🤖 AgentLoop: observe → plan → act → check'))
-            #                 result = self.agent_loop.run(task)
-            #                 execution_success = True
-            #             # Fallback до PlanExecutor
-            #             elif getattr(self, 'plan_executor', None):
-            #                 self.plan_executor.execute_plan(compiled_plan.steps, task)
-            #                 execution_success = True
-            #             return
-            #         else:
-            #             if self.gui_queue:
-            #                 self.gui_queue.put(('add_message', ('assistant', f'⚠️ {msg}')))
-            #     except Exception as e:
-            #         execution_error = str(e)
-            #         if self.gui_queue:
-            #             self.gui_queue.put(('add_message', ('assistant', f'⚠️ TaskSpec: {e}')))
-
-            # AgentLoop без CompiledPlan
+            # AgentLoop — основний шлях виконання
             agent_loop = getattr(self, 'agent_loop', None)
             print(f"[DEBUG] agent_loop exists: {agent_loop is not None}")
             if agent_loop:
@@ -614,21 +563,24 @@ class AssistantCore:
                     self.gui_queue.put(('update_status', '🤖 AgentLoop: observe → plan → act → check'))
 
                 # Виконуємо в окремому потоці щоб не блокувати GUI
-                import threading
-                def run_agent_loop_thread():
+                def _run_agent():
                     try:
                         result = self.agent_loop.run(task)
                         if self.gui_queue:
-                            self.gui_queue.put(('add_message', ('assistant', f'📊 Agent loop завершено: {result.get("steps", 0)} кроків за {result.get("duration", 0):.1f}с ✅ Успішно' if result.get("ok") else f'❌ Помилка: {result.get("summary", "")}')))
+                            ok = result.get("ok")
+                            msg = (
+                                f'📊 Agent loop: {result.get("steps", 0)} кроків за {result.get("duration", 0):.1f}с ✅'
+                                if ok else f'❌ Помилка: {result.get("summary", "")}'
+                            )
+                            self.gui_queue.put(('add_message', ('assistant', msg)))
                     except Exception as e:
                         import traceback
                         traceback.print_exc()
                         if self.gui_queue:
                             self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка AgentLoop: {e}')))
 
-                thread = threading.Thread(target=run_agent_loop_thread, daemon=False)
+                thread = threading.Thread(target=_run_agent, daemon=False)
                 thread.start()
-                # Чекаємо завершення з таймаутом 45 секунд
                 thread.join(timeout=45)
                 execution_success = True
                 return
@@ -791,47 +743,42 @@ class AssistantCore:
             self.listener = None
             return False
         
-        # Створити асистента
+        # Спільна ініціалізація VoiceAssistant + Planner + TTS
+        self._init_assistant_common(system_prompt)
+        
+        # Передати listener в TTS
+        if self.tts_engine and self.listener:
+            self.tts_engine.listener = self.listener
+        
+        print(f"{Fore.GREEN}✅ Асистент готовий")
+        return True
+
+    def _init_assistant_common(self, system_prompt: str):
+        """Спільна ініціалізація VoiceAssistant, Planner, TTS — використовується обома init-методами."""
         def custom_log(sender, message):
             self.log_to_gui(sender, message)
-        
+
         self.assistant = VoiceAssistant(
-            self.stt_engine, 
-            self.registry, 
-            system_prompt, 
+            self.stt_engine,
+            self.registry,
+            system_prompt,
             listener=self.listener,
             gui_log_callback=custom_log
         )
 
         # --- Planner init --- #GPT
         self.planner = Planner(self.assistant)  #GPT
-
-        # передаємо planner в асистента #GPT
         if hasattr(self.assistant, "set_planner"):
             self.assistant.set_planner(self.planner)  #GPT
-        
-        # Передати listener в TTS
-        if self.tts_engine and self.listener:
-            self.tts_engine.listener = self.listener
-        
+
         # Встановити TTS двигун в асистента
         if self.tts_engine:
             self.assistant.set_tts_engine(self.tts_engine)
-        
-        print(f"{Fore.GREEN}✅ Асистент готовий")
-        
-        return True
 
     def initialize_without_listener(self):
         """Ініціалізація асистента БЕЗ безперервного прослуховування (текстовий режим)"""
-        from colorama import Back, Style
-        from functions.logic_core import FunctionRegistry
-        from functions.logic_commands import VoiceAssistant
         from functions.logic_audio_filtering import get_audio_filter
-        from functions.logic_tts import TTSEngine
-        from functions.config import (
-            SAMPLE_RATE, TTS_ENABLED, ASSISTANT_NAME, ASSISTANT_EMOJI
-        )
+        from functions.config import SAMPLE_RATE
 
         print(f"\n{Back.BLUE} {ASSISTANT_EMOJI} {ASSISTANT_NAME} - Текстовий режим {Style.RESET_ALL}\n")
 
@@ -864,25 +811,9 @@ class AssistantCore:
         # Listener = None (текстовий режим)
         self.listener = None
 
-        # VoiceAssistant
+        # Спільна ініціалізація VoiceAssistant + Planner + TTS
         system_prompt = self.registry.get_system_prompt()
-
-        def custom_log(sender, message):
-            self.log_to_gui(sender, message)
-
-        self.assistant = VoiceAssistant(
-            self.stt_engine,
-            self.registry,
-            system_prompt,
-            listener=None,
-            gui_log_callback=custom_log
-        )
-
-        # --- Planner init --- #GPT
-        self.planner = Planner(self.assistant)  #GPT
-
-        if hasattr(self.assistant, "set_planner"):
-            self.assistant.set_planner(self.planner)  #GPT
+        self._init_assistant_common(system_prompt)
 
         # --- PlanExecutor init (S2: GUI ↔ TaskRunner bridge) ---
         try:
@@ -991,9 +922,6 @@ class AssistantCore:
         except Exception as e:
             self.task_spec_compiler = None
             print(f"{Fore.YELLOW}⚠️  TaskSpecCompiler недоступний: {e}")
-
-        if self.tts_engine:
-            self.assistant.set_tts_engine(self.tts_engine)
 
         # --- Ініціалізація Global Voice Input (глобальний hook для голосового вводу) ---
         try:

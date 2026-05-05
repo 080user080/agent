@@ -16,14 +16,7 @@ class StatisticsTab(BaseTab):
     """Вкладка статистики."""
 
     def __init__(self, parent=None):
-        self.total_requests_label = None
-        self.tokens_label = None
-        self.avg_time_label = None
-        self.success_label = None
-        self.failed_label = None
-        self.avg_steps_label = None
-        self.quota_progress = None
-        self.refresh_button = None
+        self._stats = {"requests": 0, "tokens": 0, "success": 0, "failed": 0}
         super().__init__(parent)
 
     def _build_content(self, layout):

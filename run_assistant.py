@@ -33,77 +33,59 @@ class AssistantApp:
         """Callback для GUI"""
         if not self.core:
             return
-        if action == 'pause_listening':
-            self.core.pause_listening()
-        elif action == 'resume_listening':
-            self.core.resume_listening()
-        elif action == 'process_text':
-            threading.Thread(
-                target=self.core.process_text_command,
-                args=(data,),
-                daemon=True
-            ).start()
-        elif action == 'stop_execution':
-            threading.Thread(
-                target=self.core.stop_execution,
-                daemon=True
-            ).start()
-        elif action == 'run_plan':
-            threading.Thread(
-                target=self.core.run_pending_plan,
-                daemon=True
-            ).start()
-        elif action == 'run_agent':
-            threading.Thread(
-                target=self.core.run_agent_loop,
-                args=(data,),
-                daemon=True
-            ).start()
-        elif action == 'stop_plan':
-            self.core.stop_plan_execution()
-        elif action == 'start_windsurf_watch':
-            self.core.start_windsurf_watch()
-        elif action == 'stop_windsurf_watch':
-            self.core.stop_windsurf_watch()
+
+        action_handlers = {
+            'pause_listening': lambda: self.core.pause_listening(),
+            'resume_listening': lambda: self.core.resume_listening(),
+            'process_text': lambda: threading.Thread(
+                target=self.core.process_text_command, args=(data,), daemon=True
+            ).start(),
+            'stop_execution': lambda: threading.Thread(
+                target=self.core.stop_execution, daemon=True
+            ).start(),
+            'run_plan': lambda: threading.Thread(
+                target=self.core.run_pending_plan, daemon=True
+            ).start(),
+            'run_agent': lambda: threading.Thread(
+                target=self.core.run_agent_loop, args=(data,), daemon=True
+            ).start(),
+            'stop_plan': lambda: self.core.stop_plan_execution(),
+            'start_windsurf_watch': lambda: self.core.start_windsurf_watch(),
+            'stop_windsurf_watch': lambda: self.core.stop_windsurf_watch(),
+        }
+
+        handler = action_handlers.get(action)
+        if handler:
+            handler()
+
+    # Типи повідомлень, що передаються напряму в GUI
+    _PASSTHROUGH_MSGS = frozenset({
+        'add_message', 'show_confirmation', 'update_progress',
+        'stream_start', 'stream_end', 'stream_chunk',
+        'plan_started', 'step_update', 'plan_finished',
+    })
 
     def process_gui_queue(self):
         """Обробляти повідомлення з черги і передавати в GUI"""
-        if self.gui:
-            try:
-                while True:
-                    msg_type, data = self.gui_queue.get_nowait()
-                    print(f"[GUI-QUEUE] Отримано: {msg_type} -> {str(data)[:50]}")
-                    if msg_type == 'add_message':
-                        self.gui.queue_message('add_message', data)
-                    elif msg_type == 'show_confirmation':
-                        self.gui.queue_message('show_confirmation', data)
-                    elif msg_type == 'update_status':
-                        log_console(f"[STATUS] {data}")
-                        self.gui.queue_message('update_status', data)
-                    elif msg_type == 'update_progress':
-                        self.gui.queue_message('update_progress', data)
-                    elif msg_type == 'stream_start':
-                        self.gui.queue_message('stream_start', None)
-                    elif msg_type == 'stream_chunk':
-                        self.gui.queue_message('stream_chunk', data)
-                    elif msg_type == 'stream_end':
-                        self.gui.queue_message('stream_end', None)
-                    elif msg_type == 'execution_started':
-                        log_console("[STATUS] Виконання запущено")
-                        self.gui.queue_message('execution_started', None)
-                    elif msg_type == 'execution_finished':
-                        log_console("[STATUS] Виконання завершено")
-                        self.gui.queue_message('execution_finished', None)
-                    elif msg_type == 'plan_started':
-                        self.gui.queue_message('plan_started', data)
-                    elif msg_type == 'step_update':
-                        self.gui.queue_message('step_update', data)
-                    elif msg_type == 'plan_finished':
-                        self.gui.queue_message('plan_finished', data)
-                    elif msg_type == 'show_confirmation':
-                        self.gui.queue_message('show_confirmation', data)
-            except queue.Empty:
-                pass
+        if not self.gui:
+            return
+        try:
+            while True:
+                msg_type, data = self.gui_queue.get_nowait()
+
+                if msg_type in self._PASSTHROUGH_MSGS:
+                    self.gui.queue_message(msg_type, data)
+                elif msg_type == 'update_status':
+                    log_console(f"[STATUS] {data}")
+                    self.gui.queue_message('update_status', data)
+                elif msg_type == 'execution_started':
+                    log_console("[STATUS] Виконання запущено")
+                    self.gui.queue_message('execution_started', None)
+                elif msg_type == 'execution_finished':
+                    log_console("[STATUS] Виконання завершено")
+                    self.gui.queue_message('execution_finished', None)
+        except queue.Empty:
+            pass
 
         # Якщо GUI ще живий — плануємо наступну перевірку
         if self.gui and self.gui.root.winfo_exists():
