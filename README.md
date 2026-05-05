@@ -145,8 +145,7 @@ agent/
 ├── run_assistant.py            # Точка входу з GUI (Tkinter)
 ├── run_assistant_qt.py         # Точка входу з GUI (PyQt6)
 ├── main.py                     # Консольна точка входу (AssistantCore)
-├── smart_patch_gui.py          # Допоміжний GUI для редагування коду патчами
-├── functions/                  # Основна логіка (~90 модулів)
+├── functions/                  # Основна логіка (~100 модулів)
 │   ├── llm/                      # LLM-шар
 │   │   ├── router.py                 # RequestRouter для класифікації запитів
 │   │   ├── provider_chain.py        # ProviderChain з fallback ланцюгом
@@ -182,6 +181,7 @@ agent/
 │   │   ├── logic_ai_adapter.py        # AI Provider adapter
 │   │   ├── logic_provider_registry.py # Provider registry
 │   │   ├── logic_task_runner.py       # Task runner
+│   │   ├── logic_repair_loop.py       # Repair loop
 │   │   └── logic_watcher.py           # Watcher для умов
 │   ├── tools_*.py                 # GUI-інструменти (~10)
 │   │   ├── tools_mouse_keyboard.py    # Mouse/keyboard automation
@@ -194,10 +194,12 @@ agent/
 │   │   ├── tools_ui_accessibility.py  # UI Automation (uiautomation/pywinauto)
 │   │   └── tools_browser_cdp.py       # Browser automation (Playwright CDP)
 │   ├── agent_loop.py              # AgentLoop (observe → plan → act → check)
+│   ├── task_spec.py               # TaskSpecCompiler (структурована декомпозиція)
 │   ├── ai_actors.py               # AI Actors (Codex/Windsurf/Cursor)
 │   ├── global_voice_input.py      # Global voice input (Windows hook)
 │   ├── self_learning.py           # Self-learning module
 │   ├── plan_executor.py           # Plan executor bridge
+│   ├── windsurf_watcher_executor.py # Windsurf Watch GUI
 │   ├── pipeline_code.py           # Code generation pipeline
 │   └── aaa_*.py                   # LLM-tool обгортки (~15)
 │       ├── aaa_architect.py / aaa_code_tools.py / aaa_debug_code.py
@@ -214,19 +216,51 @@ agent/
 │   └── styles.py / constants.py
 ├── core_gui_pyqt6/             # GUI компоненти (PyQt6)
 │   ├── main_window.py             # Головне вікно (PyQt6)
-│   └── mixins/                   # PyQt6 mixins (chat, plan, settings, etc.)
+│   ├── settings_tab_qt.py         # Вкладка налаштувань (PyQt6)
+│   ├── chat_panel_qt.py           # Панель чату (PyQt6)
+│   ├── plan_panel_qt.py           # Панель плану (PyQt6)
+│   ├── confirmation_qt.py         # Діалог підтверджень (PyQt6)
+│   └── llm_endpoints_editor_qt.py # Редактор LLM ендпойнтів (PyQt6)
+├── gui_tabs/                   # GUI вкладки (PyQt6 multi-tab)
+│   ├── main_window.py             # MultiTabGUI (6 вкладок)
+│   ├── base_tab.py               # BaseTab
+│   ├── chat_tab.py               # ChatTab
+│   ├── settings_tab.py           # SettingsTab
+│   ├── logs_tab.py               # LogsTab
+│   ├── statistics_tab.py         # StatisticsTab
+│   ├── about_tab.py              # AboutTab
+│   ├── tools_tab.py              # ToolsTab
+│   └── constants.py              # Константи для GUI
+├── docs/                       # Документація
+│   ├── ARCHITECTURE.md           # Архітектура проєкту
+│   ├── MODULES.md                # Опис модулів
+│   ├── API.md                    # API для інтеграції
+│   ├── CONTRIBUTING.md           # Гайд для контриб'юторів
+│   ├── tests.md                  # Тестові сценарії
+│   ├── PLAN_COMPUTER_USE.md      # План використання комп'ютера
+│   ├── CHANGELOG.md              # Історія змін
+│   ├── SECURITY.md               # Безпека та ризики
+│   ├── FAQ.md                    # Часті питання
+│   └── LLM_to_LM_Studio.md       # LLM інтеграція
 ├── tests/                      # Тести (pytest)
 │   ├── test_core_planner.py
 │   ├── test_core_memory.py
 │   ├── test_core_executor.py
+│   ├── test_agent_loop.py
+│   ├── test_action_decider.py
+│   ├── test_plan_executor.py
+│   ├── test_task_spec.py
 │   ├── test_tools_mouse_keyboard.py
 │   ├── test_tools_window_manager.py
-│   └── test_tools_ocr.py
+│   ├── test_tools_ocr.py
+│   └── test_pyqt6_gui.py
+├── TEST_GUI/                   # Тест GUI
+│   └── test_multi_tab_gui.py
 ├── requirements.txt            # Рантайм-залежності
 ├── pytest.ini                  # Конфіг тестів
 ├── status.md                   # Статус розробки + дорожня карта
-├── CONTRIBUTING.md             # Гайд для контриб'юторів
-├── tests.md                    # Специфікації тестів
+├── TASKS.md                    # Поточні задачі
+├── TASKS_Done.md               # Виконані задачі
 └── README.md                   # Цей файл
 ```
 
@@ -359,12 +393,23 @@ coverage report
 
 ## 📚 Документація
 
+### Основні файли
 - [status.md](status.md) — поточний стан проєкту та пріоритети
 - [TASKS.md](TASKS.md) — поточні задачі та їх статус
 - [TASKS_Done.md](TASKS_Done.md) — виконані задачі
-- [ARCHITECTURE.md](ARCHITECTURE.md) — архітектурний стан та план рефакторингу
-- [tests.md](tests.md) — тестові сценарії та чеклісти
-- [CONTRIBUTING.md](CONTRIBUTING.md) — як внести внесок в проєкт
+
+### Технічна документація (docs/)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — архітектура проєкту
+- [docs/MODULES.md](docs/MODULES.md) — опис модулів (aaa_*, core_*, logic_*)
+- [docs/API.md](docs/API.md) — API для інтеграції
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — як внести внесок в проєкт
+- [docs/tests.md](docs/tests.md) — тестові сценарії та чеклісти
+- [docs/PLAN_COMPUTER_USE.md](docs/PLAN_COMPUTER_USE.md) — план використання комп'ютера
+
+### Додаткова документація
+- [docs/CHANGELOG.md](docs/CHANGELOG.md) — історія змін
+- [docs/SECURITY.md](docs/SECURITY.md) — безпека та ризики
+- [docs/FAQ.md](docs/FAQ.md) — часті питання
 
 ---
 

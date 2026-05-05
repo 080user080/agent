@@ -1106,7 +1106,7 @@ repos:
 ### Потрібно виправити зараз (не залежить від плану)
 
 1. **`requirements.txt` неповний** — додати: `pyautogui`, `pywin32`, `psutil`, `mss`, `Pillow`, `opencv-python`, `pytesseract`, `pyperclip`, `pygetwindow`
-2. **README.md** — виправити `gui/` → `core_gui/`, `python agent.py` → `python run_assistant.py`
+2. **README.md** — виправити `gui/` → `core_gui/`, `python agent.py` → `python run_assistant.py` (already done)
 3. **Застарілі файли** — видалити `aaa_kill_process_by_name.py_off`, `aaa_open_program.py_old`
 4. **`pyproject.toml`** — додати ruff конфіг:
    ```toml

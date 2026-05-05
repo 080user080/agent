@@ -1,5 +1,5 @@
 # Архітектура МАРК: поточний стан і напрямок
-> Оновлено: 03.05.2026
+> Оновлено: 05.05.2026
 
 **ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
 
@@ -14,10 +14,10 @@ cd /d D:\Python\agent
 
 ## Документи проєкту
 
-- [README.md](D:/Python/agent/README.md) — запуск і загальний огляд.
-- [TASKS.md](D:/Python/agent/TASKS.md) — поточні задачі та їх статус.
-- [status.md](D:/Python/agent/status.md) — короткий джерело правди про поточний стан.
-- [tests.md](D:/Python/agent/tests.md) — тестові сценарії та чеклісти.
+- [README.md](../README.md) — запуск і загальний огляд.
+- [TASKS.md](../TASKS.md) — поточні задачі та їх статус.
+- [status.md](../status.md) — короткий джерело правди про поточний стан.
+- [tests.md](tests.md) — тестові сценарії та чеклісти.
 
 ---
 
@@ -36,13 +36,17 @@ cd /d D:\Python\agent
 
 ### Точки входу
 
-- [run_assistant.py](D:/Python/agent/run_assistant.py) — GUI entrypoint.
-- [main.py](D:/Python/agent/main.py) — основний runtime / AssistantCore.
-- [smart_patch_gui.py](D:/Python/agent/smart_patch_gui.py) — окремий допоміжний GUI.
+- [run.py](../run.py) — універсальний entrypoint (Tkinter/PyQt6).
+- [run_assistant.py](../run_assistant.py) — GUI entrypoint (Tkinter).
+- [run_assistant_qt.py](../run_assistant_qt.py) — GUI entrypoint (PyQt6).
+- [main.py](../main.py) — основний runtime / AssistantCore.
+- [smart_patch_gui.py](../smart_patch_gui.py) — окремий допоміжний GUI.
 
 ### Основні підсистеми
 
 - `core_gui/` — Tkinter GUI.
+- `core_gui_pyqt6/` — PyQt6 GUI.
+- `gui_tabs/` — PyQt6 multi-tab GUI.
 - `functions/core_*` — planner, executor, memory, cache, settings, safety, checkpoint.
 - `functions/logic_*` — orchestration, task running, scenarios, expectations, repair, watchers.
 - `functions/tools_*` — desktop/browser/media tools.
@@ -50,11 +54,15 @@ cd /d D:\Python\agent
   - `functions/llm/router.py` — RequestRouter для класифікації запитів (CODE/DEBUG/GUI/WEB/GENERAL/QUICK)
   - `functions/llm/provider_chain.py` — ProviderChain з fallback ланцюгом і quota tracking
 - `functions/aaa_*` — legacy / wrapper-oriented tool layer.
+- `functions/agent_loop.py` — AgentLoop (observe → plan → act → check).
+- `functions/task_spec.py` — TaskSpecCompiler (структурована декомпозиція).
+- `functions/global_voice_input.py` — Global voice input (Windows hook).
+- `functions/self_learning.py` — Self-learning module.
 - `tests/` — unit і integration-style тести.
 
 ### Спостереження
 
-- Проєкт уже не малий: у `functions/` 90 файлів.
+- Проєкт уже не малий: у `functions/` 100+ файлів.
 - З'явився новий LLM-пакет `functions/llm/` з router.py, provider_chain.py для оркестрації ШІ.
 - Стара термінологія ще лишилася в документації й частині модулів.
 - Новий orchestration-стек існує поруч із legacy-шарами.
@@ -67,12 +75,14 @@ cd /d D:\Python\agent
 
 Найважчі файли зараз:
 
-- [main.py](D:/Python/agent/main.py)
-- [core_gui/main_window.py](D:/Python/agent/core_gui/main_window.py)
-- [functions/logic_commands.py](D:/Python/agent/functions/logic_commands.py)
-- [functions/core_planner.py](D:/Python/agent/functions/core_planner.py)
-- [functions/logic_task_runner.py](D:/Python/agent/functions/logic_task_runner.py)
-- [functions/core_tool_runtime.py](D:/Python/agent/functions/core_tool_runtime.py)
+- [main.py](../main.py)
+- [core_gui/main_window.py](../core_gui/main_window.py)
+- [core_gui_pyqt6/main_window.py](../core_gui_pyqt6/main_window.py)
+- [functions/logic_commands.py](../functions/logic_commands.py)
+- [functions/core_planner.py](../functions/core_planner.py)
+- [functions/logic_task_runner.py](../functions/logic_task_runner.py)
+- [functions/core_tool_runtime.py](../functions/core_tool_runtime.py)
+- [functions/agent_loop.py](../functions/agent_loop.py)
 
 Проблема не лише в розмірі. Ці модулі одночасно:
 
