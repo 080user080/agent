@@ -847,7 +847,8 @@ class AssistantCore:
                 from functions.core_stt_listener import get_stt_controller
                 print(f"\n{Fore.CYAN}🎤 Ініціалізація голосових команд для GUI...")
                 stt_controller = get_stt_controller(
-                    process_command_callback=self.process_text_command
+                    process_command_callback=self.process_text_command,
+                    gui_queue=self.gui_queue
                 )
                 if stt_controller:
                     # GUI може ще не бути готовим - відкладене встановлення через чергу

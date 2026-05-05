@@ -10,9 +10,6 @@ STT Listener — модуль прийому голосових команд д�
 
 import threading
 import time
-import os
-import json
-import logging
 import numpy as np
 import sounddevice as sd
 from typing import Callable, Optional, Dict, Any
@@ -21,7 +18,6 @@ from colorama import Fore
 from .logic_stt import get_stt_engine, STTEngine
 from .config import (
     SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, SILENCE_DURATION,
-    MIN_SILENCE_DURATION, MAX_SILENCE_DURATION, STT_LOGGING_ENABLED,
     MICROPHONE_DEVICE_ID, STT_ENABLED, STT_LANGUAGE
 )
 
@@ -178,186 +174,6 @@ class STTListener:
             print(f"{Fore.RED}❌ Помилка запису/розпізнавання: {e}")
             self._update_status("error", {"error": str(e)})
             return None
-
-    def listen_streaming(self, stop_event: Optional[threading.Event] = None, segment_callback: Optional[Callable[[str], None]] = None) -> str:
-        """Псевдопотокове розпізнавання з сегментацією по тиші.
-        
-        Args:
-            stop_event: Event для зупинки запису
-            segment_callback: Callback, який викликається для кожного розпізнаного сегменту (текст)
-        """
-        if not self.stt_engine:
-            if not self.initialize():
-                return ""
-
-        try:
-            from .core_settings import get_setting
-            min_silence = get_setting("MIN_SILENCE_DURATION", MIN_SILENCE_DURATION)
-            max_silence = get_setting("MAX_SILENCE_DURATION", MAX_SILENCE_DURATION)
-            stt_logging = get_setting("STT_LOGGING_ENABLED", STT_LOGGING_ENABLED)
-            # Використовуємо VOLUME_THRESHOLD з config.py як дефолт
-            volume_threshold = get_setting("VOLUME_THRESHOLD", VOLUME_THRESHOLD)
-        except Exception:
-            min_silence = MIN_SILENCE_DURATION
-            max_silence = MAX_SILENCE_DURATION
-            stt_logging = STT_LOGGING_ENABLED
-            volume_threshold = VOLUME_THRESHOLD
-
-        # Оновити volume_threshold з user_settings
-        self.volume_threshold = volume_threshold
-
-        self._update_status("listening")
-        print(f"{Fore.CYAN}🎤 Псевдопотокове розпізнавання (min_silence={min_silence}s, max_silence={max_silence}s, threshold={self.volume_threshold})...")
-
-        chunk_size = int(0.1 * self.sample_rate)
-        pre_buffer_size = int(0.5 * self.sample_rate)
-        min_silence_chunks = int(min_silence / 0.1)
-        max_silence_chunks = int(max_silence / 0.1)
-        print(f"[DEBUG] chunk_size={chunk_size}, min_silence_chunks={min_silence_chunks}, max_silence_chunks={max_silence_chunks}")
-
-        audio_buffer = []
-        pre_buffer = []
-        silence_chunks = 0
-        is_recording = False
-        segment_count = 0
-        all_recognized_text = []
-
-        start_time = time.time()
-        self.is_listening = True
-
-        # Налаштування файлового логування (один раз для сесії)
-        log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
-        os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, "stt_debug.log")
-        
-        # Отримуємо або створюємо logger
-        logger = logging.getLogger('STT')
-        if not logger.handlers:
-            file_handler = logging.FileHandler(log_file, mode='a', encoding='utf-8')
-            file_handler.setLevel(logging.DEBUG)
-            file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-            logger.addHandler(file_handler)
-            logger.setLevel(logging.DEBUG)
-
-        def log_stt(event_type: str, data: dict):
-            if stt_logging:
-                try:
-                    with open(os.path.join(log_dir, "stt_logs.jsonl"), "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"timestamp": time.time(), "event": event_type, **data}, ensure_ascii=False) + "\n")
-                except Exception as e:
-                    print(f"{Fore.YELLOW}⚠️  Помилка логування: {e}")
-            # Завжди логувати в файл
-            logger.debug(f"{event_type}: {data}")
-
-        log_stt("recording_started", {"min_silence": min_silence, "max_silence": max_silence, "threshold": self.volume_threshold})
-
-        try:
-            with sd.InputStream(samplerate=self.sample_rate, channels=1, dtype=np.float32, device=self.device_id, blocksize=chunk_size) as stream:
-                while self.is_listening and (stop_event is None or not stop_event.is_set()):
-                    if time.time() - start_time > 300:
-                        print(f"{Fore.YELLOW}⚠️  Досягнуто максимальний час запису (5 хв)")
-                        break
-
-                    chunk, _ = stream.read(chunk_size)
-                    chunk = np.squeeze(chunk)
-                    volume = np.sqrt(np.mean(chunk**2))
-
-                    if not is_recording:
-                        # Логувати volume під час очікування мови
-                        if len(pre_buffer) % 10 == 0:
-                            print(f"[DEBUG WAIT] volume={volume:.6f}, threshold={self.volume_threshold:.6f}")
-                        pre_buffer.append(chunk)
-                        if len(pre_buffer) > pre_buffer_size // chunk_size:
-                            pre_buffer.pop(0)
-                        if volume > self.volume_threshold:
-                            print(f"{Fore.GREEN}   🎙️  Виявлено мову (volume={volume:.6f}), починаю запис...")
-                            is_recording = True
-                            audio_buffer.extend(pre_buffer)
-                            audio_buffer.append(chunk)
-                            pre_buffer = []
-                            silence_chunks = 0
-                    else:
-                        audio_buffer.append(chunk)
-                        if volume < self.volume_threshold:
-                            silence_chunks += 1
-                            # Логувати тишу
-                            if silence_chunks % 10 == 0:
-                                print(f"[DEBUG SILENCE] silence_chunks={silence_chunks}/{max_silence_chunks}")
-                            # Перевірка на max_silence ПЕРШОЮ (зупинка при тривалій тиші)
-                            if silence_chunks > max_silence_chunks:
-                                print(f"{Fore.YELLOW}⏹️  Тривала тиша ({max_silence}s), зупинка...")
-                                break
-                            # Перевірка на min_silence (розбиття на сегменти)
-                            elif silence_chunks == min_silence_chunks:
-                                segment_audio = np.concatenate(audio_buffer)
-                                segment_duration = len(segment_audio) / self.sample_rate
-                                if segment_duration >= 0.5:
-                                    segment_count += 1
-                                    print(f"{Fore.CYAN}   📦 Сегмент {segment_count}: {segment_duration:.1f}s")
-                                    self._update_status("processing", {"segment": segment_count, "status": "recognizing"})
-                                    print(f"{Fore.CYAN}   🔍 Розпізнавання сегменту {segment_count}...")
-                                    segment_start = time.time()
-                                    try:
-                                        segment_text = self.stt_engine.transcribe(segment_audio)
-                                        segment_time = time.time() - segment_start
-                                        if segment_text and segment_text.strip():
-                                            cleaned = self._clean_text(segment_text)
-                                            all_recognized_text.append(cleaned)
-                                            print(f"{Fore.GREEN}   ✅ Сегмент {segment_count}: '{cleaned}'")
-                                            self._update_status("segment_added", {"segment": segment_count, "text": cleaned})
-                                            log_stt("segment_recognized", {"segment": segment_count, "duration": segment_duration, "recognition_time": segment_time, "text": cleaned})
-                                            # Викликати callback для вставки чанку
-                                            if segment_callback:
-                                                try:
-                                                    print(f"{Fore.CYAN}   📞 Виклик callback для сегменту {segment_count}")
-                                                    segment_callback(cleaned)
-                                                    print(f"{Fore.GREEN}   ✅ Callback виконано для сегменту {segment_count}")
-                                                except Exception as e:
-                                                    print(f"{Fore.YELLOW}⚠️  Помилка callback: {e}")
-                                                    import traceback
-                                                    traceback.print_exc()
-                                        else:
-                                            print(f"{Fore.YELLOW}   ⚠️  Сегмент {segment_count} не розпізнано")
-                                            log_stt("segment_not_recognized", {"segment": segment_count, "duration": segment_duration})
-                                    except Exception as e:
-                                        print(f"{Fore.RED}   ❌ Помилка розпізнавання сегменту {segment_count}: {e}")
-                                        log_stt("segment_error", {"segment": segment_count, "error": str(e)})
-                                    audio_buffer = []
-                                    # НЕ скидаємо silence_chunks - тиша продовжує рахуватись для max_silence
-                        else:
-                            silence_chunks = 0
-        except Exception as e:
-            print(f"{Fore.RED}❌ Помилка запису: {e}")
-            log_stt("recording_error", {"error": str(e)})
-        finally:
-            self.is_listening = False
-
-        # Обробити залишок буфера
-        if audio_buffer and len(audio_buffer) > chunk_size * 5:
-            segment_count += 1
-            print(f"{Fore.CYAN}   📦 Фінальний сегмент {segment_count}...")
-            self._update_status("processing", {"segment": segment_count, "status": "recognizing"})
-            try:
-                segment_audio = np.concatenate(audio_buffer)
-                segment_text = self.stt_engine.transcribe(segment_audio)
-                if segment_text and segment_text.strip():
-                    cleaned = self._clean_text(segment_text)
-                    all_recognized_text.append(cleaned)
-                    print(f"{Fore.GREEN}   ✅ Фінальний сегмент: '{cleaned}'")
-                    self._update_status("segment_added", {"segment": segment_count, "text": cleaned})
-                    # Викликати callback для вставки фінального чанку
-                    if segment_callback:
-                        try:
-                            segment_callback(cleaned)
-                        except Exception as e:
-                            print(f"{Fore.YELLOW}⚠️  Помилка callback: {e}")
-            except Exception as e:
-                print(f"{Fore.RED}   ❌ Помилка фінального сегменту: {e}")
-
-        full_text = " ".join(all_recognized_text)
-        print(f"{Fore.GREEN}✅ Всього розпізнано: '{full_text}'")
-        self._update_status("idle")
-        return full_text
 
     def _record_audio(self, duration: int, wait_for_speech: bool = True) -> Optional[np.ndarray]:
         """Записати аудіо з мікрофона."""
@@ -529,7 +345,7 @@ class STTListener:
 class STTGuiController:
     """Контролер для інтеграції STT в GUI."""
 
-    def __init__(self, process_command_callback: Callable[[str], None], gui_queue=None):
+    def __init__(self, process_command_callback: Callable[[str], None]):
         self.listener = STTListener(
             command_callback=process_command_callback,
             status_callback=self._on_status_change
@@ -537,7 +353,6 @@ class STTGuiController:
 
         self.current_status = "idle"  # idle, listening, processing, executing
         self.last_recognized_text = ""
-        self.gui_queue = gui_queue  # Черга для повідомлень в GUI
 
     def initialize(self) -> bool:
         """Ініціалізувати STT."""
@@ -548,7 +363,7 @@ class STTGuiController:
         if self.current_status == "listening":
             return None
 
-        text = self.listener.listen_streaming()
+        text = self.listener.listen_once()
         return text
 
     def start_wake_word_mode(self):
@@ -567,20 +382,16 @@ class STTGuiController:
         if status == "recognized" and data:
             self.last_recognized_text = data.get("text", "")
 
-        # Відправити повідомлення в GUI для сегментів (псевдопотокове розпізнавання)
-        if self.gui_queue:
-            if status == "segment_added" and data:
-                self.gui_queue.put(('stt_segment_added', data))
-            elif status == "processing" and data and data.get("status") == "recognizing":
-                self.gui_queue.put(('stt_segment_recognizing', data))
+        # Можна додати callback для оновлення UI тут
+        # Наприклад: gui_update_callback(status, data)
 
 
 # ==================== Функція для aaa_*.py ====================
 
-def get_stt_controller(process_command_callback: Callable[[str], None], gui_queue=None) -> Optional[STTGuiController]:
+def get_stt_controller(process_command_callback: Callable[[str], None]) -> Optional[STTGuiController]:
     """Створити STT контролер (для інтеграції в main.py)."""
     try:
-        controller = STTGuiController(process_command_callback, gui_queue=gui_queue)
+        controller = STTGuiController(process_command_callback)
         if controller.initialize():
             return controller
         return None

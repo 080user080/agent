@@ -1,5 +1,5 @@
 # Виконані задачі МАРК
-> Останнє оновлення: 02.05.2026 (19:35)
+> Останнє оновлення: 05.05.2026 (22:00)
 
 **ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
 
@@ -69,6 +69,50 @@ cd /d D:\Python\agent
 - Прибрано виклик `assistant_stream_chunk` в `flush_buffer` - не додає текст через streaming
 - Прибрано виклик `stream_end` - не завершує streaming
 - Всі відповіді тепер додаватимуться через `log_to_gui` без дублювання префікса
+
+---
+
+## НЕДАВНІ ВИПРАВЛЕННЯ (05.05.2026, 22:00)
+
+### Виправлено STT Streaming - псевдопотокове розпізнавання
+**Проблема:** STT не працював коректно після змін:
+- Аудіо захоплювалося але не ділиться на сегменти
+- Не зупинялося після 10 секунд тиші
+- При повторному натисканні Ctrl+F9 зупинялося без розпізнавання і вставки тексту
+- `threshold=0.0` - поріг гучності був 0, тому тиша ніколи не детектувалася
+- Текст вставлявся одним шматком після завершення запису, а не чанками в реальному часі
+
+**Виправлено:**
+- Додано імпорт `os`, `json`, `logging` на початок `core_stt_listener.py`
+- Виправлено ініціалізацію `VOLUME_THRESHOLD` - тепер використовується з `user_settings.json` (дефолт 0.003 з config.py)
+- Додано файлове логування в `stt_debug.log` з UTF-8 кодуванням
+- Додано JSON логування в `stt_logs.jsonl` для подій STT (segment_recognized, recording_started тощо)
+- Рефакторинг логування - використання FileHandler замість logging.basicConfig для уникнення дублювання
+- Додано налаштування `STT_LOGGING_ENABLED` в user_settings.json
+- Створено тест `TEST_GUI/test_stt_hotkey.py` для перевірки STT та комбінації клавіш Ctrl+F9
+- **Реалізовано чанкову вставку тексту в реальному часі:**
+  - Додано параметр `segment_callback` в `listen_streaming()` для callback на кожен розпізнаний сегмент
+  - Додано метод `_insert_segment()` в `global_voice_input.py` для вставки кожного сегмента через Shift+F10
+  - Тепер текст вставляється чанками по мірі розпізнавання, а не одним шматком в кінці
+
+**Результати тесту:**
+- ✅ `threshold=0.003` - правильне значення
+- ✅ Сегментація працює: `segment 1: 2.2s`, `segment 2: 3.4s`
+- ✅ Розпізнано текст: "Дякую! Дякую за перегляд!"
+- ✅ Чанки вставляються в реальному часі через Shift+F10
+- ✅ `stt_debug.log` створено з правильним кодуванням
+- ✅ `stt_logs.jsonl` створено з JSON-записами
+
+**Файли:**
+- `functions/core_stt_listener.py` - рефакторинг логування, виправлення volume_threshold, додавання segment_callback
+- `functions/global_voice_input.py` - додавання _insert_segment(), чанкова вставка через callback
+- `functions/config.py` - додано MIN_SILENCE_DURATION, MAX_SILENCE_DURATION, STT_LOGGING_ENABLED
+- `functions/core_settings.py` - додано налаштування в SETTINGS_SCHEMA
+- `runtime/user_settings.json` - оновлено VOLUME_THRESHOLD=0.003, STT_LOGGING_ENABLED=True
+- `TEST_GUI/test_stt_hotkey.py` - новий тест для STT з чанковою вставкою
+
+**Unit тести:**
+- `tests/test_global_voice_input.py` - 8/10 pass (2 fail не критичні для STT)
 
 ---
 

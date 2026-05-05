@@ -1,7 +1,6 @@
 """Global Voice Input — глобальне голосове введення в будь-яку програму.
 
-⚠️ НЕ РЕДАГУЙТЕ логіку вставки без узгодження!Продовжи виконання перевір помодульно кожну функцію окремо і в контексті програми/агента чи правильно пройшов/проходить тест/тести. Після завершення рефракторинг і актуалізація документації.
-
+⚠️ НЕ РЕДАГУЙТЕ логіку вставки без узгодження!
 Цей модуль працює ТІЛЬКИ через зовнішній макрос (Robotask / AutoHotkey / інший).
 
 Алгоритм:
@@ -353,7 +352,7 @@ class GlobalVoiceInput:
     def _on_hotkey_pressed(self):
         """Обробити натискання hotkey — toggle запис."""
         print(f"[GVI] _on_hotkey_pressed викликано! is_listening={self.is_listening}")
-
+        
         # Відпустити модифікатори щоб уникнути випадкового Ctrl+V
         try:
             import pyautogui
@@ -363,14 +362,12 @@ class GlobalVoiceInput:
             pyautogui.keyUp("win")
         except Exception as e:
             print(f"[GVI] Помилка відпускання модифікаторів: {e}")
-
+        
         with self._toggle_lock:
             if self.is_listening:
                 # Вже слухаємо — зупинити
                 print("[GVI] Hotkey: зупинка запису...")
                 self._stop_requested = True
-                if hasattr(self, '_stop_event') and self._stop_event:
-                    self._stop_event.set()
                 self.stt_listener.stop()
                 self.is_listening = False
                 self._update_tray_status(VoiceStatus.IDLE, "Зупинено")
@@ -418,30 +415,15 @@ class GlobalVoiceInput:
             self._update_tray_status(VoiceStatus.ERROR, "Pamylka")
 
     def _record_and_recognize(self):
-        """Запісаць і распазнаць у фонавым патоку (псевдопотокове розпізнавання)."""
+        """Запісаць і распазнаць у фонавым патоку."""
         try:
             self.is_listening = True
-            self._stop_event = threading.Event()
-
-            # Callback для вставки кожного сегменту
-            def segment_callback(segment_text: str):
-                """Вставити розпізнаний сегмент тексту."""
-                print(f"[GVI] Вставка сегменту: '{segment_text}'")
-                self._insert_segment(segment_text)
-
-            # Використовуємо псевдопотокове розпізнавання з callback
-            text = self.stt_listener.listen_streaming(stop_event=self._stop_event, segment_callback=segment_callback)
-
-            # Якщо є текст який не був вставлений через callback (наприклад, фінальний сегмент)
-            if text and text.strip():
-                print(f"[GVI] Розпізнано текст: '{text}'")
-                # Текст вже вставлений чанками через callback, тому тут тільки лог
+            # Выклікаем listen_once, які блакуецца пакуль не скончыць запіс
+            text = self.stt_listener.listen_once(duration=LISTEN_DURATION, wait_for_speech=True)
+            if text and not self._stop_requested:
+                self._on_text_recognized(text)
             elif self._stop_requested:
-                print("[GVI] Zapyniena karystalnikam (без тексту)")
-                self.is_listening = False
-                self._update_tray_status(VoiceStatus.IDLE, "Gatavy")
-            else:
-                print("[GVI] Не розпізнано текст")
+                print("[GVI] Zapyniena karystalnikam")
                 self.is_listening = False
                 self._update_tray_status(VoiceStatus.IDLE, "Gatavy")
         except Exception as e:
@@ -452,9 +434,60 @@ class GlobalVoiceInput:
             self._update_tray_status(VoiceStatus.ERROR, "Pamylka")
 
     def _on_text_recognized(self, text: str):
-        """Апрацаваць распазнаны тэкст (текст вже вставлений чанками через callback)."""
+        """Апрацаваць распазнаны тэкст."""
         self.is_listening = False
         self._update_status(f"[GVI] Raspaznana: {text}")
+        self._update_tray_status(VoiceStatus.PROCESSING, "Ustaŭka...")
+
+        # 1. Аднавіць фокус у запамятаванае акно
+        if self._last_window_hwnd:
+            print(f"[GVI] Adnaŭlieńnie fokusu: {self._last_window_hwnd}")
+            
+            # Паспрабаваць аднавіць мінімізаванае вакно
+            SW_RESTORE = 9
+            if user32.IsIconic(self._last_window_hwnd):
+                user32.ShowWindow(self._last_window_hwnd, SW_RESTORE)
+                time.sleep(0.1)
+            
+            # Прывесці вакно наперад
+            user32.BringWindowToTop(self._last_window_hwnd)
+            time.sleep(0.1)
+            
+            # Устанавіць фокус
+            user32.SetForegroundWindow(self._last_window_hwnd)
+            time.sleep(0.5)  # Дастатковы час на аднаўленне фокусу
+            
+            # Праверыць, што фокус сапраўды там
+            current_hwnd = user32.GetForegroundWindow()
+            if current_hwnd != self._last_window_hwnd:
+                print(f"[GVI] Папярэджанне: фокус не адноўлены (current={current_hwnd}, expected={self._last_window_hwnd})")
+            else:
+                print(f"[GVI] Фокус паспяхова адноўлены")
+
+        # 1.5. Очистити буфер і відпустити модифікатори перед вставкою
+        try:
+            import pyperclip
+            pyperclip.copy("")
+            print(f"[GVI] Буфер обміну очищено перед вставкою")
+        except Exception as e:
+            print(f"[GVI] Помилка очищення буфера: {e}")
+        try:
+            import pyautogui
+            pyautogui.keyUp("ctrl")
+            pyautogui.keyUp("shift")
+            pyautogui.keyUp("alt")
+            pyautogui.keyUp("win")
+            print(f"[GVI] Модифікатори відпущені")
+        except Exception as e:
+            print(f"[GVI] Помилка відпускання модифікаторів: {e}")
+        time.sleep(0.1)
+
+        # 2. Уставіць тэкст через скрипт користувача (Shift+F10)
+        success = self._insert_text_with_script(text)
+        if not success:
+            print("[GVI] Nie atrymalasia ustaŭić tekst")
+
+        # 3. Вярнуць статус IDLE
         self._update_tray_status(VoiceStatus.IDLE, "Gatavy")
         self._update_status("[GVI] Gatavy")
 
@@ -475,68 +508,6 @@ class GlobalVoiceInput:
             return True
         except Exception as e:
             print(f"[GVI] Pamylka Win32 paste: {e}")
-            return False
-
-    def _insert_segment(self, segment_text: str) -> bool:
-        """Вставити один сегмент тексту через скрипт користувача (Shift+F10)."""
-        try:
-            # 1. Аднавіць фокус у запамятаванае акно
-            if self._last_window_hwnd:
-                print(f"[GVI] Аднаўленне фокусу для сегменту: {self._last_window_hwnd}")
-                
-                # Прывесці вакно наперад
-                user32.BringWindowToTop(self._last_window_hwnd)
-                time.sleep(0.05)
-                
-                # Устанавіць фокус
-                user32.SetForegroundWindow(self._last_window_hwnd)
-                time.sleep(0.2)
-            
-            # 2. Відпустити модифікатори перед вставкою
-            try:
-                import pyautogui
-                pyautogui.keyUp("ctrl")
-                pyautogui.keyUp("shift")
-                pyautogui.keyUp("alt")
-                pyautogui.keyUp("win")
-            except Exception as e:
-                print(f"[GVI] Помилка відпускання модифікаторів: {e}")
-            
-            # 3. Копіювати текст в буфер обміну
-            from functions.tools_mouse_keyboard import clipboard_copy_text
-            copy_result = clipboard_copy_text(segment_text)
-            print(f"[GVI] Сегмент скопійовано в буфер: {copy_result}")
-            
-            if not copy_result or not copy_result.get("success"):
-                return False
-            
-            time.sleep(0.05)
-            
-            # 4. Натиснути Shift+F10 для запуску скрипта користувача
-            try:
-                import pyautogui
-                pyautogui.hotkey('shift', 'f10')
-                print(f"[GVI] Натиснуто Shift+F10 для сегменту")
-            except Exception as e:
-                print(f"[GVI] Помилка натискання Shift+F10: {e}")
-                return False
-            
-            # 5. Чекати завершення вставки (коротка затримка для сегментів)
-            time.sleep(0.3)
-            
-            # 6. Очистити буфер обміну
-            try:
-                import pyperclip
-                pyperclip.copy("")
-                print(f"[GVI] Буфер очищено після вставки сегменту")
-            except Exception as e:
-                print(f"[GVI] Помилка очищення буфера: {e}")
-            
-            return True
-        except Exception as e:
-            print(f"[GVI] Помилка вставки сегменту: {e}")
-            import traceback
-            traceback.print_exc()
             return False
 
     def _insert_text_with_script(self, text: str) -> bool:

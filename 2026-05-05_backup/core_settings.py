@@ -110,10 +110,6 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "type": "bool", "group": "Розпізнавання мови", "label": "Авто-відправка голосу",
         "desc": "Автоматично відправляти розпізнаний текст. Вимкніть щоб редагувати текст перед відправкою.",
     },
-    "STT_LOGGING_ENABLED": {
-        "type": "bool", "group": "Розпізнавання мови", "label": "Логування STT",
-        "desc": "Логувати сегменти, час розпізнавання та помилки STT.",
-    },
     "VISION_PROVIDER": {
         "type": "choice", "group": "Vision-LM", "label": "Vision провайдер",
         "choices": ["none", "openai", "claude", "gemini"],
@@ -148,16 +144,6 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "type": "float", "group": "Аудіо", "label": "Тривалість тиші (с)",
         "desc": "Скільки секунд тиші вважати кінцем фрази.",
         "min": 0.5, "max": 10.0,
-    },
-    "MIN_SILENCE_DURATION": {
-        "type": "float", "group": "Аудіо", "label": "Мін. тиша для сегментів (с)",
-        "desc": "Секунди тиші для розбиття аудіо на сегменти (псевдопотокове розпізнавання).",
-        "min": 0.5, "max": 5.0,
-    },
-    "MAX_SILENCE_DURATION": {
-        "type": "float", "group": "Аудіо", "label": "Макс. тиша для зупинки (с)",
-        "desc": "Секунди тиші для автоматичної зупинки запису.",
-        "min": 3.0, "max": 15.0,
     },
     "MICROPHONE_DEVICE_ID": {
         "type": "int", "group": "Аудіо", "label": "ID мікрофона",

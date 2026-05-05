@@ -38,10 +38,7 @@ SAMPLE_RATE = 16000
 LISTEN_DURATION = 5
 VOLUME_THRESHOLD = 0.003
 SILENCE_DURATION = 3.0  # секунди тиші для закінчення фрази (збільшено з 2.0)
-MIN_SILENCE_DURATION = 2.0  # секунди тиші для розбиття на сегменти (псевдопотокове розпізнавання)
-MAX_SILENCE_DURATION = 8.0  # секунди тиші для автоматичної зупинки запису
 MICROPHONE_DEVICE_ID = 1
-STT_LOGGING_ENABLED = True  # Логування STT (сегменти, час розпізнавання, помилки)
 
 # Активація (застаріло)
 ACTIVATION_WORD = "марк"

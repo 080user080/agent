@@ -602,22 +602,6 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
                 self.update_progress(progress, status_text)
             elif msg_type == "mic_finished":
                 self._on_mic_finished(data)
-            elif msg_type == "stt_segment_added":
-                # Обробка доданого сегменту STT (псевдопотокове розпізнавання)
-                segment_num = data.get("segment", 0)
-                segment_text = data.get("text", "")
-                if segment_text:
-                    current_text = self.input_text.toPlainText()
-                    if current_text:
-                        self.input_text.setText(current_text + " " + segment_text)
-                    else:
-                        self.input_text.setText(segment_text)
-                    self.status_label.setText(f"✅ Сегмент {segment_num} додано")
-                    self.input_text.setFocus()
-            elif msg_type == "stt_segment_recognizing":
-                # Обробка статусу розпізнавання сегменту
-                segment_num = data.get("segment", 0)
-                self.status_label.setText(f"🔍 Розпізнавання сегменту {segment_num}...")
             elif msg_type == "execution_started":
                 self.show_stop_button()
                 self.on_plan_execution_started()
