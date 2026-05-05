@@ -36,16 +36,14 @@ cd /d D:\Python\agent
 
 ### Точки входу
 
-- [run.py](../run.py) — універсальний entrypoint (Tkinter/PyQt6).
-- [run_assistant.py](../run_assistant.py) — GUI entrypoint (Tkinter).
+- [run.py](../run.py) — універсальний entrypoint (PyQt6).
 - [run_assistant_qt.py](../run_assistant_qt.py) — GUI entrypoint (PyQt6).
 - [main.py](../main.py) — основний runtime / AssistantCore.
 - [smart_patch_gui.py](../smart_patch_gui.py) — окремий допоміжний GUI.
 
 ### Основні підсистеми
 
-- `core_gui/` — Tkinter GUI.
-- `core_gui_pyqt6/` — PyQt6 GUI.
+- `core_gui_pyqt6/` — PyQt6 GUI (основний GUI бекенд).
 - `gui_tabs/` — PyQt6 multi-tab GUI.
 - `functions/core_*` — planner, executor, memory, cache, settings, safety, checkpoint.
 - `functions/logic_*` — orchestration, task running, scenarios, expectations, repair, watchers.

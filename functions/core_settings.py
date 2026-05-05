@@ -183,9 +183,9 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
     # --- GUI ---
     "GUI_BACKEND": {
         "type": "str", "group": "GUI", "label": "GUI бекенд",
-        "desc": "tkinter (default, стабільний) або pyqt6 (експериментально, в розробці).",
-        "choices": ["tkinter", "pyqt6"],
-        "default": "tkinter", "user_only": True,
+        "desc": "pyqt6 (основний GUI бекенд).",
+        "choices": ["pyqt6"],
+        "default": "pyqt6", "user_only": True,
     },
     "GLOBAL_VOICE_HOTKEY": {
         "type": "str", "group": "Global Voice Input", "label": "Гаряча клавіша для глобального голосового введення",

@@ -109,6 +109,19 @@
 - `set_setting(key: str, value: Any) -> None`: Збереження налаштування
 **Залежності**: `json`, `SETTINGS_SCHEMA`
 
+**GUI налаштування**:
+- `GUI_BACKEND` — GUI бекенд (pyqt6)
+- `GLOBAL_VOICE_HOTKEY` — Гаряча клавіша для глобального голосового введення (наприклад: ctrl+f9)
+- `GLOBAL_VOICE_ENABLED` — Увімкнути глобальне голосове введення
+
+**Геометрія вікна** (планується):
+- `GUI_WINDOW_X` — Позиція X при старті
+- `GUI_WINDOW_Y` — Позиція Y при старті
+- `GUI_WINDOW_WIDTH` — Ширина при старті
+- `GUI_WINDOW_HEIGHT` — Висота при старті
+- `GUI_WINDOW_MAXIMIZED` — Чи відкривати в повноекранному режимі
+- `GUI_SAVE_GEOMETRY` — Чи зберігати геометрію при закритті
+
 ### Інші core_* модулі
 - `core_action_recorder.py` — Запис дій в лог
 - `core_app_profile.py` — Профілювання додатку

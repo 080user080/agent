@@ -8,7 +8,7 @@
 git clone https://github.com/080user080/agent.git
 cd agent
 pip install -r requirements.txt
-python run.py --qt  # або python run_assistant.py для Tkinter
+python run.py --qt  # PyQt6 (рекомендовано)
 ```
 
 ### Q: Які вимоги до системи?
@@ -164,7 +164,6 @@ coverage report
 
 ### Q: Як змінити GUI?
 **A:**
-- **Tkinter**: `core_gui/main_window.py`
 - **PyQt6**: `core_gui_pyqt6/main_window.py`
 - **Вкладки**: `gui_tabs/*.py`
 

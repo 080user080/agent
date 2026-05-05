@@ -37,8 +37,8 @@ cd /d D:\Python\agent
 
 ### Що вже реально є в коді
 
-- GUI на Tkinter у `core_gui/`, запуск через [run_assistant.py](D:/Python/agent/run_assistant.py).
 - GUI на PyQt6 у `core_gui_pyqt6/`, запуск через [run.py](D:/Python/agent/run.py) --qt.
+- GUI на Tkinter застаріло і переміщено в [backup/tkinter_legacy/](D:/Python/agent/backup/tkinter_legacy/) (05.05.2026).
 - Основний runtime у [main.py](D:/Python/agent/main.py).
 - Planner / executor / memory / cache / safety / audit.
 - `TaskRunner`, `PermissionGate`, `ExecutionReport`, `SessionBudget`, `Watcher`.
@@ -105,12 +105,18 @@ cd /d D:\Python\agent
    - ❌ НЕ налаштовано LLM_ENDPOINTS для GPT-OSS 20B, Gemini, DeepSeek
    - Деталі: див. TASKS.md ЕТАП 12
 
-6. **Windows-first проєкт покритий CI переважно на Linux.**
+6. **AgentLoop JSON parsing issue (05.05.2026).**
+   - LLM (qwen3-coder-30b-a3b-instruct) не генерує коректний JSON для tool-calling
+   - ActionDecider отримує сміття замість JSON, що призводить до зациклення
+   - Збільшено `max_steps` з 50 до 100 в `AgentLoopConfig` як тимчасове рішення
+   - Потрібно: використати сильніший LLM або покращити парсинг JSON з fallback
+
+7. **Windows-first проєкт покритий CI переважно на Linux.**
    Поточний [ci.yml](D:/Python/agent/.github/workflows/ci.yml) корисний для логіки, але не закриває
    реальні ризики `pywin32`, DPI, UIA, віконного менеджменту та GUI automation.
 
-7. **Структура коду вже надто плоска й важка для підтримки.**
-   У `functions/` 90 файлів; найбільші модулі стали "центрами тяжіння":
+8. **Структура коду вже надто плоска й важка для підтримки.**
+   У `functions/` 100+ файлів; найбільші модулі стали "центрами тяжіння":
    [main.py](D:/Python/agent/main.py),
    [logic_commands.py](D:/Python/agent/functions/logic_commands.py),
    [core_planner.py](D:/Python/agent/functions/core_planner.py),

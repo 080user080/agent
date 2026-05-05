@@ -28,11 +28,7 @@ pip install -r requirements.txt
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # Запуск (GUI — основний спосіб)
-python run_assistant.py
-
-# Або з вибором GUI backend (Tkinter або PyQt6)
-python run.py --qt  # PyQt6
-python run.py --tk  # Tkinter
+python run.py --qt  # PyQt6 (рекомендовано)
 
 # Або консольний режим (без GUI)
 python main.py
@@ -123,10 +119,10 @@ python test_duplication_direct.py
 - **Execution logs** — JSONL логи виконань задач
 
 ### 🖥️ GUI
-- **Tkinter GUI** — класичний інтерфейс
-- **PyQt6 GUI** — сучасний інтерфейс (run.py --qt)
+- **PyQt6 GUI** — сучасний багатовкладковий інтерфейс (run.py --qt)
 - **Thread-safe messages** — потікобезпечна черга повідомлень
 - **Settings editor** — динамічний рендеринг налаштувань
+- **Multi-tab interface** — Чат, Налаштування, Логи, Статистика, Про програму, Інструменти
 
 ### ⚙️ Налаштування
 - GUI редактор налаштувань (вкладка "Налаштування")
@@ -141,8 +137,7 @@ python test_duplication_direct.py
 
 ```
 agent/
-├── run.py                      # Універсальна точка входу (Tkinter/PyQt6)
-├── run_assistant.py            # Точка входу з GUI (Tkinter)
+├── run.py                      # Універсальна точка входу (PyQt6)
 ├── run_assistant_qt.py         # Точка входу з GUI (PyQt6)
 ├── main.py                     # Консольна точка входу (AssistantCore)
 ├── functions/                  # Основна логіка (~100 модулів)
@@ -201,19 +196,11 @@ agent/
 │   ├── plan_executor.py           # Plan executor bridge
 │   ├── windsurf_watcher_executor.py # Windsurf Watch GUI
 │   ├── pipeline_code.py           # Code generation pipeline
-│   └── aaa_*.py                   # LLM-tool обгортки (~15)
+│   ├── aaa_*.py                   # LLM-tool обгортки (~15)
 │       ├── aaa_architect.py / aaa_code_tools.py / aaa_debug_code.py
 │       ├── aaa_create_file.py / aaa_edit_file.py / aaa_execute_python.py
 │       ├── aaa_open_browser.py / aaa_programs.py / aaa_system.py
 │       └── aaa_voice_input.py / aaa_utility_tools.py / aaa_confirmation.py
-├── core_gui/                   # GUI компоненти (Tkinter)
-│   ├── main_window.py             # Головне вікно
-│   ├── chat_panel.py              # Панель чату
-│   ├── plan_panel.py              # Панель плану
-│   ├── settings_tab.py            # Вкладка налаштувань
-│   ├── confirmation.py            # Діалог підтверджень
-│   ├── llm_endpoints_editor.py    # Редактор LLM ендпойнтів
-│   └── styles.py / constants.py
 ├── core_gui_pyqt6/             # GUI компоненти (PyQt6)
 │   ├── main_window.py             # Головне вікно (PyQt6)
 │   ├── settings_tab_qt.py         # Вкладка налаштувань (PyQt6)

@@ -74,7 +74,7 @@ class AgentState:
 @dataclass
 class AgentLoopConfig:
     """Конфігурація AgentLoop."""
-    max_steps: int = 50
+    max_steps: int = 100
     max_duration_seconds: float = 3600.0
     enable_ocr: bool = True
     enable_ui_a: bool = False

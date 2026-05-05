@@ -64,7 +64,7 @@ filterwarnings = [
 # -----------------------------------------------------------------------------
 [tool.coverage.run]
 branch = true
-source = ["functions", "core_gui"]
+source = ["functions", "core_gui_pyqt6"]
 omit = [
     "tests/*",
     ".venv/*",
