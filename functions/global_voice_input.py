@@ -107,14 +107,17 @@ class HotkeyHook:
         try:
             from pynput.keyboard import Key
 
-            # Оновити стан модифікаторів
+            # Debug-Loop: Логування кожного натискання модифікаторів
             if key == Key.ctrl_l or key == Key.ctrl_r:
+                print(f"[DEBUG-HOOK] Ctrl pressed")
                 self.ctrl_pressed = True
                 return
             elif key == Key.shift_l or key == Key.shift_r:
+                print(f"[DEBUG-HOOK] Shift pressed")
                 self.shift_pressed = True
                 return
             elif key == Key.cmd or key == Key.cmd_l or key == Key.cmd_r:
+                print(f"[DEBUG-HOOK] Win pressed")
                 self.win_pressed = True
                 return
 
@@ -146,6 +149,7 @@ class HotkeyHook:
                     print(f"[HotkeyHook] ✅ Hotkey спрацював: {self.hotkey}")
                     if self.callback:
                         threading.Thread(target=self.callback, daemon=True).start()
+                    # 🔥 pynput не може блокувати натискання в Windows, тому return False не працює
             elif f_key_needed:
                 # Перевірити F-клавішу
                 f_key_map = {
@@ -157,6 +161,7 @@ class HotkeyHook:
                     print(f"[HotkeyHook] ✅ Hotkey спрацював: {self.hotkey}")
                     if self.callback:
                         threading.Thread(target=self.callback, daemon=True).start()
+                    # 🔥 pynput не може блокувати натискання в Windows, тому return False не працює
         except Exception as e:
             pass  # Тихо ігноруємо помилки
 
@@ -235,6 +240,43 @@ class GlobalVoiceInput:
         self._toggle_lock = threading.Lock()
         self._stop_requested = False
 
+    def _debug_find_edit_control(self, parent_hwnd: int):
+        """Знайти всі дочірні контроли в вікні."""
+        import ctypes
+
+        found = []
+
+        def enum_callback(hwnd, lparam):
+            buf = ctypes.create_unicode_buffer(256)
+            ctypes.windll.user32.GetClassNameW(hwnd, buf, 255)
+            class_name = buf.value
+
+            buf2 = ctypes.create_unicode_buffer(512)
+            ctypes.windll.user32.GetWindowTextW(hwnd, buf2, 511)
+            title = buf2.value
+
+            visible = ctypes.windll.user32.IsWindowVisible(hwnd)
+            enabled = ctypes.windll.user32.IsWindowEnabled(hwnd)
+
+            found.append({
+                "hwnd": hwnd,
+                "class": class_name,
+                "title": title[:30],
+                "visible": visible,
+                "enabled": enabled,
+            })
+            return True
+
+        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+        callback = WNDENUMPROC(enum_callback)
+        ctypes.windll.user32.EnumChildWindows(parent_hwnd, callback, 0)
+
+        print(f"[DEBUG] Дочірні контроли вікна {parent_hwnd}:")
+        for item in found:
+            print(f"  hwnd={item['hwnd']} class='{item['class']}' visible={item['visible']} enabled={item['enabled']} title='{item['title']}'")
+
+        return found
+
     def _get_window_class_name(self, hwnd: int) -> str:
         """Отримати Win32 class name вікна/контрола."""
         try:
@@ -257,10 +299,84 @@ class GlobalVoiceInput:
                     if gui.hwndFocus:
                         target_hwnd = gui.hwndFocus
 
+            # Спеціальна обробка для Chrome-based редакторів (Windsurf/VS Code)
+            parent_class = self._get_window_class_name(hwnd).lower()
+            if "chrome_widgetwin" in parent_class:
+                # Знайти Chrome_RenderWidgetHostHWND - це поле вводу
+                render_widget = self._find_chrome_render_widget(hwnd)
+                if render_widget:
+                    target_hwnd = render_widget
+            # Спеціальна обробка для PyQt6
+            elif "qt" in parent_class and "qwindowicon" in parent_class:
+                # Знайти QTextEdit або інший контрол вводу в PyQt6
+                qt_edit = self._find_qt_edit_control(hwnd)
+                if qt_edit:
+                    target_hwnd = qt_edit
+
             class_name = self._get_window_class_name(target_hwnd)
             return int(target_hwnd or 0), class_name
         except Exception:
             return int(hwnd or 0), self._get_window_class_name(hwnd)
+
+    def _find_chrome_render_widget(self, parent_hwnd: int) -> Optional[int]:
+        """Знайти Chrome_RenderWidgetHostHWND в Chrome-based вікні."""
+        import ctypes
+        
+        found = []
+        
+        def enum_callback(hwnd, lparam):
+            buf = ctypes.create_unicode_buffer(256)
+            ctypes.windll.user32.GetClassNameW(hwnd, buf, 255)
+            class_name = buf.value
+            
+            if "Chrome_RenderWidgetHostHWND" in class_name:
+                visible = ctypes.windll.user32.IsWindowVisible(hwnd)
+                enabled = ctypes.windll.user32.IsWindowEnabled(hwnd)
+                if visible and enabled:
+                    found.append(hwnd)
+                    return False  # зупинити пошук після першого знаходження
+            return True
+        
+        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+        callback = WNDENUMPROC(enum_callback)
+        ctypes.windll.user32.EnumChildWindows(parent_hwnd, callback, 0)
+        
+        return found[0] if found else None
+
+    def _find_qt_edit_control(self, parent_hwnd: int) -> Optional[int]:
+        """Знайти QTextEdit або інший контрол вводу в PyQt6 вікні."""
+        import ctypes
+        
+        found = []
+        
+        def enum_callback(hwnd, lparam):
+            buf = ctypes.create_unicode_buffer(256)
+            ctypes.windll.user32.GetClassNameW(hwnd, buf, 255)
+            class_name = buf.value
+            
+            # Шукаємо Qt контроли які можуть приймати текст
+            qt_edit_classes = [
+                "QTextEdit",
+                "QLineEdit", 
+                "QPlainTextEdit",
+                "QComboBox",
+                "QSpinBox",
+                "QDoubleSpinBox"
+            ]
+            
+            if any(qt_class in class_name for qt_class in qt_edit_classes):
+                visible = ctypes.windll.user32.IsWindowVisible(hwnd)
+                enabled = ctypes.windll.user32.IsWindowEnabled(hwnd)
+                if visible and enabled:
+                    found.append(hwnd)
+                    return False  # зупинити пошук після першого знаходження
+            return True
+        
+        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_int, ctypes.c_int)
+        callback = WNDENUMPROC(enum_callback)
+        ctypes.windll.user32.EnumChildWindows(parent_hwnd, callback, 0)
+        
+        return found[0] if found else None
 
     def _get_insert_strategy(self, class_name: str, title: str) -> str:
         """Обрати стратегію вставки залежно від типу вікна/контрола.
@@ -378,10 +494,16 @@ class GlobalVoiceInput:
                 # Вже слухаємо — зупинити
                 print("[GVI] Hotkey: зупинка запису...")
                 self._stop_requested = True
+                print(f"[DEBUG-GVI] _stop_requested встановлено в True")
                 if hasattr(self, '_stop_event') and self._stop_event:
                     self._stop_event.set()
+                    print(f"[DEBUG-GVI] _stop_event встановлено")
+                else:
+                    print(f"[DEBUG-GVI] _stop_event не існує або None")
                 self.stt_listener.stop()
+                print(f"[DEBUG-GVI] stt_listener.stop() викликано")
                 self.is_listening = False
+                print(f"[DEBUG-GVI] is_listening встановлено в False")
                 self._update_tray_status(VoiceStatus.IDLE, "Зупинено")
                 self._update_status("[GVI] Зупинено")
             else:
@@ -517,82 +639,190 @@ class GlobalVoiceInput:
             return False
 
     def _insert_segment(self, segment_text: str) -> bool:
-        """Вставити один сегмент тексту через скрипт користувача (Shift+F10)."""
+        """Вставити один сегмент тексту без зовнішнього макросу.
+
+        Пріоритет методів:
+          1. WM_PASTE напряму в hwnd контрола (найнадійніше для PyQt6/Win32)
+          2. SendInput з KEYEVENTF_UNICODE (виправлена структура INPUT, працює з кирилицею)
+          3. keyboard_hotkey(ctrl+v) як fallback
+        """
+        import ctypes
+        import pyperclip
+        import time
+
+        user32 = ctypes.windll.user32
+        WM_PASTE = 0x0302
+
+        print(f"[GVI] _insert_segment: '{segment_text[:50]}' (len={len(segment_text)})")
+
+        # 1. Відновити фокус у запам'ятане вікно
+        hwnd = self._last_window_hwnd
+        if hwnd:
+            user32.BringWindowToTop(hwnd)
+            user32.SetForegroundWindow(hwnd)
+            time.sleep(0.15)
+
+        # 2. Відпустити модифікатори (щоб не було випадкового Ctrl+Shift+...)
         try:
-            # Debug-Loop: Логування вхідних даних
-            print(f"[DEBUG-GVI] _insert_segment викликано: text='{segment_text[:50]}...' (len={len(segment_text)})")
-            
-            # Debug-Loop: Логування буфера перед вставкою сегменту
-            import pyperclip
-            clipboard_before_segment = pyperclip.paste() if pyperclip.paste() else ""
-            print(f"[DEBUG-GVI] _insert_segment: буфер ПЕРЕД копіюванням: '{clipboard_before_segment[:50] if clipboard_before_segment else ''}...' (len={len(clipboard_before_segment)})")
-            
-            # 1. Аднавіць фокус у запамятаванае акно
-            if self._last_window_hwnd:
-                print(f"[GVI] Аднаўленне фокусу для сегменту: {self._last_window_hwnd}")
-                
-                # Прывесці вакно наперад
-                user32.BringWindowToTop(self._last_window_hwnd)
-                time.sleep(0.05)
-                
-                # Устанавіць фокус
-                user32.SetForegroundWindow(self._last_window_hwnd)
-                time.sleep(0.2)
-            
-            # 2. Відпустити модифікатори перед вставкою
+            import pyautogui
+            for key in ("ctrl", "shift", "alt", "win"):
+                pyautogui.keyUp(key)
+        except Exception:
+            pass
+
+        # 3. Зберегти старий буфер і покласти текст
+        try:
+            old_clipboard = pyperclip.paste()
+        except Exception:
+            old_clipboard = ""
+
+        # Debug-Loop: Логування перед копіюванням
+        print(f"[DEBUG-INSERT] Буфер ПЕРЕД copy: '{old_clipboard[:50] if old_clipboard else ''}...'")
+
+        pyperclip.copy(segment_text)
+        time.sleep(0.05)
+
+        # Debug-Loop: Логування після копіювання
+        new_clipboard = pyperclip.paste()
+        print(f"[DEBUG-INSERT] Буфер ПІСЛЯ copy: '{new_clipboard[:50] if new_clipboard else ''}...'")
+
+        ok = False
+
+        # Вибір методу залежно від типу вікна
+        target_hwnd, class_name = self._resolve_focus_target(hwnd) if hwnd else (0, "")
+        
+        # Для PyQt6 використовуємо SendInput як основний метод
+        if hwnd and "qt" in class_name.lower() and "qwindowicon" in class_name.lower():
+            print(f"[GVI] PyQt6 виявлено, використовуємо SendInput")
+            ok = self._send_input_unicode(segment_text)
+        # Для Chrome-based редакторів використовуємо WM_PASTE в дочірній контрол
+        elif hwnd and "chrome_renderwidgethosthwnd" in class_name.lower():
+            print(f"[GVI] Chrome Render Widget виявлено, використовуємо WM_PASTE")
             try:
-                import pyautogui
-                pyautogui.keyUp("ctrl")
-                pyautogui.keyUp("shift")
-                pyautogui.keyUp("alt")
-                pyautogui.keyUp("win")
+                print(f"[GVI] WM_PASTE → hwnd={target_hwnd}, class='{class_name}'")
+                user32.SendMessageW(target_hwnd, WM_PASTE, 0, 0)
+                time.sleep(0.1)
+                ok = True
+                print("[GVI] WM_PASTE: ok")
             except Exception as e:
-                print(f"[GVI] Помилка відпускання модифікаторів: {e}")
-            
-            # 3. Копіювати текст в буфер обміну
-            from functions.tools_mouse_keyboard import clipboard_copy_text
-            copy_result = clipboard_copy_text(segment_text)
-            print(f"[GVI] Сегмент скопійовано в буфер: {copy_result}")
-            
-            # Debug-Loop: Логування буфера після копіювання
-            clipboard_after_copy = pyperclip.paste() if pyperclip.paste() else ""
-            print(f"[DEBUG-GVI] _insert_segment: буфер ПІСЛЯ копіювання: '{clipboard_after_copy[:50] if clipboard_after_copy else ''}...' (len={len(clipboard_after_copy)})")
-            
-            if not copy_result or not copy_result.get("success"):
-                return False
-            
-            time.sleep(0.05)
-            
-            # 4. Натиснути Shift+F10 для запуску скрипта користувача
+                print(f"[GVI] WM_PASTE failed: {e}")
+                # Fallback до SendInput
+                ok = self._send_input_unicode(segment_text)
+        # Для інших вікон спочатку пробуємо WM_PASTE
+        else:
+            if hwnd:
+                try:
+                    print(f"[GVI] WM_PASTE → hwnd={target_hwnd}, class='{class_name}'")
+                    
+                    # Діагностика: знайти дочірні контроли
+                    self._debug_find_edit_control(hwnd)
+                    
+                    user32.SendMessageW(target_hwnd, WM_PASTE, 0, 0)
+                    time.sleep(0.1)
+                    ok = True
+                    print("[GVI] WM_PASTE: ok")
+                except Exception as e:
+                    print(f"[GVI] WM_PASTE failed: {e}")
+
+            # Метод 2: SendInput з Unicode (якщо WM_PASTE не спрацював)
+            if not ok:
+                ok = self._send_input_unicode(segment_text)
+
+        # Метод 3: Ctrl+V як останній fallback
+        if not ok:
             try:
-                import pyautogui
-                pyautogui.hotkey('shift', 'f10')
-                print(f"[GVI] Натиснуто Shift+F10 для сегменту")
+                from functions.tools_mouse_keyboard import keyboard_hotkey
+                result = keyboard_hotkey("ctrl", "v")
+                ok = bool(result and result.get("success"))
+                print(f"[GVI] Ctrl+V fallback: {ok}")
             except Exception as e:
-                print(f"[GVI] Помилка натискання Shift+F10: {e}")
-                return False
-            
-            # 5. Чекати завершення вставки (коротка затримка для сегментів)
-            time.sleep(0.3)
-            
-            # Debug-Loop: Логування буфера після вставки (перед очищенням)
-            clipboard_after_paste = pyperclip.paste() if pyperclip.paste() else ""
-            print(f"[DEBUG-GVI] _insert_segment: буфер ПІСЛЯ Shift+F10 (перед очищенням): '{clipboard_after_paste[:50] if clipboard_after_paste else ''}...' (len={len(clipboard_after_paste)})")
-            
-            # 6. Очистити буфер обміну
-            try:
-                import pyperclip
-                pyperclip.copy("")
-                print(f"[GVI] Буфер очищено після вставки сегменту")
-            except Exception as e:
-                print(f"[GVI] Помилка очищення буфера: {e}")
-            
-            return True
-        except Exception as e:
-            print(f"[GVI] Помилка вставки сегменту: {e}")
-            import traceback
-            traceback.print_exc()
+                print(f"[GVI] Ctrl+V failed: {e}")
+
+        # 4. Відновити буфер обміну
+        time.sleep(0.1)
+        try:
+            pyperclip.copy(old_clipboard)
+        except Exception:
+            pass
+
+        return ok
+
+    def _send_input_unicode(self, text: str) -> bool:
+        """Вставити текст через SendInput з KEYEVENTF_UNICODE (виправлена структура INPUT).
+
+        Виправлена структура INPUT з правильним вирівнюванням для x64 Windows.
+        Розмір INPUT має бути 40 байт на x64.
+        """
+        import ctypes
+        import ctypes.wintypes as wt
+
+        KEYEVENTF_UNICODE = 0x0004
+        KEYEVENTF_KEYUP   = 0x0002
+        INPUT_KEYBOARD    = 1
+
+        # Debug-Loop: Логування вхідних даних
+        print(f"[DEBUG-SendInput] Вхід: text='{text[:50]}...' (len={len(text)})")
+
+        # Точна структура як в WinAPI — вирівнювання критично
+        class KEYBDINPUT(ctypes.Structure):
+            _fields_ = [
+                ("wVk",         wt.WORD),
+                ("wScan",       wt.WORD),
+                ("dwFlags",     wt.DWORD),
+                ("time",        wt.DWORD),
+                ("dwExtraInfo", ctypes.c_ulonglong),  # ← не POINTER, а c_ulonglong
+            ]
+
+        class _INPUTunion(ctypes.Union):
+            _fields_ = [
+                ("ki", KEYBDINPUT),
+                ("_pad", ctypes.c_byte * 28),          # ← padding до 32 байт
+            ]
+
+        class INPUT(ctypes.Structure):
+            _pack_ = 8   # вирівнювання як в WinAPI
+            _fields_ = [
+                ("type", wt.DWORD),
+                ("_u",   _INPUTunion),
+            ]
+
+        user32 = ctypes.windll.user32
+        inputs = []
+
+        for char in text:
+            code = ord(char)
+            print(f"[DEBUG-SendInput] Проміжний: char '{char}' (code={code})")
+
+            ki_down = KEYBDINPUT(0, code, KEYEVENTF_UNICODE, 0, 0)
+            inp_down = INPUT(INPUT_KEYBOARD)
+            inp_down._u.ki = ki_down
+            inputs.append(inp_down)
+
+            ki_up = KEYBDINPUT(0, code, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
+            inp_up = INPUT(INPUT_KEYBOARD)
+            inp_up._u.ki = ki_up
+            inputs.append(inp_up)
+
+        n = len(inputs)
+        arr = (INPUT * n)(*inputs)
+        cb = ctypes.sizeof(INPUT)
+
+        print(f"[DEBUG-SendInput] sizeof(INPUT)={cb}, n={n}")  # має бути 40 на x64
+
+        ctypes.windll.kernel32.SetLastError(0)
+        sent = user32.SendInput(n, arr, cb)
+        error = ctypes.windll.kernel32.GetLastError()
+
+        print(f"[DEBUG-SendInput] Результат: sent={sent}/{n}, error={error}")
+
+        if sent != n:
+            print(f"[DEBUG-SendInput] ❌ SendInput failed: sent={sent}, error={error}")
+            if error == 87:
+                print(f"[DEBUG-SendInput] ERROR_INVALID_PARAMETER - sizeof(INPUT)={cb} (очікується 40 на x64)")
             return False
+
+        print(f"[DEBUG-SendInput] ✅ SendInput Unicode: ok, sent={sent}")
+        return True
 
     def _insert_text_with_script(self, text: str) -> bool:
         """Універсальна вставка: копіювати в буфер, натиснути Shift+F10, чекати 2 сек, очистити буфер."""

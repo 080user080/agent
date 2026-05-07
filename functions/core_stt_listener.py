@@ -544,6 +544,7 @@ class STTGuiController:
         self.last_recognized_text = ""
         self.gui_queue = gui_queue  # Черга для повідомлень в GUI
         self.tray_status_callback = tray_status_callback  # Callback для оновлення іконки в трей
+        self._stop_event = None  # Event для зупинки розпізнавання
 
     def initialize(self) -> bool:
         """Ініціалізувати STT."""
@@ -551,12 +552,27 @@ class STTGuiController:
 
     def toggle_listening(self) -> Optional[str]:
         """Перемкнути стан слухання (для кнопки в GUI)."""
+        print(f"[DEBUG-STT-GUI] toggle_listening викликано, current_status={self.current_status}")
+
         if self.current_status == "listening":
+            # Зупинити розпізнавання
+            print(f"[DEBUG-STT-GUI] Зупинка розпізнавання...")
+            if self._stop_event:
+                self._stop_event.set()
+                print(f"[DEBUG-STT-GUI] stop_event встановлено")
             return None
+
+        # Почати розпізнавання
+        print(f"[DEBUG-STT-GUI] Початок розпізнавання...")
+        self._stop_event = threading.Event()
+        print(f"[DEBUG-STT-GUI] stop_event створено")
 
         # 🔥 НЕ вимикаємо segment_added - чанки мають вставлятися послідовно
         # Подвійне введення вирішено шляхом видалення дублюючої вставки в _on_mic_finished
-        text = self.listener.listen_streaming()
+        text = self.listener.listen_streaming(stop_event=self._stop_event)
+        print(f"[DEBUG-STT-GUI] Розпізнавання завершено, text='{text[:50] if text else ''}...'")
+
+        self._stop_event = None
         return text
 
     def start_wake_word_mode(self):

@@ -17,8 +17,8 @@ import threading
 def test_ctrl_f9_auto():
     """Автоматичний тест натискання Ctrl+F9."""
     
-    # Arrange: Підготуй вхідні дані
-    old_text = "Попередній текст в буфері обміну"
+    # Arrange: Підготуй вхідні дані - буфер з текстом (як в реальності)
+    old_text = "Новийтекст --- знову вставилося з буферу"
     pyperclip.copy(old_text)
     time.sleep(0.1)
     
@@ -46,14 +46,14 @@ def test_ctrl_f9_auto():
         print("[TEST] GlobalVoiceInput ініціалізовано")
         print("[TEST] Очікування натискання Ctrl+F9...")
         
-        # Автоматично натискаємо Ctrl+F9 через 2 секунди
+        # Автоматично натискаємо Ctrl+F9 через 2 секунди через hook callback
         def press_hotkey():
             time.sleep(2)
-            print("[TEST] Автоматичне натискання Ctrl+F9...")
+            print("[TEST] Автоматичне натискання Ctrl+F9 через hook callback...")
             try:
-                import pyautogui
-                pyautogui.hotkey('ctrl', 'f9')
-                print("[TEST] Ctrl+F9 натиснуто")
+                # Викликаємо callback напряму замість pyautogui.hotkey
+                gvi._on_hotkey_pressed()
+                print("[TEST] Ctrl+F9 callback викликано")
             except Exception as e:
                 print(f"[TEST] Помилка натискання Ctrl+F9: {e}")
         

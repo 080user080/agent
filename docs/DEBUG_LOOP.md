@@ -30,7 +30,7 @@ def my_function(data):
     print(f"[DEBUG-MYFUNC] Вхід: data='{data[:50]}...' (len={len(data)})")
     
     try:
-        result = process(data)
+        result = process(data)Test
         # Debug-Loop: Логування проміжних результатів
         print(f"[DEBUG-MYFUNC] Проміжний результат: '{result[:50]}...'")
         return result

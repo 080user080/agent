@@ -203,8 +203,8 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
     },
     "GLOBAL_VOICE_HOTKEY": {
         "type": "str", "group": "Global Voice Input", "label": "Гаряча клавіша для глобального голосового введення",
-        "desc": "Комбінація клавіш для активації голосового введення в будь-якій програмі (наприклад: ctrl+f9, ctrl+shift+v, win+v)",
-        "default": "ctrl+f9", "user_only": True,
+        "desc": "Комбінація клавіш для активації голосового введення в будь-якій програмі (наприклад: ctrl+shift+f9, ctrl+shift+v, win+v). Примітка: ctrl+f9 може конфліктувати з Ctrl+V в деяких програмах",
+        "default": "ctrl+shift+f9", "user_only": True,
     },
     "GLOBAL_VOICE_ENABLED": {
         "type": "bool", "group": "GUI", "label": "Глобальне голосове введення",

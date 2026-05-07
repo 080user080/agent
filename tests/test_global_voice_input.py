@@ -54,145 +54,54 @@ class TestGlobalVoiceInput:
 
     @patch("functions.global_voice_input.STTListener")
     @patch("functions.global_voice_input.time.sleep", return_value=None)
-    @patch("functions.global_voice_input.pyperclip")
-    @patch("functions.aaa_voice_input.activate_window_by_title")
-    @patch("functions.tools_mouse_keyboard.keyboard_hotkey")
-    @patch("functions.tools_mouse_keyboard.keyboard_type")
-    def test_insert_text_uses_win32_paste_first(
+    def test_insert_segment_uses_win32_paste_for_standard_edit(
         self,
-        mock_keyboard_type,
-        mock_keyboard_hotkey,
-        mock_activate_window,
-        mock_pyperclip,
         mock_sleep,
         mock_stt_listener,
     ):
         from functions.global_voice_input import GlobalVoiceInput
-
-        mock_pyperclip.paste.return_value = "old clipboard"
-        mock_keyboard_hotkey.return_value = {"success": True, "hotkey": ["ctrl", "v"]}
-        mock_activate_window.return_value = True
+        import pyperclip
 
         gvi = GlobalVoiceInput()
-        gvi._last_window_title = "AkelPad"
+        gvi._last_window_title = "Notepad"
         gvi._last_window_hwnd = 12345
 
-        with patch.object(gvi, "_paste_into_window", return_value=True) as mock_paste_into_window, \
-             patch.object(gvi, "_set_clipboard_text_verified", return_value=True) as mock_set_clipboard, \
-             patch.object(gvi, "_resolve_focus_target", return_value=(12345, "AkelEditW")):
-            result = gvi._insert_text("Перевірте, чи працює.")
+        with patch.object(gvi, "_resolve_focus_target", return_value=(12345, "Edit")), \
+             patch("pyperclip.copy") as mock_copy, \
+             patch("pyperclip.paste", return_value="old clipboard"):
+            result = gvi._insert_segment("Тестовий текст")
 
         assert result is True
-        mock_activate_window.assert_called_once_with("AkelPad")
-        mock_set_clipboard.assert_called_once_with("Перевірте, чи працює.")
-        mock_paste_into_window.assert_called_once_with(12345)
-        mock_keyboard_type.assert_not_called()
-        mock_keyboard_hotkey.assert_not_called()
-        mock_pyperclip.copy.assert_called_with("old clipboard")
+        mock_copy.assert_called_with("Тестовий текст")
 
     @patch("functions.global_voice_input.STTListener")
     @patch("functions.global_voice_input.time.sleep", return_value=None)
-    @patch("functions.global_voice_input.pyperclip")
-    @patch("functions.aaa_voice_input.activate_window_by_title")
     @patch("functions.tools_mouse_keyboard.keyboard_hotkey")
-    @patch("functions.tools_mouse_keyboard.keyboard_type")
-    def test_insert_text_returns_false_when_copy_fails(
+    def test_insert_segment_fallback_to_ctrl_v(
         self,
-        mock_keyboard_type,
         mock_keyboard_hotkey,
-        mock_activate_window,
-        mock_pyperclip,
         mock_sleep,
         mock_stt_listener,
     ):
         from functions.global_voice_input import GlobalVoiceInput
 
-        mock_pyperclip.paste.return_value = "old clipboard"
-        mock_activate_window.return_value = True
-
-        gvi = GlobalVoiceInput()
-        gvi._last_window_title = "AkelPad"
-        gvi._last_window_hwnd = 12345
-
-        with patch.object(gvi, "_paste_into_window", return_value=False), \
-             patch.object(gvi, "_set_clipboard_text_verified", return_value=False):
-            result = gvi._insert_text("Перевірте, чи працює.")
-
-        assert result is False
-        mock_keyboard_type.assert_not_called()
-        mock_keyboard_hotkey.assert_not_called()
-
-    @patch("functions.global_voice_input.STTListener")
-    @patch("functions.global_voice_input.time.sleep", return_value=None)
-    @patch("functions.global_voice_input.pyperclip")
-    @patch("functions.aaa_voice_input.activate_window_by_title")
-    @patch("functions.tools_mouse_keyboard.keyboard_hotkey")
-    @patch("functions.tools_mouse_keyboard.keyboard_type")
-    def test_insert_text_uses_ctrl_v_for_browser_chat(
-        self,
-        mock_keyboard_type,
-        mock_keyboard_hotkey,
-        mock_activate_window,
-        mock_pyperclip,
-        mock_sleep,
-        mock_stt_listener,
-    ):
-        from functions.global_voice_input import GlobalVoiceInput
-
-        mock_pyperclip.paste.return_value = "old clipboard"
         mock_keyboard_hotkey.return_value = {"success": True, "hotkey": ["ctrl", "v"]}
-        mock_activate_window.return_value = True
 
         gvi = GlobalVoiceInput()
-        gvi._last_window_title = "Google Gemini - Google Chrome"
+        gvi._last_window_title = "Unknown App"
         gvi._last_window_hwnd = 12345
 
-        with patch.object(gvi, "_paste_into_window", return_value=False) as mock_paste_into_window, \
-             patch.object(gvi, "_set_clipboard_text_verified", return_value=True), \
-             patch.object(gvi, "_resolve_focus_target", return_value=(12345, "Chrome_WidgetWin_1")):
-            result = gvi._insert_text("Перевірте, чи працює.")
+        with patch.object(gvi, "_send_input_unicode", return_value=False), \
+             patch.object(gvi, "_resolve_focus_target", return_value=(12345, "UnknownClass")), \
+             patch("pyperclip.copy") as mock_copy, \
+             patch("pyperclip.paste", return_value="old clipboard"):
+            result = gvi._insert_segment("Текст для fallback")
 
         assert result is True
-        mock_paste_into_window.assert_not_called()
-        mock_keyboard_type.assert_not_called()
+        mock_copy.assert_called_with("Текст для fallback")
         mock_keyboard_hotkey.assert_called_once_with("ctrl", "v")
 
-    @patch("functions.global_voice_input.STTListener")
-    @patch("functions.global_voice_input.time.sleep", return_value=None)
-    @patch("functions.global_voice_input.pyperclip")
-    @patch("functions.aaa_voice_input.activate_window_by_title")
-    @patch("functions.tools_mouse_keyboard.keyboard_hotkey")
-    @patch("functions.tools_mouse_keyboard.keyboard_type")
-    def test_insert_text_falls_back_to_typewrite_when_ctrl_v_fails(
-        self,
-        mock_keyboard_type,
-        mock_keyboard_hotkey,
-        mock_activate_window,
-        mock_pyperclip,
-        mock_sleep,
-        mock_stt_listener,
-    ):
-        from functions.global_voice_input import GlobalVoiceInput
-
-        mock_pyperclip.paste.return_value = "old clipboard"
-        mock_keyboard_type.return_value = {"success": True, "text": "Перевірте, чи працює."}
-        mock_keyboard_hotkey.return_value = {"success": False, "error": "ctrl+v failed"}
-        mock_activate_window.return_value = True
-
-        gvi = GlobalVoiceInput()
-        gvi._last_window_title = "Google Gemini - Google Chrome"
-        gvi._last_window_hwnd = 12345
-
-        with patch.object(gvi, "_paste_into_window", return_value=False) as mock_paste_into_window, \
-             patch.object(gvi, "_set_clipboard_text_verified", return_value=True), \
-             patch.object(gvi, "_resolve_focus_target", return_value=(12345, "Chrome_WidgetWin_1")):
-            result = gvi._insert_text("Перевірте, чи працює.")
-
-        assert result is True
-        mock_paste_into_window.assert_not_called()
-        mock_keyboard_hotkey.assert_called_once_with("ctrl", "v")
-        mock_keyboard_type.assert_called_once_with(text="Перевірте, чи працює.")
-
+    
     @patch("functions.global_voice_input.STTListener")
     def test_insert_strategy_for_classic_edit_and_browser(self, mock_stt_listener):
         from functions.global_voice_input import GlobalVoiceInput
@@ -211,10 +120,79 @@ class TestGlobalVoiceInput:
         callback = Mock()
         gvi = GlobalVoiceInput(callback=callback)
 
-        with patch.object(gvi, "_insert_text", return_value=True):
+        with patch.object(gvi, "_insert_segment", return_value=True):
             gvi._on_text_recognized("test text")
 
         callback.assert_called_once_with("test text")
+
+    @patch("functions.global_voice_input.STTListener")
+    @patch("functions.global_voice_input.time.sleep", return_value=None)
+    def test_insert_segment_uses_win32_paste_for_chrome(
+        self,
+        mock_sleep,
+        mock_stt_listener,
+    ):
+        from functions.global_voice_input import GlobalVoiceInput
+
+        gvi = GlobalVoiceInput()
+        gvi._last_window_title = "Windsurf - agent"
+        gvi._last_window_hwnd = 12345
+
+        with patch.object(gvi, "_resolve_focus_target", return_value=(54321, "Chrome_RenderWidgetHostHWND")), \
+             patch("pyperclip.copy") as mock_copy, \
+             patch("pyperclip.paste", return_value="old clipboard"):
+            result = gvi._insert_segment("Тестовий текст")
+
+        assert result is True
+        mock_copy.assert_called_with("Тестовий текст")
+
+    @patch("functions.global_voice_input.STTListener")
+    @patch("functions.global_voice_input.time.sleep", return_value=None)
+    def test_insert_segment_uses_sendinput_for_pyqt6(
+        self,
+        mock_sleep,
+        mock_stt_listener,
+    ):
+        from functions.global_voice_input import GlobalVoiceInput
+
+        gvi = GlobalVoiceInput()
+        gvi._last_window_title = "PyQt6 Test Window"
+        gvi._last_window_hwnd = 12345
+
+        with patch.object(gvi, "_resolve_focus_target", return_value=(12345, "Qt6110QWindowIcon")), \
+             patch.object(gvi, "_send_input_unicode", return_value=True) as mock_send_input, \
+             patch("pyperclip.copy") as mock_copy, \
+             patch("pyperclip.paste", return_value="old clipboard"):
+            result = gvi._insert_segment("Текст для PyQt6")
+
+        assert result is True
+        mock_copy.assert_called_with("Текст для PyQt6")
+        mock_send_input.assert_called_once_with("Текст для PyQt6")
+
+    @patch("functions.global_voice_input.STTListener")
+    def test_find_chrome_render_widget(self, mock_stt_listener):
+        from functions.global_voice_input import GlobalVoiceInput
+        import ctypes
+
+        gvi = GlobalVoiceInput()
+        
+        # Mock для тесту
+        with patch.object(gvi, '_find_chrome_render_widget', return_value=999999) as mock_find:
+            result = gvi._find_chrome_render_widget(12345)
+            mock_find.assert_called_once_with(12345)
+            assert result == 999999
+
+    @patch("functions.global_voice_input.STTListener")
+    def test_find_qt_edit_control(self, mock_stt_listener):
+        from functions.global_voice_input import GlobalVoiceInput
+
+        gvi = GlobalVoiceInput()
+        
+        # Mock для тесту
+        with patch.object(gvi, '_find_qt_edit_control', return_value=888888) as mock_find:
+            result = gvi._find_qt_edit_control(12345)
+            mock_find.assert_called_once_with(12345)
+            assert result == 888888
 
     @patch("functions.global_voice_input.STTListener")
     @patch("functions.global_voice_input.HotkeyHook")

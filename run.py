@@ -11,7 +11,8 @@ import sys
 # Додаємо шлях до проєкту
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from run_assistant_qt import main
+import run_assistant_qt
 
 if __name__ == "__main__":
-    main()
+    app = run_assistant_qt.AssistantAppQt()
+    app.start()
