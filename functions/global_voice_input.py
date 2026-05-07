@@ -1,16 +1,10 @@
 """Global Voice Input — глобальне голосове введення в будь-яку програму.
 
-⚠️ НЕ РЕДАГУЙТЕ логіку вставки без узгодження!Продовжи виконання перевір помодульно кожну функцію окремо і в контексті програми/агента чи правильно пройшов/проходить тест/тести. Після завершення рефракторинг і актуалізація документації.
+⚠️ УВАГА: Логіка вставки тексту в методах _insert_segment та _send_input_unicode є критичною
+і не повинна змінюватися без узгодження. Ці методи оптимізовані для Windows 10/11 з підтримкою
+кирилиці та емодзі. Будь-які зміни можуть призвести до дублювання тексту, відсутності вставки
+або спотворення символів.
 
-Цей модуль працює ТІЛЬКИ через зовнішній макрос (Robotask / AutoHotkey / інший).
-
-Алгоритм:
-  1. Ctrl+F9 — запускає запис голосу, очищає буфер обміну
-  2. Після розпізнавання — копіює текст у буфер, натискає Shift+F10
-  3. Зовнішній макрос (Robotask) ловить Shift+F10 і виконує Ctrl+V у цільове вікно
-  4. Чекає 2 сек, потім очищає буфер обміну
-
-Для зміни поведінки вставки — редагуйте ЗОВНІШНІЙ макрос, НЕ цей файл.
 """
 from __future__ import annotations
 
@@ -582,6 +576,7 @@ class GlobalVoiceInput:
             if text and text.strip():
                 print(f"[GVI] Розпізнано текст: '{text}'")
                 # Текст вже вставлений чанками через callback, тому тут тільки лог
+                # Не вставляємо фінальний текст повторно, щоб уникнути дублювання
             elif self._stop_requested:
                 print("[GVI] Zapyniena karystalnikam (без тексту)")
                 self.is_listening = False
@@ -639,12 +634,11 @@ class GlobalVoiceInput:
             return False
 
     def _insert_segment(self, segment_text: str) -> bool:
-        """Вставити один сегмент тексту без зовнішнього макросу.
-
-        Пріоритет методів:
-          1. WM_PASTE напряму в hwnd контрола (найнадійніше для PyQt6/Win32)
-          2. SendInput з KEYEVENTF_UNICODE (виправлена структура INPUT, працює з кирилицею)
-          3. keyboard_hotkey(ctrl+v) як fallback
+        """
+        Вставити один сегмент тексту без зовнішнього макросу.
+        
+        ⚠️ КРИТИЧНИЙ МЕТОД - НЕ ЗМІНЮВАТИ БЕЗ УЗГОДЖЕННЯ
+        Логіка оптимізована для Windows 10/11 з підтримкою кирилиці та емодзі.
         """
         import ctypes
         import pyperclip
@@ -655,103 +649,100 @@ class GlobalVoiceInput:
 
         print(f"[GVI] _insert_segment: '{segment_text[:50]}' (len={len(segment_text)})")
 
-        # 1. Відновити фокус у запам'ятане вікно
+        # Відновити фокус
         hwnd = self._last_window_hwnd
         if hwnd:
             user32.BringWindowToTop(hwnd)
             user32.SetForegroundWindow(hwnd)
-            time.sleep(0.15)
+            time.sleep(0.2)
 
-        # 2. Відпустити модифікатори (щоб не було випадкового Ctrl+Shift+...)
+        # Відпустити модифікатори
         try:
             import pyautogui
             for key in ("ctrl", "shift", "alt", "win"):
                 pyautogui.keyUp(key)
+            time.sleep(0.05)
         except Exception:
             pass
 
-        # 3. Зберегти старий буфер і покласти текст
-        try:
-            old_clipboard = pyperclip.paste()
-        except Exception:
-            old_clipboard = ""
+        # Визначити клас контрола
+        target_hwnd, class_name = self._resolve_focus_target(hwnd) if hwnd else (0, "")
+        
+        # Переводимо в нижній регістр для зручного пошуку
+        class_name_lower = class_name.lower()
+        is_chrome = "chrome" in class_name_lower or "mozilla" in class_name_lower
+        is_qt = "qt" in class_name_lower
+        is_notepad = "notepad" in class_name_lower # Додаємо новий Блокнот (Win11)
 
-        # Debug-Loop: Логування перед копіюванням
-        print(f"[DEBUG-INSERT] Буфер ПЕРЕД copy: '{old_clipboard[:50] if old_clipboard else ''}...'")
-
-        pyperclip.copy(segment_text)
-        time.sleep(0.05)
-
-        # Debug-Loop: Логування після копіювання
-        new_clipboard = pyperclip.paste()
-        print(f"[DEBUG-INSERT] Буфер ПІСЛЯ copy: '{new_clipboard[:50] if new_clipboard else ''}...'")
+        print(f"[GVI] target_hwnd={target_hwnd}, class='{class_name}', chrome={is_chrome}, qt={is_qt}, notepad={is_notepad}")
 
         ok = False
 
-        # Вибір методу залежно від типу вікна
-        target_hwnd, class_name = self._resolve_focus_target(hwnd) if hwnd else (0, "")
-        
-        # Для PyQt6 використовуємо SendInput як основний метод
-        if hwnd and "qt" in class_name.lower() and "qwindowicon" in class_name.lower():
-            print(f"[GVI] PyQt6 виявлено, використовуємо SendInput")
+        # 1. Chrome, PyQt6, новий Notepad: SendInput Unicode (найкраще для сучасних UI)
+        if is_chrome or is_qt or is_notepad:
+            print(f"[GVI] Modern UI Detected -> SendInput Unicode")
+            time.sleep(0.1)
             ok = self._send_input_unicode(segment_text)
-        # Для Chrome-based редакторів використовуємо WM_PASTE в дочірній контрол
-        elif hwnd and "chrome_renderwidgethosthwnd" in class_name.lower():
-            print(f"[GVI] Chrome Render Widget виявлено, використовуємо WM_PASTE")
+            
+            # Fallback на Ctrl+V ТІЛЬКИ якщо SendInput НЕ спрацював
+            if not ok and is_qt:
+                print("[GVI] SendInput failed for PyQt6 -> Ctrl+V fallback")
+                pyperclip.copy(segment_text)
+                time.sleep(0.15)
+                try:
+                    VK_CONTROL, VK_V = 0x11, 0x56
+                    KEYEVENTF_KEYDOWN, KEYEVENTF_KEYUP = 0x0000, 0x0002
+                    
+                    user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYDOWN, 0)
+                    time.sleep(0.05)
+                    user32.keybd_event(VK_V, 0, KEYEVENTF_KEYDOWN, 0)
+                    time.sleep(0.05)
+                    user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
+                    time.sleep(0.05)
+                    user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+                    time.sleep(0.1)
+                    ok = True
+                except Exception as e:
+                    print(f"[GVI] Win32 Ctrl+V failed: {e}")
+
+        # 2. Старий Win32 (AkelPad, класичний Edit): WM_PASTE
+        elif target_hwnd and not is_qt:
             try:
-                print(f"[GVI] WM_PASTE → hwnd={target_hwnd}, class='{class_name}'")
+                # ВАЖЛИВО: Спочатку кладемо текст у буфер!
+                pyperclip.copy(segment_text)
+                time.sleep(0.05) # Даємо ОС час оновити буфер
+                
                 user32.SendMessageW(target_hwnd, WM_PASTE, 0, 0)
                 time.sleep(0.1)
                 ok = True
                 print("[GVI] WM_PASTE: ok")
             except Exception as e:
                 print(f"[GVI] WM_PASTE failed: {e}")
-                # Fallback до SendInput
-                ok = self._send_input_unicode(segment_text)
-        # Для інших вікон спочатку пробуємо WM_PASTE
-        else:
-            if hwnd:
-                try:
-                    print(f"[GVI] WM_PASTE → hwnd={target_hwnd}, class='{class_name}'")
-                    
-                    # Діагностика: знайти дочірні контроли
-                    self._debug_find_edit_control(hwnd)
-                    
-                    user32.SendMessageW(target_hwnd, WM_PASTE, 0, 0)
-                    time.sleep(0.1)
-                    ok = True
-                    print("[GVI] WM_PASTE: ok")
-                except Exception as e:
-                    print(f"[GVI] WM_PASTE failed: {e}")
 
-            # Метод 2: SendInput з Unicode (якщо WM_PASTE не спрацював)
-            if not ok:
-                ok = self._send_input_unicode(segment_text)
-
-        # Метод 3: Ctrl+V як останній fallback
+        # 3. Fallback: SendInput Unicode
         if not ok:
+            print("[GVI] Fallback → SendInput Unicode")
+            ok = self._send_input_unicode(segment_text)
+
+        # 4. Останній fallback: Ctrl+V через pyautogui
+        if not ok:
+            print("[GVI] Fallback → Ctrl+V")
+            pyperclip.copy(segment_text)
+            time.sleep(0.05)
             try:
-                from functions.tools_mouse_keyboard import keyboard_hotkey
-                result = keyboard_hotkey("ctrl", "v")
-                ok = bool(result and result.get("success"))
-                print(f"[GVI] Ctrl+V fallback: {ok}")
+                pyautogui.hotkey("ctrl", "v")
+                ok = True
             except Exception as e:
                 print(f"[GVI] Ctrl+V failed: {e}")
-
-        # 4. Відновити буфер обміну
-        time.sleep(0.1)
-        try:
-            pyperclip.copy(old_clipboard)
-        except Exception:
-            pass
 
         return ok
 
     def _send_input_unicode(self, text: str) -> bool:
-        """Вставити текст через SendInput з KEYEVENTF_UNICODE (виправлена структура INPUT).
-
-        Виправлена структура INPUT з правильним вирівнюванням для x64 Windows.
-        Розмір INPUT має бути 40 байт на x64.
+        """
+        Вставити текст через SendInput з KEYEVENTF_UNICODE.
+        
+        ⚠️ КРИТИЧНИЙ МЕТОД - НЕ ЗМІНЮВАТИ БЕЗ УЗГОДЖЕННЯ
+        Логіка оптимізована для Windows 10/11 з підтримкою кирилиці та емодзі.
         """
         import ctypes
         import ctypes.wintypes as wt
@@ -760,68 +751,54 @@ class GlobalVoiceInput:
         KEYEVENTF_KEYUP   = 0x0002
         INPUT_KEYBOARD    = 1
 
-        # Debug-Loop: Логування вхідних даних
-        print(f"[DEBUG-SendInput] Вхід: text='{text[:50]}...' (len={len(text)})")
-
-        # Точна структура як в WinAPI — вирівнювання критично
         class KEYBDINPUT(ctypes.Structure):
             _fields_ = [
                 ("wVk",         wt.WORD),
                 ("wScan",       wt.WORD),
                 ("dwFlags",     wt.DWORD),
                 ("time",        wt.DWORD),
-                ("dwExtraInfo", ctypes.c_ulonglong),  # ← не POINTER, а c_ulonglong
+                ("dwExtraInfo", ctypes.c_ulonglong),
             ]
 
         class _INPUTunion(ctypes.Union):
             _fields_ = [
-                ("ki", KEYBDINPUT),
-                ("_pad", ctypes.c_byte * 28),          # ← padding до 32 байт
+                ("ki",   KEYBDINPUT),
+                ("_pad", ctypes.c_byte * 28),
             ]
 
         class INPUT(ctypes.Structure):
-            _pack_ = 8   # вирівнювання як в WinAPI
             _fields_ = [
                 ("type", wt.DWORD),
                 ("_u",   _INPUTunion),
             ]
+
+        cb = ctypes.sizeof(INPUT)
+        print(f"[GVI] sizeof(INPUT)={cb}")  # має бути 40
 
         user32 = ctypes.windll.user32
         inputs = []
 
         for char in text:
             code = ord(char)
-            print(f"[DEBUG-SendInput] Проміжний: char '{char}' (code={code})")
 
-            ki_down = KEYBDINPUT(0, code, KEYEVENTF_UNICODE, 0, 0)
             inp_down = INPUT(INPUT_KEYBOARD)
-            inp_down._u.ki = ki_down
+            inp_down._u.ki = KEYBDINPUT(0, code, KEYEVENTF_UNICODE, 0, 0)
             inputs.append(inp_down)
 
-            ki_up = KEYBDINPUT(0, code, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
             inp_up = INPUT(INPUT_KEYBOARD)
-            inp_up._u.ki = ki_up
+            inp_up._u.ki = KEYBDINPUT(0, code, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
             inputs.append(inp_up)
 
         n = len(inputs)
         arr = (INPUT * n)(*inputs)
-        cb = ctypes.sizeof(INPUT)
-
-        print(f"[DEBUG-SendInput] sizeof(INPUT)={cb}, n={n}")  # має бути 40 на x64
-
-        ctypes.windll.kernel32.SetLastError(0)
         sent = user32.SendInput(n, arr, cb)
-        error = ctypes.windll.kernel32.GetLastError()
-
-        print(f"[DEBUG-SendInput] Результат: sent={sent}/{n}, error={error}")
 
         if sent != n:
-            print(f"[DEBUG-SendInput] ❌ SendInput failed: sent={sent}, error={error}")
-            if error == 87:
-                print(f"[DEBUG-SendInput] ERROR_INVALID_PARAMETER - sizeof(INPUT)={cb} (очікується 40 на x64)")
+            err = ctypes.GetLastError()
+            print(f"[GVI] SendInput failed: sent={sent}/{n}, error={err}")
             return False
 
-        print(f"[DEBUG-SendInput] ✅ SendInput Unicode: ok, sent={sent}")
+        print(f"[GVI] SendInput Unicode: ok, sent={sent}/{n}")
         return True
 
     def _insert_text_with_script(self, text: str) -> bool:

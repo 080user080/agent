@@ -3,6 +3,11 @@
 
 Модуль для GUI Automation Phase 1.
 Забезпечує керування мишою, клавіатурою та буфером обміну.
+
+⚠️ УВАГА: Логіка вставки тексту в методах send_input_unicode та insert_text_smart є критичною
+і не повинна змінюватися без узгодження. Ці методи оптимізовані для Windows 10/11 з підтримкою
+кирилиці та емодзі. Будь-які зміни можуть призвести до дублювання тексту, відсутності вставки
+або спотворення символів.
 """
 
 import ctypes
@@ -380,15 +385,204 @@ class MouseKeyboardController:
     def clipboard_get_text(self) -> Dict[str, Any]:
         """
         Прочитати текст з буфера обміну.
-
+        
         Returns:
-            {"text": str, "length": int}
+            {"success": True, "text": "..."}
         """
         try:
             text = pyperclip.paste()
-            return {"text": text, "length": len(text) if text else 0}
+            return {"success": True, "text": text}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def send_input_unicode(self, text: str) -> Dict[str, Any]:
+        """
+        Вставити текст через SendInput з KEYEVENTF_UNICODE (працює з кирилицею).
+        
+        ⚠️ КРИТИЧНИЙ МЕТОД - НЕ ЗМІНЮВАТИ БЕЗ УЗГОДЖЕННЯ
+        Логіка оптимізована для Windows 10/11 з підтримкою кирилиці та емодзі.
+        
+        Args:
+            text: Текст для вставки
+            
+        Returns:
+            {"success": True, "sent": n} або {"success": False, "error": "..."}
+        """
+        import ctypes.wintypes as wt
+        
+        KEYEVENTF_UNICODE = 0x0004
+        KEYEVENTF_KEYUP   = 0x0002
+        INPUT_KEYBOARD    = 1
+
+        class KEYBDINPUT(ctypes.Structure):
+            _fields_ = [
+                ("wVk",         wt.WORD),
+                ("wScan",       wt.WORD),
+                ("dwFlags",     wt.DWORD),
+                ("time",        wt.DWORD),
+                ("dwExtraInfo", ctypes.c_ulonglong),
+            ]
+
+        class _INPUTunion(ctypes.Union):
+            _fields_ = [
+                ("ki",   KEYBDINPUT),
+                ("_pad", ctypes.c_byte * 28),
+            ]
+
+        class INPUT(ctypes.Structure):
+            _fields_ = [
+                ("type", wt.DWORD),
+                ("_u",   _INPUTunion),
+            ]
+
+        try:
+            cb = ctypes.sizeof(INPUT)
+            user32 = ctypes.windll.user32
+            inputs = []
+
+            for char in text:
+                code = ord(char)
+                inp_down = INPUT(INPUT_KEYBOARD)
+                inp_down._u.ki = KEYBDINPUT(0, code, KEYEVENTF_UNICODE, 0, 0)
+                inputs.append(inp_down)
+
+                inp_up = INPUT(INPUT_KEYBOARD)
+                inp_up._u.ki = KEYBDINPUT(0, code, KEYEVENTF_UNICODE | KEYEVENTF_KEYUP, 0, 0)
+                inputs.append(inp_up)
+
+            n = len(inputs)
+            arr = (INPUT * n)(*inputs)
+            sent = user32.SendInput(n, arr, cb)
+
+            if sent != n:
+                err = ctypes.GetLastError()
+                return {"success": False, "error": f"SendInput failed: sent={sent}/{n}, error={err}"}
+
+            return {"success": True, "sent": sent}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def insert_text_smart(self, text: str) -> Dict[str, Any]:
+        """
+        Універсальна вставка тексту з адаптивною логікою для Windows 10/11:
+        
+        - Chrome/Qt/Notepad: SendInput Unicode (найнадійніший для сучасних UI)
+        - Старий Win32: WM_PASTE (fallback)
+        - Last fallback: Ctrl+V
+        
+        ⚠️ КРИТИЧНИЙ МЕТОД - НЕ ЗМІНЮВАТИ БЕЗ УЗГОДЖЕННЯ
+        Логіка оптимізована для Windows 10/11 з підтримкою кирилиці та емодзі.
+        
+        Args:
+            text: Текст для вставки
+            
+        Returns:
+            {"success": True, "method": "..."} або {"success": False, "error": "..."}
+        """
+        import ctypes
+        
+        user32 = ctypes.windll.user32
+        WM_PASTE = 0x0302
+        
+        try:
+            # Отримати активне вікно
+            hwnd = user32.GetForegroundWindow()
+            if not hwnd:
+                return {"success": False, "error": "No active window"}
+            
+            # Визначити клас вікна
+            buf = ctypes.create_unicode_buffer(256)
+            user32.GetClassNameW(hwnd, buf, 255)
+            class_name = buf.value.lower()
+            
+            is_chrome = "chrome" in class_name
+            is_qt = "qt" in class_name
+            is_notepad = "notepad" in class_name  # Windows 11 Notepad
+            
+            print(f"[Keyboard] class='{class_name}', chrome={is_chrome}, qt={is_qt}, notepad={is_notepad}")
+            
+            # Спочатку найбільш універсальний метод для сучасних програм
+            if is_chrome or is_qt or is_notepad:
+                # Для PyQt6 з не-ASCII - одразу Ctrl+V (SendInput спотворює емодзі)
+                if is_qt and any(ord(c) > 127 for c in text):
+                    print("[Keyboard] PyQt6 with non-ASCII -> Ctrl+V (more reliable)")
+                    pyperclip.copy(text)
+                    time.sleep(0.15)
+                    try:
+                        import ctypes
+                        VK_CONTROL, VK_V = 0x11, 0x56
+                        KEYEVENTF_KEYDOWN, KEYEVENTF_KEYUP = 0x0000, 0x0002
+                        
+                        user32 = ctypes.windll.user32
+                        user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYDOWN, 0)
+                        time.sleep(0.05)
+                        user32.keybd_event(VK_V, 0, KEYEVENTF_KEYDOWN, 0)
+                        time.sleep(0.05)
+                        user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
+                        time.sleep(0.05)
+                        user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+                        time.sleep(0.1)
+                        return {"success": True, "method": "Ctrl+V (Win32)", "target": class_name}
+                    except Exception as e:
+                        print(f"[Keyboard] Win32 Ctrl+V failed: {e}")
+                
+                # Для Chrome, Notepad або PyQt6 з ASCII - SendInput Unicode
+                print(f"[Keyboard] {class_name} detected -> SendInput Unicode")
+                time.sleep(0.1)  # Затримка для стабільності
+                result = self.send_input_unicode(text)
+                
+                # Fallback на Ctrl+V ТІЛЬКИ якщо SendInput НЕ спрацював
+                if not result.get("success") and is_qt:
+                    print("[Keyboard] SendInput failed for PyQt6 -> Ctrl+V fallback")
+                    pyperclip.copy(text)
+                    time.sleep(0.15)
+                    try:
+                        import ctypes
+                        VK_CONTROL, VK_V = 0x11, 0x56
+                        KEYEVENTF_KEYDOWN, KEYEVENTF_KEYUP = 0x0000, 0x0002
+                        
+                        user32 = ctypes.windll.user32
+                        user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYDOWN, 0)
+                        time.sleep(0.05)
+                        user32.keybd_event(VK_V, 0, KEYEVENTF_KEYDOWN, 0)
+                        time.sleep(0.05)
+                        user32.keybd_event(VK_V, 0, KEYEVENTF_KEYUP, 0)
+                        time.sleep(0.05)
+                        user32.keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0)
+                        time.sleep(0.1)
+                        return {"success": True, "method": "Ctrl+V (Win32)", "target": class_name}
+                    except Exception as e:
+                        print(f"[Keyboard] Win32 Ctrl+V failed: {e}")
+                
+                if result.get("success"):
+                    return {"success": True, "method": "SendInput Unicode", "target": class_name}
+                else:
+                    print(f"[Keyboard] SendInput failed for {class_name}, trying fallback")
+            
+            # Для старого Win32 або якщо SendInput не спрацював
+            if not is_chrome and not is_qt and not is_notepad:
+                try:
+                    # Спочатку копіюємо в буфер
+                    pyperclip.copy(text)
+                    time.sleep(0.05)
+                    # WM_PASTE для класичних Win32 додатків
+                    user32.SendMessageW(hwnd, WM_PASTE, 0, 0)
+                    time.sleep(0.1)
+                    return {"success": True, "method": "WM_PASTE", "target": class_name}
+                except Exception as e:
+                    print(f"[Keyboard] WM_PASTE failed: {e}")
+            
+            # Остаточний універсальний fallback
+            print("[Keyboard] Final fallback -> Ctrl+V")
+            pyperclip.copy(text)
+            time.sleep(0.1)
+            pyautogui.hotkey("ctrl", "v")
+            return {"success": True, "method": "Ctrl+V (final fallback)"}
+            
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    # ==================== MOUSE ====================
 
     def _convert_image_to_dib(self, image_path: str) -> bytes:
         """Конвертувати зображення в DIB формат для clipboard."""
@@ -692,6 +886,23 @@ def clipboard_copy_text(text: str) -> Dict[str, Any]:
 def clipboard_get_text() -> Dict[str, Any]:
     """Отримати текст з буфера."""
     return _controller.clipboard_get_text()
+
+
+def send_input_unicode(text: str) -> Dict[str, Any]:
+    """Вставити текст через SendInput з KEYEVENTF_UNICODE (працює з кирилицею)."""
+    return _controller.send_input_unicode(text)
+
+
+def insert_text_smart(text: str) -> Dict[str, Any]:
+    """
+    Універсальна вставка тексту з адаптивною логікою:
+    
+    - Chrome: SendInput Unicode (WM_PASTE не працює)
+    - PyQt6/Win32: WM_PASTE
+    - Fallback: SendInput Unicode
+    - Last fallback: Ctrl+V
+    """
+    return _controller.insert_text_smart(text)
 
 
 def clipboard_copy_image(image_path: str) -> Dict[str, Any]:
