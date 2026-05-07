@@ -354,15 +354,24 @@ class GlobalVoiceInput:
         """Обробити натискання hotkey — toggle запис."""
         print(f"[GVI] _on_hotkey_pressed викликано! is_listening={self.is_listening}")
 
-        # Відпустити модифікатори щоб уникнути випадкового Ctrl+V
+        # 🔥 ПЕРШО відпустити модифікатори щоб уникнути випадкового Ctrl+V
         try:
             import pyautogui
             pyautogui.keyUp("ctrl")
             pyautogui.keyUp("shift")
             pyautogui.keyUp("alt")
             pyautogui.keyUp("win")
+            time.sleep(0.05)  # Чекаємо щоб модифікатори точно відпустилися
         except Exception as e:
             print(f"[GVI] Помилка відпускання модифікаторів: {e}")
+        
+        # Debug-Loop: Логування буфера при натисканні Ctrl+F9 (ПІСЛЯ відпускання модифікаторів)
+        try:
+            import pyperclip
+            clipboard_on_hotkey = pyperclip.paste() if pyperclip.paste() else ""
+            print(f"[DEBUG-GVI] _on_hotkey_pressed: буфер ПРИ натисканні Ctrl+F9 (після відпускання модифікаторів): '{clipboard_on_hotkey[:50] if clipboard_on_hotkey else ''}...' (len={len(clipboard_on_hotkey)})")
+        except Exception as e:
+            print(f"[DEBUG-GVI] Помилка читання буфера: {e}")
 
         with self._toggle_lock:
             if self.is_listening:
