@@ -250,14 +250,16 @@ def transcribe_audio_w2v(audio, sample_rate):
 )
 def voice_input(duration="10"):
     """Голосовий ввід зі збереженням фокусу активного вікна"""
+    print("[VOICE_INPUT DEBUG] voice_input викликано з duration={duration}")
     try:
-        if _assistant is None or getattr(_assistant, "stt_engine", None) is None:
-            return make_tool_result(
-                False,
-                "⚠️ voice_input тимчасово вимкнено: STT не завантажується під час старту GUI.",
-                error="stt_disabled",
-                retryable=False,
-            )
+        # 🔥 Використовуємо STTListener напряму замість assistant.stt_engine
+        from .core_stt_listener import STTListener
+        print("[VOICE_INPUT DEBUG] Створення STTListener")
+        stt_listener = STTListener(
+            command_callback=None,  # Не потрібен callback для одноразового запису
+            status_callback=None
+        )
+        print("[VOICE_INPUT DEBUG] STTListener створено")
 
         duration = int(duration)
         sample_rate = 16000
@@ -270,21 +272,10 @@ def voice_input(duration="10"):
         
         print(f"\n🎤 Голосовий ввід - говори {duration} секунд...")
         
-        # Записати аудіо
-        audio = sd.rec(
-            int(duration * sample_rate),
-            samplerate=sample_rate,
-            channels=1,
-            dtype=np.float32,
-            device=MICROPHONE_DEVICE_ID,  # 👈 ДОДАТИ
-            blocking=True
-        )
-        audio = np.squeeze(audio)
-        
-        print("🔍 Розпізнаю...")
-        
-        # Розпізнати за допомогою w2v-bert-uk
-        text = transcribe_audio_w2v(audio, sample_rate)
+        # 🔥 Використовуємо STTListener.listen_once() для запису та розпізнавання
+        print("[VOICE_INPUT DEBUG] Виклик stt_listener.listen_once()")
+        text = stt_listener.listen_once(duration=duration)
+        print(f"[VOICE_INPUT DEBUG] Результат розпізнавання: '{text}'")
         
         if not text or text.startswith("❌"):
             return make_tool_result(False, text or "❌ Не вдалося розпізнати текст", error=text or "transcription_failed", retryable=True)

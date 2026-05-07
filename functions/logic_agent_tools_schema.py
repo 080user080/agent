@@ -242,6 +242,17 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
         required=["fields"],
     ),
     _tool(
+        name="voice_input",
+        description="Записати голос і ввести текст в активне поле (будь-який курсор).",
+        properties={
+            "duration": {
+                "type": "integer",
+                "default": 10,
+                "description": "Скільки секунд записувати голос.",
+            },
+        },
+    ),
+    _tool(
         name="done",
         description=(
             "Викликати коли задача виконана. Це завершує AgentLoop. "
@@ -471,6 +482,8 @@ TOOL_NAME_ALIASES: Dict[str, str] = {
     "wait_for_text": "wait_for_text",
     "wait_seconds": "wait_seconds",
     "fill_form": "fill_form",
+    # voice
+    "voice_input": "voice_input",
     # vision
     "describe_screen": "vision_describe_screen",
     "find_element_by_description": "vision_find_element",

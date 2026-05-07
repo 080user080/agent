@@ -1,0 +1,1 @@
+{"timestamp": "2026-05-07T13:10:58.165695", "task": "voice_input 5", "result": "failed", "success": false, "error": "Failed to create plan", "steps": [], "metadata": {"method": "agent_loop"}}

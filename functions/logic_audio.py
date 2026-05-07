@@ -137,6 +137,13 @@ def remove_activation_word(text):
     if not ACTIVATION_WORD:
         return text
     
+    # 🔥 Не видаляти активаційне слово для voice_input команд (повернути як є)
+    text_lower = text.lower().strip()
+    print(f"[DEBUG remove_activation_word] input: '{text}', text_lower: '{text_lower}'")
+    if text_lower.startswith("voice_input"):
+        print(f"[DEBUG remove_activation_word] voice_input detected, returning as-is")
+        return text
+    
     activation_lower = ACTIVATION_WORD.lower()
     text_lower = text.lower()
     
@@ -148,6 +155,10 @@ def remove_activation_word(text):
     if text_lower.startswith(activation_lower + ","):
         result = text[len(activation_lower) + 1:].strip()
         return result
+    
+    # 🔥 НОВИЙ: Якщо текст не містить активаційне слово, повернути як є
+    if activation_lower not in text_lower:
+        return text
     
     # Видалити як окреме слово
     words = text.split()

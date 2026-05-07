@@ -187,7 +187,35 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         chat_layout.addWidget(input_frame)
         self.notebook.addTab(chat_tab, "💬 Чат")
 
-        # --- Tab 2: Settings ---
+        # --- Tab 2: Plan ---
+        plan_tab = QWidget()
+        plan_layout = QVBoxLayout(plan_tab)
+        plan_layout.setContentsMargins(0, 0, 0, 0)
+        plan_layout.setSpacing(4)
+
+        # Кнопки запуску/зупинки плану
+        plan_buttons = QHBoxLayout()
+        self.plan_run_btn = QPushButton("▶ Виконати")
+        self.plan_run_btn.setObjectName("plan_run_btn")
+        self.plan_run_btn.clicked.connect(self._on_run_plan)
+        plan_buttons.addWidget(self.plan_run_btn)
+
+        self.plan_stop_btn = QPushButton("⏹ Зупинити")
+        self.plan_stop_btn.setObjectName("plan_stop_btn")
+        self.plan_stop_btn.clicked.connect(self._on_stop_plan)
+        self.plan_stop_btn.hide()
+        plan_buttons.addWidget(self.plan_stop_btn)
+
+        plan_layout.addLayout(plan_buttons)
+
+        # Список кроків плану
+        self.plan_list = QListWidget()
+        self.plan_list.setObjectName("plan_list")
+        plan_layout.addWidget(self.plan_list, stretch=1)
+
+        self.notebook.addTab(plan_tab, "📋 План")
+
+        # --- Tab 3: Settings ---
         self.settings_container = QWidget()
         self.notebook.addTab(self.settings_container, "⚙️ Налаштування")
         self.notebook.currentChanged.connect(self._on_tab_changed)
@@ -265,11 +293,21 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
 
     def send_text_command(self) -> None:
         command = self.input_text.toPlainText().strip()
+        print(f"[DEBUG main_window send_text_command] input_text.toPlainText()='{command}'")
         if not command:
             return
         self.input_text.clear()
         if self.assistant_callback:
-            self.assistant_callback("process_text", command)
+            # Перевірити чи це команда voice_input
+            command_lower = command.lower()
+            if command_lower.startswith("voice_input"):
+                # Використовувати AgentLoop для voice_input
+                print(f"[DEBUG main_window send_text_command] voice_input detected, calling run_agent")
+                self.assistant_callback("run_agent", command)
+            else:
+                # Використовувати Planner для інших команд
+                print(f"[DEBUG main_window send_text_command] calling process_text")
+                self.assistant_callback("process_text", command)
 
     def on_send_clicked(self) -> None:
         """Обробник натискання кнопки відправки."""
@@ -300,21 +338,13 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         self.hide_stop_button()
 
     def on_mic_clicked(self) -> None:
-        """Обробник натискання кнопки мікрофона."""
-        print(f"[DEBUG] on_mic_clicked called, stt_controller: {self.stt_controller}")
-
-        if not self.stt_controller or not hasattr(self.stt_controller, "toggle_listening"):
-            print(f"[DEBUG] stt_controller is None or has no toggle_listening method")
-            self.add_message("system", "❌ STT контролер не налаштовано")
-            return
-
-        # Якщо вже слухаємо — зупинити
-        if getattr(self, '_is_listening_mic', False):
+        """Обробник натискання кнопки мікрофона - запускає STT прослуховування."""
+        if self._is_listening_mic:
+            # Якщо вже слухаємо - зупинити
             self._stop_mic_listening()
-            return
-
-        # Почати слухання
-        self._start_mic_listening()
+        else:
+            # Почати прослуховування
+            self._start_mic_listening()
 
     def _start_mic_listening(self) -> None:
         """Почати запис з мікрофона."""
@@ -348,30 +378,36 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
     def _mic_listen_worker(self) -> None:
         """Потік для запису та розпізнавання."""
         try:
+            print(f"[DEBUG _mic_listen_worker] stt_controller={self.stt_controller}")
+            if self.stt_controller is None:
+                print(f"[DEBUG _mic_listen_worker] stt_controller is None, skipping")
+                self.queue_message('mic_finished', None)
+                return
+            
             # Слухаємо
+            print(f"[DEBUG _mic_listen_worker] Виклик stt_controller.toggle_listening()")
             text = self.stt_controller.toggle_listening()
+            print(f"[DEBUG _mic_listen_worker] Результат: '{text}'")
 
             # Повернутися в GUI потік через Qt signal
             self.queue_message('mic_finished', text)
 
         except Exception as e:
             print(f"❌ Помилка мікрофона: {e}")
+            import traceback
+            traceback.print_exc()
             self.queue_message('mic_finished', None)
 
     def _on_mic_finished(self, text: str | None) -> None:
         """Викликається коли розпізнавання завершено."""
         self._stop_mic_listening()
 
+        # 🔥 Чанки вставляються через stt_segment_added, тому тут тільки оновлюємо статус
+        # Фінальний текст вже вставлений чанками
         if text:
-            current_text = self.input_text.toPlainText()
-            if current_text:
-                # Додаємо пробіл якщо текст не порожній
-                self.input_text.setText(current_text + " " + text)
-            else:
-                self.input_text.setText(text)
-            self.input_text.setFocus()
             self.status_label.setText("✅ Розпізнано текст")
             self.status_label.setStyleSheet("")
+            self.input_text.setFocus()
 
     def _on_run_plan(self) -> None:
         if self.assistant_callback:

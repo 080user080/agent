@@ -491,6 +491,21 @@ class VoiceAssistant:
             
             from .config import ASSISTANT_DISPLAY_NAME
             
+            print(f"{Fore.CYAN}[DEBUG logic_commands] BEFORE remove_activation_word: command_text='{command_text}', from_gui={from_gui}")
+            
+            # --- Voice input branch --- (перевіряємо ДО remove_activation_word)
+            if command_text.strip().lower().startswith("voice_input"):
+                print(f"{Fore.CYAN}🎤 [DEBUG] voice_input команда виявлена, використовуємо AgentLoop")
+                if hasattr(self, 'agent_loop') and self.agent_loop:
+                    # Використовувати AgentLoop для voice_input
+                    print(f"{Fore.CYAN}🎤 [DEBUG] Виклик run_agent_loop для voice_input")
+                    result = self.run_agent_loop(command_text)
+                    if self.gui_log_callback:
+                        self.gui_log_callback("update_status", '✅ Готовий до роботи')
+                    return
+                else:
+                    print(f"{Fore.YELLOW}⚠️ AgentLoop недоступний для voice_input")
+            
             # Для GUI команди - пропускаємо перевірку активаційного слова
             if not from_gui:
                 # 1. ПЕРЕВІРКА АКТИВАЦІЙНОГО СЛОВА (ТІЛЬКИ ДЛЯ АУДІО)
@@ -506,6 +521,8 @@ class VoiceAssistant:
                     return
                 
                 command_text = clean_command
+            
+            print(f"{Fore.CYAN}[DEBUG logic_commands] AFTER remove_activation_word: command_text='{command_text}'")
             
             # 3. Логуємо команду в GUI (для всіх типів)
             self.log_to_gui("user", command_text)

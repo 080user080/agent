@@ -383,13 +383,28 @@ class GlobalVoiceInput:
     def _start_recording(self):
         """Почати запис і розпізнавання."""
         try:
-            # 0. Очистити буфер обміну перед записом
+            # 0. 🔥 Очистити буфер обміну перед записом (більш надійний метод)
             try:
                 import pyperclip
-                pyperclip.copy("")
-                print(f"[GVI] Буфер обміну очищено перед записом")
+                # Debug-Loop: Логування стану буфера перед очищенням
+                old_clipboard = pyperclip.paste() if pyperclip.paste() else ""
+                print(f"[DEBUG-GVI] Буфер обміну ПЕРЕД очищенням: '{old_clipboard[:100] if old_clipboard else ''}...' (len={len(old_clipboard)})")
+                
+                # Спроба 1: очистити через порожній рядок
+                for i in range(3):
+                    pyperclip.copy("")
+                    time.sleep(0.05)
+                    current = pyperclip.paste()
+                    print(f"[DEBUG-GVI] Спроба {i+1} очищення: '{current}' (len={len(current)})")
+                    if not current:
+                        break
+                
+                final_clipboard = pyperclip.paste()
+                print(f"[GVI] Буфер обміну очищено перед записом (перевірка: '{final_clipboard}', len={len(final_clipboard)})")
             except Exception as e:
                 print(f"[GVI] Помилка очищення буфера: {e}")
+                import traceback
+                traceback.print_exc()
             
             # 1. Запам'ятати активне вікно (заголовок) та позицію курсора
             hwnd = user32.GetForegroundWindow()
@@ -467,19 +482,42 @@ class GlobalVoiceInput:
     def _paste_into_window(self, hwnd: int) -> bool:
         """Вставити clipboard у фокусований контрол конкретного вікна через Win32."""
         try:
+            # Debug-Loop: Логування перед вставкою
+            import pyperclip
+            clipboard_before = pyperclip.paste() if pyperclip.paste() else ""
+            print(f"[DEBUG-GVI] _paste_into_window: буфер ПЕРЕД вставкою: '{clipboard_before[:50] if clipboard_before else ''}...' (len={len(clipboard_before)})")
+            
             target_hwnd, _class_name = self._resolve_focus_target(hwnd)
             if not target_hwnd:
+                print(f"[DEBUG-GVI] _paste_into_window: не вдалося знайти target_hwnd")
                 return False
 
+            print(f"[DEBUG-GVI] _paste_into_window: target_hwnd={target_hwnd}, class={_class_name}")
             user32.SendMessageW(target_hwnd, WM_PASTE, 0, 0)
+            
+            # Debug-Loop: Логування після вставки
+            time.sleep(0.1)
+            clipboard_after = pyperclip.paste() if pyperclip.paste() else ""
+            print(f"[DEBUG-GVI] _paste_into_window: буфер ПІСЛЯ вставки: '{clipboard_after[:50] if clipboard_after else ''}...' (len={len(clipboard_after)})")
+            
             return True
         except Exception as e:
             print(f"[GVI] Pamylka Win32 paste: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def _insert_segment(self, segment_text: str) -> bool:
         """Вставити один сегмент тексту через скрипт користувача (Shift+F10)."""
         try:
+            # Debug-Loop: Логування вхідних даних
+            print(f"[DEBUG-GVI] _insert_segment викликано: text='{segment_text[:50]}...' (len={len(segment_text)})")
+            
+            # Debug-Loop: Логування буфера перед вставкою сегменту
+            import pyperclip
+            clipboard_before_segment = pyperclip.paste() if pyperclip.paste() else ""
+            print(f"[DEBUG-GVI] _insert_segment: буфер ПЕРЕД копіюванням: '{clipboard_before_segment[:50] if clipboard_before_segment else ''}...' (len={len(clipboard_before_segment)})")
+            
             # 1. Аднавіць фокус у запамятаванае акно
             if self._last_window_hwnd:
                 print(f"[GVI] Аднаўленне фокусу для сегменту: {self._last_window_hwnd}")
@@ -507,6 +545,10 @@ class GlobalVoiceInput:
             copy_result = clipboard_copy_text(segment_text)
             print(f"[GVI] Сегмент скопійовано в буфер: {copy_result}")
             
+            # Debug-Loop: Логування буфера після копіювання
+            clipboard_after_copy = pyperclip.paste() if pyperclip.paste() else ""
+            print(f"[DEBUG-GVI] _insert_segment: буфер ПІСЛЯ копіювання: '{clipboard_after_copy[:50] if clipboard_after_copy else ''}...' (len={len(clipboard_after_copy)})")
+            
             if not copy_result or not copy_result.get("success"):
                 return False
             
@@ -523,6 +565,10 @@ class GlobalVoiceInput:
             
             # 5. Чекати завершення вставки (коротка затримка для сегментів)
             time.sleep(0.3)
+            
+            # Debug-Loop: Логування буфера після вставки (перед очищенням)
+            clipboard_after_paste = pyperclip.paste() if pyperclip.paste() else ""
+            print(f"[DEBUG-GVI] _insert_segment: буфер ПІСЛЯ Shift+F10 (перед очищенням): '{clipboard_after_paste[:50] if clipboard_after_paste else ''}...' (len={len(clipboard_after_paste)})")
             
             # 6. Очистити буфер обміну
             try:
@@ -588,6 +634,9 @@ class GlobalVoiceInput:
         проблеми і стабільно вставляє український текст.
         """
         try:
+            # Debug-Loop: Логування вхідних даних
+            print(f"[DEBUG-GVI] _insert_text викликано: text='{text[:50]}...' (len={len(text)})")
+            
             if not self._last_window_title:
                 print("[GVI] Няма запамятаванага загалоўка вакна")
                 return False
@@ -622,10 +671,11 @@ class GlobalVoiceInput:
                 print(f"[GVI] Памылка пры адпусканні мадыфікатараў: {e}")
             time.sleep(0.1)
 
-            # 4. Зберегти clipboard, вставити потрібний текст, потім відновити.
+            # 4. Debug-Loop: Логування буфера перед вставкою
             old_clipboard = None
             try:
                 old_clipboard = pyperclip.paste()
+                print(f"[DEBUG-GVI] Буфер ПЕРЕД вставкою: '{old_clipboard[:50] if old_clipboard else ''}...' (len={len(old_clipboard) if old_clipboard else 0})")
             except Exception as e:
                 print(f"[GVI] Nie atrymалася прачытаць clipboard: {e}")
 

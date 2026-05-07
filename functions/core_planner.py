@@ -1,4 +1,5 @@
 """Планувальник багатокрокових задач для асистента."""
+
 import json
 import os
 import re
@@ -53,6 +54,12 @@ class Planner:
     def should_plan(self, task: str) -> bool:
         """Чи схожа задача на багатокрокову."""
         normalized = task.lower().strip()
+        
+        # 🔥 Спеціальна обробка voice_input (Qt модифікує текст "voice_input 5" -> "_ 5")
+        if normalized.startswith("_") and re.match(r'^_\s*\d+$', normalized):
+            print(f"{Fore.CYAN}🎤 [Planner should_plan] Виявлено модифіковану voice_input команду: '{task}'")
+            return True
+        
         markers = (
             "план",
             "потім",
@@ -238,6 +245,17 @@ class Planner:
 
     def create_plan(self, task: str, context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Побудувати план для задачі з врахуванням контексту."""
+        # 🔥 Спеціальна обробка voice_input (Qt модифікує текст "voice_input 5" -> "_ 5")
+        task_lower = task.lower().strip()
+        if task_lower.startswith("_") and re.match(r'^_\s*\d+$', task_lower):
+            # Якщо текст модифікований Qt (наприклад "_ 5")
+            # Повертаємо пряме виклик voice_input
+            print(f"{Fore.CYAN}🎤 [Planner] Виявлено модифіковану voice_input команду: '{task}'")
+            # Витягуємо duration з тексту
+            duration_match = re.search(r'\d+', task)
+            duration = int(duration_match.group()) if duration_match else 10
+            return [{"action": "voice_input", "args": {"duration": duration}}]
+        
         available_actions = self._available_actions_description()
         is_coding = self._is_coding_task(task)
 

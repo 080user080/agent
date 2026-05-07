@@ -186,9 +186,14 @@ class STTListener:
             stop_event: Event для зупинки запису
             segment_callback: Callback, який викликається для кожного розпізнаного сегменту (текст)
         """
+        print(f"[STT DEBUG] listen_streaming викликано: stop_event={stop_event is not None}, segment_callback={segment_callback is not None}")
+        
         if not self.stt_engine:
+            print(f"[STT DEBUG] stt_engine не ініціалізовано, виклик initialize()")
             if not self.initialize():
+                print(f"[STT DEBUG] initialize() повернув False")
                 return ""
+            print(f"[STT DEBUG] stt_engine ініціалізовано успішно")
 
         try:
             from .core_settings import get_setting
@@ -529,7 +534,7 @@ class STTListener:
 class STTGuiController:
     """Контролер для інтеграції STT в GUI."""
 
-    def __init__(self, process_command_callback: Callable[[str], None], gui_queue=None):
+    def __init__(self, process_command_callback: Callable[[str], None], gui_queue=None, tray_status_callback=None):
         self.listener = STTListener(
             command_callback=process_command_callback,
             status_callback=self._on_status_change
@@ -538,6 +543,7 @@ class STTGuiController:
         self.current_status = "idle"  # idle, listening, processing, executing
         self.last_recognized_text = ""
         self.gui_queue = gui_queue  # Черга для повідомлень в GUI
+        self.tray_status_callback = tray_status_callback  # Callback для оновлення іконки в трей
 
     def initialize(self) -> bool:
         """Ініціалізувати STT."""
@@ -548,6 +554,8 @@ class STTGuiController:
         if self.current_status == "listening":
             return None
 
+        # 🔥 НЕ вимикаємо segment_added - чанки мають вставлятися послідовно
+        # Подвійне введення вирішено шляхом видалення дублюючої вставки в _on_mic_finished
         text = self.listener.listen_streaming()
         return text
 
@@ -564,6 +572,19 @@ class STTGuiController:
         """Обробник зміни статусу."""
         self.current_status = status
 
+        # 🔥 Оновити іконку в трей якщо callback встановлено
+        if self.tray_status_callback:
+            try:
+                from .voice_tray_icon import VoiceStatus
+                if status == "listening":
+                    self.tray_status_callback(VoiceStatus.RECORDING, "Слухаю...")
+                elif status == "processing":
+                    self.tray_status_callback(VoiceStatus.PROCESSING, "Розпізнавання...")
+                elif status == "idle":
+                    self.tray_status_callback(VoiceStatus.IDLE, "Готовий")
+            except Exception as e:
+                print(f"[STTGuiController] Помилка tray callback: {e}")
+
         if status == "recognized" and data:
             self.last_recognized_text = data.get("text", "")
 
@@ -577,10 +598,10 @@ class STTGuiController:
 
 # ==================== Функція для aaa_*.py ====================
 
-def get_stt_controller(process_command_callback: Callable[[str], None], gui_queue=None) -> Optional[STTGuiController]:
+def get_stt_controller(process_command_callback: Callable[[str], None], gui_queue=None, tray_status_callback=None) -> Optional[STTGuiController]:
     """Створити STT контролер (для інтеграції в main.py)."""
     try:
-        controller = STTGuiController(process_command_callback, gui_queue=gui_queue)
+        controller = STTGuiController(process_command_callback, gui_queue=gui_queue, tray_status_callback=tray_status_callback)
         if controller.initialize():
             return controller
         return None

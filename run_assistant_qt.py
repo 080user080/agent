@@ -59,6 +59,24 @@ class AssistantAppQt:
             if app:
                 app.quit()
 
+    def _handle_process_text(self, text: str) -> None:
+        """Обробити текст з GUI чату - розпізнає voice_input і використовує AgentLoop."""
+        if not text:
+            return
+        
+        # Перевірити чи це команда voice_input
+        text_stripped = text.strip().lower()
+        if text_stripped.startswith("voice_input"):
+            # Використовувати AgentLoop для voice_input
+            threading.Thread(
+                target=self.core.run_agent_loop, args=(text,), daemon=True
+            ).start()
+        else:
+            # Використовувати Planner для інших команд
+            threading.Thread(
+                target=self.core.process_text_command, args=(text,), daemon=True
+            ).start()
+
     def gui_callback(self, action: str, data=None) -> None:
         if not self.core:
             return
@@ -67,9 +85,7 @@ class AssistantAppQt:
         action_handlers = {
             'pause_listening': lambda: self.core.pause_listening(),
             'resume_listening': lambda: self.core.resume_listening(),
-            'process_text': lambda: threading.Thread(
-                target=self.core.process_text_command, args=(data,), daemon=True
-            ).start(),
+            'process_text': lambda: self._handle_process_text(data),
             'stop_execution': lambda: threading.Thread(
                 target=self.core.stop_execution, daemon=True
             ).start(),

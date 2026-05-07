@@ -845,10 +845,20 @@ class AssistantCore:
         if stt_enabled and self.gui_queue is not None:
             try:
                 from functions.core_stt_listener import get_stt_controller
+                
+                # 🔥 Callback для оновлення іконки в трей коли GUI кнопка активна
+                def tray_status_callback(status, text=""):
+                    if hasattr(self, 'global_voice_input') and self.global_voice_input:
+                        try:
+                            self.global_voice_input._update_tray_status(status, text)
+                        except Exception as e:
+                            print(f"[STT] Помилка оновлення tray: {e}")
+                
                 print(f"\n{Fore.CYAN}🎤 Ініціалізація голосових команд для GUI...")
                 stt_controller = get_stt_controller(
                     process_command_callback=self.process_text_command,
-                    gui_queue=self.gui_queue
+                    gui_queue=self.gui_queue,
+                    tray_status_callback=tray_status_callback
                 )
                 if stt_controller:
                     # GUI може ще не бути готовим - відкладене встановлення через чергу
@@ -1000,8 +1010,17 @@ class AssistantCore:
         if STT_ENABLED:
             print(f"\n{Fore.CYAN}🎤 Ініціалізація голосових команд...")
             try:
+                # 🔥 Callback для оновлення іконки в трей коли GUI кнопка активна
+                def tray_status_callback(status, text=""):
+                    if hasattr(self, 'global_voice_input') and self.global_voice_input:
+                        try:
+                            self.global_voice_input._update_tray_status(status, text)
+                        except Exception as e:
+                            print(f"[STT] Помилка оновлення tray: {e}")
+                
                 stt_controller = get_stt_controller(
-                    process_command_callback=self.process_text_command
+                    process_command_callback=self.process_text_command,
+                    tray_status_callback=tray_status_callback
                 )
                 if stt_controller:
                     self.gui.set_stt_controller(stt_controller)
