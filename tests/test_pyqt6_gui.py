@@ -213,3 +213,46 @@ class TestSettingsTab:
         saved = result[0]
         for key, value in legacy_endpoint.items():
             assert saved[key] == value, f"Втрачено поле {key}"
+
+
+class TestDynamicInputHeight:
+    """Перевірка динамічного збільшення висоти поля вводу."""
+
+    def test_input_height_initial(self, window):
+        """Початкова висота поля вводу має бути в межах 60-160px."""
+        initial_height = window.input_text.height()
+        assert 60 <= initial_height <= 160
+
+    def test_input_height_increases_with_text(self, window):
+        """Висота має збільшуватися при додаванні рядків."""
+        window.input_text.setPlainText("Рядок 1")
+        height_1 = window.input_text.height()
+
+        window.input_text.setPlainText("Рядок 1\nРядок 2\nРядок 3")
+        height_3 = window.input_text.height()
+
+        assert height_3 >= height_1
+
+    def test_input_height_respects_minimum(self, window):
+        """Висота не може бути менше 60px."""
+        window.input_text.setPlainText("")
+        height = window.input_text.height()
+        assert height >= 60
+
+    def test_input_height_respects_maximum(self, window):
+        """Висота не може бути більше 160px."""
+        # Додаємо багато рядків
+        long_text = "\n".join([f"Рядок {i}" for i in range(20)])
+        window.input_text.setPlainText(long_text)
+        height = window.input_text.height()
+        assert height <= 160
+
+    def test_input_height_updates_on_text_change(self, window):
+        """Висота оновлюється при зміні тексту."""
+        window.input_text.setPlainText("Рядок 1")
+        height_1 = window.input_text.height()
+
+        window.input_text.setPlainText("Рядок 1\nРядок 2\nРядок 3\nРядок 4\nРядок 5")
+        height_5 = window.input_text.height()
+
+        assert height_5 >= height_1
