@@ -1132,6 +1132,7 @@ class AgentLoop:
     def _execute_single_step(self, task: str, state: AgentState, start_time: float) -> bool:
         """Виконати одну ітерацію циклу. Повертає True якщо треба продовжувати."""
         logger.info("AgentLoop._execute_single_step() step=%d", state.step)
+        print(f"[AgentLoop] ▶ Крок {state.step + 1}/{self.config.max_steps}: починаю виконання...")
         # 1. Observe
         obs = self.observe()
         state.observations.append(obs)
@@ -1165,6 +1166,12 @@ class AgentLoop:
         expectations = plan.get("expectations") or plan.get("expect")
         reasoning = plan.get("reasoning", "")
 
+        print(f"[AgentLoop]   🎯 Action: {action}")
+        if args:
+            print(f"[AgentLoop]   📋 Args: {args}")
+        if reasoning:
+            print(f"[AgentLoop]   💭 Reasoning: {reasoning[:100]}...")
+
         status_msg = f'▶ Крок {state.step + 1}/{self.config.max_steps}: {action}'
         if reasoning:
             lines = str(reasoning).strip().splitlines()
@@ -1177,9 +1184,28 @@ class AgentLoop:
         act_result = self.act(plan)
         state.last_action = action
 
+        print(f"[AgentLoop]   ✅ Result: {act_result.get('ok', False)}")
+        if act_result.get('result'):
+            print(f"[AgentLoop]   📄 Output: {str(act_result.get('result', ''))[:100]}...")
+        if act_result.get('error'):
+            print(f"[AgentLoop]   ❌ Error: {act_result.get('error')}")
+
         # 4. Check (з act_result + expectations)
         check_result = self.check(action, obs, act_result=act_result, expectations=expectations)
         state.last_result = check_result.get("detail", "")
+
+        print(f"[AgentLoop]   🔍 Check: {check_result.get('success', False)}")
+        if check_result.get('detail'):
+            print(f"[AgentLoop]   📝 Detail: {check_result.get('detail')[:100]}...")
+
+        # Відправити крок в GUI план
+        self._gui_msg('step_update', {
+            "step": state.step,
+            "action": action,
+            "success": check_result.get('success', False),
+            "reasoning": reasoning[:100] if reasoning else "",
+            "result": str(act_result.get('result', ''))[:100] if act_result.get('result') else ""
+        })
 
         # Лог в історію
         state.actions_history.append({

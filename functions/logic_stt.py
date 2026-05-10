@@ -115,10 +115,16 @@ class STTEngine:
         try:
             model_info = self.models["whisper"]
             model = model_info["model"]
-            
+
             # Підготувати аудіо
             audio_tensor = torch.from_numpy(audio).float()
-            
+
+            # 🔥 Padding для коротких сегментів — Whisper крашить на аудіо < 1 секунди
+            # Error: Expected key.size(1) == value.size(1) to be true
+            min_samples = 16000  # 1 секунда при 16kHz
+            if len(audio_tensor) < min_samples:
+                audio_tensor = torch.nn.functional.pad(audio_tensor, (0, min_samples - len(audio_tensor)))
+
             # Транскрибувати
             result = model.transcribe(
                 audio_tensor,
@@ -126,13 +132,13 @@ class STTEngine:
                 fp16=(WHISPER_COMPUTE_TYPE == "float16") and (self.device == "cuda"),
                 task="transcribe"
             )
-            
+
             return {
                 "text": result["text"].strip(),
                 "confidence": np.mean([seg.get("confidence", 0.9) for seg in result.get("segments", [])]),
                 "model": "whisper"
             }
-            
+
         except Exception as e:
             print(f"{Fore.RED}   ❌ Whisper транскрипція: {e}")
             import traceback

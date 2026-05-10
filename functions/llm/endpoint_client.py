@@ -90,18 +90,14 @@ def get_primary_endpoint():
     try:
         from ..core_settings import get_setting
         endpoints = get_setting("LLM_ENDPOINTS", [])
-        print(f"[DEBUG] Total endpoints: {len(endpoints)}")
 
         # Шукаємо endpoint з role="1"
         primary = get_endpoint_by_role("1", None)
         if primary:
-            print(f"[DEBUG] Found endpoint with role=1: {primary.get('name', 'unknown')}")
             return primary
-        print(f"[DEBUG] No endpoint with role=1 found")
 
         # Якщо не знайдено role="1", шукаємо endpoint з найменшим цифровим role
         enabled_endpoints = [ep for ep in endpoints if ep.get("enabled") and ep.get("model") and ep.get("url")]
-        print(f"[DEBUG] Enabled endpoints with model and url: {len(enabled_endpoints)}")
         if enabled_endpoints:
             # Сортуємо за цифровим role
             def get_role_order(ep):

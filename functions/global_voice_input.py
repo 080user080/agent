@@ -85,6 +85,10 @@ class HotkeyHook:
         self.shift_pressed = False
         self.win_pressed = False
 
+        # Debounce: запобігає подвійному спрацьовуванню
+        self._last_fire_time = 0.0
+        self._debounce_sec = 0.8  # мінімальний інтервал між спрацьовуваннями
+
         try:
             from pynput import keyboard
             self.pynput_available = True
@@ -101,17 +105,14 @@ class HotkeyHook:
         try:
             from pynput.keyboard import Key
 
-            # Debug-Loop: Логування кожного натискання модифікаторів
+            # Відстежування модифікаторів
             if key == Key.ctrl_l or key == Key.ctrl_r:
-                print(f"[DEBUG-HOOK] Ctrl pressed")
                 self.ctrl_pressed = True
                 return
             elif key == Key.shift_l or key == Key.shift_r:
-                print(f"[DEBUG-HOOK] Shift pressed")
                 self.shift_pressed = True
                 return
             elif key == Key.cmd or key == Key.cmd_l or key == Key.cmd_r:
-                print(f"[DEBUG-HOOK] Win pressed")
                 self.win_pressed = True
                 return
 
@@ -138,12 +139,14 @@ class HotkeyHook:
                 return
 
             # Перевірити букву або F-клавішу
+            now = time.time()
             if letter_needed:
                 if hasattr(key, 'char') and key.char and key.char.upper() == letter_needed:
-                    print(f"[HotkeyHook] ✅ Hotkey спрацював: {self.hotkey}")
-                    if self.callback:
-                        threading.Thread(target=self.callback, daemon=True).start()
-                    # 🔥 pynput не може блокувати натискання в Windows, тому return False не працює
+                    if now - self._last_fire_time >= self._debounce_sec:
+                        self._last_fire_time = now
+                        print(f"[HotkeyHook] ✅ Hotkey спрацював: {self.hotkey}")
+                        if self.callback:
+                            threading.Thread(target=self.callback, daemon=True).start()
             elif f_key_needed:
                 # Перевірити F-клавішу
                 f_key_map = {
@@ -152,10 +155,11 @@ class HotkeyHook:
                     11: Key.f11, 12: Key.f12
                 }
                 if f_key_needed in f_key_map and key == f_key_map[f_key_needed]:
-                    print(f"[HotkeyHook] ✅ Hotkey спрацював: {self.hotkey}")
-                    if self.callback:
-                        threading.Thread(target=self.callback, daemon=True).start()
-                    # 🔥 pynput не може блокувати натискання в Windows, тому return False не працює
+                    if now - self._last_fire_time >= self._debounce_sec:
+                        self._last_fire_time = now
+                        print(f"[HotkeyHook] ✅ Hotkey спрацював: {self.hotkey}")
+                        if self.callback:
+                            threading.Thread(target=self.callback, daemon=True).start()
         except Exception as e:
             pass  # Тихо ігноруємо помилки
 
@@ -233,6 +237,8 @@ class GlobalVoiceInput:
         # Захист від подвійного спрацьовування (debounce)
         self._toggle_lock = threading.Lock()
         self._stop_requested = False
+        self._last_hotkey_time = 0.0
+        self._debounce_sec = 0.8
 
     def _debug_find_edit_control(self, parent_hwnd: int):
         """Знайти всі дочірні контроли в вікні."""
@@ -462,6 +468,11 @@ class GlobalVoiceInput:
 
     def _on_hotkey_pressed(self):
         """Обробити натискання hotkey — toggle запис."""
+        now = time.time()
+        if now - self._last_hotkey_time < self._debounce_sec:
+            print(f"[GVI] Debounce: ігнорую (прошло {now - self._last_hotkey_time:.2f}s < {self._debounce_sec}s)")
+            return
+        self._last_hotkey_time = now
         print(f"[GVI] _on_hotkey_pressed викликано! is_listening={self.is_listening}")
 
         # 🔥 ПЕРШО відпустити модифікатори щоб уникнути випадкового Ctrl+V

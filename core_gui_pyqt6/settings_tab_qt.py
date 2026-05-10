@@ -248,8 +248,9 @@ class SettingsTabQtMixin:
             widget.setValue(int(value) if value is not None else 0)
         elif wtype == "float":
             widget = QDoubleSpinBox()
+            widget.setDecimals(4)  # ПЕРШЕ: 4 знаки після коми (0.003 замість 0.00)
             widget.setRange(schema.get("min", -999999.0), schema.get("max", 999999.0))
-            widget.setSingleStep(0.1)
+            widget.setSingleStep(0.001)  # Дозволяє встановлювати значення типу 0.003
             widget.setValue(float(value) if value is not None else 0.0)
         elif wtype == "llm_endpoints":
             widget = LLMEndpointsEditor(value or [])
@@ -373,6 +374,7 @@ class SettingsTabQtMixin:
                 raise ValueError(f"<= {schema['max']}")
             return v
         if wtype == "float":
+            widget.setDecimals(4)  # Гарантуємо 4 знаки перед отриманням значення
             v = widget.value()
             if "min" in schema and v < schema["min"]:
                 raise ValueError(f">= {schema['min']}")

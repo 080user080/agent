@@ -386,11 +386,12 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         """Зупинити запис (викликається при натисканні кнопки або автоматично після розпізнавання)."""
         self._is_listening_mic = False
 
-        # Зупинити STT контролер
+        # Зупинити STT через stop_event (коректне завершення listen_streaming)
         if self.stt_controller:
             try:
-                self.stt_controller.stop()
-                print("[GUI] STT контролер зупинено")
+                if self.stt_controller._stop_event:
+                    self.stt_controller._stop_event.set()
+                self.stt_controller.listener.is_listening = False
             except Exception as e:
                 print(f"[GUI] Помилка зупинки STT контролера: {e}")
 

@@ -275,7 +275,7 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
         name="ask_user",
         description=(
             "Запитати користувача коли потрібна додаткова інформація. "
-            "AgentLoop призупиниться до отримання відповіді."
+            "Не використовуйте для простих уточнень — краще зробити припущення і діяти."
         ),
         properties={
             "question": {"type": "string"},
@@ -286,6 +286,15 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
             },
         },
         required=["question"],
+    ),
+    _tool(
+        name="write_file",
+        description="Створити або перезаписати текстовий файл.",
+        properties={
+            "filepath": {"type": "string", "description": "Шлях до файлу (відносний або абсолютний)."},
+            "content": {"type": "string", "description": "Вміст файлу."},
+        },
+        required=["filepath", "content"],
     ),
 ]
 
@@ -482,6 +491,8 @@ TOOL_NAME_ALIASES: Dict[str, str] = {
     "wait_for_text": "wait_for_text",
     "wait_seconds": "wait_seconds",
     "fill_form": "fill_form",
+    # file operations
+    "write_file": "write_file",
     # voice
     "voice_input": "voice_input",
     # vision

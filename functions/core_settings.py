@@ -142,7 +142,7 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
     "VOLUME_THRESHOLD": {
         "type": "float", "group": "Аудіо", "label": "Поріг гучності",
         "desc": "Мінімальна гучність, щоб зафіксувати мову (0.001–0.1).",
-        "min": 0.0, "max": 1.0,
+        "min": 0.001, "max": 1.0,
     },
     "SILENCE_DURATION": {
         "type": "float", "group": "Аудіо", "label": "Тривалість тиші (с)",

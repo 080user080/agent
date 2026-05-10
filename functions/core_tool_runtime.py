@@ -23,6 +23,7 @@ CATEGORY_GUI = "gui"  # GUI Automation Phase 1-7
 
 TOOL_POLICIES: Dict[str, Dict[str, Any]] = {
     # --- Безпечні файлові операції (тільки Desktop) ---
+    "write_file": {"risk": SAFE, "category": CATEGORY_FILE, "description": "Створення або перезапис текстового файлу"},
     # idempotent=True — функції, які можна кешувати (чисті обчислення/читання)
     "create_file": {"risk": SAFE, "category": CATEGORY_FILE, "description": "Створення txt файлу на Desktop"},
     "edit_file": {"risk": SAFE, "category": CATEGORY_FILE, "description": "Редагування файлу з бекапом"},

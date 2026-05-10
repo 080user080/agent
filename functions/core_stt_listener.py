@@ -208,8 +208,8 @@ class STTListener:
             stt_logging = STT_LOGGING_ENABLED
             volume_threshold = VOLUME_THRESHOLD
 
-        # Оновити volume_threshold з user_settings
-        self.volume_threshold = volume_threshold
+        # Оновити volume_threshold з user_settings (мінімум 0.001 — при 0.0 тиша ніколи не виявляється)
+        self.volume_threshold = max(0.001, volume_threshold)
 
         self._update_status("listening")
         print(f"{Fore.CYAN}🎤 Псевдопотокове розпізнавання (min_silence={min_silence}s, max_silence={max_silence}s, threshold={self.volume_threshold})...")
