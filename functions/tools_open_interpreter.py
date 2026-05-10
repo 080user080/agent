@@ -44,17 +44,18 @@ class OpenInterpreterExecutor:
         try:
             # Import interpreter (lazy import to avoid dependency issues)
             from interpreter import interpreter
-            
-            # Configure to use local LM Studio instead of OpenAI
-            interpreter.llm.model = "local"
-            interpreter.llm.api_base = self.lm_studio_url.replace("/chat/completions", "")
-            interpreter.llm.api_key = ""  # No API key for local
+
+            # Configure to use local LM Studio (OpenAI-compatible)
+            # Use openai/ prefix for LM Studio compatibility with litellm
+            interpreter.llm.model = "openai/local"
+            interpreter.llm.api_base = self.lm_studio_url
+            interpreter.llm.api_key = "dummy"  # litellm requires api_key even if empty
             interpreter.llm.temperature = 0.1
             interpreter.llm.max_tokens = 2048
-            
+
             # Disable auto-run for safety (will be controlled by auto_run parameter)
             interpreter.auto_run = False
-            
+
             self._interpreter = interpreter
             self._initialized = True
             return True
@@ -204,17 +205,22 @@ def oi_execute_with_healing(
 
 def is_available() -> bool:
     """Check if Open Interpreter is available and enabled.
-    
+
     Returns:
         True if OI can be used, False otherwise
     """
     from .core_settings import get_setting
-    
-    if not get_setting("OI_ENABLED", False):
+
+    oi_enabled = get_setting("OI_ENABLED", False)
+    print(f"[DEBUG OI] OI_ENABLED from settings: {oi_enabled}")
+
+    if not oi_enabled:
         return False
-    
+
     try:
         from interpreter import interpreter
+        print(f"[DEBUG OI] interpreter module imported successfully")
         return True
-    except ImportError:
+    except ImportError as e:
+        print(f"[DEBUG OI] ImportError: {e}")
         return False

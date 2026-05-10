@@ -609,7 +609,14 @@ class AssistantCore:
                     msg = "❌ Не вдалося витягти Python код з завдання"
                 else:
                     result = registry.execute_function("execute_python", {"code": code}, auto_create=False)
-                    msg = result.get('message', 'Виконано') if result.get('ok') else f'❌ Помилка: {result.get("error")}'
+                    print(f"[DEBUG] execute_python result type: {type(result)}")
+                    print(f"[DEBUG] execute_python result: {result}")
+                    # execute_python повертає dict з полями ok, message, data
+                    if isinstance(result, dict):
+                        msg = result.get('message', 'Виконано') if result.get('ok') else f'❌ Помилка: {result.get("error")}'
+                    else:
+                        # Якщо повернулось щось інше (наприклад str)
+                        msg = str(result)
 
             else:
                 msg = f'❌ Невідома дія: {action}'
