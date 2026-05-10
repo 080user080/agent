@@ -1,7 +1,16 @@
 """Файлові операції для AgentLoop."""
 from pathlib import Path
+from .common_decorators import llm_function
 
 
+@llm_function(
+    name="write_file",
+    description="Створити або перезаписати текстовий файл",
+    parameters={
+        "filepath": "Шлях до файлу (відносний або абсолютний)",
+        "content": "Вміст файлу",
+    }
+)
 def write_file(filepath: str, content: str) -> dict:
     """Створити або перезаписати текстовий файл.
 

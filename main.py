@@ -552,14 +552,6 @@ class AssistantCore:
         if any(k in task_lower for k in file_keywords):
             return "FILE_OP"
 
-        # Виконання коду — не потрібен екран
-        code_keywords = [
-            "виконай код", "виконай цей код", "запусти", "execute", "run script",
-            "python код", "```python", "import ", "print(", "def ", "class "
-        ]
-        if any(k in task_lower for k in code_keywords):
-            return "CODE_OP"
-
         # Питання — просто відповідь
         question_keywords = ["що таке", "поясни", "як працює",
                             "what is", "explain", "how does"]
@@ -572,7 +564,7 @@ class AssistantCore:
         if any(k in task_lower for k in gui_keywords):
             return "GUI_ACTION"
 
-        return "AGENT"  # fallback — повний AgentLoop
+        return "AGENT"  # fallback — повний AgentLoop (включає виконання коду)
 
     def _execute_direct(self, task: str, action: str) -> None:
         """Пряме виконання функції без AgentLoop (для простих операцій)."""
@@ -609,8 +601,6 @@ class AssistantCore:
                     msg = "❌ Не вдалося витягти Python код з завдання"
                 else:
                     result = registry.execute_function("execute_python", {"code": code}, auto_create=False)
-                    print(f"[DEBUG] execute_python result type: {type(result)}")
-                    print(f"[DEBUG] execute_python result: {result}")
                     # execute_python повертає dict з полями ok, message, data
                     if isinstance(result, dict):
                         msg = result.get('message', 'Виконано') if result.get('ok') else f'❌ Помилка: {result.get("error")}'
@@ -700,16 +690,12 @@ class AssistantCore:
             self._execute_direct(task, "write_file")
             return
 
-        if task_type == "CODE_OP":
-            self._execute_direct(task, "execute_python")
-            return
-
         if task_type == "CHAT":
             if self.assistant:
                 self.assistant.process_command(task, from_gui=True)
             return
 
-        # --- Повний AgentLoop тільки для GUI дій ---
+        # --- Повний AgentLoop для всіх інших задач (включаючи виконання коду) ---
         if task_type == "GUI_ACTION" or task_type == "AGENT":
             execution_success = False
             execution_error = None

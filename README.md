@@ -100,6 +100,7 @@ coverage report
 - Читання, створення, редагування файлів
 - Пошук у коді (`search_in_code`)
 - Виконання Python (`execute_python`)
+- **Open Interpreter fallback** — автоматичне встановлення відсутніх модулів через локальний LM Studio
 - Git інтеграція (status, diff, commit)
 - **Code generation pipeline** — автоматична генерація коду через AI actors
 
@@ -296,6 +297,24 @@ agent/
 | `core_action_recorder` | Запис GUI-дій + скріншотів в `logs/gui_actions.jsonl` |
 | `core_undo_manager` | Undo для GUI-дій (введення тексту, переміщення файлів) |
 | `core_gui_guardian` | Перевірка ризиків та підтвердження небезпечних GUI-дій |
+
+### Open Interpreter інтеграція
+
+**`functions/tools_open_interpreter.py`** — модуль для self-healing виконання коду
+
+- **`is_available()`** — перевіряє чи Open Interpreter доступний і увімкнений (`OI_ENABLED` setting)
+- **`get_executor(lm_studio_url)`** — повертає singleton Open Interpreter executor з налаштуванням LM Studio
+- **`oi_execute_with_healing(code, task_description)`** — виконує код з автоматичним встановленням відсутніх модулів через Open Interpreter
+
+**Як працює:**
+1. При виконанні `execute_python` і виникненні `ModuleNotFoundError`
+2. Автоматично викликається Open Interpreter через локальний LM Studio
+3. LLM аналізує помилку і генерує команду для встановлення відсутнього модуля
+4. Повторно виконує код з успішним результатом
+
+**Налаштування:**
+- `OI_ENABLED` (bool, default `False`) — увімкнення Open Interpreter fallback
+- `LM_STUDIO_URL` (string, default `"http://localhost:1234/v1/chat/completions"`) — URL локального LM Studio сервера
 
 ### Logic та Tools (скорочено)
 

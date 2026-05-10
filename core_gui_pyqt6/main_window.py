@@ -191,33 +191,33 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         chat_layout.addWidget(input_frame)
         self.notebook.addTab(chat_tab, "💬 Чат")
 
-        # --- Tab 2: Plan ---
-        plan_tab = QWidget()
-        plan_layout = QVBoxLayout(plan_tab)
-        plan_layout.setContentsMargins(0, 0, 0, 0)
-        plan_layout.setSpacing(4)
-
-        # Кнопки запуску/зупинки плану
-        plan_buttons = QHBoxLayout()
-        self.plan_run_btn = QPushButton("▶ Виконати")
-        self.plan_run_btn.setObjectName("plan_run_btn")
-        self.plan_run_btn.clicked.connect(self._on_run_plan)
-        plan_buttons.addWidget(self.plan_run_btn)
-
-        self.plan_stop_btn = QPushButton("⏹ Зупинити")
-        self.plan_stop_btn.setObjectName("plan_stop_btn")
-        self.plan_stop_btn.clicked.connect(self._on_stop_plan)
-        self.plan_stop_btn.hide()
-        plan_buttons.addWidget(self.plan_stop_btn)
-
-        plan_layout.addLayout(plan_buttons)
-
-        # Список кроків плану
-        self.plan_list = QListWidget()
-        self.plan_list.setObjectName("plan_list")
-        plan_layout.addWidget(self.plan_list, stretch=1)
-
-        self.notebook.addTab(plan_tab, "📋 План")
+        # --- Tab 2: Plan (приховано) ---
+        # plan_tab = QWidget()
+        # plan_layout = QVBoxLayout(plan_tab)
+        # plan_layout.setContentsMargins(0, 0, 0, 0)
+        # plan_layout.setSpacing(4)
+        #
+        # # Кнопки запуску/зупинки плану
+        # plan_buttons = QHBoxLayout()
+        # self.plan_run_btn = QPushButton("▶ Виконати")
+        # self.plan_run_btn.setObjectName("plan_run_btn")
+        # self.plan_run_btn.clicked.connect(self._on_run_plan)
+        # plan_buttons.addWidget(self.plan_run_btn)
+        #
+        # self.plan_stop_btn = QPushButton("⏹ Зупинити")
+        # self.plan_stop_btn.setObjectName("plan_stop_btn")
+        # self.plan_stop_btn.clicked.connect(self._on_stop_plan)
+        # self.plan_stop_btn.hide()
+        # plan_buttons.addWidget(self.plan_stop_btn)
+        #
+        # plan_layout.addLayout(plan_buttons)
+        #
+        # # Список кроків плану
+        # self.plan_list = QListWidget()
+        # self.plan_list.setObjectName("plan_list")
+        # plan_layout.addWidget(self.plan_list, stretch=1)
+        #
+        # self.notebook.addTab(plan_tab, "📋 План")
 
         # --- Tab 3: Settings ---
         self.settings_container = QWidget()
@@ -438,16 +438,18 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
             self.input_text.setFocus()
 
     def _on_run_plan(self) -> None:
-        if self.assistant_callback:
+        if hasattr(self, 'plan_run_btn') and hasattr(self, 'plan_stop_btn'):
             self.plan_run_btn.hide()
             self.plan_stop_btn.show()
+        if self.assistant_callback:
             self.assistant_callback("run_plan", None)
 
     def _on_stop_plan(self) -> None:
         if self.assistant_callback:
             self.assistant_callback("stop_plan", None)
-        self.plan_stop_btn.hide()
-        self.plan_run_btn.show()
+        if hasattr(self, 'plan_stop_btn') and hasattr(self, 'plan_run_btn'):
+            self.plan_stop_btn.hide()
+            self.plan_run_btn.show()
 
     # ─── API: повідомлення в чат ──────────────────────────────────────────────
 
@@ -571,9 +573,11 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         QApplication.quit()
         sys.exit(0)
 
-    # ─── API: план-панель ─────────────────────────────────────────────────────
+    # ─── API: план-панель (приховано) ─────────────────────────────────────────────
 
     def show_plan_panel(self, steps: Any) -> None:
+        if not hasattr(self, 'plan_list'):
+            return
         self.plan_list.clear()
         if not steps:
             return
@@ -586,6 +590,8 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
             self.plan_list.addItem(item)
 
     def update_plan_step(self, data: Any) -> None:
+        if not hasattr(self, 'plan_list'):
+            return
         if not isinstance(data, dict):
             return
         idx = data.get("index")

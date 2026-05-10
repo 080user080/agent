@@ -296,6 +296,25 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
         },
         required=["filepath", "content"],
     ),
+    _tool(
+        name="execute_python",
+        description="Виконати Python код в безпечній пісочниці. При ModuleNotFoundError автоматично спробує встановити відсутні модулі через Open Interpreter.",
+        properties={
+            "code": {"type": "string", "description": "Python код для виконання."},
+            "script_name": {"type": "string", "description": "(опціонально) назва скрипта."},
+        },
+        required=["code"],
+    ),
+    _tool(
+        name="oi_execute_with_healing",
+        description="Виконати Python код з самовідновленням через Open Interpreter. Використовуйте для складних задач де потрібне автоматичне встановлення модулів або виправлення помилок.",
+        properties={
+            "code": {"type": "string", "description": "Python код для виконання."},
+            "task_description": {"type": "string", "description": "Опис задачі для контексту (опціонально)."},
+            "auto_run": {"type": "boolean", "default": True, "description": "Автоматичний запуск (за замовчуванням True)."},
+        },
+        required=["code"],
+    ),
 ]
 
 
@@ -493,6 +512,8 @@ TOOL_NAME_ALIASES: Dict[str, str] = {
     "fill_form": "fill_form",
     # file operations
     "write_file": "write_file",
+    "execute_python": "execute_python",
+    "oi_execute_with_healing": "oi_execute_with_healing",
     # voice
     "voice_input": "voice_input",
     # vision

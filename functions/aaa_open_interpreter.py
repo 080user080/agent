@@ -8,6 +8,7 @@ import os
 import sys
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
+from .common_decorators import llm_function
 
 
 @dataclass
@@ -171,9 +172,18 @@ def get_executor(lm_studio_url: Optional[str] = None) -> OpenInterpreterExecutor
     return _executor
 
 
+@llm_function(
+    name="oi_execute_with_healing",
+    description="Виконати Python код з самовідновленням через Open Interpreter. Автоматично встановлює відсутні модулі через локальний LM Studio.",
+    parameters={
+        "code": "Python код для виконання",
+        "task_description": "Опис задачі для контексту (опціонально)",
+        "auto_run": "Автоматичний запуск (за замовчуванням True)"
+    }
+)
 def oi_execute_with_healing(
     code: str,
-    task_description: str,
+    task_description: str = "",
     auto_run: bool = True
 ) -> OIResult:
     """Execute code with self-healing via Open Interpreter.
@@ -211,16 +221,11 @@ def is_available() -> bool:
     """
     from .core_settings import get_setting
 
-    oi_enabled = get_setting("OI_ENABLED", False)
-    print(f"[DEBUG OI] OI_ENABLED from settings: {oi_enabled}")
-
-    if not oi_enabled:
+    if not get_setting("OI_ENABLED", False):
         return False
 
     try:
         from interpreter import interpreter
-        print(f"[DEBUG OI] interpreter module imported successfully")
         return True
-    except ImportError as e:
-        print(f"[DEBUG OI] ImportError: {e}")
+    except ImportError:
         return False

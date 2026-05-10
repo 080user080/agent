@@ -121,8 +121,11 @@ class ActionDecider:
         "- take_screenshot: args={} — Capture current screen. Use when task is about SCREEN, desktop, windows.\n"
         "- ocr_screen: args={\"lang\": \"ukr+eng\"} — Read visible text from screen. Use after take_screenshot for screen analysis.\n"
         "- find_text_on_screen: args={\"text\": \"search_text\"} — Find coordinates of text on screen.\n"
-        "- list_directory: args={\"directory\": \"path\"} — List files in directory.\n"
+        "- list_directory: args={\"directory\": \"path\"} — List files in directory (limited output).\n"
         "- read_code_file: args={\"filepath\": \"path\"} — Read file from disk.\n"
+        "- write_file: args={\"filepath\": \"path\", \"content\": \"text\"} — Create or overwrite a text file.\n"
+        "- execute_python: args={\"code\": \"python_code\"} — Execute Python code in a safe sandbox. Use for simple tasks and file search with glob/os.walk.\n"
+        "- oi_execute_with_healing: args={\"code\": \"python_code\"} — Execute code with self-healing via Open Interpreter. Use for complex tasks requiring auto-install of missing modules or error recovery.\n"
         "- done: args={\"summary\": \"short_result\"} — Complete the task.\n"
         "- ask_user: args={\"question\": \"question\"} — Ask user for information.\n"
         "\n"
@@ -131,11 +134,15 @@ class ActionDecider:
         "2. Never return empty or noop unless absolutely necessary\n"
         "3. If task is about \"screen analysis\" — first take_screenshot, then ocr_screen, then done with summary\n"
         "4. Do not use list_directory for screen analysis — it analyzes files, not screen!\n"
-        "5. Execute at most 3-5 actions for analysis tasks\n"
-        "6. After 2-3 steps, you must call done with summary\n"
-        "7. When task is complete — action=\"done\", args={\"summary\": \"short result\"}\n"
-        "8. If you need information from user — action=\"ask_user\"\n"
-        "9. DO NOT invent new tools — use only the ones listed above\n"
+        "5. For file search with many files, use execute_python with glob or os.walk instead of list_directory.\n"
+        "6. For simple code execution, use execute_python. For complex tasks with potential missing modules, use oi_execute_with_healing.\n"
+        "7. Execute at most 3-5 actions for analysis tasks\n"
+        "8. After 2-3 steps, you must call done with summary\n"
+        "9. When task is complete — action=\"done\", args={\"summary\": \"short result\"}\n"
+        "10. If you need information from user — action=\"ask_user\"\n"
+        "11. If task is about executing code — use \"execute_python\" (simple) or \"oi_execute_with_healing\" (complex)\n"
+        "12. If task is about creating files — use \"write_file\"\n"
+        "13. DO NOT invent new tools — use only the ones listed above\n"
         "\n"
         "RESPOND WITH ONLY JSON. NO MARKDOWN. NO EXPLANATIONS OUTSIDE JSON."
     )
@@ -205,9 +212,9 @@ class ActionDecider:
             ok = h.get("act_result", {}).get("ok", "?")
             check = h.get("check_result", {}).get("detail", "")
             try:
-                args_str = json.dumps(args, ensure_ascii=False)[:200]
+                args_str = json.dumps(args, ensure_ascii=False)[:1000]
             except Exception:
-                args_str = str(args)[:200]
+                args_str = str(args)[:1000]
             lines.append(f"- {action}({args_str}) → ok={ok} {check}")
         return "\n".join(lines)
 
@@ -1204,7 +1211,7 @@ class AgentLoop:
 
         print(f"[AgentLoop]   ✅ Result: {act_result.get('ok', False)}")
         if act_result.get('result'):
-            print(f"[AgentLoop]   📄 Output: {str(act_result.get('result', ''))[:100]}...")
+            print(f"[AgentLoop]   📄 Output: {str(act_result.get('result', ''))[:1000]}...")
         if act_result.get('error'):
             print(f"[AgentLoop]   ❌ Error: {act_result.get('error')}")
 
