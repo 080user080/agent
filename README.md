@@ -60,33 +60,31 @@ python main.py
 
 ---
 
-## 🧪 Діагностичні тести
+## 🧪 Тестування
 
-У проекті є два постійних тести для діагностики (НЕ ВИДАЛЯТИ!):
+**ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
 
-### `test_llm_endpoint.py`
-Тест для перевірки доступності та роботи LLM endpoints.
 ```bash
-python test_llm_endpoint.py
-```
-Перевіряє:
-- Завантаження конфігурації LLM endpoints
-- З'єднання з primary endpoint
-- Коректність відповіді на тестовий запит
+# Активація віртуального середовища
+cd /d D:\Python\TEXT\LLM_model
+call venv\Scripts\activate.bat
+cd /d D:\Python\agent
 
-### `test_duplication_direct.py`
-Тест для перевірки GUI автоматизації та LLM response.
-```bash
-python test_duplication_direct.py
-```
-Перевіряє:
-- Запуск агента в GUI режимі
-- Активацію вікна агента
-- Вставку тексту через keyboard automation
-- LLM response на команду (наприклад "відкрий браузер")
-- Виконання дій через tools
+# Запуск всіх тестів
+python -m pytest tests/ -v
 
-**Важливо:** Ці тести використовуються для діагностики проблем і не повинні видалятися.
+# Запуск конкретного файлу
+python -m pytest tests/test_core_planner.py -v
+
+# Запуск PyQt6 GUI тестів
+python -m pytest tests/test_pyqt6_gui.py -v
+
+# З покриттям
+coverage run -m pytest tests/
+coverage report
+```
+
+Для зручності використовуйте `Start_main_qt.bat` для запуску GUI версії через venv.
 
 ---
 
@@ -138,7 +136,9 @@ python test_duplication_direct.py
 - **PyQt6 GUI** — сучасний багатовкладковий інтерфейс (run.py --qt)
 - **Thread-safe messages** — потікобезпечна черга повідомлень
 - **Settings editor** — динамічний рендеринг налаштувань
-- **Multi-tab interface** — Чат, Налаштування, Логи, Статистика, Про програму, Інструменти
+- **Dynamic input height** — поле вводу автоматично збільшується (60–160px)
+- **LLM endpoints editor** — налаштування кількох LLM провайдерів
+- **Plan panel** — прогрес виконання плану з кнопками управління
 
 ### ⚙️ Налаштування
 - GUI редактор налаштувань (вкладка "Налаштування")
@@ -224,16 +224,9 @@ agent/
 │   ├── plan_panel_qt.py           # Панель плану (PyQt6)
 │   ├── confirmation_qt.py         # Діалог підтверджень (PyQt6)
 │   └── llm_endpoints_editor_qt.py # Редактор LLM ендпойнтів (PyQt6)
-├── gui_tabs/                   # GUI вкладки (PyQt6 multi-tab)
-│   ├── main_window.py             # MultiTabGUI (6 вкладок)
-│   ├── base_tab.py               # BaseTab
-│   ├── chat_tab.py               # ChatTab
-│   ├── settings_tab.py           # SettingsTab
-│   ├── logs_tab.py               # LogsTab
-│   ├── statistics_tab.py         # StatisticsTab
-│   ├── about_tab.py              # AboutTab
-│   ├── tools_tab.py              # ToolsTab
-│   └── constants.py              # Константи для GUI
+├── backup/                     # Застарілі компоненти
+│   ├── tkinter_legacy/            # Tkinter GUI (застаріло)
+│   └── gui_tabs/                  # Старі multi-tab вкладки (застаріло)
 ├── docs/                       # Документація
 │   ├── ARCHITECTURE.md           # Архітектура проєкту
 │   ├── MODULES.md                # Опис модулів
@@ -245,22 +238,16 @@ agent/
 │   ├── SECURITY.md               # Безпека та ризики
 │   ├── FAQ.md                    # Часті питання
 │   └── LLM_to_LM_Studio.md       # LLM інтеграція
-├── tests/                      # Тести (pytest)
+├── tests/                      # Тести (pytest, 64 файли)
 │   ├── test_core_planner.py
 │   ├── test_core_memory.py
 │   ├── test_core_executor.py
 │   ├── test_agent_loop.py
-│   ├── test_action_decider.py
-│   ├── test_plan_executor.py
-│   ├── test_task_spec.py
-│   ├── test_tools_mouse_keyboard.py
-│   ├── test_tools_window_manager.py
-│   ├── test_tools_ocr.py
-│   └── test_pyqt6_gui.py
-├── TEST_GUI/                   # Тест GUI
-│   └── test_multi_tab_gui.py
+│   ├── test_pyqt6_gui.py
+│   └── ... (59 інших тестів)
+├── TEST_GUI/                   # GUI діагностичні тести (10 файлів)
+├── debug_logs/                 # Логи відладки
 ├── requirements.txt            # Рантайм-залежності
-├── pytest.ini                  # Конфіг тестів
 ├── status.md                   # Статус розробки + дорожня карта
 ├── TASKS.md                    # Поточні задачі
 ├── TASKS_Done.md               # Виконані задачі
@@ -269,28 +256,6 @@ agent/
 
 ---
 
-## 🧪 Тести
-
-**ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
-
-```bash
-# Активація віртуального середовища
-cd /d D:\Python\TEXT\LLM_model
-call venv\Scripts\activate.bat
-cd /d D:\Python\agent
-
-# Запуск всіх тестів
-python -m pytest tests/ -v
-
-# Запуск конкретного файлу
-python -m pytest tests/test_core_planner.py -v
-
-# З покриттям
-coverage run -m pytest tests/
-coverage report
-```
-
-Для зручності використовуйте `Start_main_qt.bat` для запуску GUI версії через venv.
 
 ---
 
@@ -441,4 +406,4 @@ coverage report
 
 ---
 
-*Останнє оновлення: квітень 2026*
+*Останнє оновлення: травень 2026*

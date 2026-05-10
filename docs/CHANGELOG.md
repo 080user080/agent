@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### ✅ Додано
+- Динамічне збільшення поля вводу в PyQt6 GUI (`_update_input_height`)
+- Папка `debug_logs/` для логів відладки
+
+### 🐛 Виправлено
+- Виправлено зупинку STT розпізнавання при натисканні кнопки (додано `stt_controller.stop()`)
+- Виправлено метод `_update_input_height` — тепер використовує `documentLayout().documentSize().height()` замість `blockCount()` для коректної роботи з автоперенесенням тексту
+
+### 📝 Змінено
+- Очищено TEST_GUI: залишено 10 актуальних тестів, видалено застарілі
+- Оновлено TEST_GUI/README.md
+- Tkinter GUI переміщено в `backup/tkinter_legacy/`
+- `gui_tabs/` переміщено в `backup/gui_tabs/`
+- Актуалізовано документацію: README.md, status.md, ARCHITECTURE.md, MODULES.md
+
+### 📚 Документація
+- Оновлено README.md під актуальну структуру проєкту
+- Оновлено status.md — видалено завершені пріоритети, додано нові
+- Оновлено docs/ARCHITECTURE.md — виправлено посилання на неіснуючі файли
+- Оновлено docs/MODULES.md — додано dynamic input, виправлено геометрію вікна
+
+## [2.1.0] - 2026-05-05
+
+### ✅ Додано
 - Модульна архітектура GUI вкладок (`gui_tabs/`)
 - PyQt6 підтримка для багатовкладкового інтерфейсу
 - Глобальний голосовий ввід (Global Voice Input) з hotkey на Windows

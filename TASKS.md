@@ -919,6 +919,53 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 
 
+### P0: Context Summarizer (стиснення контексту)
+
+- [ ] Створити `functions/context_summarizer.py`
+  - Пріоритет: P0
+  - Деталі:
+    - Відстежувати кількість токенів у сесії (через token_counter)
+    - При досягненні 80% ліміту контексту викликати LLM для стиснення старих повідомлень
+    - Зберігати ключові факти, цілі, рішення; видаляти несуттєві репліки
+
+- [ ] Інтегрувати в `logic_commands.py` перед кожним викликом LLM
+- [ ] Додати налаштування `CONTEXT_SUMMARIZE_THRESHOLD` (за замовчуванням 0.8)
+- [ ] Тест: `tests/test_context_summarizer.py`
+
+**Оцінка:** ~150 рядків коду + тести
+
+### P1: Vector Long-Term Memory (заміна Skills DB на ChromaDB)
+
+- [ ] Встановити `chromadb`
+- [ ] Створити `functions/vector_memory.py` (адаптер над self_learning)
+  - Методи: `store_skill(description, code)`, `find_similar_skills(query, top_k=3)`
+- [ ] Замінити поточний лінійний пошук у `self_learning.get_skill()` на векторний
+- [ ] Міграція старих навичок у колекцію ChromaDB
+- [ ] Тест: `tests/test_vector_memory.py`
+
+**Оцінка:** ~200 рядків коду + міграція
+
+### P1: Multi-LLM Debate (різні моделі для Виконавця/Критика)
+
+- [ ] Додати в `SETTINGS_SCHEMA` параметри `CRITIC_MODEL` та `EXECUTOR_MODEL`
+- [ ] У `AgentLoop._plan()` викликати Executor (основна модель), у `_check()` — Critic (глибший аналіз, може бути DeepSeek)
+- [ ] Забезпечити можливість вказати різні endpoints/моделі для цих ролей
+- [ ] Тест: `tests/test_multi_llm_debate.py`
+
+**Оцінка:** ~100 рядків змін + конфіг
+
+### P1: Інтеграція Open Interpreter (self-healing executor)
+
+- [ ] Встановити `open-interpreter`
+- [ ] Створити `functions/tools_open_interpreter.py`
+  - `oi_execute_with_healing(code, task_description, auto_run=True)`
+  - Налаштувати на локальний LM Studio, щоб не використовувати OpenAI API
+- [ ] Додати `OI_ENABLED` (bool, default=False) у `SETTINGS_SCHEMA`
+- [ ] У `AgentLoop._execute_action()`: якщо звичайний execute_python провалився з `ModuleNotFoundError` → викликати OI
+- [ ] Тест: `tests/test_tools_open_interpreter.py`
+
+**Оцінка:** ~120 рядків + інтеграція
+
 ### P1: Windows automation
 
 

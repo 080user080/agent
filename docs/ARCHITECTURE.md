@@ -1,5 +1,5 @@
 # Архітектура МАРК: поточний стан і напрямок
-> Оновлено: 05.05.2026
+> Оновлено: 10.05.2026
 
 **ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
 
@@ -39,12 +39,12 @@ cd /d D:\Python\agent
 - [run.py](../run.py) — універсальний entrypoint (PyQt6).
 - [run_assistant_qt.py](../run_assistant_qt.py) — GUI entrypoint (PyQt6).
 - [main.py](../main.py) — основний runtime / AssistantCore.
-- [smart_patch_gui.py](../smart_patch_gui.py) — окремий допоміжний GUI.
 
 ### Основні підсистеми
 
-- `core_gui_pyqt6/` — PyQt6 GUI (основний GUI бекенд).
-- `gui_tabs/` — PyQt6 multi-tab GUI.
+- `core_gui_pyqt6/` — PyQt6 GUI (основний і єдиний GUI бекенд).
+- `backup/tkinter_legacy/` — Tkinter GUI (застаріло, переміщено в backup).
+- `backup/gui_tabs/` — старі multi-tab вкладки (застаріло, переміщено в backup).
 - `functions/core_*` — planner, executor, memory, cache, settings, safety, checkpoint.
 - `functions/logic_*` — orchestration, task running, scenarios, expectations, repair, watchers.
 - `functions/tools_*` — desktop/browser/media tools.
@@ -74,7 +74,6 @@ cd /d D:\Python\agent
 Найважчі файли зараз:
 
 - [main.py](../main.py)
-- [core_gui/main_window.py](../core_gui/main_window.py)
 - [core_gui_pyqt6/main_window.py](../core_gui_pyqt6/main_window.py)
 - [functions/logic_commands.py](../functions/logic_commands.py)
 - [functions/core_planner.py](../functions/core_planner.py)
@@ -131,12 +130,15 @@ Stateful дані мають жити або в `runtime/`, або в `logs/`.
 - Полагодити `pytest` collection і вирівняти API `logic_task_runner`.
 - Оновити документацію під реальний LLM-шар (`functions/llm/`).
 - Позбутися суперечностей між статусом, README і кодом.
+- **Context Summarizer:** відсутній. Історія повідомлень лише накопичується, що веде до деградації якості відповідей після ~20 обмінів.
 
 ### P1
 
 - Завершити `tools_ui_accessibility.py`.
 - Додати Windows smoke CI.
 - Зафіксувати один стабільний E2E vertical slice.
+- **Vector Memory:** Поточна реалізація Skills DB не підтримує семантичний пошук. Потрібна інтеграція ChromaDB/FAISS для масштабування самонавчення.
+- **Розділення ролей LLM:** AgentLoop не розрізняє модель для планування та модель для критики. Варто дозволити конфігурацію різних провайдерів для Executor та Critic.
 
 ### P2
 

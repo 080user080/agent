@@ -1,5 +1,5 @@
 # Проєкт: Асистент МАРК
-> Останнє оновлення: 05.05.2026
+> Останнє оновлення: 10.05.2026
 
 **ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
 
@@ -51,7 +51,7 @@ cd /d D:\Python\agent
 - Global voice input (Windows hook) — глобальне голосове введення.
 - Self-learning — модуль самонавчання з аналізом помилок і skills базою.
 - Plan executor — GUI-інтеграція для виконання планів.
-- 57+ тестових файлів у [tests](D:/Python/agent/tests).
+- 64 тестових файли у [tests](D:/Python/agent/tests) + 10 діагностичних у [TEST_GUI](D:/Python/agent/TEST_GUI).
 - CI та lint конфіг уже існують: [pyproject.toml](D:/Python/agent/pyproject.toml), [ci.yml](D:/Python/agent/.github/workflows/ci.yml).
 
 ### Що оновлено відносно старих версій статусу
@@ -123,6 +123,16 @@ cd /d D:\Python\agent
    [logic_task_runner.py](D:/Python/agent/functions/logic_task_runner.py),
    [core_tool_runtime.py](D:/Python/agent/functions/core_tool_runtime.py).
 
+9. **Контекст переповнюється при довгих діалогах.**
+   Немає механізму стиснення історії — агент починає плутатися або ігнорувати старі інструкції.
+
+10. **Skills DB лінійна.**
+    self_learning зберігає навички як звичайний словник. Пошук за ключем, а не за змістом.
+    Це не масштабується: після 30-40 навичок знайти потрібну стає неможливо.
+
+11. **Критик = Виконавець.**
+    AgentLoop використовує одну модель для планування та перевірки, що знижує якість самоаналізу.
+
 ---
 
 ## 4. Ключові вузькі місця
@@ -158,63 +168,48 @@ cd /d D:\Python\agent
 
 ### Найвищий пріоритет (оновлено на основі external AI-архітектури)
 
-1. **Інтеграція AgentLoop з GUI** (критично)
-   - AgentLoop вже реалізовано (observe → plan → act → check) в Phase 12.1
-   - Потрібно зробити його основним шляхом виконання задач з GUI
-   - Замінити legacy flow (GUI → logic_commands → planner → executor)
-   - Додати чіткий UI для запуску AgentLoop
+1. **Полагодити trunk stability**
+   - повернути сумісність між тестами й `logic_task_runner`;
+   - добитися, щоб `pytest` хоча б повністю проходив collection;
+   - зафіксувати публічні API для parser/runner/plan-об'єктів.
 
-2. **Додати tool-calling для LLM**
-   - LLM зараз повертає JSON з action/code
-   - Потрібно перейти на structured tool-calling (OpenAI-compatible)
-   - Це дасть кращий control над actions
+2. **Виправити AgentLoop JSON parsing**
+   - LLM (qwen3) не генерує коректний JSON для tool-calling → зациклення
+   - Рішення: сильніший LLM або покращений парсинг з fallback
 
 3. **Створити Skills (абстракції над базовими діями)**
    - Замість "клікни сюди" - "open_browser(), search_google(), fill_form()"
    - Менше помилок, швидше, стабільніше
    - База накопичуваних навичок
 
-4. **Полагодити trunk stability**
-   - повернути сумісність між тестами й `logic_task_runner`;
-   - добитися, щоб `pytest` хоча б повністю проходив collection;
-   - зафіксувати публічні API для parser/runner/plan-об'єктів.
-
-5. **Синхронізувати документацію з реальним кодом**
-   - оновити `README.md` під актуальну структуру проєкту;
-   - прибрати застарілі згадки про старий LLM-шар там, де вже використовується `functions/llm/`;
-   - перевірити, щоб `README.md`, `status.md`, `TASKS.md` і код не суперечили одне одному.
-
 ### Середній пріоритет
 
-6. **Міграція GUI на PyQt6**
-   - існує папка `core_gui_pyqt6/` з реалізацією на PyQt6;
-   - чим більше надбудов стає, тим важче потім узгодити;
-   - краще починати зараз, поки GUI ще не занадто великий;
-   - планувати поступову міграцію модулів з Tkinter на PyQt6.
-
-7. **Глобальне голосове введення (global hook)**
-   - голосовий ввод має працювати як глобальний хук на Windows;
-   - коли користувач говорить, текст вставляється в активне поле введення в будь-якій програмі;
-   - це робить агента більш інтегрованим в ОС;
-   - потрібно використовувати Windows hooks або hotkeys для активації.
-
-8. **Доробити accessibility-шар**
+4. **Доробити accessibility-шар**
    - завершити `uia_list_elements`, `uia_find_button`, `uia_click_element`, `uia_set_text`;
    - покрити це smoke-тестами на Windows.
 
-9. **Додати Windows CI / smoke suite**
+5. **Додати Windows CI / smoke suite**
    - окремий workflow або nightly job;
    - мінімум для `tools_window_manager`, `tools_screen_capture`, `tools_mouse_keyboard`, `tools_ui_accessibility`.
 
-10. **Створити router для вибору агента**
-    - Meta-agent вирішує хто виконує (local vs API);
-    - Коли передати іншому провайдеру;
-    - Вирішує на основі типу задачі (gui/code/web/desktop).
+6. **Створити router для вибору агента**
+   - Meta-agent вирішує хто виконує (local vs API);
+   - Коли передати іншому провайдеру;
+   - Вирішує на основі типу задачі (gui/code/web/desktop).
 
-11. **Самонавчання**
-    - логування та аналіз помилок;
-    - генерування правил на основі досвіду;
-    - Skills база (накопичення досвіду).
+7. **Рефакторинг великих модулів**
+   - main.py (52KB) → розділити на модулі
+   - agent_loop.py (62KB) → розділити observe/plan/act/check
+   - logic_commands.py (45KB) → розділити по типах команд
+
+### Завершені пріоритети
+
+- ✅ **Інтеграція AgentLoop з GUI** — кнопка 🤖, run_agent_loop
+- ✅ **Tool-calling для LLM** — logic_agent_tools_schema, tool-calling інтеграція
+- ✅ **Міграція GUI на PyQt6** — core_gui_pyqt6/ основний бекенд, Tkinter в backup/
+- ✅ **Глобальне голосове введення** — global_voice_input.py, Ctrl+Shift+V hook
+- ✅ **Самонавчання** — self_learning.py, JSONL логи, skills база
+- ✅ **Синхронізація документації** — README/status/TASKS оновлено (10.05.2026)
 
 ---
 
