@@ -148,6 +148,8 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         self.input_text.setMaximumHeight(160)
         self.input_text.installEventFilter(self)
         self.input_text.textChanged.connect(self._update_input_height)
+        # Встановити початкову висоту
+        self.input_text.setFixedHeight(60)
         input_layout.addWidget(self.input_text, stretch=1)
 
         # Кнопка мікрофон 🎤
@@ -280,25 +282,18 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         """)
 
     def _update_input_height(self) -> None:
-        """Динамічно оновити висоту поля вводу на основі кількості рядків."""
-        document = self.input_text.document()
-        line_count = document.blockCount()
-        line_spacing = self.input_text.fontMetrics().lineSpacing()
-
-        # Мінімум 2-3 рядки (60px), максимум 6-8 рядків (160px)
-        min_lines = 2
-        max_lines = 8
-
-        # Розрахувати нову висоту
-        if line_count <= min_lines:
-            new_height = min_lines * line_spacing + 20  # +20 для padding/margins
-        elif line_count >= max_lines:
-            new_height = max_lines * line_spacing + 20
-        else:
-            new_height = line_count * line_spacing + 20
-
-        # Обмежити мінімум та максимум
-        new_height = max(60, min(160, new_height))
+        """Динамічно оновити висоту поля вводу на основі реальної висоти тексту."""
+        # Отримуємо фактичну висоту відмальованого тексту в документі
+        doc_height = int(self.input_text.document().documentLayout().documentSize().height())
+        
+        # Додаємо компенсацію для внутрішніх відступів (margins/padding).
+        # Зазвичай 10-15 пікселів достатньо, щоб текст не прилипав до країв і не викликав скрол завчасно.
+        target_height = doc_height + 15
+        
+        # Обмежуємо висоту (мінімум 60px, максимум 160px)
+        new_height = max(60, min(160, target_height))
+        
+        # Застосовуємо нову висоту до віджета
         self.input_text.setFixedHeight(new_height)
 
     # ─── Подія Enter у полі вводу ─────────────────────────────────────────────
