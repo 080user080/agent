@@ -534,6 +534,141 @@ class AssistantCore:
         # Запускаємо через AgentLoop
         self.run_agent_loop(task)
 
+    def _classify_task(self, task: str) -> str:
+        """Швидка класифікація завдання без LLM.
+
+        Returns:
+            FILE_OP — файлові операції (не потрібен екран)
+            CODE_OP — виконання коду (не потрібен екран)
+            CHAT — питання (просто відповідь)
+            GUI_ACTION — GUI дії (потрібен екран)
+            AGENT — fallback — повний AgentLoop
+        """
+        task_lower = task.lower()
+
+        # Файлові операції — не потрібен екран
+        file_keywords = ["створи файл", "запиши файл", "прочитай файл",
+                         "видали файл", "перейменуй", "create file", "write file", "read file"]
+        if any(k in task_lower for k in file_keywords):
+            return "FILE_OP"
+
+        # Виконання коду — не потрібен екран
+        code_keywords = [
+            "виконай код", "виконай цей код", "запусти", "execute", "run script",
+            "python код", "```python", "import ", "print(", "def ", "class "
+        ]
+        if any(k in task_lower for k in code_keywords):
+            return "CODE_OP"
+
+        # Питання — просто відповідь
+        question_keywords = ["що таке", "поясни", "як працює",
+                            "what is", "explain", "how does"]
+        if any(k in task_lower for k in question_keywords):
+            return "CHAT"
+
+        # GUI дії — потрібен екран
+        gui_keywords = ["клікни", "відкрий програму", "натисни",
+                        "знайди на екрані", "click", "open app", "екран", "вікно", "кнопк"]
+        if any(k in task_lower for k in gui_keywords):
+            return "GUI_ACTION"
+
+        return "AGENT"  # fallback — повний AgentLoop
+
+    def _execute_direct(self, task: str, action: str) -> None:
+        """Пряме виконання функції без AgentLoop (для простих операцій)."""
+        print(f"[DEBUG] Direct execution: {action} for task: {task[:50]}...")
+
+        import re
+
+        if self.gui_queue:
+            self.gui_queue.put(('update_status', f'📝 Пряме виконання: {action}'))
+
+        try:
+            # Використовуємо registry для виконання
+            registry = getattr(self, 'registry', None)
+            if not registry:
+                if self.gui_queue:
+                    self.gui_queue.put(('add_message', ('assistant', '❌ Registry не доступний')))
+                return
+
+            if action == "write_file":
+                # Парсинг параметрів з завдання
+                filepath_match = re.search(r'["\']?([^"\']+\.(txt|py|md|json))["\']?', task, re.IGNORECASE)
+                content_match = re.search(r'["\']?([^"\']+)["\']?\s*з текстом\s*["\']?([^"\']+)["\']?', task, re.IGNORECASE)
+
+                filepath = filepath_match.group(1) if filepath_match else "output.txt"
+                content = content_match.group(2) if content_match else ""
+
+                result = registry.execute_function("write_file", {"filepath": filepath, "content": content}, auto_create=False)
+                msg = f'✅ Файл створено: {filepath}' if result.get('ok') else f'❌ Помилка: {result.get("error")}'
+
+            elif action == "execute_python":
+                # Витягти Python код з тексту завдання
+                code = self._extract_python_code(task)
+                if not code:
+                    msg = "❌ Не вдалося витягти Python код з завдання"
+                else:
+                    result = registry.execute_function("execute_python", {"code": code}, auto_create=False)
+                    msg = result.get('message', 'Виконано') if result.get('ok') else f'❌ Помилка: {result.get("error")}'
+
+            else:
+                msg = f'❌ Невідома дія: {action}'
+
+            if self.gui_queue:
+                self.gui_queue.put(('add_message', ('assistant', msg)))
+                self.gui_queue.put(('update_status', '✅ Готовий до роботи'))
+
+        except Exception as e:
+            print(f"[ERROR] Direct execution failed: {e}")
+            if self.gui_queue:
+                self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка виконання: {e}')))
+
+    def _extract_python_code(self, task: str) -> str:
+        """Витягти Python код з тексту завдання.
+
+        Підтримує:
+        - ```python``` блоки
+        - Рядки що починаються з import, def, class, print
+        """
+        import re
+
+        # Спроба 1: витягти з ```python``` блоку
+        code_block_match = re.search(r'```python\s*\n(.*?)\n```', task, re.DOTALL | re.IGNORECASE)
+        if code_block_match:
+            return code_block_match.group(1).strip()
+
+        # Спроба 2: витягти з ``` блоку без мови
+        code_block_match = re.search(r'```\s*\n(.*?)\n```', task, re.DOTALL)
+        if code_block_match:
+            code = code_block_match.group(1).strip()
+            # Перевірити чи це Python код
+            if any(kw in code for kw in ['import ', 'def ', 'class ', 'print(']):
+                return code
+
+        # Спроба 3: знайти рядки що виглядають як Python код
+        lines = task.split('\n')
+        code_lines = []
+        in_code = False
+
+        for line in lines:
+            stripped = line.strip()
+            # Початок коду
+            if any(stripped.startswith(kw) for kw in ['import ', 'from ', 'def ', 'class ', 'print(']):
+                in_code = True
+                code_lines.append(line)
+            elif in_code:
+                # Продовження коду (відступи або порожній рядок між блоками)
+                if line.startswith(' ') or line.startswith('\t') or stripped == '':
+                    code_lines.append(line)
+                else:
+                    # Кінець коду
+                    break
+
+        if code_lines:
+            return '\n'.join(code_lines).strip()
+
+        return ""
+
     def run_agent_loop(self, task: str):
         """Запустити AgentLoop для задачі (основний шлях виконання).
 
@@ -549,9 +684,29 @@ class AssistantCore:
         if self.gui_queue:
             self.gui_queue.put(('add_message', ('user', task)))
 
-        execution_success = False
-        execution_error = None
-        execution_steps = []
+        # Класифікація завдання
+        task_type = self._classify_task(task)
+        print(f"[DEBUG] Task type: {task_type}")
+
+        # --- Прямий шлях без observe() ---
+        if task_type == "FILE_OP":
+            self._execute_direct(task, "write_file")
+            return
+
+        if task_type == "CODE_OP":
+            self._execute_direct(task, "execute_python")
+            return
+
+        if task_type == "CHAT":
+            if self.assistant:
+                self.assistant.process_command(task, from_gui=True)
+            return
+
+        # --- Повний AgentLoop тільки для GUI дій ---
+        if task_type == "GUI_ACTION" or task_type == "AGENT":
+            execution_success = False
+            execution_error = None
+            execution_steps = []
 
         try:
             # AgentLoop — основний шлях виконання

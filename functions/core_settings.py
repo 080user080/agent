@@ -77,6 +77,11 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "type": "llm_endpoints", "group": "LLM Моделі", "label": "LLM-моделі",
         "desc": "До 5 LLM-моделей: primary, secondary (паралельно для planner), fallback, альтернативний скрипт.",
     },
+    "OI_ENABLED": {
+        "type": "bool", "group": "LLM", "label": "Open Interpreter (self-healing)",
+        "desc": "Увімкнути Open Interpreter для автоматичного виправлення помилок виконання коду (встановлення відсутніх модулів).",
+        "default": False,
+    },
 
     # --- STT ---
     "STT_ENABLED": {

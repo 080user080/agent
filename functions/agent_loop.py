@@ -89,6 +89,7 @@ class AgentLoopConfig:
     replan_after_failures: int = 3
     repair_after_failures: int = 2  # Викликати repairer при N consecutive failures
     enable_repair: bool = True
+    skip_observe_for_simple: bool = False  # Пропускати скріншоти для простих задач
 
 
 class ActionDecider:
@@ -447,10 +448,27 @@ class AgentLoop:
 
     # ─── observe() ─────────────────────────────────────────────────────────────
 
+    def _needs_screen_observation(self, task: str) -> bool:
+        """Чи потрібен скріншот для цієї задачі?"""
+        gui_indicators = [
+            "екран", "вікно", "кнопк", "клік", "програм",
+            "screen", "window", "button", "click", "app",
+            "знайди на", "відкрий браузер", "натисни"
+        ]
+        return any(ind in task.lower() for ind in gui_indicators)
+
     def observe(self) -> Observation:
         """Отримати поточний стан системи (скрін + OCR + UIA + UI elements + Vision-LM)."""
         logger.info("AgentLoop.observe() called")
         obs = Observation(timestamp=time.time())
+
+        # Якщо задача не потребує екрану — повернути мінімальне спостереження
+        if self.config.skip_observe_for_simple:
+            task = getattr(self, '_current_task', '')
+            if not self._needs_screen_observation(task):
+                print("[AgentLoop] ⏭️ Скріншот пропущено — задача не потребує екрану")
+                obs.text = "[Screen observation skipped - not needed for this task]"
+                return obs
 
         try:
             # 1. Скріншот (тільки якщо потрібен для vision/OCR)

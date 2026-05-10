@@ -40,7 +40,7 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 
 **Симптоми:**
-
+**
 - Tray icon показується в system tray але не змінює колір при зміні статусу
 
 - Логи показують що set_status викликається але іконка залишається незмінною
@@ -64,7 +64,7 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 - Прибрано зайві логи
 
 
-
+**
 **Файли:**
 
 - `functions/voice_tray_icon.py` - перероблено на postEvent/customEvent
@@ -956,15 +956,22 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 ### P1: Інтеграція Open Interpreter (self-healing executor)
 
-- [ ] Встановити `open-interpreter`
-- [ ] Створити `functions/tools_open_interpreter.py`
+**Статус:** Виконано (10.05.2026) - потребує реального тестування з LM Studio
+
+- [x] Встановити `open-interpreter`
+- [x] Створити `functions/tools_open_interpreter.py`
   - `oi_execute_with_healing(code, task_description, auto_run=True)`
   - Налаштувати на локальний LM Studio, щоб не використовувати OpenAI API
-- [ ] Додати `OI_ENABLED` (bool, default=False) у `SETTINGS_SCHEMA`
-- [ ] У `AgentLoop._execute_action()`: якщо звичайний execute_python провалився з `ModuleNotFoundError` → викликати OI
-- [ ] Тест: `tests/test_tools_open_interpreter.py`
-
+- [x] Додати `OI_ENABLED` (bool, default=False) у `SETTINGS_SCHEMA`
+- [x] Інтегрувати fallback в `execute_python` при `ModuleNotFoundError` (aaa_execute_python.py)
+- [x] Тест: `tests/test_tools_open_interpreter.py` (9/9 pass)
+- [ ] Виконано (10.05.2026) - потребує реального тестування
 **Оцінка:** ~120 рядків + інтеграція
+
+**Використання:**
+1. Увімкнути `OI_ENABLED=True` в налаштуваннях GUI
+2. Запустити LM Studio на `http://localhost:1234`
+3. Коли execute_python зустрічає `ModuleNotFoundError`, OI автоматично встановить модуль
 
 ### P1: Windows automation
 

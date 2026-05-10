@@ -53,6 +53,9 @@ transformers>=4.30.0       # w2v-bert-uk, Silero і т.п.
 accelerate>=0.20.0
 groq>=0.11.0               # Groq API SDK для швидких LLM запитів
 
+# --- Open Interpreter (self-healing executor) ---
+open-interpreter>=0.3.0     # Self-healing code execution з LLM
+
 # ============================================================
 # Dev-залежності (lint, tests) перенести у requirements-dev.txt:
 #   pytest

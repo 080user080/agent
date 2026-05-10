@@ -236,7 +236,7 @@ _sandbox = PythonSandbox()
     }
 )
 def execute_python(code, script_name=None):
-    """Виконати Python код"""
+    """Виконати Python код з fallback на Open Interpreter при ModuleNotFoundError"""
     result = _sandbox.execute(code, script_name)
     
     if result['success']:
@@ -258,6 +258,39 @@ def execute_python(code, script_name=None):
     else:
         error_msg = result['error']
         stderr = result.get('stderr', '')
+        
+        # Fallback на Open Interpreter при ModuleNotFoundError
+        if "ModuleNotFoundError" in error_msg or "ModuleNotFoundError" in stderr:
+            print(f"{Fore.YELLOW}🔧 ModuleNotFoundError виявлено, спробую Open Interpreter...{Fore.RESET}")
+            
+            try:
+                from .tools_open_interpreter import oi_execute_with_healing, is_available
+                
+                if is_available():
+                    # Використовуємо опис завдання з коду для контексту
+                    task_desc = f"Виконати Python код, який потребує встановлення відсутніх модулів"
+                    oi_result = oi_execute_with_healing(code, task_desc, auto_run=True)
+                    
+                    if oi_result.success:
+                        print(f"{Fore.GREEN}✅ Open Interpreter успішно виконав код{Fore.RESET}")
+                        return make_tool_result(
+                            True,
+                            f"✅ Open Interpreter виправив помилку і виконав код:\n{oi_result.output}",
+                            data={
+                                "output": oi_result.output,
+                                "stderr": "",
+                                "execution_time": oi_result.execution_time,
+                                "oi_used": True,
+                            },
+                        )
+                    else:
+                        print(f"{Fore.RED}❌ Open Interpreter не зміг виправити помилку: {oi_result.error}{Fore.RESET}")
+                        # Продовжуємо з оригінальною помилкою
+                else:
+                    print(f"{Fore.YELLOW}⚠️ Open Interpreter недоступний або вимкнено{Fore.RESET}")
+            except Exception as e:
+                print(f"{Fore.YELLOW}⚠️ Помилка при спробі Open Interpreter: {e}{Fore.RESET}")
+        
         message = f"❌ Помилка:\n{error_msg}\n\nДеталі:\n{stderr}" if stderr else f"❌ {error_msg}"
         return make_tool_result(
             False,
