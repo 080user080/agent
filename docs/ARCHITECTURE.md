@@ -57,6 +57,8 @@ cd /d D:\Python\agent
 - `functions/task_spec.py` — TaskSpecCompiler (структурована декомпозиція).
 - `functions/global_voice_input.py` — Global voice input (Windows hook).
 - `functions/self_learning.py` — Self-learning module.
+- `core/context_controller.py` — ContextController (єдине управління пам'яттю між AgentLoop та VoiceAssistant).
+- `utils/screen_helper.py` — DPI корекція координат для Windows масштабування.
 - `tests/` — unit і integration-style тести.
 
 ### Спостереження
@@ -131,7 +133,7 @@ Stateful дані мають жити або в `runtime/`, або в `logs/`.
 - Полагодити `pytest` collection і вирівняти API `logic_task_runner`.
 - Оновити документацію під реальний LLM-шар (`functions/llm/`).
 - Позбутися суперечностей між статусом, README і кодом.
-- **Context Summarizer:** відсутній. Історія повідомлень лише накопичується, що веде до деградації якості відповідей після ~20 обмінів.
+- **Context Summarizer:** ✅ **ВИРІШЕНО** — реалізовано `core/context_controller.py` з tiktoken. ContextController забезпечує єдине управління пам'яттю між AgentLoop та VoiceAssistant, автоматичне підсумовування старих дій через LLM, стиснення OCR тексту та токенометрію.
 
 ### P1
 
@@ -140,7 +142,8 @@ Stateful дані мають жити або в `runtime/`, або в `logs/`.
 - Зафіксувати один стабільний E2E vertical slice.
 - **Vector Memory:** Поточна реалізація Skills DB не підтримує семантичний пошук. Потрібна інтеграція ChromaDB/FAISS для масштабування самонавчення.
 - **Розділення ролей LLM:** AgentLoop не розрізняє модель для планування та модель для критики. Варто дозволити конфігурацію різних провайдерів для Executor та Critic.
-- **Loop Detection:** Вирішено — реалізовано LoopDetector у `functions/core_loop_detector.py` з інтеграцією в AgentLoop та stuck_warning для LLM.
+- **Loop Detection:** ✅ **ВИРІШЕНО** — реалізовано LoopDetector у `functions/core_loop_detector.py` з інтеграцією в AgentLoop та stuck_warning для LLM.
+- **DPI корекція:** ✅ **ВИРІШЕНО** — реалізовано `utils/screen_helper.py` з корекцією координат для Windows масштабування через ctypes.windll.shcore. Інтегровано в `tools_mouse_keyboard.py`.
 
 ### P2
 
