@@ -53,7 +53,7 @@ def list_directory(directory: str = '.') -> dict:
             else:
                 items.append(f'📄 {item.name} ({item.stat().st_size} байт)')
 
-        result = f'📁 ПОВНИЙ ВМІСТ ПАПКИ {directory} ({len(items)} файлів/папок):\n  ' + '\n  '.join(items) + '\n  КІНЕЦЬ СПИСКУ.'
+        result = f'📁 ВМІСТ ПАПКИ {directory} (Всього: {len(items)}):\n  ' + '\n  '.join(items) + '\n--- КІНЕЦЬ СПИСКУ ---'
         return {'ok': True, 'result': result}
     except Exception as e:
         return {'ok': False, 'error': str(e)}

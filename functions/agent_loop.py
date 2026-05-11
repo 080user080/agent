@@ -150,6 +150,12 @@ class ActionDecider:
         "15. **TASK CHECKLIST**: After each action, mentally track what's done vs what's left. Example: \"1. constants.py [DONE], 2. base_tab.py [DONE], 3. chat_tab.py [NEXT]\".\n"
         "16. **NO REPEATED LIST_DIRECTORY**: NEVER call list_directory twice in a row unless you changed the folder contents. If file is missing — CREATE IT, don't check again!\n"
         "\n"
+        "ПРАВИЛО ВИКОНАВЦЯ (пріоритет дії над перевіркою):\n"
+        "A. Якщо завдання передбачає створення N файлів — не намагайся перевірити їх наявність після кожного кроку.\n"
+        "B. Створив файл → Записав у внутрішній чек-лист → Перейшов до наступного.\n"
+        "C. Викликай list_directory ТІЛЬКИ ОДИН РАЗ на самому початку і ОДИН РАЗ в самому кінці для фінальної перевірки.\n"
+        "D. Якщо ти бачиш у actions_history, що ти вже робив list_directory — тобі ЗАБОРОНЕНО робити його знову, поки ти не створиш новий файл.\n"
+        "\n"
         "RESPOND WITH ONLY JSON. NO MARKDOWN. NO EXPLANATIONS OUTSIDE JSON."
     )
 
@@ -1524,6 +1530,7 @@ class AgentLoop:
         """Спробувати вирішити задачу через Open Interpreter як останній рятівник.
 
         Викликається коли AgentLoop не зміг виконати задачу.
+        Передає повний контекст: завдання, створені файли, цільову папку.
         """
         from .aaa_open_interpreter import is_available, oi_execute_with_healing
 
@@ -1547,44 +1554,65 @@ class AgentLoop:
 
         files_summary = "\n".join([f"- {f}" for f in created_files]) if created_files else "(немає створених файлів)"
 
-        # Формуємо Python код для Open Interpreter
-        oi_code = f'''# AgentLoop не зміг виконати задачу
-# Задача: {task}
-# Історія виконання ({state.step} кроків):
+        # Отримуємо цільову директорію з context_controller або використовуємо поточну
+        target_dir = "."
+        if self.context_controller and hasattr(self.context_controller, 'target_dir'):
+            target_dir = self.context_controller.target_dir
+        elif hasattr(self.assistant, 'target_dir'):
+            target_dir = self.assistant.target_dir
+
+        # Отримуємо advice від LoopDetector якщо є
+        loop_advice = ""
+        if hasattr(self, 'loop_detector') and self.loop_detector.is_stuck:
+            last_event = self.loop_detector.loop_events[-1] if self.loop_detector.loop_events else None
+            if last_event:
+                action_dict = {"action": last_event.action, "args": {}}
+                loop_advice = self.loop_detector.get_loop_advice(action_dict)
+
+        # Формуємо ПОВНИЙ промпт для Open Interpreter (замість просто коментарів)
+        # Це дає Open Interpreter розуміння що проект НЕ завершено і треба допрацювати
+        fallback_prompt = f"""
+Мене звати Марк. Я виконував завдання: "{task}"
+
+ПОТОЧНИЙ СТАТУС:
+- Всього кроків виконано: {state.step}
+- Промахів поспіль: {state.consecutive_failures}
+- Історія виконання:
 {history_summary}
 
-# Створені файли:
+ВЖЕ СТВОРЕНО ФАЙЛІВ:
 {files_summary}
 
-# Поточний стан:
-# - Кроків виконано: {state.step}
-# - Промахів поспіль: {state.consecutive_failures}
-# - Всього промахів: {state.total_failures}
+ПРИЧИНА ЗУПИНКИ:
+{loop_advice if loop_advice else "Я не зміг виконати завдання через зациклення або помилки."}
 
-# Спробуй вирішити задачу інакше.
-# Ти маєш повний доступ до файлової системи та інтернету.
-# Використовуй os, pathlib, subprocess для виконання задачі.
-# Перевір чи всі необхідні файли існують і коректні.
-'''
+ТВОЄ ЗАВДАННЯ:
+Проаналізуй папку "{target_dir}", подивись яких файлів з ТЗ не вистачає
+і ДОПИШИ їх. Не починай спочатку — просто заверши проект.
+Ти маєш повний доступ до файлової системи та інтернету.
+Використовуй os, pathlib, subprocess для виконання задачі.
+"""
 
         logger.info("Спробуємо Open Interpreter fallback для задачі: %s", task[:50])
         self._gui_msg('add_message', ('assistant', '🔄 Спроба вирішення через Open Interpreter...'))
 
         try:
             result = oi_execute_with_healing(
-                code=oi_code,
+                code=fallback_prompt,
                 task_description=task,
                 auto_run=True
             )
 
-            if result.success:
+            if getattr(result, 'success', False):
                 logger.info("Open Interpreter fallback успішний")
-                self._gui_msg('add_message', ('assistant', f'✅ Open Interpreter вирішив: {result.output[:200]}'))
+                output = getattr(result, 'output', '')
+                self._gui_msg('add_message', ('assistant', f'✅ Open Interpreter вирішив: {str(output)[:200]}'))
                 state.success = True
-                state.done_summary = f'Вирішено через Open Interpreter: {result.output[:200]}'
+                state.done_summary = f'Вирішено через Open Interpreter: {str(output)[:200]}'
             else:
-                logger.warning("Open Interpreter fallback не вдався: %s", result.error)
-                self._gui_msg('add_message', ('assistant', f'❌ Open Interpreter не зміг вирішити: {result.error[:200]}'))
+                error = getattr(result, 'error', 'невідома помилка')
+                logger.warning("Open Interpreter fallback не вдався: %s", error)
+                self._gui_msg('add_message', ('assistant', f'❌ Open Interpreter не зміг вирішити: {str(error)[:200]}'))
         except Exception as e:
             logger.error("Помилка виклику Open Interpreter fallback: %s", e)
             self._gui_msg('add_message', ('assistant', f'❌ Помилка Open Interpreter: {str(e)[:200]}'))
