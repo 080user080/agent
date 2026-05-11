@@ -231,6 +231,8 @@ class ActionDecider:
         extra_instructions: str = "",
         current_step: int = 0,
         progress_summary: str = "",
+        context_controller: Optional[Any] = None,
+        stuck_warning: str = "",
     ) -> List[Dict[str, str]]:
         user_parts = [
             f"ЗАДАЧА: {goal}",
@@ -243,13 +245,19 @@ class ActionDecider:
             self._format_history(history),
         ]
         
-        # Додати підсумок прогресу якщо є
-        if progress_summary:
+        # Пріоритет: context_controller > progress_summary
+        context_block = ""
+        if context_controller:
+            context_block = context_controller.get_full_context()
+        elif progress_summary:
+            context_block = f"ПРОГРЕС ВИКОНАННЯ:\n{progress_summary}"
+        
+        if context_block:
             user_parts = [
                 f"ЗАДАЧА: {goal}",
                 f"ПОТОЧНИЙ КРОК: {current_step} (максимум 3-5 кроків для аналізу коду)",
                 "",
-                f"ПРОГРЕС ВИКОНАННЯ:\n{progress_summary}",
+                context_block,
                 "",
                 "ПОТОЧНЕ СПОСТЕРЕЖЕННЯ ЕКРАНУ:",
                 self._format_observation(observation),
@@ -266,6 +274,8 @@ class ActionDecider:
             user_parts += ["", f"РЕЗУЛЬТАТ ОСТАННЬОЇ ДІЇ: {last_str}"]
         if extra_instructions:
             user_parts += ["", extra_instructions]
+        if stuck_warning:
+            user_parts += ["", stuck_warning]
         user_parts += [
             "",
             "Виклич ОДИН інструмент для наступного кроку. Якщо задача виконана — виклич `done`.",
@@ -282,12 +292,14 @@ class ActionDecider:
         history: List[Dict[str, Any]],
         last_result: Optional[Dict[str, Any]] = None,
         progress_summary: str = "",
+        context_controller: Optional[Any] = None,
+        stuck_warning: str = "",
     ) -> AgentAction:
         """Один крок рішення через LLM (JSON parsing fallback)."""
         if not self.is_available:
             return AgentAction(name="noop", reasoning="LLM decider unavailable")
 
-        messages = self.build_messages(goal, observation, history, last_result, current_step=len(history), progress_summary=progress_summary)
+        messages = self.build_messages(goal, observation, history, last_result, current_step=len(history), progress_summary=progress_summary, context_controller=context_controller, stuck_warning=stuck_warning)
         try:
             # Спочатку спробуємо без tools (JSON parsing fallback)
             # LM Studio може не підтримувати function-calling або конфліктувати з ним
@@ -400,6 +412,7 @@ class ActionDecider:
         history: List[Dict[str, Any]],
         consecutive_failures: int,
         progress_summary: str = "",
+        context_controller: Optional[Any] = None,
     ) -> AgentAction:
         """Переосмислити підхід після кількох невдач підряд."""
         instructions = (
@@ -411,7 +424,7 @@ class ActionDecider:
         if not self.is_available:
             return AgentAction(name="noop", reasoning="LLM decider unavailable")
         messages = self.build_messages(
-            goal, observation, history, last_result=None, extra_instructions=instructions, progress_summary=progress_summary
+            goal, observation, history, last_result=None, extra_instructions=instructions, progress_summary=progress_summary, context_controller=context_controller
         )
         try:
             response = self._ask_llm_with_tools(
@@ -455,6 +468,7 @@ class AgentLoop:
         ask_user_callback: Optional[Callable[[str, List[str]], str]] = None,
         decider: Optional[ActionDecider] = None,
         repairer: Optional[Any] = None,  # StepRepairer (опційно)
+        context_controller: Optional[Any] = None,  # ContextController (опційно)
     ):
         self.assistant = assistant
         self.registry = registry
@@ -470,6 +484,13 @@ class AgentLoop:
         self._stop_flag = False
         self.gui_cb = None
         self.task_id = "default_task"
+        
+        # ContextController для єдиного управління пам'яттю
+        self.context_controller = context_controller
+
+        # LoopDetector — виявлення зациклення
+        from .core_loop_detector import LoopDetector
+        self.loop_detector = LoopDetector(max_repeats=3)
 
     # ─── GUI messaging ────────────────────────────────────────────────────────
 
@@ -988,15 +1009,22 @@ class AgentLoop:
                 history=state.actions_history,
                 consecutive_failures=state.consecutive_failures,
                 progress_summary=state.progress_summary,
+                context_controller=self.context_controller,
             )
             state.consecutive_failures = 0  # Reset, щоб дати новому плану шанс
         else:
+            # stuck_warning від LoopDetector — змушує LLM змінити стратегію
+            stuck_warning = ""
+            if hasattr(self, 'loop_detector') and self.loop_detector.is_stuck:
+                stuck_warning = self.loop_detector.get_stuck_warning_message()
             action = self.decider.decide(
                 goal=task,
                 observation=obs,
                 history=state.actions_history,
                 last_result=last_result,
                 progress_summary=state.progress_summary,
+                context_controller=self.context_controller,
+                stuck_warning=stuck_warning,
             )
 
         if action.name == "noop":
@@ -1226,6 +1254,19 @@ class AgentLoop:
         expectations = plan.get("expectations") or plan.get("expect")
         reasoning = plan.get("reasoning", "")
 
+        # ─── Loop detection ─────────────────────────────────────────────
+        if action != "noop" and action != "done" and action != "ask_user":
+            if self.loop_detector.is_looping(action, args):
+                logger.warning("LoopDetector: виявлено зациклення дії '%s'", action)
+                self._gui_msg('add_message', ('assistant',
+                    f'⚠️ Зациклення: дія \'{action}\' повторюється. Пробую інший підхід...'))
+                # is_stuck вже встановлено в LoopDetector
+                # На наступній ітерації decider отримає stuck_warning
+            elif self.loop_detector.is_stuck:
+                # Якщо раніше був stuck але ця дія інша — не скидаємо,
+                # скинеться після успішної дії (on_action_success)
+                pass
+
         print(f"[AgentLoop]   🎯 Action: {action}")
         if args:
             print(f"[AgentLoop]   📋 Args: {args}")
@@ -1268,7 +1309,7 @@ class AgentLoop:
         })
 
         # Лог в історію
-        state.actions_history.append({
+        action_data = {
             "step": state.step,
             "action": action,
             "args": args,
@@ -1276,41 +1317,50 @@ class AgentLoop:
             "check_result": check_result,
             "from_decider": plan.get("from_decider", False),
             "reasoning": reasoning,
-        })
+        }
+        state.actions_history.append(action_data)
         
-        # Ковзне вікно з підсумовуванням
-        threshold = self.config.summary_threshold + self.config.keep_recent_actions
-        if len(state.actions_history) > threshold:
-            from .context_manager import summarize_progress, format_actions_for_summary
-            
-            # Беремо старі дії для підсумовування
-            to_summarize = state.actions_history[:-self.config.keep_recent_actions]
-            # Залишаємо останні дії детальними
-            state.actions_history = state.actions_history[-self.config.keep_recent_actions:]
-            
-            # Якщо є decider з LLM — підсумовуємо через LLM
-            if self.decider and self.decider.is_available:
-                def ask_llm_wrapper(prompt: str, system_prompt: Optional[str] = None) -> str:
-                    """Wrapper для виклику LLM через decider."""
-                    messages = [{"role": "system", "content": system_prompt or ""}]
-                    messages.append({"role": "user", "content": prompt})
-                    response = self.decider._ask_llm_with_tools(
-                        messages=messages,
-                        tools=[],
-                        tool_choice=None
-                    )
-                    return str(getattr(response, "content", "") or "")
+        # Використовуємо ContextController якщо є, інакше fallback на стару логіку
+        if self.context_controller:
+            # Додаємо подію в контролер — він сам вирішить коли підсумовувати
+            event_type = "action_success" if check_result.get("success") else "action_failed"
+            self.context_controller.add_event(event_type, action_data)
+            # Оновлюємо progress_summary з контролера для сумісності
+            state.progress_summary = self.context_controller.global_summary
+        else:
+            # Fallback на стару логіку з progress_summary
+            threshold = self.config.summary_threshold + self.config.keep_recent_actions
+            if len(state.actions_history) > threshold:
+                from .context_manager import summarize_progress, format_actions_for_summary
                 
-                state.progress_summary = summarize_progress(
-                    to_summarize,
-                    state.progress_summary,
-                    ask_llm_wrapper
-                )
-                logger.info("AgentLoop: Progress summary updated: %s...", state.progress_summary[:100])
-            else:
-                # Fallback без LLM — просте об'єднання
-                state.progress_summary += "\n" + format_actions_for_summary(to_summarize)
-                state.progress_summary = state.progress_summary[:1000]
+                # Беремо старі дії для підсумовування
+                to_summarize = state.actions_history[:-self.config.keep_recent_actions]
+                # Залишаємо останні дії детальними
+                state.actions_history = state.actions_history[-self.config.keep_recent_actions:]
+                
+                # Якщо є decider з LLM — підсумовуємо через LLM
+                if self.decider and self.decider.is_available:
+                    def ask_llm_wrapper(prompt: str, system_prompt: Optional[str] = None) -> str:
+                        """Wrapper для виклику LLM через decider."""
+                        messages = [{"role": "system", "content": system_prompt or ""}]
+                        messages.append({"role": "user", "content": prompt})
+                        response = self.decider._ask_llm_with_tools(
+                            messages=messages,
+                            tools=[],
+                            tool_choice=None
+                        )
+                        return str(getattr(response, "content", "") or "")
+                    
+                    state.progress_summary = summarize_progress(
+                        to_summarize,
+                        state.progress_summary,
+                        ask_llm_wrapper
+                    )
+                    logger.info("AgentLoop: Progress summary updated: %s...", state.progress_summary[:100])
+                else:
+                    # Fallback без LLM — просте об'єднання
+                    state.progress_summary += "\n" + format_actions_for_summary(to_summarize)
+                    state.progress_summary = state.progress_summary[:1000]
 
         # Зберегти чекпоїнт (через інтервал)
         if self._checkpoint_enabled and state.step % self.config.checkpoint_interval_steps == 0:
@@ -1319,6 +1369,7 @@ class AgentLoop:
         # Облік провалів
         if check_result.get("success"):
             state.consecutive_failures = 0
+            self.loop_detector.on_action_success()
         else:
             state.consecutive_failures += 1
             state.total_failures += 1
@@ -1498,53 +1549,6 @@ class AgentLoop:
             logger.error("Помилка виклику Open Interpreter fallback: %s", e)
             self._gui_msg('add_message', ('assistant', f'❌ Помилка Open Interpreter: {str(e)[:200]}'))
 
-    def _detect_loop(self, state: AgentState) -> bool:
-        """Виявити зациклення агента.
-
-        Перевіряє чи одна й та сама дія з тими самими аргументами повторюється,
-        чи останні 5 дій дали однаковий результат.
-
-        Returns:
-            True якщо виявлено зациклення, False інакше
-        """
-        if len(state.actions_history) < 2:
-            return False
-
-        # Перевіряємо чи одна й та сама дія повторюється 3+ рази підряд
-        if len(state.actions_history) >= 3:
-            last_actions = state.actions_history[-3:]
-            names = [a.get('name') for a in last_actions]
-
-            # Ігноруємо None дії (done, ask_user, etc.)
-            if all(name is not None for name in names) and len(set(names)) == 1:
-                action_name = names[0]
-
-                # Для write_file перевіряємо filepath
-                if action_name == 'write_file':
-                    filepaths = [a.get('args', {}).get('filepath') for a in last_actions]
-                    if len(set(filepaths)) == 1:
-                        logger.warning("Виявлено зациклення: write_file для %s повторюється %d разів", filepaths[0], len(last_actions))
-                        return True
-                # Для execute_python перевіряємо схожість коду
-                elif action_name == 'execute_python':
-                    codes = [a.get('args', {}).get('code', '') for a in last_actions]
-                    if len(codes) >= 3 and len(set(codes)) == 1 and len(codes[0]) > 100:
-                        logger.warning("Виявлено зациклення: execute_python з тим самим кодом %d разів", len(last_actions))
-                        return True
-                # Для інших дій - просто по назві
-                else:
-                    logger.warning("Виявлено зациклення: дія %s повторюється %d разів", action_name, len(last_actions))
-                    return True
-
-        # Перевіряємо чи останні 3 дії дали однаковий результат (fail)
-        if len(state.actions_history) >= 3:
-            last_results = [a.get('check_result', {}).get('success', True) for a in state.actions_history[-3:]]
-            if all(not r for r in last_results):
-                logger.warning("Виявлено зациклення: останні 3 дії дали fail")
-                return True
-
-        return False
-
     def run(self, task: str) -> Dict[str, Any]:
         """Основний цикл агента: observe → plan → act → check.
 
@@ -1557,6 +1561,8 @@ class AgentLoop:
         logger.info("AgentLoop.run() called with task: %s", task[:50])
         self._current_task = task
         self._stop_flag = False
+        # Скидаємо LoopDetector для нової сесії
+        self.loop_detector.full_reset()
         # Скидаємо бюджет repair-спроб для нової сесії
         if self.repairer is not None and hasattr(self.repairer, "reset"):
             try:
@@ -1573,9 +1579,12 @@ class AgentLoop:
             while not self._should_stop(state, start_time):
                 logger.info("AgentLoop: step=%d, max_steps=%d", state.step, self.config.max_steps)
 
-                # Перевіряємо на зациклення перед виконанням кроку
-                if self._detect_loop(state):
-                    logger.warning("Виявлено зациклення, спробуємо Open Interpreter fallback")
+                # Перевіряємо на глибоке зациклення (багато циклів)
+                # LoopDetector вже виявляє поодинокі цикли в _execute_single_step
+                # Тут — захист від повторюваних циклів (агент зациклився >3 разів)
+                if self.loop_detector.total_loops_detected >= 3:
+                    logger.warning("Глибоке зациклення (%d циклів), спробуємо Open Interpreter fallback",
+                                   self.loop_detector.total_loops_detected)
                     self._try_open_interpreter_fallback(task, state)
                     if state.success or state.done:
                         break

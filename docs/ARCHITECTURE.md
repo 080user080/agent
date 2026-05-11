@@ -53,6 +53,7 @@ cd /d D:\Python\agent
   - `functions/llm/provider_chain.py` — ProviderChain з fallback ланцюгом і quota tracking
 - `functions/aaa_*` — legacy / wrapper-oriented tool layer.
 - `functions/agent_loop.py` — AgentLoop (observe → plan → act → check).
+- `functions/core_loop_detector.py` — LoopDetector (захист від зациклення агента).
 - `functions/task_spec.py` — TaskSpecCompiler (структурована декомпозиція).
 - `functions/global_voice_input.py` — Global voice input (Windows hook).
 - `functions/self_learning.py` — Self-learning module.
@@ -139,6 +140,7 @@ Stateful дані мають жити або в `runtime/`, або в `logs/`.
 - Зафіксувати один стабільний E2E vertical slice.
 - **Vector Memory:** Поточна реалізація Skills DB не підтримує семантичний пошук. Потрібна інтеграція ChromaDB/FAISS для масштабування самонавчення.
 - **Розділення ролей LLM:** AgentLoop не розрізняє модель для планування та модель для критики. Варто дозволити конфігурацію різних провайдерів для Executor та Critic.
+- **Loop Detection:** Вирішено — реалізовано LoopDetector у `functions/core_loop_detector.py` з інтеграцією в AgentLoop та stuck_warning для LLM.
 
 ### P2
 

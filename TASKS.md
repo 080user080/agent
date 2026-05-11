@@ -611,17 +611,6 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 **Архітектура (3 рівні):**
 - **Рівень 1 — Router:** Класифікація запитів за типом (CODE/DEBUG/GUI/WEB/GENERAL/QUICK), вибір провайдера
-- **Рівень 2 — Provider Chain:** Послідовний fallback ланцюг (Primary → Secondary → Fallback)
-- **Рівень 3 — Result Handler:** Валідація результатів, graceful degradation
-
-**Поточний стан:**
-
-- ✅ `functions/llm/router.py` (122 рядків) — RequestRouter з keyword-based класифікацією
-  - TaskType enum: CODE, DEBUG, GUI, WEB, GENERAL, QUICK
-  - RoutingDecision з fallback ланцюгом і context budget
-  - Keyword-based класифікація (швидко, без LLM)
-
-- ✅ `functions/llm/provider_chain.py` (128 рядків) — ProviderChain з fallback
   - Послідовний fallback ланцюг
   - Quota tracking (consecutive errors limiter)
   - Health-check для LM Studio

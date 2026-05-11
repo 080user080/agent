@@ -28,13 +28,13 @@ KEYEVENTF_KEYUP = 0x0002
 def _get_dpi_scaling_cached() -> float:
     """Отримати DPI scaling з кешуванням.
     
-    Використовує кешовану версію з tools_screen_capture для оптимізації.
+    Використовує utils.screen_helper для отримання масштабу.
     
     Returns:
         DPI scaling factor (наприклад, 1.0 для 100% DPI, 1.5 для 150%)
     """
-    from .tools_screen_capture import get_dpi_scaling
-    return get_dpi_scaling()
+    from utils.screen_helper import get_windows_scale_factor
+    return get_windows_scale_factor()
 
 
 def _apply_dpi_correction(x: int, y: int) -> Tuple[int, int]:

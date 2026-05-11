@@ -125,6 +125,57 @@ gui_queue.put(('update_progress', 50))
 | `step_update` | `step: dict` | Крок оновлено |
 | `plan_finished` | `stats: dict` | План завершено |
 
+## LoopDetector API
+
+### Ініціалізація
+
+```python
+from functions.core_loop_detector import LoopDetector
+
+# max_repeats: скільки однакових дій = зациклення (default 3)
+ld = LoopDetector(max_repeats=3)
+```
+
+### Перевірка на зациклення
+
+```python
+# Повертає True якщо дія створює зациклення
+is_loop = ld.is_looping("click", {"x": 100, "y": 200})
+
+# Отримати статус stuck
+if ld.is_stuck:
+    print("Агент зациклився")
+```
+
+### Обробка успішних дій
+
+```python
+# Скидає is_stuck після успішної дії
+ld.on_action_success()
+```
+
+### Попередження для LLM
+
+```python
+# Текст попередження для промпту
+warning = ld.get_stuck_warning_message()
+# Вмістить "КРИТИЧНЕ ЗАУВАЖЕННЯ: Ти щойно намагався..."
+```
+
+### Статистика
+
+```python
+stats = ld.get_stats()
+# {'is_stuck': False, 'total_loops_detected': 2, ...}
+```
+
+### Скидання
+
+```python
+ld.reset()           # Очистити історію (після виявлення)
+ld.full_reset()      # Повне скидання для нової сесії
+```
+
 ## Global Voice Input API
 
 ### Ініціалізація

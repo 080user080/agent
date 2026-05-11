@@ -208,7 +208,8 @@ cd /d D:\Python\agent
 - ✅ **Tool-calling для LLM** — logic_agent_tools_schema, tool-calling інтеграція
 - ✅ **Міграція GUI на PyQt6** — core_gui_pyqt6/ основний бекенд, Tkinter в backup/
 - ✅ **Глобальне голосове введення** — global_voice_input.py, Ctrl+Shift+V hook
-- ✅ **Самонавчання** — self_learning.py, JSONL логи, skills база
+- ✅ **Самонавчання** — self_learning.py, JSONL логи, skills база.
+- ✅ **LoopDetector** — core_loop_detector.py, захист від зациклення агента.
 - ✅ **Синхронізація документації** — README/status/TASKS оновлено (10.05.2026)
 
 ---

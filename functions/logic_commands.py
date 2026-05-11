@@ -7,7 +7,7 @@ from .config import LM_STUDIO_URL, TTS_ENABLED, TTS_SPEAK_PREFIXES
 from .logic_audio import correct_whisper_text, check_activation_word, remove_activation_word
 class VoiceAssistant:
     # ... (ініціалізація)
-    def __init__(self, stt_engine, registry, system_prompt, listener=None, gui_log_callback=None):
+    def __init__(self, stt_engine, registry, system_prompt, listener=None, gui_log_callback=None, context_controller=None):
         self.stt_engine = stt_engine
         self.registry = registry
         self.system_prompt = system_prompt
@@ -19,6 +19,9 @@ class VoiceAssistant:
         
         # GUI логування
         self.gui_log_callback = gui_log_callback
+        
+        # ContextController для спільної пам'яті з AgentLoop
+        self.context_controller = context_controller
         
         self.planner = None  #GPT
         from .core_memory import MemoryManager
