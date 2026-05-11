@@ -34,7 +34,7 @@ def _normalize_endpoint(ep: Dict[str, Any]) -> Dict[str, Any]:
         "api_key": ep.get("api_key", ""),
         "temperature": ep.get("temperature", 0.1),
         "max_tokens": ep.get("max_tokens", 1024),
-        "timeout": ep.get("timeout", 60) or 60,
+        "timeout": ep.get("timeout", 180) or 180,
         "name": ep.get("name", "LLM"),  # Зберігаємо назву endpoint
     }
 
@@ -124,7 +124,7 @@ def get_primary_endpoint():
         "api_key": "",
         "temperature": 0.1,
         "max_tokens": 1024,
-        "timeout": 60,
+        "timeout": 180,
     }
 
 

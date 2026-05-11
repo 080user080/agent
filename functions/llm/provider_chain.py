@@ -34,7 +34,7 @@ class ProviderChain:
         self,
         request: ChatRequest,
         decision: RoutingDecision,
-        timeout_per_provider: float = 60.0,
+        timeout_per_provider: float = 180.0,
     ) -> ChatResponse:
         """Виконує запит через ланцюг провайдерів з fallback.
 

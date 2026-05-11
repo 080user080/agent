@@ -388,6 +388,12 @@ class ActionDecider:
                 if not isinstance(args, dict):
                     args = {}
                 reasoning = parsed.get("reasoning", "")
+                
+                # Перевірка на порожній або невалідний план
+                if not action_name or action_name == "noop":
+                    logger.warning("ActionDecider: Empty or noop action in parsed JSON")
+                    raise ValueError(f"LLM returned empty/noop action: {action_name}")
+                
                 logger.info("ActionDecider: Parsed JSON action=%s", action_name)
                 return AgentAction(
                     name=str(action_name),
@@ -396,6 +402,14 @@ class ActionDecider:
                 )
             except json.JSONDecodeError:
                 logger.warning("ActionDecider: JSON parse failed for: %s...", content[:100])
+                raise ValueError(f"JSON parse failed for content: {content[:100]}")
+            except ValueError as e:
+                # Порожній план або невалідний action
+                logger.warning("ActionDecider: Invalid plan: %s", e)
+                raise
+            except Exception as e:
+                logger.warning("ActionDecider: Unexpected error parsing JSON: %s", e)
+                raise ValueError(f"Unexpected error parsing JSON: {e}")
 
         # 3) Fallback → якщо не розпарсилось → take_screenshot
         logger.warning("ActionDecider: JSON parsing failed, fallback to take_screenshot")
@@ -1003,29 +1017,53 @@ class AgentLoop:
 
         # Replan після багатьох провалів
         if state.consecutive_failures >= self.config.replan_after_failures:
-            action = self.decider.replan(
-                goal=task,
-                observation=obs,
-                history=state.actions_history,
-                consecutive_failures=state.consecutive_failures,
-                progress_summary=state.progress_summary,
-                context_controller=self.context_controller,
-            )
-            state.consecutive_failures = 0  # Reset, щоб дати новому плану шанс
+            try:
+                action = self.decider.replan(
+                    goal=task,
+                    observation=obs,
+                    history=state.actions_history,
+                    consecutive_failures=state.consecutive_failures,
+                    progress_summary=state.progress_summary,
+                    context_controller=self.context_controller,
+                )
+                state.consecutive_failures = 0  # Reset, щоб дати новому плану шанс
+            except Exception as e:
+                logger.error("ActionDecider.replan() error: %s", e, exc_info=True)
+                return {
+                    "action": "done",
+                    "args": {"summary": f"Помилка LLM при replan: {e}", "success": False},
+                    "replan": False,
+                    "done": True,
+                    "success": False,
+                    "from_decider": True,
+                    "llm_error": str(e),
+                }
         else:
             # stuck_warning від LoopDetector — змушує LLM змінити стратегію
             stuck_warning = ""
             if hasattr(self, 'loop_detector') and self.loop_detector.is_stuck:
                 stuck_warning = self.loop_detector.get_stuck_warning_message()
-            action = self.decider.decide(
-                goal=task,
-                observation=obs,
-                history=state.actions_history,
-                last_result=last_result,
-                progress_summary=state.progress_summary,
-                context_controller=self.context_controller,
-                stuck_warning=stuck_warning,
-            )
+            try:
+                action = self.decider.decide(
+                    goal=task,
+                    observation=obs,
+                    history=state.actions_history,
+                    last_result=last_result,
+                    progress_summary=state.progress_summary,
+                    context_controller=self.context_controller,
+                    stuck_warning=stuck_warning,
+                )
+            except Exception as e:
+                logger.error("ActionDecider.decide() error: %s", e, exc_info=True)
+                return {
+                    "action": "done",
+                    "args": {"summary": f"Помилка LLM при decide: {e}", "success": False},
+                    "replan": False,
+                    "done": True,
+                    "success": False,
+                    "from_decider": True,
+                    "llm_error": str(e),
+                }
 
         if action.name == "noop":
             # Fallback на take_screenshot тільки якщо LLM явно повернув JSON з action="noop"

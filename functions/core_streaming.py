@@ -26,7 +26,7 @@ class StreamingHandler:
                 "api_key": "",
                 "temperature": 0.1,
                 "max_tokens": 8000,
-                "timeout": 60,
+                "timeout": 180,
             }
     
     def stream_response(self, messages):

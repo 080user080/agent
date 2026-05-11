@@ -773,6 +773,46 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 
 
+- [ ] Додати GUI налаштування для таймауту LLM
+
+  - Статус: Не розпочато
+
+  - Пріоритет: P0
+
+  - Деталі:
+
+    - Поточний таймаут: 60 секунд (замалий для кодингу)
+
+    - Додати налаштування `LLM_TIMEOUT` в SETTINGS_SCHEMA (default 180)
+
+    - Інтегрувати в GUI (SettingsTab)
+
+    - Застосувати в `logic_llm.ask_llm` та `logic_llm_tools.ask_llm_with_tools`
+
+    - Файли: `functions/core_settings.py`, `core_gui_pyqt6/settings_tab_qt.py`, `functions/logic_llm.py`
+
+
+
+- [ ] Обробка помилок LLM в AgentLoop
+
+  - Статус: Не розпочато
+
+  - Пріоритет: P0
+
+  - Деталі:
+
+    - При таймауті/помилці мережі AgentLoop повертає "Успішно" замість "Error"
+
+    - Додати try/except в `_execute_single_step` для ActionDecider.decide()
+
+    - При помилці LLM встановлювати `state.status = "Error"` та зупиняти цикл
+
+    - Логування помилок LLM для діагностики
+
+    - Файли: `functions/agent_loop.py`
+
+
+
 - [ ] Синхронізувати документацію з реальним кодом
 
   - Статус: Не розпочато

@@ -284,7 +284,7 @@ def ask_llm_with_tools(
             ep.get("url"),
             headers=headers,
             json=payload,
-            timeout=ep.get("timeout", 60),
+            timeout=ep.get("timeout", 180),
         )
     except requests.exceptions.RequestException as exc:
         return ChatToolsResponse(error=f"network: {exc}", raw={})

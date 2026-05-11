@@ -82,6 +82,11 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "desc": "Увімкнути Open Interpreter для автоматичного виправлення помилок виконання коду (встановлення відсутніх модулів).",
         "default": False,
     },
+    "LLM_TIMEOUT": {
+        "type": "int", "group": "LLM", "label": "Таймаут LLM (секунди)",
+        "desc": "Таймаут для запитів до LLM (в секундах). Збільште до 180 для кодингу.",
+        "default": 180, "min": 30, "max": 600,
+    },
 
     # --- STT ---
     "STT_ENABLED": {
