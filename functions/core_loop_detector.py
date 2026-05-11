@@ -155,6 +155,15 @@ class LoopDetector:
         action_desc = f"'{last_event.action}'" if last_event else "останньої дії"
         repeat_count = last_event.repeat_count if last_event else self.max_repeats
 
+        # Специфічна інструкція для list_directory
+        if last_event and last_event.action == "list_directory":
+            return (
+                f"\n\n🚨 КРИТИЧНЕ ЗАУВАЖЕННЯ: Ти {repeat_count} разів поспіль викликав list_directory "
+                f"без зміни вмісту папки. Папка НЕ ЗМІНИЛАСЯ. "
+                f"ПЕРЕСТАНЬ ПЕРЕВІРЯТИ! Якщо файлу немає — СТВОРИ ЙОГО через write_file. "
+                f"Не шукай файли, яких ще не створив — створи їх сам!"
+            )
+
         return (
             f"\n\n🚨 КРИТИЧНЕ ЗАУВАЖЕННЯ: Ти щойно намагався виконати "
             f"дію {action_desc} {repeat_count} рази поспіль безрезультатно. "

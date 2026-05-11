@@ -147,6 +147,8 @@ class ActionDecider:
         "12. If task is about creating files — use \"write_file\"\n"
         "13. If task is ambiguous or unclear — ask_user for clarification BEFORE taking action\n"
         "14. DO NOT invent new tools — use only the ones listed above\n"
+        "15. **TASK CHECKLIST**: After each action, mentally track what's done vs what's left. Example: \"1. constants.py [DONE], 2. base_tab.py [DONE], 3. chat_tab.py [NEXT]\".\n"
+        "16. **NO REPEATED LIST_DIRECTORY**: NEVER call list_directory twice in a row unless you changed the folder contents. If file is missing — CREATE IT, don't check again!\n"
         "\n"
         "RESPOND WITH ONLY JSON. NO MARKDOWN. NO EXPLANATIONS OUTSIDE JSON."
     )
