@@ -522,8 +522,40 @@ class VoiceAssistant:
                 
                 command_text = clean_command
             
-            print(f"{Fore.CYAN}[DEBUG logic_commands] AFTER remove_activation_word: command_text='{command_text}'")
-            
+            print(f"[DEBUG logic_commands] AFTER remove_activation_word: command_text='{command_text}'")
+
+            # Фільтр для простих привітань та питань (не відправляти в LLM)
+            greetings = ("привіт", "вітаю", "добрий день", "доброго дня", "вечір добрий", "доброго вечора", "ранок добрий", "доброго ранку", "hello", "hi", "hey")
+            simple_questions = (
+                "як тебе звати", "як ти називаєшся", "як твоє ім'я", "хто ти", "хто ти такий",
+                "what's your name", "what is your name", "who are you"
+            )
+            command_lower = command_text.strip().lower()
+            if command_lower in greetings:
+                response = "Привіт! Я готовий допомогти. Що ви хочете зробити?"
+                self.log_to_gui("assistant", response)
+                if self.should_speak_response(response):
+                    speakable_text = self.extract_speakable_text(response)
+                    if speakable_text:
+                        threading.Thread(
+                            target=self.speak_response,
+                            args=(speakable_text,),
+                            daemon=True
+                        ).start()
+                return
+            elif command_lower in simple_questions:
+                response = "Я — голосовий асистент МАРК. Я можу виконувати команди, управляти вікнами, вводити текст, запускати програми та інші дії."
+                self.log_to_gui("assistant", response)
+                if self.should_speak_response(response):
+                    speakable_text = self.extract_speakable_text(response)
+                    if speakable_text:
+                        threading.Thread(
+                            target=self.speak_response,
+                            args=(speakable_text,),
+                            daemon=True
+                        ).start()
+                return
+
             # 3. Логуємо команду в GUI (для всіх типів)
             self.log_to_gui("user", command_text)
             
@@ -732,11 +764,11 @@ class VoiceAssistant:
             total_chars += len(str(content))
         return total_chars // 4
 
-    def _manage_conversation_history(self, max_messages: int = 2, max_tokens: int = 2000, summarize_threshold: int = 4):
-        """Адаптивне управління історією діалогу:
+    def _manage_conversation_history(self, max_messages: int = 2, max_tokens: int = 2000, summarize_threshold: int = 6):
+        """Адаптивне управління історією діалогу з підсумовуванням (Sliding Window):
         - обмеження за к-стю повідомлень (max_messages)
         - обмеження за к-стю токенів (max_tokens, gpt-oss має 4000 context)
-        - LLM-summary перших N при великій кількості
+        - LLM-summary старих повідомлень при великій кількості
         """
         # Перевірка за к-стю повідомлень АБО токенів
         token_count = self._estimate_tokens(self.conversation_history)
@@ -744,27 +776,36 @@ class VoiceAssistant:
         if len(self.conversation_history) <= max_messages and token_count <= max_tokens:
             return
 
-        has_summary = any(
-            msg.get("role") == "system" and "Summary" in msg.get("content", "")
-            for msg in self.conversation_history
-        )
-
-        if len(self.conversation_history) > summarize_threshold and not has_summary:
-            to_summarize = self.conversation_history[:5]
+        # Ковзне вікно з підсумовуванням
+        if len(self.conversation_history) > summarize_threshold:
+            # Беремо старі повідомлення для підсумовування (крім останніх 2)
+            to_summarize = self.conversation_history[:-2]
             try:
-                summary_text = self.memory.summarize_conversation(to_summarize, max_messages=5)
-            except Exception:
-                summary_text = "попередня розмова (автоматично скорочено через обмеження контексту)"
+                # Формуємо текст діалогу для підсумовування
+                dialog_text = "\n".join([
+                    f"{msg.get('role', 'unknown')}: {msg.get('content', '')}"
+                    for msg in to_summarize
+                ])
+                
+                # Використовуємо існуючий механізм підсумовування через memory
+                summary_text = self.memory.summarize_conversation(to_summarize, max_messages=3)
+                
+                # Обмежуємо довжину summary
+                if len(summary_text) > 500:
+                    summary_text = summary_text[:500] + "..."
+                
+                # Очищуємо і залишаємо факти + 2 останніх повідомлення
+                self.conversation_history = [
+                    {"role": "system", "content": f"Контекст попередньої розмови: {summary_text}"}
+                ] + self.conversation_history[-2:]
+                
+                print(f"{Fore.LIGHTBLACK_EX}[DEBUG] Conversation summarized, keeping 2 recent messages")
+            except Exception as e:
+                print(f"{Fore.YELLOW}[WARNING] Failed to summarize conversation: {e}")
+                # Fallback: просте обрізання
+                self.conversation_history = self.conversation_history[-max_messages:]
 
-            # Обмежуємо довжину summary, щоб не розрослося
-            if len(summary_text) > 500:
-                summary_text = summary_text[:500] + "..."
-
-            self.conversation_history = [
-                {"role": "system", "content": f"Summary: {summary_text}"}
-            ] + self.conversation_history[5:]
-
-        # Обрізаємо до max_messages
+        # Обрізаємо до max_messages (якщо ще перевищує)
         if len(self.conversation_history) > max_messages:
             if self.conversation_history and self.conversation_history[0].get("role") == "system":
                 self.conversation_history = (

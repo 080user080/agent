@@ -251,6 +251,10 @@ def _execute_single_action(registry, action_dict):
     if "parameters" in action_dict and isinstance(action_dict["parameters"], dict):
         nested = action_dict.pop("parameters")
         action_dict.update(nested)
+    # Qwen3 та інші моделі вертають вкладені параметри: {"args": {"title": "..."}}
+    if "args" in action_dict and isinstance(action_dict["args"], dict):
+        nested = action_dict.pop("args")
+        action_dict.update(nested)
 
     action = action_dict.pop("action", None)
     if not action:

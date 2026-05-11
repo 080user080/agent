@@ -334,7 +334,8 @@ def ask_llm_with_tools(
     message = first.get("message") or {}
     content = ""
     if isinstance(message, Mapping):
-        maybe_content = message.get("content")
+        # Qwen3 та інші thinking моделі повертають reasoning_content замість content
+        maybe_content = message.get("content") or message.get("reasoning_content")
         content = str(maybe_content) if maybe_content is not None else ""
     finish_reason = str(first.get("finish_reason") or "")
     tool_calls = parse_tool_calls_from_body(body)

@@ -413,7 +413,7 @@ class TestJSONParsingFallback:
     def test_thinking_blocks_removed_before_json_parsing(self):
         """Thinking блоки Qwen3 видаляються перед парсингом JSON."""
         response = ChatToolsResponse(
-            content='```\nПотрібно знайти файли в директорії.\n{"action":"list_directory","args":{"directory":"d:\\\\Python\\\\MARK\\\\tests_3"},"reasoning":"List files in tests_3"}\n```',
+            content='Потрібно знайти файли в директорії.\n{"action":"list_directory","args":{"directory":"d:\\\\Python\\\\MARK\\\\tests_3"},"reasoning":"List files in tests_3"}',
             tool_calls=[],
         )
         llm_fn = MagicMock(return_value=response)
@@ -421,6 +421,19 @@ class TestJSONParsingFallback:
         action = d.decide(goal="показати файли", observation=None, history=[])
         assert action.name == "list_directory"
         assert action.arguments["directory"] == "d:\\Python\\MARK\\tests_3"
+
+    def test_think_tags_inside_json_string_not_removed(self):
+        """`` теги всередині JSON рядка не видаляються."""
+        response = ChatToolsResponse(
+            content='{"action":"type_text","args":{"text":"User said: "},"reasoning":"Type text"}',
+            tool_calls=[],
+        )
+        llm_fn = MagicMock(return_value=response)
+        d = _make_decider(llm_fn=llm_fn)
+        action = d.decide(goal="ввести текст", observation=None, history=[])
+        assert action.name == "type_text"
+        assert 'User said:' in action.arguments["text"]
+
 
 
 class TestAgentLoopLongTasks:

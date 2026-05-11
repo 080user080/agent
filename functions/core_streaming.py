@@ -88,8 +88,10 @@ class StreamingHandler:
                             if not full_text:
                                 print(f"{Fore.LIGHTBLACK_EX}[DEBUG] First SSE chunk: {str(json_data)[:200]}")
                             delta = json_data['choices'][0]['delta']
-                            if 'content' in delta:
-                                content = delta['content']
+                            # Qwen3 та інші thinking моделі повертають reasoning_content замість content
+                            content_field = delta.get('content') or delta.get('reasoning_content')
+                            if content_field:
+                                content = content_field
                                 print(content, end="", flush=True)
                                 full_text += content
                         except Exception as e:
@@ -184,9 +186,11 @@ class StreamingHandler:
                                     last_error = f"Endpoint error: {error_msg}"
                                     raise Exception(last_error)
                                 delta = json_data['choices'][0]['delta']
-                                if 'content' in delta:
+                                # Qwen3 та інші thinking моделі повертають reasoning_content замість content
+                                content_field = delta.get('content') or delta.get('reasoning_content')
+                                if content_field:
                                     chunk_count += 1
-                                    content = delta['content']
+                                    content = content_field
                                     total_content += content
                                     print(f"[DEBUG] Chunk {chunk_count}: '{content[:50]}...' (total: {len(total_content)})")
                                     callback(content)

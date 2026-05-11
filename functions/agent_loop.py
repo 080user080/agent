@@ -69,6 +69,7 @@ class AgentState:
     done: bool = False
     success: bool = False
     done_summary: str = ""
+    progress_summary: str = "Завдання розпочато."  # Підсумок виконання для ковзного вікна
 
 
 @dataclass
@@ -90,6 +91,8 @@ class AgentLoopConfig:
     repair_after_failures: int = 2  # Викликати repairer при N consecutive failures
     enable_repair: bool = True
     skip_observe_for_simple: bool = False  # Пропускати скріншоти для простих задач
+    summary_threshold: int = 7  # Кількість кроків після якої робити підсумовування
+    keep_recent_actions: int = 3  # Скільки останніх дій залишати детальними
 
 
 class ActionDecider:
@@ -227,6 +230,7 @@ class ActionDecider:
         last_result: Optional[Dict[str, Any]] = None,
         extra_instructions: str = "",
         current_step: int = 0,
+        progress_summary: str = "",
     ) -> List[Dict[str, str]]:
         user_parts = [
             f"ЗАДАЧА: {goal}",
@@ -238,6 +242,22 @@ class ActionDecider:
             "ОСТАННІ ДІЇ:",
             self._format_history(history),
         ]
+        
+        # Додати підсумок прогресу якщо є
+        if progress_summary:
+            user_parts = [
+                f"ЗАДАЧА: {goal}",
+                f"ПОТОЧНИЙ КРОК: {current_step} (максимум 3-5 кроків для аналізу коду)",
+                "",
+                f"ПРОГРЕС ВИКОНАННЯ:\n{progress_summary}",
+                "",
+                "ПОТОЧНЕ СПОСТЕРЕЖЕННЯ ЕКРАНУ:",
+                self._format_observation(observation),
+                "",
+                "ОСТАННІ ДІЇ:",
+                self._format_history(history),
+            ]
+        
         if last_result is not None:
             try:
                 last_str = json.dumps(last_result, ensure_ascii=False)[:400]
@@ -261,12 +281,13 @@ class ActionDecider:
         observation: Optional[Observation],
         history: List[Dict[str, Any]],
         last_result: Optional[Dict[str, Any]] = None,
+        progress_summary: str = "",
     ) -> AgentAction:
         """Один крок рішення через LLM (JSON parsing fallback)."""
         if not self.is_available:
             return AgentAction(name="noop", reasoning="LLM decider unavailable")
 
-        messages = self.build_messages(goal, observation, history, last_result, current_step=len(history))
+        messages = self.build_messages(goal, observation, history, last_result, current_step=len(history), progress_summary=progress_summary)
         try:
             # Спочатку спробуємо без tools (JSON parsing fallback)
             # LM Studio може не підтримувати function-calling або конфліктувати з ним
@@ -303,8 +324,13 @@ class ActionDecider:
 
         # Видалити thinking блоки (для Qwen3 та інших thinking моделей)
         import re
-        content = re.sub(r'', '', content, flags=re.DOTALL).strip()
-        logger.info("ActionDecider: After removing think blocks: %s...", content[:200])
+        before_len = len(content)
+        # DeepSeek:  
+        content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+        content = content.strip()
+        after_len = len(content)
+        if before_len != after_len:
+            logger.info("ActionDecider: Removed think blocks (%d→%d chars): %s...", before_len, after_len, content[:200])
 
         # Видалити markdown code blocks якщо є
         if content.startswith("```"):
@@ -373,6 +399,7 @@ class ActionDecider:
         observation: Optional[Observation],
         history: List[Dict[str, Any]],
         consecutive_failures: int,
+        progress_summary: str = "",
     ) -> AgentAction:
         """Переосмислити підхід після кількох невдач підряд."""
         instructions = (
@@ -384,7 +411,7 @@ class ActionDecider:
         if not self.is_available:
             return AgentAction(name="noop", reasoning="LLM decider unavailable")
         messages = self.build_messages(
-            goal, observation, history, last_result=None, extra_instructions=instructions
+            goal, observation, history, last_result=None, extra_instructions=instructions, progress_summary=progress_summary
         )
         try:
             response = self._ask_llm_with_tools(
@@ -960,6 +987,7 @@ class AgentLoop:
                 observation=obs,
                 history=state.actions_history,
                 consecutive_failures=state.consecutive_failures,
+                progress_summary=state.progress_summary,
             )
             state.consecutive_failures = 0  # Reset, щоб дати новому плану шанс
         else:
@@ -968,6 +996,7 @@ class AgentLoop:
                 observation=obs,
                 history=state.actions_history,
                 last_result=last_result,
+                progress_summary=state.progress_summary,
             )
 
         if action.name == "noop":
@@ -1248,9 +1277,40 @@ class AgentLoop:
             "from_decider": plan.get("from_decider", False),
             "reasoning": reasoning,
         })
-        # Тримаємо обмежений розмір історії
-        if len(state.actions_history) > 100:
-            state.actions_history = state.actions_history[-100:]
+        
+        # Ковзне вікно з підсумовуванням
+        threshold = self.config.summary_threshold + self.config.keep_recent_actions
+        if len(state.actions_history) > threshold:
+            from .context_manager import summarize_progress, format_actions_for_summary
+            
+            # Беремо старі дії для підсумовування
+            to_summarize = state.actions_history[:-self.config.keep_recent_actions]
+            # Залишаємо останні дії детальними
+            state.actions_history = state.actions_history[-self.config.keep_recent_actions:]
+            
+            # Якщо є decider з LLM — підсумовуємо через LLM
+            if self.decider and self.decider.is_available:
+                def ask_llm_wrapper(prompt: str, system_prompt: Optional[str] = None) -> str:
+                    """Wrapper для виклику LLM через decider."""
+                    messages = [{"role": "system", "content": system_prompt or ""}]
+                    messages.append({"role": "user", "content": prompt})
+                    response = self.decider._ask_llm_with_tools(
+                        messages=messages,
+                        tools=[],
+                        tool_choice=None
+                    )
+                    return str(getattr(response, "content", "") or "")
+                
+                state.progress_summary = summarize_progress(
+                    to_summarize,
+                    state.progress_summary,
+                    ask_llm_wrapper
+                )
+                logger.info("AgentLoop: Progress summary updated: %s...", state.progress_summary[:100])
+            else:
+                # Fallback без LLM — просте об'єднання
+                state.progress_summary += "\n" + format_actions_for_summary(to_summarize)
+                state.progress_summary = state.progress_summary[:1000]
 
         # Зберегти чекпоїнт (через інтервал)
         if self._checkpoint_enabled and state.step % self.config.checkpoint_interval_steps == 0:

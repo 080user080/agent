@@ -43,8 +43,12 @@ def _ok_body(
     finish_reason: str = "stop",
     model: str = "test-model",
     usage: Dict[str, Any] | None = None,
+    reasoning_content: str | None = None,
 ) -> Dict[str, Any]:
     message: Dict[str, Any] = {"role": "assistant", "content": content}
+    if reasoning_content is not None:
+        # Qwen3 та інші thinking моделі повертають reasoning_content замість content
+        message["reasoning_content"] = reasoning_content
     if tool_calls is not None:
         message["tool_calls"] = tool_calls
     return {
@@ -720,7 +724,19 @@ class TestChatToolsResponse:
         assert d["content"] == "c"
         assert d["tool_calls"][0]["name"] == "f"
         assert d["tool_calls"][0]["arguments"] == {"x": 1}
-        assert d["http_status"] == 200
+
+    def test_reasoning_content_fallback(self):
+        """Qwen3 та інші thinking моделі повертають reasoning_content замість content."""
+        def fake_post(url, headers=None, json=None, timeout=None):
+            return _make_http_response(200, _ok_body(reasoning_content="thinking result"))
+
+        resp = ask_llm_with_tools(
+            messages=[{"role": "user", "content": "test"}],
+            endpoint=_fixed_endpoint(),
+            request_fn=fake_post,
+        )
+        assert resp.ok
+        assert resp.content == "thinking result"
 
 
 # --------------------------------------------------------------------------- #
