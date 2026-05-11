@@ -52,7 +52,8 @@ class OpenInterpreterExecutor:
             interpreter.llm.api_base = self.lm_studio_url
             interpreter.llm.api_key = "dummy"  # litellm requires api_key even if empty
             interpreter.llm.temperature = 0.1
-            interpreter.llm.max_tokens = 2048
+            interpreter.llm.max_tokens = 4000
+            interpreter.llm.context_window = 20000  # Розширений контекст для повної історії виконання
 
             # Disable auto-run for safety (will be controlled by auto_run parameter)
             interpreter.auto_run = False
@@ -120,8 +121,23 @@ Please execute this code. If you encounter ModuleNotFoundError, install the miss
             
             execution_time = time.time() - start_time
             
-            # Parse result
-            if result and hasattr(result, 'content'):
+            # Parse result - Open Interpreter returns different types
+            if result is None:
+                return OIResult(
+                    success=False,
+                    output="",
+                    error="Open Interpreter повернув None",
+                    execution_time=execution_time
+                )
+            elif isinstance(result, str):
+                # Simple string result
+                return OIResult(
+                    success=True,
+                    output=result,
+                    execution_time=execution_time
+                )
+            elif hasattr(result, 'content'):
+                # Object with content attribute
                 output = str(result.content)
                 return OIResult(
                     success=True,
@@ -129,7 +145,8 @@ Please execute this code. If you encounter ModuleNotFoundError, install the miss
                     execution_time=execution_time
                 )
             else:
-                output = str(result) if result else "No output"
+                # Fallback - convert to string
+                output = str(result)
                 return OIResult(
                     success=True,
                     output=output,

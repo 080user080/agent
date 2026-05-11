@@ -68,7 +68,7 @@ class TestAgentState:
 class TestAgentLoopConfig:
     def test_defaults(self):
         cfg = AgentLoopConfig()
-        assert cfg.max_steps == 50
+        assert cfg.max_steps == 200
         assert cfg.max_duration_seconds == 3600.0
         assert cfg.screen_diff_threshold == 0.01
         assert cfg.enable_ocr is True

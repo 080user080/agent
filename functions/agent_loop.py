@@ -74,7 +74,7 @@ class AgentState:
 @dataclass
 class AgentLoopConfig:
     """Конфігурація AgentLoop."""
-    max_steps: int = 100
+    max_steps: int = 200
     max_duration_seconds: float = 3600.0
     enable_ocr: bool = True
     enable_ui_a: bool = False
@@ -142,7 +142,8 @@ class ActionDecider:
         "10. If you need information from user — action=\"ask_user\"\n"
         "11. If task is about executing code — use \"execute_python\" (simple) or \"oi_execute_with_healing\" (complex)\n"
         "12. If task is about creating files — use \"write_file\"\n"
-        "13. DO NOT invent new tools — use only the ones listed above\n"
+        "13. If task is ambiguous or unclear — ask_user for clarification BEFORE taking action\n"
+        "14. DO NOT invent new tools — use only the ones listed above\n"
         "\n"
         "RESPOND WITH ONLY JSON. NO MARKDOWN. NO EXPLANATIONS OUTSIDE JSON."
     )
@@ -299,6 +300,11 @@ class ActionDecider:
         # 2) Fallback — парсити JSON з content
         content = str(getattr(response, "content", "") or "").strip()
         logger.info("ActionDecider: LLM content (full)=%s", content)
+
+        # Видалити thinking блоки (для Qwen3 та інших thinking моделей)
+        import re
+        content = re.sub(r'', '', content, flags=re.DOTALL).strip()
+        logger.info("ActionDecider: After removing think blocks: %s...", content[:200])
 
         # Видалити markdown code blocks якщо є
         if content.startswith("```"):
@@ -1331,9 +1337,12 @@ class AgentLoop:
             # Виставляємо лічильник на поріг replan, щоб decider зробив replan на наступній ітерації
             state.consecutive_failures = self.config.replan_after_failures
         elif decision.action == RepairAction.STOP:
-            state.done = True
-            state.success = False
-            state.done_summary = f"Зупинено repair-стратегом: {decision.reason}"
+            # Спробуємо Open Interpreter fallback перед зупинкою
+            self._try_open_interpreter_fallback(self._current_task or "unknown task", state)
+            if not state.success:
+                state.done = True
+                state.success = False
+                state.done_summary = f"Зупинено repair-стратегом: {decision.reason}"
 
     def _cleanup_checkpoint(self) -> None:
         """Видалити чекпоїнт після завершення."""
@@ -1359,6 +1368,122 @@ class AgentLoop:
             summary += " ⚠️ Не завершено"
         self._gui_msg('add_message', ('assistant', summary))
         self._gui_msg('update_status', '✅ Готовий до роботи')
+
+    def _try_open_interpreter_fallback(self, task: str, state: AgentState) -> None:
+        """Спробувати вирішити задачу через Open Interpreter як останній рятівник.
+
+        Викликається коли AgentLoop не зміг виконати задачу.
+        """
+        from .aaa_open_interpreter import is_available, oi_execute_with_healing
+
+        if not is_available():
+            logger.info("Open Interpreter недоступний, пропускаємо fallback")
+            return
+
+        # Формуємо контекст з історії виконання (actions_history, не observations)
+        history_summary = "\n".join([
+            f"- Крок {i+1}: {h.get('action', '?')} → {h.get('check_result', {}).get('success', '?')}"
+            for i, h in enumerate(state.actions_history)
+        ])
+
+        # Формуємо список вже створених файлів з історії
+        created_files = []
+        for h in state.actions_history:
+            if h.get('action') == 'write_file':
+                filepath = h.get('args', {}).get('filepath', '')
+                if filepath and filepath not in created_files:
+                    created_files.append(filepath)
+
+        files_summary = "\n".join([f"- {f}" for f in created_files]) if created_files else "(немає створених файлів)"
+
+        # Формуємо Python код для Open Interpreter
+        oi_code = f'''# AgentLoop не зміг виконати задачу
+# Задача: {task}
+# Історія виконання ({state.step} кроків):
+{history_summary}
+
+# Створені файли:
+{files_summary}
+
+# Поточний стан:
+# - Кроків виконано: {state.step}
+# - Промахів поспіль: {state.consecutive_failures}
+# - Всього промахів: {state.total_failures}
+
+# Спробуй вирішити задачу інакше.
+# Ти маєш повний доступ до файлової системи та інтернету.
+# Використовуй os, pathlib, subprocess для виконання задачі.
+# Перевір чи всі необхідні файли існують і коректні.
+'''
+
+        logger.info("Спробуємо Open Interpreter fallback для задачі: %s", task[:50])
+        self._gui_msg('add_message', ('assistant', '🔄 Спроба вирішення через Open Interpreter...'))
+
+        try:
+            result = oi_execute_with_healing(
+                code=oi_code,
+                task_description=task,
+                auto_run=True
+            )
+
+            if result.success:
+                logger.info("Open Interpreter fallback успішний")
+                self._gui_msg('add_message', ('assistant', f'✅ Open Interpreter вирішив: {result.output[:200]}'))
+                state.success = True
+                state.done_summary = f'Вирішено через Open Interpreter: {result.output[:200]}'
+            else:
+                logger.warning("Open Interpreter fallback не вдався: %s", result.error)
+                self._gui_msg('add_message', ('assistant', f'❌ Open Interpreter не зміг вирішити: {result.error[:200]}'))
+        except Exception as e:
+            logger.error("Помилка виклику Open Interpreter fallback: %s", e)
+            self._gui_msg('add_message', ('assistant', f'❌ Помилка Open Interpreter: {str(e)[:200]}'))
+
+    def _detect_loop(self, state: AgentState) -> bool:
+        """Виявити зациклення агента.
+
+        Перевіряє чи одна й та сама дія з тими самими аргументами повторюється,
+        чи останні 5 дій дали однаковий результат.
+
+        Returns:
+            True якщо виявлено зациклення, False інакше
+        """
+        if len(state.actions_history) < 2:
+            return False
+
+        # Перевіряємо чи одна й та сама дія повторюється 3+ рази підряд
+        if len(state.actions_history) >= 3:
+            last_actions = state.actions_history[-3:]
+            names = [a.get('name') for a in last_actions]
+
+            # Ігноруємо None дії (done, ask_user, etc.)
+            if all(name is not None for name in names) and len(set(names)) == 1:
+                action_name = names[0]
+
+                # Для write_file перевіряємо filepath
+                if action_name == 'write_file':
+                    filepaths = [a.get('args', {}).get('filepath') for a in last_actions]
+                    if len(set(filepaths)) == 1:
+                        logger.warning("Виявлено зациклення: write_file для %s повторюється %d разів", filepaths[0], len(last_actions))
+                        return True
+                # Для execute_python перевіряємо схожість коду
+                elif action_name == 'execute_python':
+                    codes = [a.get('args', {}).get('code', '') for a in last_actions]
+                    if len(codes) >= 3 and len(set(codes)) == 1 and len(codes[0]) > 100:
+                        logger.warning("Виявлено зациклення: execute_python з тим самим кодом %d разів", len(last_actions))
+                        return True
+                # Для інших дій - просто по назві
+                else:
+                    logger.warning("Виявлено зациклення: дія %s повторюється %d разів", action_name, len(last_actions))
+                    return True
+
+        # Перевіряємо чи останні 3 дії дали однаковий результат (fail)
+        if len(state.actions_history) >= 3:
+            last_results = [a.get('check_result', {}).get('success', True) for a in state.actions_history[-3:]]
+            if all(not r for r in last_results):
+                logger.warning("Виявлено зациклення: останні 3 дії дали fail")
+                return True
+
+        return False
 
     def run(self, task: str) -> Dict[str, Any]:
         """Основний цикл агента: observe → plan → act → check.
@@ -1387,11 +1512,24 @@ class AgentLoop:
         try:
             while not self._should_stop(state, start_time):
                 logger.info("AgentLoop: step=%d, max_steps=%d", state.step, self.config.max_steps)
+
+                # Перевіряємо на зациклення перед виконанням кроку
+                if self._detect_loop(state):
+                    logger.warning("Виявлено зациклення, спробуємо Open Interpreter fallback")
+                    self._try_open_interpreter_fallback(task, state)
+                    if state.success or state.done:
+                        break
+
                 if not self._execute_single_step(task, state, start_time):
                     break
         finally:
             duration = time.time() - start_time
             self._cleanup_checkpoint()
+
+            # Open Interpreter fallback як останній рятівник
+            if not state.success and not state.done:
+                self._try_open_interpreter_fallback(task, state)
+
             self._send_completion_summary(state, duration)
 
         return {
