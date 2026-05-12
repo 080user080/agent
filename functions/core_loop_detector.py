@@ -10,6 +10,12 @@ stuck_warning, який змушує LLM змінити стратегію.
 - is_looping() → True коли max_repeats однакових дій підряд
 - reset() після виявлення — дає шанс новій стратегії
 - is_stuck — прапор для decider (передається в stuck_warning)
+
+Виключення:
+- write_file з ідентичним контентом — це ідемпотентна операція.
+  Вважається циклом ТІЛЬКИ якщо max_repeats+1 повторів поспіль
+  (що означає що LLM дійсно зациклилась, а не просто не отримала
+  підтвердження).
 """
 from __future__ import annotations
 
@@ -50,6 +56,10 @@ class LoopDetector:
     Ковзне вікно останніх `window_size` дій. Якщо всі дії у вікні
     мають однаковий fingerprint — це зациклення.
 
+    Виключення: write_file з однаковим контентом вважається ідемпотентним.
+    Для нього поріг зациклення підвищено на +1, щоб LLM встигла отримати
+    підтвердження ok=True через act_result.
+
     Після виявлення:
     1. Встановлюється is_stuck = True
     2. Детектор скидається (reset) — дає шанс новій стратегії
@@ -70,11 +80,17 @@ class LoopDetector:
         self.loop_events: List[LoopEvent] = []
         self._total_loops_detected: int = 0
         self.loop_count: int = 0  # Лічильник глобальних зациклень для штрафного ліміту
+        # Додатковий буфер для write_file (ідемпотентні операції)
+        self._write_file_repeat_threshold: int = self.max_repeats + 1
 
     def is_looping(self, action: str, args: Dict[str, Any]) -> bool:
         """Перевірити чи поточна дія створює зациклення.
 
         Додає дію в історію і перевіряє чи всі дії у вікні однакові.
+
+        Для write_file використовується підвищений поріг max_repeats+1,
+        оскільки це ідемпотентна операція — перші повтори можуть бути
+        викликані тим, що LLM не отримала підтвердження ok=True.
 
         Args:
             action: Ім'я дії (наприклад 'mouse_click', 'click_text')
@@ -96,8 +112,21 @@ class LoopDetector:
         if len(self._fingerprints) < self.max_repeats:
             return False
 
+        # Для write_file — підвищений поріг (ідемпотентність)
+        # Перші max_repeats однакових write_file — не цикл,
+        # тільки якщо досягнуто max_repeats+1
+        effective_max_repeats = self._write_file_repeat_threshold if action == "write_file" else self.max_repeats
+
         # Перевіряємо чи всі fingerprint у вікні однакові
-        last_n = self._fingerprints[-self.max_repeats:]
+        # Для write_file беремо більше вікно
+        if action == "write_file":
+            # Перевіряємо на ефективний поріг (max_repeats+1)
+            if len(self._fingerprints) < effective_max_repeats:
+                return False
+            last_n = self._fingerprints[-effective_max_repeats:]
+        else:
+            last_n = self._fingerprints[-self.max_repeats:]
+
         if all(fp == last_n[0] for fp in last_n):
             self.is_stuck = True
             self._total_loops_detected += 1
@@ -106,10 +135,10 @@ class LoopDetector:
                 step=len(self._actions),
                 action=action,
                 fingerprint=fp,
-                repeat_count=self.max_repeats,
+                repeat_count=effective_max_repeats,
                 message=(
                     f"⚠️ Зациклення: дія '{action}' повторюється "
-                    f"{self.max_repeats} рази підряд з однаковими аргументами"
+                    f"{effective_max_repeats} рази підряд з однаковими аргументами"
                 ),
             )
             self.loop_events.append(event)
@@ -227,6 +256,14 @@ class LoopDetector:
                 "Екран залишається тим самим. Припини спостерігати — ПОЧНИ ДІЯТИ. "
                 "Якщо не знаєш що робити — використай ask_user."
             )
+        elif action_name == 'write_file':
+            filepath = args.get('filepath', '')
+            return (
+                f"УВАГА: Ти {self._write_file_repeat_threshold} рази поспіль виконуєш write_file "
+                f"для '{filepath}' з однаковим контентом. "
+                f"Цей файл ВЖЕ записано. ПЕРЕСТАНЬ писати той самий файл. "
+                f"Переходь до НАСТУПНОГО файлу. Якщо всі файли створено — використай done."
+            )
         else:
             return (
                 "Ти зациклився. Спробуй інший підхід. "
@@ -265,6 +302,12 @@ class LoopDetector:
             return (
                 "УВАГА: Ти робиш скріншот повторно, але екран не змінюється. "
                 "ПРИПИНИ спостерігати! Твоя наступна дія МАЄ БУТИ дія, яка змінює стан."
+            )
+        elif action_name == 'write_file':
+            return (
+                "УВАГА: Ти повторно пишеш той самий файл з тим самим контентом. "
+                "Файл ВЖЕ створено. ПРИПИНИ писати той самий файл! "
+                "Переходь до наступного файлу. Якщо всі створено — використай done."
             )
         return "Зміни стратегію, поточна дія неефективна."
 

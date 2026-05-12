@@ -149,6 +149,8 @@ class ActionDecider:
         "14. DO NOT invent new tools — use only the ones listed above\n"
         "15. **TASK CHECKLIST**: After each action, mentally track what's done vs what's left. Example: \"1. constants.py [DONE], 2. base_tab.py [DONE], 3. chat_tab.py [NEXT]\".\n"
         "16. **NO REPEATED LIST_DIRECTORY**: NEVER call list_directory twice in a row unless you changed the folder contents. If file is missing — CREATE IT, don't check again!\n"
+        "17. **NO REPEATED WRITE_FILE**: After write_file returns ok=True, NEVER write to the same filepath again unless you need to change the content. Move to the NEXT file immediately.\n"
+        "18. **INTERNAL CHECKLIST**: Keep a mental checklist. After each write_file ok=True — mark that file as DONE and never touch it again. Move to next file.\n"
         "\n"
         "ПРАВИЛО ВИКОНАВЦЯ (пріоритет дії над перевіркою):\n"
         "A. Якщо завдання передбачає створення N файлів — не намагайся перевірити їх наявність після кожного кроку.\n"
@@ -1410,7 +1412,7 @@ class AgentLoop:
                 state.step += 1
                 time.sleep(0.3)
                 return True  # Продовжуємо цикл, LLM отримає stuck_warning
-        # ─── Блокування повторних write_file ───────────────────────────
+        # ─── Блокування повторних write_file (ідемпотентна операція) ────
         if action == "write_file":
             # Створюємо fingerprint для порівняння
             import json as _json
@@ -1420,15 +1422,34 @@ class AgentLoop:
                 fp = f"write_file:{args.get('filepath', '')}:{str(args.get('content', ''))}"
             
             if fp in self._blocked_write_fingerprints:
-                # Цей write_file вже був виконаний — блокуємо повтор
-                logger.warning("Блоковано повторний write_file: %s", args.get('filepath', ''))
-                print(f"[AgentLoop]   ⛔ Блоковано повторний write_file: {args.get('filepath', '')}")
+                # Цей write_file вже був виконаний — це ідемпотентна операція
+                # Повертаємо ok=True, щоб LLM отримала підтвердження "вже записано"
+                # і не намагалась писати той самий файл знову
+                logger.info("Ідемпотентний write_file пропущено: %s", args.get('filepath', ''))
+                print(f"[AgentLoop]   ⏭️ Ідемпотентний write_file пропущено: {args.get('filepath', '')}")
                 self._gui_msg('add_message', ('assistant',
-                    f'⛔ Блоковано повторний write_file: {args.get("filepath", "")}'))
-                state.consecutive_failures += 1
+                    f'⏭️ Файл {args.get("filepath", "")} вже існує, пропущено'))
+                # Повертаємо ok=True + спеціальний результат — LLM отримує
+                # сигнал "все ок, файл вже записаний, іди далі"
+                act_result = {"ok": True, "result": "already written, skipped"}
+                # Скидаємо consecutive_failures (це не помилка)
+                state.consecutive_failures = 0
+                # Не блокуємо в LoopDetector — скидаємо is_stuck
+                self.loop_detector.on_action_success()
+                # Додаємо в історію дій для LLM контексту
+                action_data = {
+                    "step": state.step,
+                    "action": action,
+                    "args": args,
+                    "act_result": act_result,
+                    "check_result": {"success": True, "detail": "already written, skipped"},
+                    "from_decider": plan.get("from_decider", False),
+                    "reasoning": reasoning,
+                }
+                state.actions_history.append(action_data)
                 state.step += 1
                 time.sleep(0.3)
-                return True  # Продовжуємо цикл, LLM отримає stuck_warning
+                return True  # Продовжуємо цикл — LLM отримає ok=True в історії
 
         # 3. Act
         act_result = self.act(plan)
