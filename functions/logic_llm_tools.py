@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
@@ -26,6 +27,10 @@ import requests
 
 # Re-використовуємо endpoint-розвʼязання зі старого модуля.
 from .llm import get_primary_endpoint
+
+# Retry логіка для HTTP помилок
+RETRYABLE_STATUSES = (408, 425, 429, 500, 502, 503, 504)
+DEFAULT_RETRIES = 3
 
 
 # --------------------------------------------------------------------------- #
@@ -279,41 +284,78 @@ def ask_llm_with_tools(
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
-    try:
-        response = request_fn(
-            ep.get("url"),
-            headers=headers,
-            json=payload,
-            timeout=ep.get("timeout", 180),
-        )
-    except requests.exceptions.RequestException as exc:
-        return ChatToolsResponse(error=f"network: {exc}", raw={})
-    except Exception as exc:  # noqa: BLE001
-        return ChatToolsResponse(error=f"unexpected: {exc}", raw={})
+    # Retry логіка для HTTP помилок
+    max_retries = ep.get("retries", DEFAULT_RETRIES)
+    last_error = None
 
-    status = getattr(response, "status_code", None)
-    try:
-        body = response.json()
-    except Exception as exc:  # noqa: BLE001
-        return ChatToolsResponse(
-            http_status=status,
-            error=f"bad json body: {exc}",
-            raw={"text": getattr(response, "text", "")[:500]},
-        )
+    for attempt in range(max_retries):
+        try:
+            response = request_fn(
+                ep.get("url"),
+                headers=headers,
+                json=payload,
+                timeout=ep.get("timeout", 180),
+            )
+        except requests.exceptions.RequestException as exc:
+            last_error = f"network: {exc}"
+            if attempt < max_retries - 1:
+                backoff = 2 ** attempt  # 1, 2, 4, 8 ...
+                time.sleep(backoff)
+                continue
+            return ChatToolsResponse(error=last_error, raw={})
+        except Exception as exc:  # noqa: BLE001
+            last_error = f"unexpected: {exc}"
+            if attempt < max_retries - 1:
+                backoff = 2 ** attempt
+                time.sleep(backoff)
+                continue
+            return ChatToolsResponse(error=last_error, raw={})
 
-    if status != 200:
-        err_msg = ""
-        if isinstance(body, Mapping):
-            err_block = body.get("error")
-            if isinstance(err_block, Mapping):
-                err_msg = str(err_block.get("message") or err_block.get("type") or "")
-            elif isinstance(err_block, str):
-                err_msg = err_block
-        return ChatToolsResponse(
-            http_status=status,
-            error=f"http {status}{': ' + err_msg if err_msg else ''}",
-            raw=body if isinstance(body, dict) else {},
-        )
+        status = getattr(response, "status_code", None)
+        try:
+            body = response.json()
+        except Exception as exc:  # noqa: BLE001
+            last_error = f"bad json body: {exc}"
+            if attempt < max_retries - 1:
+                backoff = 2 ** attempt
+                time.sleep(backoff)
+                continue
+            return ChatToolsResponse(
+                http_status=status,
+                error=last_error,
+                raw={"text": getattr(response, "text", "")[:500]},
+            )
+
+        if status != 200:
+            # Перевіряємо чи це retryable помилка
+            if status in RETRYABLE_STATUSES and attempt < max_retries - 1:
+                err_msg = ""
+                if isinstance(body, Mapping):
+                    err_block = body.get("error")
+                    if isinstance(err_block, Mapping):
+                        err_msg = str(err_block.get("message") or err_block.get("type") or "")
+                    elif isinstance(err_block, str):
+                        err_msg = err_block
+                last_error = f"http {status}{': ' + err_msg if err_msg else ''}"
+                backoff = 2 ** attempt
+                time.sleep(backoff)
+                continue
+
+            err_msg = ""
+            if isinstance(body, Mapping):
+                err_block = body.get("error")
+                if isinstance(err_block, Mapping):
+                    err_msg = str(err_block.get("message") or err_block.get("type") or "")
+                elif isinstance(err_block, str):
+                    err_msg = err_block
+            return ChatToolsResponse(
+                http_status=status,
+                error=f"http {status}{': ' + err_msg if err_msg else ''}",
+                raw=body if isinstance(body, dict) else {},
+            )
+
+        # Успішний відповідь - виходимо з retry циклу
+        break
 
     if not isinstance(body, Mapping):
         return ChatToolsResponse(
