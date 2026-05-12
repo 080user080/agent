@@ -93,6 +93,10 @@ class AgentLoopConfig:
     skip_observe_for_simple: bool = False  # Пропускати скріншоти для простих задач
     summary_threshold: int = 7  # Кількість кроків після якої робити підсумовування
     keep_recent_actions: int = 3  # Скільки останніх дій залишати детальними
+    expected_files: List[str] = field(default_factory=lambda: [
+        "constants.py", "base_tab.py", "chat_tab.py", "settings_tab.py",
+        "logs_tab.py", "statistics_tab.py", "about_tab.py", "tools_tab.py", "run.py",
+    ])  # Список очікуваних файлів для перевірки завершеності
 
 
 class ActionDecider:
@@ -1082,8 +1086,7 @@ class AgentLoop:
             if self._list_directory_used and not self._has_written_since_list_dir:
                 existing = self._last_list_dir_files
                 # Визначаємо, які файли потрібно створити (загальні для PyQt6)
-                required = ["constants.py", "base_tab.py", "chat_tab.py", "settings_tab.py",
-                           "logs_tab.py", "statistics_tab.py", "about_tab.py", "tools_tab.py", "run.py"]
+                required = self.config.expected_files
                 missing = [f for f in required if f not in existing]
                 if missing:
                     extra_instructions = (
@@ -1700,9 +1703,8 @@ class AgentLoop:
                         target_dir = dir_arg
                         break
 
-        # Перевіряємо наявність файлів для PyQt6 модульної програми
-        required_files = ["constants.py", "base_tab.py", "chat_tab.py", "settings_tab.py",
-                         "logs_tab.py", "statistics_tab.py", "about_tab.py", "tools_tab.py", "run.py"]
+        # Перевіряємо наявність файлів згідно з конфігурацією
+        required_files = self.config.expected_files
         try:
             actual_files = os.listdir(target_dir) if os.path.isdir(target_dir) else []
         except Exception:
@@ -1772,9 +1774,8 @@ class AgentLoop:
         except Exception:
             actual_files = []
 
-        # Визначаємо відсутні файли (загальний список для PyQt6 модульної програми)
-        required_files = ["constants.py", "base_tab.py", "chat_tab.py", "settings_tab.py",
-                         "logs_tab.py", "statistics_tab.py", "about_tab.py", "tools_tab.py", "run.py"]
+        # Визначаємо відсутні файли згідно з конфігурацією
+        required_files = self.config.expected_files
         missing_files = [f for f in required_files if f not in actual_files]
 
         # Формуємо ПОВНИЙ промпт для Open Interpreter (замість просто коментарів)
