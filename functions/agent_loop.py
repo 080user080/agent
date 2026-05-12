@@ -309,12 +309,13 @@ class ActionDecider:
         progress_summary: str = "",
         context_controller: Optional[Any] = None,
         stuck_warning: str = "",
+        extra_instructions: str = "",
     ) -> AgentAction:
         """Один крок рішення через LLM (JSON parsing fallback)."""
         if not self.is_available:
             return AgentAction(name="noop", reasoning="LLM decider unavailable")
 
-        messages = self.build_messages(goal, observation, history, last_result, current_step=len(history), progress_summary=progress_summary, context_controller=context_controller, stuck_warning=stuck_warning)
+        messages = self.build_messages(goal, observation, history, last_result, current_step=len(history), progress_summary=progress_summary, context_controller=context_controller, stuck_warning=stuck_warning, extra_instructions=extra_instructions)
         try:
             # Спочатку спробуємо без tools (JSON parsing fallback)
             # LM Studio може не підтримувати function-calling або конфліктувати з ним
@@ -526,6 +527,13 @@ class AgentLoop:
 
         # Пам'ять про відсутні файли (для A-B-A-B циклів)
         self.failed_reads: set = set()
+
+        # Чи був викликаний list_directory хоч раз (для заборони другого)
+        self._list_directory_used: bool = False
+        # Останній результат list_directory (файли)
+        self._last_list_dir_files: list = []
+        # Чи був хоч один write_file після list_directory
+        self._has_written_since_list_dir: bool = False
 
     # ─── GUI messaging ────────────────────────────────────────────────────────
 
@@ -1064,6 +1072,29 @@ class AgentLoop:
             stuck_warning = ""
             if hasattr(self, 'loop_detector') and self.loop_detector.is_stuck:
                 stuck_warning = self.loop_detector.get_stuck_warning_message()
+
+            # Авто-інжекція контексту "відсутні файли" після list_directory
+            # Якщо ми вже отримали список файлів через list_directory,
+            # але ще не робили write_file — змушуємо LLM створювати файли
+            extra_instructions = ""
+            if self._list_directory_used and not self._has_written_since_list_dir:
+                existing = self._last_list_dir_files
+                # Визначаємо, які файли потрібно створити (загальні для PyQt6)
+                required = ["constants.py", "base_tab.py", "chat_tab.py", "settings_tab.py",
+                           "logs_tab.py", "statistics_tab.py", "about_tab.py", "tools_tab.py", "run.py"]
+                missing = [f for f in required if f not in existing]
+                if missing:
+                    extra_instructions = (
+                        "⚠️ АНАЛІЗ ПАПКИ ЗАВЕРШЕНО. "
+                        f"Існують файли: {', '.join(existing[:20]) if existing else '(жодного)'}\n"
+                        f"⚠️ ВІДСУТНІ ФАЙЛИ (треба створити): {', '.join(missing)}\n"
+                        "⚠️ СУВОРА ЗАБОРОНА: Тобі ЗАБОРОНЕНО викликати list_directory знову! "
+                        "Вміст папки не зміниться сам по собі.\n"
+                        "⚠️ Наступна дія МАЄ БУТИ write_file для одного з відсутніх файлів.\n"
+                        "⚠️ Після кожного write_file відмічай файл як 'DONE' і переходь до наступного."
+                    )
+                    logger.info("AgentLoop: авто-інжекція missing files: %s", missing)
+
             try:
                 action = self.decider.decide(
                     goal=task,
@@ -1073,6 +1104,7 @@ class AgentLoop:
                     progress_summary=state.progress_summary,
                     context_controller=self.context_controller,
                     stuck_warning=stuck_warning,
+                    extra_instructions=extra_instructions,
                 )
             except Exception as e:
                 logger.error("ActionDecider.decide() error: %s", e, exc_info=True)
@@ -1354,8 +1386,19 @@ class AgentLoop:
                 time.sleep(0.3)
                 return True  # Продовжуємо цикл, LLM отримає stuck_warning
 
-        # ─── Блокування A-B-A-B циклів для list_directory ────────────
+        # ─── Блокування list_directory після першого разу (СУВОРА ЗАБОРОНА) ─────
         if action == "list_directory":
+            if self._list_directory_used and not self._has_written_since_list_dir:
+                # list_directory вже викликаний, а write_file ще не було — БЛОКУЄМО
+                logger.warning("СУВОРО Блоковано повторний list_directory (ще не було write_file)")
+                print(f"[AgentLoop]   ⛔ СУВОРО Блоковано повторний list_directory (ще не було write_file)")
+                self._gui_msg('add_message', ('assistant',
+                    '⛔ КРИТИЧНА ПОМИЛКА: Ти ВЖЕ викликав list_directory. Вміст папки НЕ ЗМІНИТЬСЯ, поки ти не створиш файл. Твоя наступна дія МАЄ БУТИ write_file. ЗАБОРОНЕНО викликати list_directory знову без write_file!'))
+                state.consecutive_failures += 1
+                state.step += 1
+                time.sleep(0.3)
+                return True  # Продовжуємо цикл, LLM отримає stuck_warning
+
             # Рахуємо, скільки разів він викликав list_directory за останні 4 кроків
             recent_actions = [a.get('action') for a in state.actions_history[-4:]]
             if recent_actions.count('list_directory') >= 2:
@@ -1367,7 +1410,6 @@ class AgentLoop:
                 state.step += 1
                 time.sleep(0.3)
                 return True  # Продовжуємо цикл, LLM отримає stuck_warning
-
         # ─── Блокування повторних write_file ───────────────────────────
         if action == "write_file":
             # Створюємо fingerprint для порівняння
@@ -1391,8 +1433,23 @@ class AgentLoop:
         # 3. Act
         act_result = self.act(plan)
         
+        # ─── Зберігаємо результат list_directory для контексту ─────────
+        if action == "list_directory" and act_result.get("ok"):
+            self._list_directory_used = True
+            # Зберегти список файлів з результату
+            result = act_result.get('result', '')
+            if isinstance(result, str):
+                self._last_list_dir_files = [f.strip() for f in result.split('\n') if f.strip() and not f.startswith('[')]
+            elif isinstance(result, list):
+                self._last_list_dir_files = [str(f) for f in result]
+            else:
+                self._last_list_dir_files = []
+            logger.info("AgentLoop: list_directory збережено (%d файлів)", len(self._last_list_dir_files))
+
         # ─── Автоматичний прогрес після write_file ──────────────────────
         if action == "write_file" and act_result.get("ok"):
+            # Позначаємо що був хоч один write_file після list_directory
+            self._has_written_since_list_dir = True
             # Додаємо до blocked, щоб блокувати повторні записи того самого файлу
             try:
                 fp = f"write_file:{args.get('filepath', '')}:{_json.dumps(args.get('content', ''), sort_keys=True)}"
@@ -1779,6 +1836,11 @@ class AgentLoop:
                 pass
         state = self._load_checkpoint() or AgentState()
         start_time = time.time()
+
+        # Скидаємо стан list_directory для нової сесії
+        self._list_directory_used = False
+        self._last_list_dir_files = []
+        self._has_written_since_list_dir = False
 
         self._gui_msg('update_status', '🔄 Agent loop: observe → plan → act → check')
         self._gui_msg('execution_started', None)
