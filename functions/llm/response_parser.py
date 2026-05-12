@@ -274,6 +274,8 @@ def _execute_single_action(registry, action_dict):
         "list_windows": "list_windows",
         "keyboard_type": "keyboard_type",
         "press_key": "press_key",
+        "write_file": "write_file",
+        "read_file": "read_file",
         "open_browser": "cdp_ensure_chrome",
         "playwright_navigate": "playwright_navigate",
         "playwright_click": "playwright_click",
@@ -528,38 +530,38 @@ def _try_extract_from_tokens(response_text: str, registry) -> Optional[str]:
 
 def process_llm_response(response_text, registry, original_command=None):
     """Обробити відповідь LLM і виконати функції
-    
+
     Args:
         response_text: Відповідь від LLM
         registry: Реєстр функцій
         original_command: Оригінальна команда користувача (для fallback логіки)
     """
     clean_text = clean_llm_tokens(response_text).strip()
-    
+
     # Логування для відладки
-    print(f"{Fore.LIGHTBLACK_EX}[DEBUG] clean_text: '{clean_text}'")
-    print(f"{Fore.LIGHTBLACK_EX}[DEBUG] response_text: '{response_text}'")
+    print(f"{Fore.LIGHTBLACK_EX}[DEBUG] clean_text: '{clean_text[:500]}...'")
+    print(f"{Fore.LIGHTBLACK_EX}[DEBUG] response_text length: {len(response_text)}")
     if original_command:
         print(f"{Fore.LIGHTBLACK_EX}[DEBUG] original_command: '{original_command}'")
-    
+
     # Fallback: якщо LLM повернув порожню відповідь
     if not clean_text and original_command:
         result = _handle_empty_response(original_command, registry)
         if result:
             return result
-    
+
     # Проста текстова команда без JSON
     if clean_text:
         result = _handle_simple_text_command(clean_text, registry)
         if result:
             return result
-    
+
     # Множинні JSON-дії
     multi_actions = extract_all_json_actions(response_text)
     print(f"{Fore.LIGHTBLACK_EX}🔍 [Action parser]: знайдено {len(multi_actions)} дій")
     for i, a in enumerate(multi_actions):
         print(f"{Fore.LIGHTBLACK_EX}   • Дія {i+1}: {a.get('action', '???')}")
-    
+
     result = _handle_multi_actions(multi_actions, registry)
     if result:
         return result
@@ -567,13 +569,15 @@ def process_llm_response(response_text, registry, original_command=None):
     # Спробувати отримати чистий JSON
     json_text = extract_json_from_text(response_text)
     print(f"{Fore.LIGHTBLACK_EX}📦 [Спроба парсингу]: {json_text[:200]}...")
-    
+
     try:
         response_json = safe_json_loads(json_text)
+        print(f"{Fore.GREEN}✅ [JSON успішно розпарсено]: action={response_json.get('action', '???')}")
         return _handle_json_response(response_json, registry, response_text)
     except json.JSONDecodeError as e:
         print(f"{Fore.YELLOW}⚠️ [JSON помилка]: {e}")
-        print(f"{Fore.YELLOW}⚠️ [Оригінал]: {response_text}")
+        print(f"{Fore.YELLOW}⚠️ [JSON текст]: {json_text[:500]}...")
+        print(f"{Fore.YELLOW}⚠️ [Оригінал]: {response_text[:500]}...")
 
         # Fallback: спробувати витягти кілька JSON-дій окремо
         if len(multi_actions) >= 1:

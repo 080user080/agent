@@ -69,6 +69,7 @@ class LoopDetector:
         self.is_stuck: bool = False
         self.loop_events: List[LoopEvent] = []
         self._total_loops_detected: int = 0
+        self.loop_count: int = 0  # Лічильник глобальних зациклень для штрафного ліміту
 
     def is_looping(self, action: str, args: Dict[str, Any]) -> bool:
         """Перевірити чи поточна дія створює зациклення.
@@ -100,6 +101,7 @@ class LoopDetector:
         if all(fp == last_n[0] for fp in last_n):
             self.is_stuck = True
             self._total_loops_detected += 1
+            self.loop_count += 1  # Інкрементуємо глобальний лічильник зациклень
             event = LoopEvent(
                 step=len(self._actions),
                 action=action,
@@ -129,6 +131,7 @@ class LoopDetector:
         """Очистити історію детектора (після виявлення зациклення)."""
         self._fingerprints.clear()
         self._actions.clear()
+        # НЕ скидаємо loop_count - це штрафний ліміт для сесії
 
     def full_reset(self) -> None:
         """Повне скидання для нової сесії."""
@@ -136,6 +139,17 @@ class LoopDetector:
         self.is_stuck = False
         self.loop_events.clear()
         self._total_loops_detected = 0
+        self.loop_count = 0  # Скидаємо тільки при повному скиданні
+
+    def should_force_fallback(self) -> bool:
+        """Перевірити чи треба примусово перейти в fallback.
+
+        Якщо зациклився вже двічі за одну сесію — негайно в fallback.
+
+        Returns:
+            True якщо треба примусово перейти в fallback
+        """
+        return self.loop_count >= 2
 
     @property
     def total_loops_detected(self) -> int:
@@ -218,6 +232,41 @@ class LoopDetector:
                 "Ти зациклився. Спробуй інший підхід. "
                 "Зупинись, подумай, яка дійсно корисна дія зараз змінить стан системи."
             )
+
+    def get_correction_hint(self, action_name: str) -> str:
+        """Повернути "силову інструкцію" для впорскування в історію чату при виявленні циклу.
+
+        Використовується коли LoopDetector виявив зациклення,
+        щоб дати LLM більш категоричну інструкцію для виходу з циклу.
+
+        Args:
+            action_name: Назва дії, на якій зациклився агент
+
+        Returns:
+            Категорична інструкція для LLM
+        """
+        if action_name == 'list_directory':
+            return (
+                "УВАГА: Ти вже перевіряв цю папку 3 рази. Вміст не зміниться сам по собі! "
+                "ПРИПИНИ викликати list_directory. Якщо файлу немає у списку — "
+                "це означає, що його НЕМАЄ на диску. Твоя наступна дія МАЄ БУТИ write_file."
+            )
+        elif action_name == 'read_code_file':
+            return (
+                "УВАГА: Ти читаєш той самий файл повторно. Його вміст не зміниться. "
+                "ПРИПИНИ читати! Твоя наступна дія МАЄ БУТИ write_file або edit_file."
+            )
+        elif action_name == 'execute_python' or action_name == 'oi_execute_with_healing':
+            return (
+                "УВАГА: Ти запускаєш той самий код повторно і він не працює. "
+                "ПРИПИНИ запускати! Твоя наступна дія МАЄ БУТИ зміна коду, а не повторний запуск."
+            )
+        elif action_name in ('take_screenshot', 'ocr_screen'):
+            return (
+                "УВАГА: Ти робиш скріншот повторно, але екран не змінюється. "
+                "ПРИПИНИ спостерігати! Твоя наступна дія МАЄ БУТИ дія, яка змінює стан."
+            )
+        return "Зміни стратегію, поточна дія неефективна."
 
     def get_stats(self) -> Dict[str, Any]:
         """Статистика детектора."""

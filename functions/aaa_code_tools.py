@@ -247,14 +247,15 @@ def list_directory(directory=None):
             })
 
         # Формуємо повідомлення
-        lines_out = [f"📁 ПОВНИЙ ВМІСТ ПАПКИ {directory} ({len(items)} файлів/папок):"]
+        lines_out = [f"--- START OF DIRECTORY LIST ({len(items)} items) ---"]
+        lines_out.append(f"📁 ПОВНИЙ ВМІСТ ПАПКИ {directory}:")
         for item in items:
             if item["is_dir"]:
                 lines_out.append(f"  📂 {item['name']}/")
             else:
                 size_str = f" ({item['size']} байт)" if item["size"] is not None else ""
                 lines_out.append(f"  📄 {item['name']}{size_str}")
-        lines_out.append("  КІНЕЦЬ СПИСКУ.")
+        lines_out.append("--- END OF DIRECTORY LIST (ALL FILES SHOWN) ---")
 
         return make_tool_result(
             True,

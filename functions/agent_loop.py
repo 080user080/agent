@@ -156,6 +156,13 @@ class ActionDecider:
         "C. Викликай list_directory ТІЛЬКИ ОДИН РАЗ на самому початку і ОДИН РАЗ в самому кінці для фінальної перевірки.\n"
         "D. Якщо ти бачиш у actions_history, що ти вже робив list_directory — тобі ЗАБОРОНЕНО робити його знову, поки ти не створиш новий файл.\n"
         "\n"
+        "ПРАВИЛО СУВОРОЇ ПОСЛІДОВНОСТІ:\n"
+        "1. Після створення файлу (write_file), відмічай його у своєму внутрішньому списку як \"DONE\".\n"
+        "2. ЗАБОРОНЕНО викликати одну й ту саму READ-дію (list_directory, read_file) двічі поспіль без проміжної WRITE-дії.\n"
+        "3. Якщо ти бачиш у списку файлів 4 файли з 10 потрібних — не чекай, поки вони з'являться самі. Створи відсутні файли.\n"
+        "4. Якщо ти вже бачив вивід list_directory, ти МАЄШ ПОВЕРНУТИ помилку самому собі, якщо намагаєшся викликати його знову без створення файлу.\n"
+        "5. ПРАВИЛО СТВОРЕННЯ: Якщо дія read_code_file повертає 'Файл не знайдено', це означає, що твоя наступна дія має бути виключно write_file для цього файлу. ЗАБОРОНЕНО робити list_directory або знову read_code_file після помилки відсутності файлу.\n"
+        "\n"
         "RESPOND WITH ONLY JSON. NO MARKDOWN. NO EXPLANATIONS OUTSIDE JSON."
     )
 
@@ -513,6 +520,12 @@ class AgentLoop:
         # LoopDetector — виявлення зациклення
         from .core_loop_detector import LoopDetector
         self.loop_detector = LoopDetector(max_repeats=3)
+
+        # Блокування повторних ідентичних write_file
+        self._blocked_write_fingerprints: set = set()
+
+        # Пам'ять про відсутні файли (для A-B-A-B циклів)
+        self.failed_reads: set = set()
 
     # ─── GUI messaging ────────────────────────────────────────────────────────
 
@@ -1327,8 +1340,73 @@ class AgentLoop:
                 status_msg += f' — {short}'
         self._gui_msg('update_status', status_msg)
 
+        # ─── Блокування повторного читання неіснуючих файлів ────────
+        if action == "read_code_file":
+            filepath = args.get('filepath', '')
+            if filepath in self.failed_reads:
+                # Цей файл вже був не знайдено — блокуємо повторне читання
+                logger.warning("Блоковано повторне читання неіснуючого файлу: %s", filepath)
+                print(f"[AgentLoop]   ⛔ Блоковано повторне читання неіснуючого файлу: {filepath}")
+                self._gui_msg('add_message', ('assistant',
+                    f'⛔ ПОМИЛКА КРИТИЧНА: Файл {filepath} вже був не знайдено. ВІН НЕ З\'ЯВИТЬСЯ САМ. Тобі ЗАБОРОНЕНО читати його знову. Негайно використай write_file, щоб СТВОРИТИ його.'))
+                state.consecutive_failures += 1
+                state.step += 1
+                time.sleep(0.3)
+                return True  # Продовжуємо цикл, LLM отримає stuck_warning
+
+        # ─── Блокування A-B-A-B циклів для list_directory ────────────
+        if action == "list_directory":
+            # Рахуємо, скільки разів він викликав list_directory за останні 4 кроків
+            recent_actions = [a.get('action') for a in state.actions_history[-4:]]
+            if recent_actions.count('list_directory') >= 2:
+                logger.warning("Блоковано повторний list_directory (A-B-A-B цикл)")
+                print(f"[AgentLoop]   ⛔ Блоковано повторний list_directory")
+                self._gui_msg('add_message', ('assistant',
+                    '⛔ ПОМИЛКА: Ти вже двічі перевіряв папку за останні кроки. Досить спостерігати! Почни створювати відсутні файли (write_file).'))
+                state.consecutive_failures += 1
+                state.step += 1
+                time.sleep(0.3)
+                return True  # Продовжуємо цикл, LLM отримає stuck_warning
+
+        # ─── Блокування повторних write_file ───────────────────────────
+        if action == "write_file":
+            # Створюємо fingerprint для порівняння
+            import json as _json
+            try:
+                fp = f"write_file:{args.get('filepath', '')}:{_json.dumps(args.get('content', ''), sort_keys=True)}"
+            except Exception:
+                fp = f"write_file:{args.get('filepath', '')}:{str(args.get('content', ''))}"
+            
+            if fp in self._blocked_write_fingerprints:
+                # Цей write_file вже був виконаний — блокуємо повтор
+                logger.warning("Блоковано повторний write_file: %s", args.get('filepath', ''))
+                print(f"[AgentLoop]   ⛔ Блоковано повторний write_file: {args.get('filepath', '')}")
+                self._gui_msg('add_message', ('assistant',
+                    f'⛔ Блоковано повторний write_file: {args.get("filepath", "")}'))
+                state.consecutive_failures += 1
+                state.step += 1
+                time.sleep(0.3)
+                return True  # Продовжуємо цикл, LLM отримає stuck_warning
+
         # 3. Act
         act_result = self.act(plan)
+        
+        # ─── Автоматичний прогрес після write_file ──────────────────────
+        if action == "write_file" and act_result.get("ok"):
+            # Додаємо до blocked, щоб блокувати повторні записи того самого файлу
+            try:
+                fp = f"write_file:{args.get('filepath', '')}:{_json.dumps(args.get('content', ''), sort_keys=True)}"
+            except Exception:
+                fp = f"write_file:{args.get('filepath', '')}:{str(args.get('content', ''))}"
+            self._blocked_write_fingerprints.add(fp)
+            
+            # Додаємо прогрес
+            filepath = args.get('filepath', '')
+            filename = filepath.split('/')[-1].split('\\')[-1] if filepath else 'unknown'
+            progress_line = f"✅ Створено: {filename}"
+            if progress_line not in state.progress_summary:
+                state.progress_summary += f"\n{progress_line}"
+                logger.info("AgentLoop: додано прогрес: %s", progress_line)
         state.last_action = action
 
         print(f"[AgentLoop]   ✅ Result: {act_result.get('ok', False)}")
@@ -1336,6 +1414,14 @@ class AgentLoop:
             print(f"[AgentLoop]   📄 Output: {str(act_result.get('result', ''))[:1000]}...")
         if act_result.get('error'):
             print(f"[AgentLoop]   ❌ Error: {act_result.get('error')}")
+
+        # ─── Запам'ятовуємо відсутні файли ───────────────────────────
+        if action == "read_code_file" and not act_result.get("ok"):
+            result_str = str(act_result.get('error', '') + str(act_result.get('result', '')))
+            if "Файл не знайдено" in result_str or "не існує" in result_str or "No such file" in result_str:
+                filepath = args.get('filepath', '')
+                self.failed_reads.add(filepath)
+                logger.info("Запам'ятовано відсутній файл: %s", filepath)
 
         # 4. Check (з act_result + expectations)
         check_result = self.check(action, obs, act_result=act_result, expectations=expectations)
@@ -1515,12 +1601,44 @@ class AgentLoop:
             logger.warning(f"Failed to delete checkpoint: {e}")
 
     def _send_completion_summary(self, state: AgentState, duration: float) -> None:
-        """Відправити summary про завершення в GUI."""
+        """Відправити summary про завершення в GUI з перевіркою чек-лісту."""
         self._gui_msg('execution_finished', None)
 
+        # Фінальна перевірка чек-лісту для завдань створення файлів
+        import os
+        target_dir = "."
+
+        # Пробуємо отримати правильну директорію з context_controller
+        if self.context_controller and hasattr(self.context_controller, 'target_dir'):
+            target_dir = self.context_controller.target_dir
+        elif hasattr(self.assistant, 'target_dir'):
+            target_dir = self.assistant.target_dir
+        else:
+            # Пробуємо витягти з останнього list_directory з історії
+            for h in reversed(state.actions_history):
+                if h.get('action') == 'list_directory':
+                    dir_arg = h.get('args', {}).get('directory', '')
+                    if dir_arg and os.path.isdir(dir_arg):
+                        target_dir = dir_arg
+                        break
+
+        # Перевіряємо наявність файлів для PyQt6 модульної програми
+        required_files = ["constants.py", "base_tab.py", "chat_tab.py", "settings_tab.py",
+                         "logs_tab.py", "statistics_tab.py", "about_tab.py", "tools_tab.py", "run.py"]
+        try:
+            actual_files = os.listdir(target_dir) if os.path.isdir(target_dir) else []
+        except Exception:
+            actual_files = []
+
+        missing_files = [f for f in required_files if f not in actual_files]
+        is_incomplete = len(missing_files) > 0
+
         summary = f"📊 Agent loop завершено: {state.step} кроків за {duration:.1f}с"
-        if state.success:
+        if state.success and not is_incomplete:
             summary += " ✅ Успішно"
+        elif is_incomplete:
+            summary += f" ⚠️ Незавершено (відсутні: {', '.join(missing_files)})"
+            state.success = False  # Оновлюємо стан якщо незавершено
         else:
             summary += " ⚠️ Не завершено"
         self._gui_msg('add_message', ('assistant', summary))
@@ -1569,12 +1687,26 @@ class AgentLoop:
                 action_dict = {"action": last_event.action, "args": {}}
                 loop_advice = self.loop_detector.get_loop_advice(action_dict)
 
+        # Отримуємо список файлів в цільовій директорії для визначення відсутніх
+        import os
+        try:
+            actual_files = os.listdir(target_dir) if os.path.isdir(target_dir) else []
+        except Exception:
+            actual_files = []
+
+        # Визначаємо відсутні файли (загальний список для PyQt6 модульної програми)
+        required_files = ["constants.py", "base_tab.py", "chat_tab.py", "settings_tab.py",
+                         "logs_tab.py", "statistics_tab.py", "about_tab.py", "tools_tab.py", "run.py"]
+        missing_files = [f for f in required_files if f not in actual_files]
+
         # Формуємо ПОВНИЙ промпт для Open Interpreter (замість просто коментарів)
         # Це дає Open Interpreter розуміння що проект НЕ завершено і треба допрацювати
         fallback_prompt = f"""
-Мене звати Марк. Я виконував завдання: "{task}"
+Мій попередній агент (Марк) зациклився.
 
-ПОТОЧНИЙ СТАТУС:
+ОРИГІНАЛЬНЕ ЗАВДАННЯ: "{task}"
+
+ПОТОЧНИЙ СТАН:
 - Всього кроків виконано: {state.step}
 - Промахів поспіль: {state.consecutive_failures}
 - Історія виконання:
@@ -1583,13 +1715,21 @@ class AgentLoop:
 ВЖЕ СТВОРЕНО ФАЙЛІВ:
 {files_summary}
 
+ФАКТИЧНІ ФАЙЛИ В ПАПЦІ "{target_dir}":
+{chr(10).join([f"- {f}" for f in actual_files]) if actual_files else "(папка порожня)"}
+
+ВІДСУТНІ ФАЙЛИ (ТРЕБА СТВОРИТИ):
+{chr(10).join([f"- {f}" for f in missing_files]) if missing_files else "(всі файли є)"}
+
 ПРИЧИНА ЗУПИНКИ:
 {loop_advice if loop_advice else "Я не зміг виконати завдання через зациклення або помилки."}
 
-ТВОЄ ЗАВДАННЯ:
-Проаналізуй папку "{target_dir}", подивись яких файлів з ТЗ не вистачає
-і ДОПИШИ їх. Не починай спочатку — просто заверши проект.
-Ти маєш повний доступ до файлової системи та інтернету.
+ТВОЯ МЕТА:
+1. Створити відсутні файли: {', '.join(missing_files) if missing_files else '(ніяких)'}
+2. Використовувати BaseTab та constants.py (якщо вони є) для створення вкладок.
+3. Завершити проект, щоб він став робочим.
+4. НЕ роби list_directory більше одного разу. Одразу пиши код.
+5. Ти маєш повний доступ до файлової системи та інтернету.
 Використовуй os, pathlib, subprocess для виконання задачі.
 """
 
@@ -1646,6 +1786,14 @@ class AgentLoop:
         try:
             while not self._should_stop(state, start_time):
                 logger.info("AgentLoop: step=%d, max_steps=%d", state.step, self.config.max_steps)
+
+                # Перевіряємо на штрафний ліміт (друге зациклення) - негайний fallback
+                if self.loop_detector.should_force_fallback():
+                    logger.warning("Штрафний ліміт зациклень (%d циклів), примусовий Open Interpreter fallback",
+                                   self.loop_detector.loop_count)
+                    self._try_open_interpreter_fallback(task, state)
+                    if state.success or state.done:
+                        break
 
                 # Перевіряємо на глибоке зациклення (багато циклів)
                 # LoopDetector вже виявляє поодинокі цикли в _execute_single_step

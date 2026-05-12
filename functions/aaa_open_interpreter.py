@@ -53,10 +53,12 @@ class OpenInterpreterExecutor:
             interpreter.llm.api_key = "dummy"  # litellm requires api_key even if empty
             interpreter.llm.temperature = 0.1
             interpreter.llm.max_tokens = 4000
-            interpreter.llm.context_window = 20000  # Розширений контекст для повної історії виконання
+            interpreter.llm.context_window = 8000  # Контекст для fallback
 
-            # Disable auto-run for safety (will be controlled by auto_run parameter)
-            interpreter.auto_run = False
+            # Enable auto-run for automated execution (no Y/N prompts)
+            interpreter.auto_run = True
+            # Disable safe mode for full automation
+            interpreter.safe_mode = "off"
 
             self._interpreter = interpreter
             self._initialized = True

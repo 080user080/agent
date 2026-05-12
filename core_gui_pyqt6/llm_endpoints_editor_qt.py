@@ -37,7 +37,7 @@ class LLMEndpointItem:
         self.provider = data.get("provider", "openai")
         self.api_key = data.get("api_key", "")
         self.temperature = data.get("temperature", 0.1)  # Додано temperature
-        self.max_tokens = data.get("max_tokens", 1024)  # Додано max_tokens
+        self.max_tokens = data.get("max_tokens", 40000)  # Додано max_tokens
         self.timeout = data.get("timeout", 60)  # Додано timeout
         self.script_command = data.get("script_command", "")  # Додано script_command
         self.script_output_file = data.get("script_output_file", "")  # Додано script_output_file
