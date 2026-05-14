@@ -212,285 +212,25 @@ class VoiceAssistant:
                 self.conversation_history.append({"role": "user", "content": command_text})
                 self._history_already_added = True
 
-            # --- Planner branch --- #GPT
+            # --- Planner branch (LEGACY - replaced by AgentLoop in A0) --- #GPT
+            # Planner legacy прибрано з process_command. Тепер він використовується тільки
+            # всередині AgentLoop як один із інструментів планування (_plan_from_planner).
+            # Якщо команда потребує виконання дій — вона має йти через AgentLoop.
+            
+            # Визначаємо чи це команда до виконання чи звичайна розмова
             has_planner = hasattr(self, "planner") and self.planner is not None
-            should_plan_flag = self.planner.should_plan(command_text) if has_planner else False
-            print(f"{Fore.CYAN}🔍 [DEBUG] planner exists: {has_planner}, should_plan: {should_plan_flag}, text: '{command_text[:50]}...'")
-            if has_planner and should_plan_flag:
-                if self.gui_log_callback:
-                    self.gui_log_callback("update_status", '📋 Планування...')
-                plan = self.planner.create_plan(command_text)
-                if not plan:
-                    # LLM не повернув валідний план — можливо помилка API
-                    # Примітка: детальна помилка вже залогована в _detect_llm_error
-                    print(f"{Fore.YELLOW}⚠️  Виконую напряму без планування...")
+            is_task = self.planner.should_plan(command_text) if has_planner else False
+            
+            if is_task:
+                print(f"{Fore.CYAN}🎤 [DEBUG] Команда до виконання виявлена, використовуємо AgentLoop")
+                if hasattr(self, 'agent_loop') and self.agent_loop:
+                    # Використовувати AgentLoop для задач
+                    self.run_agent_loop(command_text)
                     if self.gui_log_callback:
-                        self.gui_log_callback("add_message", (
-                            "assistant",
-                            "⚠️ **Планер недоступний** — виконую без структурованого плану.\n\n"
-                            "_Перевірте налаштування LLM у вкладці 'Налаштування' → 'LLM Ендпоінти'_"
-                        ))
-                    # Продовжуємо до звичайного LLM блоку нижче (не return!)
-                elif plan:
-                    is_safe, explanation = self.planner.validate_plan_safety(plan, command_text)
-                    if not is_safe:
-                        warning_msg = f"⚠️ План може бути небезпечним: {explanation}"
-                        self.log_to_gui("assistant", warning_msg)
-                        print(f"{Fore.RED}{warning_msg}{Fore.RESET}")
-                        if self.gui_log_callback:
-                            self.gui_log_callback("update_status", '✅ Готовий до роботи')
-                        return
-
-                    print(f"{Fore.MAGENTA}📋 План: {plan}")
-                    # Зберігаємо план для кнопки "Виконати план" у GUI
-                    self._last_plan = list(plan)
-                    self._last_plan_task = command_text
-
-                    # --- Ініціалізація TaskMemory ---
-                    task_id = self.memory.start_task(command_text)
-                    self.memory.record_task_plan(plan)
-                    print(f"{Fore.CYAN}📝 Задача: {task_id}")
-
-                    if self.gui_log_callback:
-                        self.gui_log_callback("update_status", '📋 План створено, виконання...')
-
-                    context = self.planner.build_execution_context(command_text, plan)
-
-                    def execute_step(step):
-                        if self.executor.stop_requested:
-                            return {
-                                "action": step.get("action"),
-                                "status": "stopped",
-                                "result": "⏹️ Виконання зупинено користувачем.",
-                                "step": step,
-                                "context": context.copy(),
-                            }
-
-                        prepared_step = self.planner.prepare_step(step, context)
-                        action = prepared_step.get("action")
-                        args = prepared_step.get("args", {})
-                        risk = self.registry.get_tool_risk(action)
-
-                        if risk == "blocked":
-                            return {
-                                "action": action,
-                                "status": "blocked",
-                                "result": f"⛔ Дію '{action}' заблоковано політикою безпеки.",
-                                "validation": "blocked_by_policy",
-                                "step": prepared_step,
-                                "context": context.copy(),
-                            }
-
-                        # Двозначні дії (ambiguous) теж потребують підтвердження
-                        needs_confirm = risk == "confirm_required" or prepared_step.get("requires_confirmation")
-                        ambiguous_pattern = prepared_step.get("ambiguous_pattern")
-
-                        if needs_confirm:
-                            question = f"Підтвердити дію '{action}'?"
-                            if action == "open_program":
-                                question = f"Підтвердити відкриття програми '{args.get('program_name', '')}'?"
-                            elif action == "close_program":
-                                question = f"Підтвердити закриття програми '{args.get('process_name', '')}'?"
-                            elif action == "add_allowed_program":
-                                question = f"Підтвердити додавання програми '{args.get('program_name', '')}' у whitelist?"
-
-                            if ambiguous_pattern:
-                                question = f"⚠️ Двозначна дія (патерн: '{ambiguous_pattern}'). {question}"
-                                # ambiguous логуємо у консоль, GUI показує в панелі
-                                print(f"{Fore.YELLOW}⚠️ Двозначна дія в кроці '{action}' (патерн: '{ambiguous_pattern}'){Fore.RESET}")
-
-                            # Не дублюємо в чат - панель плану вже показує "needs_confirmation"
-                            confirmation_result = self.registry.execute_function(
-                                "confirm_action",
-                                {"action": action, "question": question},
-                            )
-                            confirmation_meta = getattr(self.registry, "last_tool_result", None)
-                            if not confirmation_meta or not confirmation_meta.get("ok"):
-                                return {
-                                    "action": action,
-                                    "status": "needs_confirmation",
-                                    "result": confirmation_result,
-                                    "validation": "confirmation_required",
-                                    "step": prepared_step,
-                                    "context": context.copy(),
-                                }
-
-                        # "▶️ Крок" тепер у панелі плану як running
-                        print(f"{Fore.CYAN}▶️ Крок: {action}{Fore.RESET}")
-                        # Перед keyboard_type — клік у нижню частину активного вікна для фокусу поля вводу
-                        if action == "keyboard_type" and context.get("_last_action") in ("activate_window_by_title", "activate_window"):
-                            try:
-                                import pygetwindow as gw
-                                active_window = gw.getActiveWindow()
-                                if active_window:
-                                    click_x = active_window.left + active_window.width // 2
-                                    click_y = active_window.top + max(1, active_window.height - 80)
-                                    self.registry.execute_function("mouse_click", {"x": click_x, "y": click_y})
-                                time.sleep(0.3)
-                            except Exception:
-                                pass
-                        result = self.registry.execute_function(action, args)
-                        context["_last_action"] = action
-                        # Затримка після активації вікна для фокусу перед keyboard_type
-                        if action in ("activate_window_by_title", "activate_window"):
-                            time.sleep(1.0)
-                        success, validation_message = self.planner._validate_step(action, args, result, context)
-                        tool_meta = getattr(self.registry, "last_tool_result", None)
-                        print(f"[DEBUG] Step executed: action={action}, success={success}, result_len={len(result)}")
-
-                        repair_step = None
-                        replanned_steps = None
-                        final_result = result
-                        final_action = action
-                        final_args = args
-
-                        MAX_REPAIR_ATTEMPTS = 3  # Збільшено до 3
-                        MAX_REPLAN_ATTEMPTS = 1
-
-                        # === Багатоетапний repair цикл ===
-                        # Відключити repair для простих дій які не потребують виправлення
-                        SKIP_REPAIR_ACTIONS = {"list_directory", "read_code_file", "search_in_code"}
-
-                        if not success and not self.executor.stop_requested and action not in SKIP_REPAIR_ACTIONS:
-                            if tool_meta and tool_meta.get("needs_confirmation"):
-                                return {
-                                    "action": action,
-                                    "status": "needs_confirmation",
-                                    "result": result,
-                                    "validation": validation_message,
-                                    "step": prepared_step,
-                                    "context": context.copy(),
-                                }
-
-                            repair_attempts = 0
-                            current_action = action
-                            current_args = args
-                            current_result = result
-                            current_step = prepared_step
-
-                            while not success and repair_attempts < MAX_REPAIR_ATTEMPTS:
-                                repair_attempts += 1
-                                print(f"{Fore.YELLOW}⚠️ Крок не пройшов перевірку. Repair спроба {repair_attempts}/{MAX_REPAIR_ATTEMPTS}{Fore.RESET}")
-
-                                # Запитуємо repair-стратегію у планера
-                                repair_step = self.planner.propose_repair_step(
-                                    command_text, current_step, current_result, context
-                                )
-
-                                if not repair_step:
-                                    print(f"{Fore.YELLOW}⚠️ Планер не запропонував repair-стратегію{Fore.RESET}")
-                                    break
-
-                                repaired = self.planner.prepare_step(repair_step, context)
-                                new_action = repaired.get("action")
-                                new_args = repaired.get("args", {})
-
-                                # Антициклічна перевірка: не повторюємо ідентичний крок
-                                if new_action == current_action and new_args == current_args:
-                                    print(f"{Fore.YELLOW}⚠️ Repair пропонує ідентичний крок — зупиняю repair{Fore.RESET}")
-                                    break
-
-                                # Виконуємо repair-крок
-                                print(f"{Fore.CYAN}🔁 Repair-крок: {new_action}{Fore.RESET}")
-                                current_action = new_action
-                                current_args = new_args
-                                current_result = self.registry.execute_function(new_action, new_args)
-                                current_step = repaired
-                                repair_step = repaired  # Зберігаємо для логу
-
-                                # Перевіряємо результат
-                                success, validation_message = self.planner._validate_step(
-                                    new_action, new_args, current_result, context
-                                )
-
-                                if success:
-                                    print(f"{Fore.GREEN}✅ Repair успішний на спробі {repair_attempts}{Fore.RESET}")
-                                    break
-
-                            # Оновлюємо фінальні значення після циклу repair
-                            final_action = current_action
-                            final_args = current_args
-                            final_result = current_result
-                            prepared_step = current_step
-
-                            # Якщо repair не допоміг — пробуємо replan (один раз)
-                            if not success:
-                                replan_attempts = context.get("replan_attempts", 0)
-                                if replan_attempts < MAX_REPLAN_ATTEMPTS:
-                                    context["replan_attempts"] = replan_attempts + 1
-                                    print(f"{Fore.MAGENTA}🧭 Repair не вдався, пробую перепланування...{Fore.RESET}")
-                                    replanned_steps = self.planner.propose_replan(
-                                        command_text, prepared_step, final_result, context, []
-                                    )
-                                    if replanned_steps:
-                                        print(f"{Fore.MAGENTA}✅ Переплановано: додано {len(replanned_steps)} кроків{Fore.RESET}")
-                                    else:
-                                        print(f"{Fore.YELLOW}⚠️ Перепланування не дало результату{Fore.RESET}")
-
-                        self.planner.update_context_from_result(
-                            {"action": final_action, "args": final_args},
-                            final_result,
-                            context,
-                        )
-
-                        step_outcome = {
-                            "action": final_action,
-                            "status": "ok" if success else "error",
-                            "result": final_result,
-                            "validation": validation_message,
-                            "step": prepared_step,
-                            "repair_step": repair_step,
-                            "append_steps": replanned_steps or [],
-                            "context": context.copy(),
-                        }
-                        # Записати крок у TaskMemory
-                        self.memory.record_task_step(step_outcome)
-                        if step_outcome["status"] == "error":
-                            self.memory.session.track_error()
-                        return step_outcome
-
-                    def on_plan_complete(results):
-                        print(f"[DEBUG] on_plan_complete called with {len(results)} results")
-                        self.memory.update_task(command_text, plan, results)
-                        error_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "error")
-                        blocked_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "blocked")
-                        confirm_count = sum(1 for item in results if isinstance(item, dict) and item.get("status") == "needs_confirmation")
-                        print(f"[DEBUG] error_count={error_count}, blocked_count={blocked_count}, confirm_count={confirm_count}")
-
-                        # Визначити фінальний статус задачі
-                        if blocked_count:
-                            final_status = "aborted"
-                        elif error_count:
-                            final_status = "error"
-                        elif confirm_count:
-                            final_status = "cancelled"
-                        else:
-                            final_status = "success"
-
-                        # Завершити TaskMemory (згенерує LLM summary)
-                        self.memory.finish_task(final_status)
-
-                        # Показати результати виконання в чаті
-                        if blocked_count:
-                            self.log_to_gui("assistant", f"⛔ Зупинено політикою безпеки.")
-                        elif confirm_count:
-                            self.log_to_gui("assistant", f"❓ Скасовано або не підтверджено.")
-                        elif error_count:
-                            self.log_to_gui("assistant", f"⚠️ Виконано з помилками.")
-                        else:
-                            # Показати результати успішних кроків
-                            for item in results:
-                                if isinstance(item, dict) and item.get("status") == "ok":
-                                    result = item.get("result", "")
-                                    if result and isinstance(result, str) and len(result) > 0:
-                                        # Обрізати дуже довгі результати
-                                        if len(result) > 2000:
-                                            result = result[:2000] + "\n... (обрізано)"
-                                        self.log_to_gui("assistant", f"📊 Результат:\n{result}")
-                            self.log_to_gui("assistant", f"✅ Готово.")
-
-                    self.executor.execute_plan_async(plan, execute_step, on_plan_complete)
+                        self.gui_log_callback("update_status", '✅ Готовий до роботи')
                     return
+                else:
+                    print(f"{Fore.YELLOW}⚠️ AgentLoop недоступний, fallback на звичайний чат")
             
             from .config import ASSISTANT_DISPLAY_NAME
             
@@ -615,7 +355,7 @@ class VoiceAssistant:
             from .llm import ask_llm, process_llm_response
             from .core_streaming import StreamingHandler
 
-            # command_text вже додано в conversation_history на початку process_command
+            # command_text вже додано in conversation_history на початку process_command
             # Підготовка повідомлень для LLM (conversation_history вже містить поточну команду)
             messages = [{"role": "system", "content": self.system_prompt}]
             messages.extend(self.conversation_history)

@@ -30,13 +30,39 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 **Мета:** Привести проєкт до стану, коли нові функції можна додавати без ризику зламати існуюче, та створити інфраструктуру для кодового агента.
 
-**Порядок виконання:** А1 → А2 → А3 → Б1 → Б2 → Б3. Не починати Б до завершення А.
+**Порядок виконання:** А0 → А1 → А2 → А3 → Б1 → Б2 → Б3. Не починати Б до завершення А.
 
 ---
 
 ### ЕТАП А. Стабілізація та рефакторинг архітектури
 
 **Мета:** Привести проєкт до стану, коли нові функції можна додавати без ризику зламати існуюче.
+
+#### А0. Усунути конфлікт шляхів виконання (P0, передумова для А1-А3)
+
+**Проблема:** В `main.py:process_text_command()` існують два конкуруючі шляхи виконання — Planner legacy (`VoiceAssistant.process_command`) і AgentLoop (`run_agent_loop`). Класифікація між ними через ключові слова ненадійна, команди можуть потрапляти в обидва шляхи. Крім того, `run_agent_loop()` містить гілку `task_type == "CHAT"`, яка передоручає виконання назад у `process_command()` — це створює "підводний камінь" і зациклення.
+
+**Рішення:**
+- [ ] Зробити AgentLoop єдиним шляхом виконання команд з GUI
+- [ ] `VoiceAssistant.process_command` залишити тільки для голосового режиму (STT), прибрати з нього Planner legacy
+- [ ] Planner legacy використовується тільки всередині AgentLoop як інструмент планування (`_plan_from_planner`), а не як окремий шлях з GUI
+- [ ] **Прибрати Planner legacy з `process_command()`** (`should_plan` → `create_plan` → `execute_plan_async`). Замість нього — виклик AgentLoop для команд і ask_llm для розмов.
+- [ ] Прибрати гілку `task_type == "CHAT"` в `run_agent_loop()` — вона передоручає виконання в `process_command`, що створює дублювання
+- [ ] Спростити `process_text_command()`: замість класифікації через ключові слова — завжди пускати через AgentLoop. Якщо AgentLoop вирішить що це "чайт" — він сам запустить LLM.
+- [ ] `process_command()` після А0 виконує тільки: перевірка активаційного слова → визначення "команда vs розмова" → AgentLoop (для команд) / ask_llm (для розмов) → TTS → conversation_history
+- [ ] Видалити або закомітити методи Planner з `logic_commands.py`, які більше не потрібні на цьому шляху
+
+**Очікуваний pipeline після А0:**
+```
+GUI команда → run_agent_loop() → AgentLoop (LLM decide / Planner / CompiledPlan) → виконання
+STT команда → process_command() → (якщо задача) → AgentLoop / (якщо чат) → LLM
+```
+
+**Критерій готовності:** одна команда з GUI завжди йде через один шлях, без умовних розгалужень по ключових словах.
+
+**Файли для змін:**
+- `main.py` — `process_text_command()`, `run_agent_loop()`, `_classify_task()`
+- `functions/logic_commands.py` — перевірити чи process_command використовується з GUI
 
 #### А1. Полагодити pytest collection (P0)
 
@@ -267,63 +293,7 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 
 
-### Проблема: Дублювання виконання (planner + AgentLoop)
-
-**Статус:** Відстеження (01.05.2026, 22:20)
-
-
-
-**Симптоми:**
-
-- ✅ Planner тригериться (should_plan: True)
-
-- ✅ План створюється коректно з параметром `directory`
-
-- ✅ Крок виконується успішно (success=True, result_len=1146)
-
-- ✅ on_plan_complete викликається успішно
-
-- ⚠️ Через 4.0с після завершення плану спрацьовує ще AgentLoop (TaskSpecCompiler)
-
-- ⚠️ Помилка: "TaskSpec: 'dict' object has no attribute 'action'"
-
-- ⚠️ Помилка: "list index out of range"
-
-
-
-**Причина:**
-
-- Конфлікт двох шляхів виконання:
-
-  1. Planner шлях: `process_command` → `should_plan` → `create_plan` → `execute_plan_async` → `on_plan_complete`
-
-  2. AgentLoop шлях: `run_agent_loop` → TaskSpecCompiler → AgentLoop
-
-- Після завершення planner шляху спрацьовує ще AgentLoop з тим самим планом
-
-
-
-**Дії:**
-
-- Додано debug логування в `on_plan_complete` (logic_commands.py)
-
-- Додано debug логування в `run_agent_loop` (main.py)
-
-- Потрібно знайти джерело автоматичного виклику AgentLoop
-
-
-
-**Файли:**
-
-- `functions/logic_commands.py` - planner шлях виконання
-
-- `main.py` - AgentLoop шлях виконання
-
-- `core_gui_pyqt6/main_window.py` - GUI callbacks
-
-- `core_gui_pyqt6/plan_panel_qt.py` - plan panel callbacks
-
-
+> **Перенесено в А0** — конфлікт шляхів виконання тепер вирішується архітектурно, а не точковими правками.
 
 ---
 
