@@ -26,17 +26,27 @@ pip install -r requirements-dev.txt  # dev залежності
 ### 2. Структура коду
 
 ```
-functions/          # Бізнес-логіка
+functions/          # Бізнес-логіка (>100 модулів)
 ├── core_*.py      # Core модулі (планер, executor, пам'ять)
 ├── logic_*.py     # Логіка обробки
-└── tools_*.py     # Інструменти
+├── tools_*.py     # Інструменти (GUI automation, браузер, медіа)
+├── providers_*.py # AI-провайдери (Anthropic, Google, OpenAI)
+├── aaa_*.py       # LLM-tool обгортки (legacy)
+└── llm/           # LLM-шар (router, provider_chain, endpoint)
 
-gui/               # GUI компоненти
-├── main_gui.py    # Головне вікно
-└── settings/      # Налаштування
+core_gui_pyqt6/     # PyQt6 GUI (основний бекенд)
+├── main_window.py  # Головне вікно
+├── chat_panel_qt.py
+├── plan_panel_qt.py
+├── settings_tab_qt.py
+├── confirmation_qt.py
+└── llm_endpoints_editor_qt.py
 
-tests/             # Тести
+tests/             # Тести (pytest, ~85 файлів)
 └── test_*.py      # pytest тести
+
+docs/              # Документація
+└── *.md           # ARCHITECTURE, API, MODULES, CHANGELOG...
 ```
 
 ### 3. Запуск для розробки
@@ -49,11 +59,11 @@ cd /d D:\Python\TEXT\LLM_model
 call venv\Scripts\activate.bat
 cd /d D:\Python\agent
 
-# З логуванням
-python agent.py --debug
+# Основний запуск (PyQt6 GUI)
+python run.py --qt
 
-# Тільки консоль (без GUI)
-python agent.py --cli
+# Консольний режим (без GUI)
+python main.py
 
 # Тести
 python -m pytest tests/ -v
@@ -165,7 +175,7 @@ from unittest.mock import Mock, patch
 def test_with_mock():
     mock_llm = Mock(return_value='{"plan": []}')
     
-    with patch('functions.logic_llm.ask_llm', mock_llm):
+    with patch('functions.logic_llm_tools.ask_llm_with_tools', mock_llm):
         result = some_function()
         assert result is not None
 ```

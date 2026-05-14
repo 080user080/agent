@@ -1,32 +1,1302 @@
-Ядро агента та логіка циклу
-functions/agent_loop.py
-functions/logic_commands.py
-functions/logic_core.py
-functions/logic_repair_loop.py
-functions/logic_ai_adapter.py
-functions/logic_expectations.py
-functions/logic_execution_report.py
+================================================================================
+ОПИСИ .PY ФАЙЛІВ ПРОЕКТУ
+Корінь: d:\Python\agent
+Згенеровано: автоматично
+================================================================================
 
-Планування та робота з кодом
-functions/pipeline_code.py
-functions/core_planner.py
-functions/logic_task_runner.py
-functions/task_spec.py
-functions/core_task_intake.py
+--- КОРЕНЕВІ ФАЙЛИ ---
 
-Робота з LLM (Мовний шар)
-functions/llm/router.py
-functions/llm/provider_chain.py
-functions/llm/endpoint_client.py
-functions/llm/__init__.py
-functions/logic_llm_tools.py
+  [main.py]
+  Код: ﻿# main.py """Головний файл запуску з GUI інтеграцією""" import os import sys
 
-Виконавці та інструменти (Tools)
-functions/aaa_execute_python.py
-functions/aaa_create_file.py
-functions/core_tool_runtime.py
+  [remove_secrets.py]
+  Скрипт для видалення секретів (API ключів) з історії git. Використовує git-filter-repo через командний рядок.
 
-Конфігурація
-functions/config.py
+  [run.py]
+  Універсальна точка входу — PyQt6 GUI.  Запуск:
 
-+ вся документація
+  [run_assistant_qt.py]
+  Запуск асистента з PyQt6 GUI (основний GUI бекенд).  Архітектура: GUI у головному потоці (Qt вимагає), ядро у фоновому потоці.
+
+
+--- TEST_GUI/ ---
+
+  [test_aaa_osnova2_vstavka_GVI.py]
+  Автоматизований тест для перевірки вставки тексту через GlobalVoiceInput._insert_text.  ПОСТІЙНИЙ ТЕСТ - НЕ ВИДАЛЯТИ!
+
+  [test_agent_loop_chat.py]
+  Тест відображення повідомлень в GUI чаті при запуску AgentLoop.
+
+  [test_debug_loop_methodology.py]
+  Тест демонстрації Debug-Loop методології.  Приклад: Вставка тексту без RoboTask в GlobalVoiceInput.
+
+  [test_global_voice.py]
+  Діагностичний скрипт для глобального голосового введення.
+
+  [test_insert_notepad.py]
+  Тест для insert_text_smart з Блокнотом.
+
+  [test_insert_text_smart.py]
+  Тест для insert_text_smart з tools_mouse_keyboard.py.
+
+  [test_mic_button_voice_input.py]
+  Автоматизований тест для перевірки voice_input через кнопку мікрофона в GUI.  ПОСТІЙНИЙ ТЕСТ - НЕ ВИДАЛЯТИ!
+
+  [test_osnova2.py]
+  Автоматизований тест для виконання різних завдань через GUI.  ПОСТІЙНИЙ ТЕСТ - НЕ ВИДАЛЯТИ!
+
+  [test_stt_hotkey.py]
+  Автоматизований тест для перевірки STT та комбінації клавіш Ctrl+F9.  ПОСТІЙНИЙ ТЕСТ - НЕ ВИДАЛЯТИ!
+
+  [test_tray_icon.py]
+  Тестовий скрипт для VoiceTrayIcon.
+
+--- TTS\models\StyleTTS2/ ---
+
+  [losses.py]
+  Класи: SpectralConvergengeLoss, STFTLoss, MultiResolutionSTFTLoss, GeneratorLoss, DiscriminatorLoss, WavLMLoss; Функції: feature_loss, discriminator_loss, generator_loss, discriminator_TPRLS_loss, generator_TPRLS_loss
+
+  [meldataset.py]
+  Класи: TextCleaner, FilePathDataset, Collater; Функції: preprocess, build_dataloader
+
+  [models.py]
+  Класи: LearnedDownSample, LearnedUpSample, DownSample, UpSample, ResBlk, StyleEncoder та ще 11; Функції: load_F0_models, load_ASR_models, build_model, load_checkpoint
+
+  [optimizers.py]
+  Класи: MultiOptimizer; Функції: define_scheduler, build_optimizer
+
+  [text_utils.py]
+  Класи: TextCleaner
+
+  [train_finetune.py]
+  Класи: MyDataParallel; Функції: main
+
+  [train_finetune_accelerate.py]
+  Класи: MyDataParallel; Функції: main
+
+  [train_first.py]
+  Функції: main
+
+  [train_second.py]
+  Класи: MyDataParallel; Функції: main
+
+  [utils.py]
+  Функції: maximum_path, get_data_path_list, length_to_mask, log_norm, get_image, recursive_munch та ще 1
+
+--- TTS\models\StyleTTS22/ ---
+
+  [losses.py]
+  Класи: SpectralConvergengeLoss, STFTLoss, MultiResolutionSTFTLoss, GeneratorLoss, DiscriminatorLoss, WavLMLoss; Функції: feature_loss, discriminator_loss, generator_loss, discriminator_TPRLS_loss, generator_TPRLS_loss
+
+  [meldataset.py]
+  Класи: TextCleaner, FilePathDataset, Collater; Функції: preprocess, build_dataloader
+
+  [models.py]
+  Класи: LearnedDownSample, LearnedUpSample, DownSample, UpSample, ResBlk, StyleEncoder та ще 11; Функції: load_F0_models, load_ASR_models, build_model, load_checkpoint
+
+  [optimizers.py]
+  Класи: MultiOptimizer; Функції: define_scheduler, build_optimizer
+
+  [text_utils.py]
+  Класи: TextCleaner
+
+  [train_finetune.py]
+  Класи: MyDataParallel; Функції: main
+
+  [train_finetune_accelerate.py]
+  Класи: MyDataParallel; Функції: main
+
+  [train_first.py]
+  Функції: main
+
+  [train_second.py]
+  Класи: MyDataParallel; Функції: main
+
+  [utils.py]
+  Функції: maximum_path, get_data_path_list, length_to_mask, log_norm, get_image, recursive_munch та ще 1
+
+--- TTS\models\StyleTTS22\Modules/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [discriminators.py]
+  Класи: SpecDiscriminator, MultiResSpecDiscriminator, DiscriminatorP, MultiPeriodDiscriminator, WavLMDiscriminator; Функції: stft
+
+  [hifigan.py]
+  Класи: AdaIN1d, AdaINResBlock1, SineGen, SourceModuleHnNSF, Generator, AdainResBlk1d та ще 2; Функції: padDiff
+
+  [istftnet.py]
+  Класи: AdaIN1d, AdaINResBlock1, TorchSTFT, SineGen, SourceModuleHnNSF, Generator та ще 3; Функції: padDiff
+
+  [slmadv.py]
+  Класи: SLMAdversarialLoss; Функції: length_to_mask
+
+  [utils.py]
+  Функції: init_weights, apply_weight_norm, get_padding
+
+--- TTS\models\StyleTTS22\Modules\diffusion/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [diffusion.py]
+  Класи: Model1d, AudioDiffusionModel, AudioDiffusionConditional; Функції: get_default_model_kwargs, get_default_sampling_kwargs
+
+  [modules.py]
+  Класи: AdaLayerNorm, StyleTransformer1d, StyleTransformerBlock, StyleAttention, Transformer1d, RelativePositionBias та ще 6; Функції: FeedForward, TimePositionalEmbedding
+
+  [sampler.py]
+  Класи: Distribution, LogNormalDistribution, UniformDistribution, VKDistribution, Diffusion, VDiffusion та ще 14; Функції: pad_dims, clip, to_batch, sequential_mask
+
+  [utils.py]
+  Функції: exists, iff, is_sequence, default, to_list, prod та ще 5
+
+--- TTS\models\StyleTTS22\Utils/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+--- TTS\models\StyleTTS22\Utils\ASR/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [layers.py]
+  Класи: LinearNorm, ConvNorm, CausualConv, CausualBlock, ConvBlock, LocationLayer та ще 5; Функції: _get_activation_fn
+
+  [models.py]
+  Класи: ASRCNN, ASRS2S
+
+--- TTS\models\StyleTTS22\Utils\JDC/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [model.py]
+  Implementation of model from: Kum et al. - "Joint Detection and Classification of Singing Voice Melody Using Convolutional Recurrent Neural Network...
+
+--- TTS\models\StyleTTS22\Utils\PLBERT/ ---
+
+  [util.py]
+  Класи: CustomAlbert; Функції: load_plbert
+
+--- TTS\models\StyleTTS2\Modules/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [discriminators.py]
+  Класи: SpecDiscriminator, MultiResSpecDiscriminator, DiscriminatorP, MultiPeriodDiscriminator, WavLMDiscriminator; Функції: stft
+
+  [hifigan.py]
+  Класи: AdaIN1d, AdaINResBlock1, SineGen, SourceModuleHnNSF, Generator, AdainResBlk1d та ще 2; Функції: padDiff
+
+  [istftnet.py]
+  Класи: AdaIN1d, AdaINResBlock1, TorchSTFT, SineGen, SourceModuleHnNSF, Generator та ще 3; Функції: padDiff
+
+  [slmadv.py]
+  Класи: SLMAdversarialLoss; Функції: length_to_mask
+
+  [utils.py]
+  Функції: init_weights, apply_weight_norm, get_padding
+
+--- TTS\models\StyleTTS2\Modules\diffusion/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [diffusion.py]
+  Класи: Model1d, AudioDiffusionModel, AudioDiffusionConditional; Функції: get_default_model_kwargs, get_default_sampling_kwargs
+
+  [modules.py]
+  Класи: AdaLayerNorm, StyleTransformer1d, StyleTransformerBlock, StyleAttention, Transformer1d, RelativePositionBias та ще 6; Функції: FeedForward, TimePositionalEmbedding
+
+  [sampler.py]
+  Класи: Distribution, LogNormalDistribution, UniformDistribution, VKDistribution, Diffusion, VDiffusion та ще 14; Функції: pad_dims, clip, to_batch, sequential_mask
+
+  [utils.py]
+  Функції: exists, iff, is_sequence, default, to_list, prod та ще 5
+
+--- TTS\models\StyleTTS2\Utils/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+--- TTS\models\StyleTTS2\Utils\ASR/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [layers.py]
+  Класи: LinearNorm, ConvNorm, CausualConv, CausualBlock, ConvBlock, LocationLayer та ще 5; Функції: _get_activation_fn
+
+  [models.py]
+  Класи: ASRCNN, ASRS2S
+
+--- TTS\models\StyleTTS2\Utils\JDC/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [model.py]
+  Implementation of model from: Kum et al. - "Joint Detection and Classification of Singing Voice Melody Using Convolutional Recurrent Neural Network...
+
+--- TTS\models\StyleTTS2\Utils\PLBERT/ ---
+
+  [util.py]
+  Класи: CustomAlbert; Функції: load_plbert
+
+--- TTS\models\styletts2-ukrainian/ ---
+
+  [CUDA.py]
+  Код: import torch device = torch.device("cuda" if torch.cuda.is_available() else "cpu") print(f"Використовується пристрій: {device}") print(f"Назва GPU: {torch.cuda.get_device_name(0)}")
+
+  [a_1_1_ui_text_input.py]
+  a_1_1_ui_text_input.py UI блок для введення тексту або вибору файлу.
+
+  [a_1_2_ui_speakers.py]
+  a_1_2_ui_speakers.py UI блок акордеонів для налаштування голосів і швидкостей #g1–#g30.
+
+  [a_1_3_ui_controls.py]
+  a_1_3_ui_controls.py UI блок: кнопка запуску, опції збереження (в спойлері), чекбокс ігнорування швидкості.
+
+  [a_1_4_ui_output.py]
+  a_1_4_ui_output.py UI блок: аудіо-плеєр, слайдер частин, таблиця часу.
+
+  [a_1_5_ui_syntax_help.py]
+  a_1_5_ui_syntax_help.py UI блок: спойлер із синтаксисом тегів.
+
+  [a_1_6_ui_settings_save.py]
+  a_1_6_ui_settings_save.py UI блок: збереження / завантаження налаштувань голосів.
+
+  [a_1_7_ui_accordion_manager.py]
+  a_1_7_ui_accordion_manager.py Керування видимістю акордеонів на основі максимального номера спікера.
+
+  [a_1_ui_main.py]
+  a_1_ui_main.py Головний UI: складає разом усі блоки.
+
+  [a_2_synthesis.py]
+  a_2_synthesis.py Синтез мовлення з fallback-стратегіями для PL-BERT.
+
+  [a_3_sfx_engine.py]
+  a_3_sfx_engine.py Читання sfx.yaml, завантаження аудіо, нормалізація, fade.
+
+  [a_4_progress_logic.py]
+  a_4_progress_logic.py Логіка прогресу: обчислення часу, прогноз завершення.
+
+  [a_5_speaker_logic.py]
+  a_5_speaker_logic.py Парсинг тегів #gN, обчислення ефективної швидкості, валідація подій.
+
+  [a_6_text_processing.py]
+  a_6_text_processing.py Нормалізація тексту, токенізація, розбиття на частини для PL-BERT (ліміт 512).
+
+  [a_7_utils.py]
+  a_7_utils.py Допоміжні утиліти загального призначення.
+
+  [a_8_1_event_handlers.py]
+  a_8_1_event_handlers.py Обробники подій для кнопок, слайдерів, завантаження/експорту налаштувань.
+
+  [a_8_2_event_registration.py]
+  a_8_2_event_registration.py Реєстрація всіх обробників подій для UI компонентів.
+
+  [a_8_pipeline.py]
+  a_8_pipeline.py Оркестрація: батч-синтез усіх подій (voice + sfx) з прогресом для UI. Включає кешування ідентичних аудіо для оптимізації.
+
+  [a_9_main.py]
+  a_9_main.py Головний файл: запуск всієї програми.
+
+  [app.py]
+  Функції: split_to_parts, verbalize, synthesize, select_example
+
+  [app_Full_book_multi_progres_Dialog_test.py]
+  Код: ﻿import os import time import re import unicodedata
+
+  [app_multi_novuj_vocoder.py]
+  Функції: split_to_parts, verbalize, synthesize, select_example
+
+  [app_original.py]
+  Функції: split_to_parts, verbalize, synthesize, select_example
+
+  [smart_patch_gui.py]
+  Код: ﻿#!/usr/bin/env python3 """ smart_patch_gui.py — GUI для спрощених diff і генерації unified diff. Спрощений diff:
+
+  [verbalizer.py]
+  Класи: Verbalizer
+
+  [voice_split.py]
+  Класи: AdvancedVoiceMergerGUI; Функції: main
+
+--- TTS\models\styletts2-ukrainian\007_kod_gemini_plus/ ---
+
+  [text_chunker_gui.py]
+  text_chunker_gui.py  GUI-утиліта для розбиття тексту на логічні блоки і збереження в окремі файли.
+
+--- TTS\models\styletts2-ukrainian\007_kod_gemini_plus\KOD_pereclad/ ---
+
+  [0_create_default_config.py]
+  Функції: create_default_config
+
+  [1_folder_loader.py]
+  1_folder_loader.py - Вибір папки з файлами для перекладу
+
+  [2_launch_gemini.py]
+  launch_gemini.py Запускає/підключається до Chrome з debug-портом і відкриває/активує вкладку Gemini. Використано як приклад: KOD_pereclad.py. #GPT
+
+  [3_open_temp_chat.py]
+  open_temp_chat.py - ЗАВЖДИ відкриває НОВИЙ тимчасовий чат
+
+  [4_send.py]
+  Класи: MessageSender; Функції: load_config, scan_files, send_single_file, main
+
+  [5_copy.py]
+  Класи: ResponseGetter; Функції: load_config, main
+
+  [6_save_response.py]
+  Функції: load_config, get_input_file_from_args, save_output, read_clipboard, get_response_text_from_clipboard, update_merged_file та ще 1
+
+  [7_update_merged.py]
+  7_update_merged.py Додає вміст нового файлу до злитого файлу при кожному виклику З видаленням зайвих переносів рядків
+
+  [KOD_pereclad.py – копія Із звичайним чатом.py]
+  Код: ﻿#!/usr/bin/env python3 """ KOD_pereclad.py Автоматизація передачі текстів у Google Gemini через вже відкритий Google Chrome (CDP).
+
+  [main.py]
+  main_controller_simple.py Спрощений головний контролер з кольоровим логуванням та вимірюванням часу
+
+  [p_302_open_temp_chat.py]
+  Модуль P_302: Open Temp Chat Інструмент для швидкого відкриття тимчасового чату в Gemini через CDP Повністю автономний модуль - не потребує зовнішн...
+
+  [smart_patch_gui.py]
+  Код: ﻿#!/usr/bin/env python3 """ smart_patch_gui.py — GUI для спрощених diff і генерації unified diff. Спрощений diff:
+
+--- TTS\models\styletts2-ukrainian\007_universal/ ---
+
+  [main.py]
+  Головний файл для запуску системи.
+
+  [smart_patch_gui.py]
+  Код: ﻿#!/usr/bin/env python3 """ smart_patch_gui.py — GUI для спрощених diff і генерації unified diff. Спрощений diff:
+
+--- TTS\models\styletts2-ukrainian\007_universal\kod/ ---
+
+  [__init__.py]
+  Код: 
+
+  [p_000_loader.py]
+  Модуль P_000: ModuleLoader Сканування, імпорт та ініціалізація модулів. ВИПРАВЛЕНА ВЕРСІЯ: правильна обробка gr.Blocks об'єктів
+
+  [p_010_config_collector.py]
+  Модуль збирання конфігурацій. Збирає DEFAULT_CONFIG з Python файлів БЕЗ їх імпорту, через аналіз коду.
+
+  [p_012_config_updater.py]
+  Модуль для автоматичного створення та оновлення основного config.yaml. Додає тільки нові секції для нових модулів, не перезаписуючи існуючі налашту...
+
+  [p_013_report_cleaner.py]
+  Модуль для очищення застарілих звітів конфігурації та проекту. Зберігає максимум 2 файли в config_reports/ та 4 файли в project_info/ Остаток видал...
+
+  [p_015_config_tool.py]
+  Модуль утиліт для керування конфігурацією. Надає CLI команди та автоматичне створення config.yaml
+
+  [p_020_config_validator.py]
+  Валідація конфігурації через Pydantic.
+
+  [p_050_universal_deps_checker.py]
+  Універсальний модуль перевірки залежностей. Сканує всі модулі проекту, виявляє імпорти та автоматично встановлює відсутні бібліотеки.
+
+  [p_060_error_handler.py]
+  Модуль для обробки помилок завантаження модулів. Дозволяє безпечно пропускати модулі з помилками.
+
+  [p_070_event_types.py]
+  Загальні типи подій для всієї системи.
+
+  [p_075_events.py]
+  Система подій для комунікації між модулями. Дозволяє модулям публікувати та підписуватися на події.
+
+  [p_080_registry.py]
+  Реєстр дій для модулів. Модулі реєструють свої функції, які потім відображаються в GUI.
+
+  [p_090_gui_manager.py]
+  Менеджер графічних інтерфейсів.
+
+  [p_100_logger.py]
+  Класи: LoggingConfig, ColorFormatter; Функції: prepare_config_models, _resolve_level, initialize, stop
+
+  [p_303_tts_models.py]
+  p_303_tts_models.py - Завантаження та керування моделями TTS (Виділено з app.py)
+
+  [p_310_tts_config.py]
+  Конфігурація TTS модуля. Визначає всі моделі Pydantic для налаштування TTS системи. 
+
+  [p_312_tts_engine.py]
+  Класи: TTSEngine; Функції: initialize
+
+  [p_351_sfx_handler.py]
+  p_351_tts_sfx_handler.py - Обробник звукових ефектів (SFX) для TTS системи. Завантажує, обробляє, нормалізує та змішує SFX файли.
+
+  [p_352_dialog_parser.py]
+  p_352_tts_dialog_parser.py - Парсер сценаріїв Multi Dialog для TTS. Розбиває текст на частини з урахуванням обмежень токенів. Підтримує теги #gN, с...
+
+  [p_353_advanced_ui_core.py]
+  p_353_advanced_ui_core.py - Розширений UI для Multi Dialog TTS ВИПРАВЛЕНА ВЕРСІЯ: правильна ініціалізація та реєстрація demo
+
+  [p_354_ui_builder.py]
+  Класи: AdvancedUIBuilder
+
+  [p_355_ui_handlers.py]
+  Класи: UIEventHandlers; Функції: save_audio_handler, text_changed_handler, apply_sfx_handler
+
+  [p_356_ui_styles.py]
+  p_356_ui_styles.py - Стилі для UI компонентів.
+
+  [p_357_ui_utils.py]
+  Класи: UIUtils; Функції: save_audio_part, calculate_remaining_time, read_input_text, create_output_directory, prepare_config_models
+
+  [p_360_tts_gradio_advanced_ui_(mono).py]
+  p_353_tts_gradio_advanced_ui.py - Розширений Gradio UI для Multi Dialog TTS. Компактна версія, що об'єднує всю функціональність в одному файлі.
+
+  [p_400_test_integration.py]
+  Тестовий модуль для перевірки інтеграції TTS у фреймворк.
+
+  [p_901_project_info.py]
+  Модуль для документування проекту. Збирає інформацію про всі модулі, конфігурації, залежності та взаємодії. Створює повну документацію проекту для ...
+
+  [p_902_ai_helper.py]
+  p_902_ai_helper.py - Спеціальний модуль для покращення документації під ШІ. Генерує блок "ДЛЯ ШІ: Інтеграція та використання" у PROJECT_DOCUMENTATI...
+
+  [p_910_github_url_updater.py]
+  p_910_github_url_updater.py Універсальний автономний генератор RAW посилань GitHub Автоматично сканує всі файли в папці kod (ігнорує __pycache__ та...
+
+  [p_996_gui_launcher.py]
+  p_996_gui_launcher.py - Покращений CLI для вибору та запуску GUI інтерфейсів ДИНАМІЧНИЙ СКАНЕР ВСІх доступних демо в app_context
+
+--- TTS\models\styletts2-ukrainian\007_universal\kod_old/ ---
+
+  [_095_gui_launcher.py]
+  p_095_gui_launcher.py - CLI для вибору та запуску GUI інтерфейсів
+
+  [_305_tts_gradio_main_old _app.py]
+  p_305_tts_gradio_main.py - Головний Gradio інтерфейс StyleTTS2 (Виділено з app.py)
+
+  [__001_config.py]
+  Валідація конфігурації з відстеженням джерел.
+
+  [_config_tool.py]
+  Утиліта для керування конфігурацією.
+
+  [_off_p_300_test_actions.py]
+  Класи: TestConfig; Функції: prepare_config_models, initialize
+
+  [_off_p_302_verbalizer.py]
+  p_302_verbalizer.py - Вербалізація тексту (цифри в слова)
+
+  [_off_p_304_tts_verbalizer_wrapper.py]
+  p_304_tts_verbalizer_wrapper.py - Обгортка для вербалізації тексту (Виділено з app.py) 
+
+  [_off_p_350_tts_gradio.py]
+  Мінімальний Gradio UI для тестування інтеграції TTS. Цей модуль демонструє, як TTS інтегрується в систему.
+
+  [_old_p_301_app_backup.py]
+  Функції: split_to_parts, verbalize, synthesize, select_example
+
+  [_p_005_deps_checker.py]
+  Модуль для автоматичної перевірки та встановлення залежностей. Сканує всі модулі, перевіряє їхні залежності та пропонує встановити відсутні.
+
+  [_p_200_greeter.py]
+  Код: ﻿# Файл: kod/p_200_greeter.py (Оновлено: 2025-11-13 21:38 EET) """ Модуль P_200: Greeter Демонстраційний модуль, який показує використання логера і конфігурації.
+
+  [_p_300_pereclad.py]
+  Модуль P_300: Pereclad - система автоматичного перекладу через Google Gemini Інтеграція KOD_pereclad.py в модульну систему
+
+  [_p_302_open_temp_chat.py]
+  Модуль P_302: Open Temp Chat Інструмент для швидкого відкриття тимчасового чату в Gemini через CDP Повністю автономний модуль - не потребує зовнішн...
+
+  [_p_900_project_info.py]
+  Код: """ Модуль для документування проекту. Збирає інформацію про всі модулі, конфігурації, залежності та взаємодії. Створює повну документацію проекту для швидкого розуміння архітектури.
+
+  [_smart_patch_gui.py]
+  Код: ﻿#!/usr/bin/env python3 """ smart_patch_gui.py — GUI для спрощених diff і генерації unified diff. Спрощений diff:
+
+  [_заміна на 353_p_355_tts_gradio_advanced.py]
+  Розширений Gradio UI для TTS з підтримкою Multi Dialog, SFX та налаштувань спікерів. Інтегрується у модульну систему через app_context.
+
+  [_заміна на менші_p_353_advanced_ui_stub.py]
+  p_353_tts_gradio_advanced_ui.py - Розширений Gradio UI для Multi Dialog TTS.  ✅ ОСТАТОЧНА ВЕРСІЯ:
+
+--- TTS\models\styletts2-ukrainian\007_universal\voices/ ---
+
+  [voice_split.py]
+  Класи: AdvancedVoiceMergerGUI; Функції: main
+
+--- TTS\models\styletts2-ukrainian\output_audio/ ---
+
+  [1_wav_to_mp3_plus_15potokiv_batch.py]
+  Функції: generate_pink_noise, _format_hms, export_mp3_fast, calculate_optimal_chunk_size, process_files_parallel, process_chunk та ще 5
+
+  [2_mono_to_stereo+efect.py]
+  Класи: AudioBookProcessor
+
+  [smart_patch_gui.py]
+  Код: ﻿#!/usr/bin/env python3 """ smart_patch_gui.py — GUI для спрощених diff і генерації unified diff. Спрощений diff:
+
+--- TTS\models\styletts2-ukrainian\output_audio\TXT-обробка/ ---
+
+  [0_text_numer_to_text_new.py]
+  Функції: num2str_simple, num2ordinal, process_brackets, process_ordinals, process_hyphens, process_lettersuffix та ще 3
+
+  [1_text_problem_analiz_avto_zamina_new.py]
+  Функції: find_problematic_sentences, simplify_sentence, main
+
+  [2_text_rozdil_v4_1M – робоча версія закомент деякі рядки.py]
+  Функції: clean_text, split_by_middle_comma, split_text_by_period
+
+  [2_text_rozdil_v4_1M.py]
+  Функції: clean_text, split_by_middle_comma, split_text_by_period
+
+  [2_text_rozdil_v4_1M_без видалення переносів.py]
+  Функції: clean_text, split_by_middle_comma, split_text_by_period
+
+  [3_txt_find_posizija_ENTER.py]
+  find_nth_sequence_gui.py Проста програма tkinter для пошуку N-го входження заданої послідовності у текстовому файлі. - Вводьте послідовність як esc...
+
+  [4_GUI.py]
+  Функції: choose_input, choose_output, clean_text, split_by_middle_comma, process_newlines, process_file та ще 1
+
+  [4_RozpiZnav_DIALOG.py]
+  split_dialogs_gui.py Простий GUI для відокремлення діалогів (рядків, що починаються з '-' або довгого тире) в тексті — робить кожний такий блок окр...
+
+  [9_text_problem_analiz.py]
+  Функції: find_problematic_sentences, main
+
+  [dialog_tagger_core.py]
+  dialog_tagger_core.py — оновлене ядро для DialogTagger (сумісне із старим GUI: надає parse_legend і annotate_text shim-и)
+
+--- TTS\models\styletts2-ukrainian\output_audio\TXT-обробка\Dialog/ ---
+
+  [GUI.py]
+  Класи: DialogGUI
+
+  [logic.py]
+  Класи: ProcessingContext; Функції: parse_legend_text, load_rules, apply_rules_to_text, process_dialogs
+
+  [logic2.py]
+  Ключові властивості: - Фіналізація рядка: Item.rendered або meta["preformatted"/"final"] → елемент позначається як _final і пропускає наступні прав...
+
+  [logic3.py]
+  logic.py — ядро каскадної обробки книжкового тексту в діалоги.  Інтерфейс для GUI:
+
+--- TTS\models\styletts2-ukrainian\output_audio\TXT-обробка\Dialog\rules/ ---
+
+  [001.py]
+  #GPT: Післякаскадна нормалізація рендера. Прибирає повтори тегу #gN: для послідовних реплік одного й того ж спікера (дозволяє продовження через пор...
+
+  [002.py]
+  #GPT: Всі рядки, які починаються з тире/довгого тире, вважаються репліками. - Якщо ім’я мовця є у легенді (legend_text), призначається відповідний ...
+
+  [003.py]
+  #GPT: Пряма мова оповідача. Рядки, що починаються з лапок (« " „ “ ” ' ’) і не мають уже #gN:, позначаються тегом оповідача.
+
+  [004.py]
+  #GPT: Призначення мовця за атрибутивними дієсловами: сказав/сказала/відповів/запитав/промовив/прошепотів/вигукнув/додав/продовжив тощо. Працює по о...
+
+  [005.py]
+  #GPT: Оповідач за замовчуванням наприкінці конвеєра. Присвоює блокам не-діалогу тег оповідача (наприклад, #g2) і не повторює тег до «зміни мовця» (...
+
+  [006.py]
+  #GPT: Розв'язання #g?: за контекстом із гарантованими аліасами.  Фаза 80 — пізній етап (після всіх правил, що виставляють #g?:).
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+--- TTS\models\styletts2-ukrainian\output_audio\test/ ---
+
+  [smart_patch_gui.py]
+  smart_patch_gui.py — GUI для спрощених diff і генерації unified diff. Спрощений diff: - старий рядок
+
+--- TTS\models\styletts2-ukrainian\output_audio\Чекаючий/ ---
+
+  [Zamina.py]
+  Функції: load_corrections, apply_corrections, main
+
+--- TTS\models\styletts2-ukrainian\output_audio\сьомий син том2_ розділ1-5/ ---
+
+  [1_wav_to_mp3_plus_15potokiv_batch.py]
+  Функції: generate_pink_noise, _format_hms, export_mp3_fast, calculate_optimal_chunk_size, process_files_parallel, process_chunk та ще 5
+
+--- TTS\models\styletts2-ukrainian\output_audio\третій рівень/ ---
+
+  [app.py]
+  Функції: split_to_parts, verbalize, synthesize, select_example
+
+  [app_Full_book_multi_progres_Dialog_test.py]
+  Код: ﻿import os import time import re import unicodedata
+
+  [app_multi_novuj_vocoder.py]
+  Функції: split_to_parts, verbalize, synthesize, select_example
+
+  [app_original.py]
+  Функції: split_to_parts, verbalize, synthesize, select_example
+
+--- TTS\models\styletts2-ukrainian\voices/ ---
+
+  [voice_split.py]
+  Класи: AdvancedVoiceMergerGUI; Функції: main
+
+--- TTS\models\styletts2-ukrainian\допрацювання\book-tts-main\src/ ---
+
+  [container.py]
+  Класи: AppContainer
+
+  [main.py]
+  Функції: greet, test, tts_book, translate_book
+
+  [text_utils.py]
+  Функції: text_cleaner, split_to_chunks, replace_numbers_with_words, normalize, split_to_sentence, split_by_middle та ще 1
+
+--- TTS\models\styletts2-ukrainian\допрацювання\book-tts-main\src\commands/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [file_translation.py]
+  Класи: FileTranslationCommand
+
+  [server.py]
+  Класи: SimpleHandler, ServerCommand
+
+  [subtitle_synthesizer.py]
+  Класи: SubtitleSynthesizer
+
+--- TTS\models\styletts2-ukrainian\допрацювання\book-tts-main\src\contracts/ ---
+
+  [tts_service.py]
+  Класи: TTSServiceInterface
+
+--- TTS\models\styletts2-ukrainian\допрацювання\book-tts-main\src\services/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [book_translator.py]
+  Класи: BookTranslator
+
+  [google_translator.py]
+  Класи: GoogleTranslator
+
+  [google_tts.py]
+  Класи: GoogleTTS
+
+  [subtitle_parser.py]
+  Класи: TranscriptEntry, SubtitleParser
+
+  [tts_book.py]
+  Класи: TTSBookService
+
+  [ukrainian_tts.py]
+  Класи: UkrainianTTS
+
+  [ukrainian_verbalizer.py]
+  Класи: UkrainianVerbalizer
+
+  [youtube_downloader.py]
+  Класи: YouTubeDownloader
+
+--- TTS\voices/ ---
+
+  [voice_split.py]
+  Класи: AdvancedVoiceMergerGUI; Функції: main
+
+--- core/ ---
+
+  [__init__.py]
+  Core модулі для управління контекстом та станом.
+
+  [context_controller.py]
+  Context Controller — єдиний центр управління пам'ятю для AgentLoop та VoiceAssistant.  Цей модуль вирішує проблеми:
+
+--- core_gui_pyqt6/ ---
+
+  [__init__.py]
+  PyQt6 GUI implementation (alternative to tkinter).
+
+  [chat_panel_qt.py]
+  ChatPanelQtMixin — логіка чат-панелі для PyQt6.  Порт core_gui/chat_panel.py (Tkinter) на PyQt6.
+
+  [confirmation_qt.py]
+  ConfirmationQtMixin — логіка діалогу підтвердження для PyQt6.  Порт core_gui/confirmation.py (Tkinter) на PyQt6.
+
+  [llm_endpoints_editor_qt.py]
+  LLMEndpointsEditor для PyQt6 — редагування списку LLM-ендпоінтів.  Аналог core_gui/llm_endpoints_editor.py для Tkinter.
+
+  [main_window.py]
+  PyQt6 MainWindow — повноцінний еквівалент Tkinter `core_gui/main_window.py`.  Контракт API (повинен співпадати з Tkinter-аналогом):
+
+  [plan_panel_qt.py]
+  PlanPanelQtMixin — логіка панелі плану виконання для PyQt6.  Порт core_gui/plan_panel.py (Tkinter) на PyQt6.
+
+  [settings_tab_qt.py]
+  SettingsTabQtMixin — вкладка Налаштування для PyQt6.  Порт core_gui/settings_tab.py (Tkinter) на PyQt6.
+
+--- functions/ ---
+
+  [__init__.py]
+  Порожній файл (тільки імпорти або коментарі).
+
+  [aaa_architect.py]
+  Функції: fix_indentation, validate_code, llm_function_reg, create_skill
+
+  [aaa_code_tools.py]
+  Інструменти для роботи з кодом - читання файлів, пошук, редагування.
+
+  [aaa_confirmation.py]
+  Система підтвердження дій
+
+  [aaa_create_file.py]
+  Функції: llm_function, create_file
+
+  [aaa_debug_code.py]
+  Автоматичне виправлення помилок в коді.
+
+  [aaa_edit_file.py]
+  Функції: llm_function, edit_file
+
+  [aaa_execute_python.py]
+  Виконання Python коду в безпечній пісочниці
+
+  [aaa_file_operations.py]
+  Файлові операції для AgentLoop.
+
+  [aaa_help.py]
+  Функції: llm_function, help
+
+  [aaa_open_browser.py]
+  Функції: llm_function, open_browser
+
+  [aaa_open_interpreter.py]
+  Open Interpreter integration for self-healing code execution.  Provides fallback for execute_python when ModuleNotFoundError occurs.
+
+  [aaa_programs.py]
+  Функції для керування програмами через SafetySandbox
+
+  [aaa_system.py]
+  Системні команди асистента (очищення кешу, діагностика тощо)
+
+  [aaa_utility_tools.py]
+  Утилітарні функції: create_folder, search_in_text, count_words.
+
+  [aaa_voice_input.py]
+  Функції: llm_function, set_assistant, clean_recognized_text, get_active_window_info, activate_window_by_hwnd, activate_window_by_title та ще 3
+
+  [agent_loop.py]
+  AgentLoop — справжній цикл агента: observe → plan → act → check.  Це Phase 12.1 observe loop — заміна legacy linear execution на замкнутий цикл з f...
+
+  [ai_actors.py]
+  AI Actors — делегування задач до зовнішніх AI провайдерів (S5).  Підтримує автоматичний fallback між провайдерами для довгих сесій.
+
+  [common_decorators.py]
+  Спільні декоратори для LLM функцій
+
+  [conditions_web.py]
+  Web conditions for Watcher (Phase 8.3).  Доступні умови для моніторингу веб-ресурсів та API.
+
+  [conditions_windows.py]
+  Windows-специфічні condition-фабрики для Watcher (I3).  Phase 8 / I3. Розширення `logic_watcher.py` — умови, що спираються на
+
+  [config.py]
+  Глобальні налаштування
+
+  [context_manager.py]
+  Context Manager — стиснення історії дій для економії токенів.  Цей модуль реалізує логіку "ковзного вікна з підсумовуванням":
+
+  [core_action_recorder.py]
+  Журнал GUI-дій (Action Recorder).  GUI Automation Phase 6 — аудит та відстеження всіх дій агента.
+
+  [core_app_profile.py]
+  AppProfile — профілі програм (Phase 7 фундамент).  Зберігає специфіку окремих Windows-програм (exe, відомі горячі клавіші,
+
+  [core_cache.py]
+  CacheManager — кешування тільки для ідемпотентних команд.  Безпечний кеш: тільки читання/обчислення, без автовиконання дій.
+
+  [core_checkpoint.py]
+  Checkpoint/Resume infrastructure (Phase 12.4).  Дозволяє агенту зберігати стан виконання і відновлюватись після краш-а або зупинки.
+
+  [core_dispatcher.py]
+  Класи: Dispatcher
+
+  [core_executor.py]
+  Код: ﻿# functions/core_executor.py """Менеджер виконання завдань у фоновому потоці з оновленням GUI""" import threading import time
+
+  [core_gui_guardian.py]
+  Захист від небезпечних GUI дій (GUI Guardian).  GUI Automation Phase 6 — безпечна робота з реальним UI.
+
+  [core_loop_detector.py]
+  LoopDetector — виявлення зациклення агента.  Аналізує історію дій на предмет повторів ідентичних операцій.
+
+  [core_macro.py]
+  Macro — запис і відтворення послідовностей дій (Phase 7 фундамент).  Фокус на мінімальному MVP:
+
+  [core_memory.py]
+  Менеджер пам'яті для агента: довготривала (файл) + сесійна + задачна.
+
+  [core_plan_compiler.py]
+  core_plan_compiler — Phase 13.2/13.4 skeleton.  Перетворює `TaskSpec` у `Plan` через pipeline-реєстр. У S6 тут є лише
+
+  [core_planner.py]
+  Планувальник багатокрокових задач для асистента.
+
+  [core_planner_critic.py]
+  Інтеграція `PlanCritic` (Phase 11.5) з legacy `core_planner.Planner`.  `core_planner.Planner.create_plan()` повертає **список словників** у форматі:
+
+  [core_planner_runner.py]
+  Міст `core_planner` (legacy) ↔ `TaskRunner` (Phase 11).  **Задача:** дати можливість виконувати legacy-план (список словників
+
+  [core_safety_sandbox.py]
+  SafetySandbox - безпечне виконання програм
+
+  [core_session_budget.py]
+  SessionBudget — ліміти та kill-switch для довгих автономних сесій.  Phase 8 / I2. Працює разом з `logic_watcher` (I1), але ні від чого не залежить:
+
+  [core_settings.py]
+  Єдина точка доступу до налаштувань асистента.  Структура:
+
+  [core_streaming.py]
+  Код: ﻿import requests import json from colorama import Fore def _is_groq_endpoint(ep):
+
+  [core_stt_listener.py]
+  STT Listener — модуль прийому голосових команд для агента.  Функціонал:
+
+  [core_task_intake.py]
+  core_task_intake — Phase 13.1.  Парсить вільний текст ТЗ (natural language) у структурований `TaskSpec`
+
+  [core_tool_runtime.py]
+  Сумісний runtime для структурованих результатів інструментів.
+
+  [core_undo_manager.py]
+  Система відкату дій (Undo Manager).  GUI Automation Phase 6 — можливість відкатити дії агента.
+
+  [core_windsurf_watcher.py]
+  Windsurf Watcher — passive monitor для чат-відповідей Windsurf.  Phase 12.5. Перший реальний end-to-end кейс для Phase 11+ стеку:
+
+  [global_voice_input.py]
+  Global Voice Input — глобальне голосове введення в будь-яку програму.  ⚠️ УВАГА: Логіка вставки тексту в методах _insert_segment та _send_input_uni...
+
+  [logic_agent_tools_schema.py]
+  OpenAI tool-calling schema для AgentLoop.  Цей модуль описує всі дії, які агент може виконати на комп'ютері,
+
+  [logic_ai_adapter.py]
+  AIProvider — абстракція виклику зовнішніх ШІ (API та браузер).  Phase 9 / J1. Це **скелет**: без реальних HTTP/Playwright-викликів. Даємо
+
+  [logic_audio.py]
+  Робота з аудіо
+
+  [logic_audio_filtering.py]
+  GPU-прискорена фільтрація аудіо з AGC та fallback шумодавом
+
+  [logic_commands.py]
+  Код: ﻿# functions/logic_commands.py """Обробка команд та VoiceAssistant""" import threading import time
+
+  [logic_context_analyzer.py]
+  Аналіз контексту екрану.  GUI Automation Phase 5 — розуміння поточного стану UI.
+
+  [logic_continuous_listener.py]
+  Безперервне прослуховування з динамічною детекцією по паузах
+
+  [logic_core.py]
+  Ядро асистента - реєстр функцій та VoiceAssistant
+
+  [logic_execution_report.py]
+  ExecutionReport — структурований звіт виконання плану (Phase 11.3).  Збирає `StepReport`-и від TaskRunner-а та рендерить тезисний markdown /
+
+  [logic_expectations.py]
+  Step-Check — очікувані стани до/після виконання задачі (Phase 12.1).  Проблема, яку розв'язуємо: зараз `TaskRunner` вирішує «задача OK» лише за
+
+  [logic_llm_tools.py]
+  OpenAI-compatible tool-calling / JSON mode для legacy LLM-стеку (`logic_llm`).  Це адитивний шар **поверх** існуючого `logic_llm.ask_llm`:
+
+  [logic_orchestrator.py]
+  AI Orchestrator — Phase 9.3.  Оркестратор керує делегуванням задач між AI-провайдерами через `ProviderRegistry`.
+
+  [logic_permission_gate.py]
+  PermissionGate — policy-based consent-шар для автопілота (Phase 11.2).  Викликається TaskRunner-ом перед будь-якою «живою» дією (subprocess,
+
+  [logic_plan_critic.py]
+  Plan-critic LLM — самокритика плану перед виконанням (Phase 11.5).  Ідея: до того, як `TaskRunner.run(plan)` стартує, ми просимо LLM (через
+
+  [logic_provider_registry.py]
+  ProviderRegistry — реєстр ШІ-провайдерів + вибір за capability/вартістю.  Phase 9 / J2. Центральна точка доступу до всіх `AIProvider`-ів, відомих
+
+  [logic_repair_loop.py]
+  LLM repair loop for TaskRunner — Phase 12.2.  Це Phase 12.2 — повний Actor-Critic цикл.
+
+  [logic_report_generator.py]
+  Universal post-execution report generator (Phase 13 S10 / spec 13.10).  Бере `ExecutionReport` (колектор `StepReport`-ів від `TaskRunner`-а) і
+
+  [logic_scenario_runner.py]
+  Сценарії автоматизації UI.  GUI Automation Phase 5 — "готові сценарії" для типових задач.
+
+  [logic_stt.py]
+  Універсальний модуль розпізнавання мови з підтримкою Whisper та w2v-bert
+
+  [logic_task_learner.py]
+  Task Learner — адаптивна автоматизація та виявлення патернів (Phase 7.3).  Функції:
+
+  [logic_task_runner.py]
+  TaskRunner — верхній рівень автономії (Phase 11.1).  Читає `Plan` (упорядкований список `Task`), виконує послідовно з інтеграцією:
+
+  [logic_tts.py]
+  Модуль TTS на базі StyleTTS2 Ukrainian (patriotyk)
+
+  [logic_ui_navigator.py]
+  Інтелектуальна навігація по UI.  GUI Automation Phase 5 — "мозок" для взаємодії з інтерфейсом.
+
+  [logic_watcher.py]
+  Watcher engine — event-driven loops для довгих автономних сесій.  Phase 8 / I1. Ідея:
+
+  [pipeline_code.py]
+  pipeline_code — Phase 13 S7: перший реальний pipeline (DOMAIN_CODE).  Перетворює `TaskSpec` з домену `code` у виконуваний `Plan` з реальних
+
+  [plan_executor.py]
+  Plan Executor — міст між Planner (core_planner) і TaskRunner (Phase 11).  Конвертує план Planner → TaskRunner Plan, запускає виконання з:
+
+  [providers_anthropic.py]
+  Anthropic (Claude) adapter — Phase 9.1 AI Orchestration.  Використовує HTTP API Anthropic (`https://api.anthropic.com/v1/messages`).
+
+  [providers_browser.py]
+  Browser-based AI adapters — Phase 9.1.  Використовують Playwright для взаємодії з веб-інтерфейсами AI-інструментів
+
+  [providers_google.py]
+  Google (Gemini) adapter — Phase 9.1 AI Orchestration.  Використовує Google Generative Language API (`https://generativelanguage.googleapis.com/v1be...
+
+  [providers_openai_compatible.py]
+  OpenAI-сумісний HTTP-провайдер.  Phase 9 / J3. Покриває всі сервіси, що тримають `/v1/chat/completions`
+
+  [providers_vision.py]
+  Vision-LM provider — розуміння UI через LLM з vision capabilities (V2).  Це Phase V2 — провайдер для LLM з image input.
+
+  [safety_sandbox.py]
+  Функції для керування програмами (з SafetySandbox)
+
+  [self_learning.py]
+  Self-Learning Module — логування, аналіз помилок, skills база.  Збирає логи виконання задач, аналізує помилки за допомогою LLM,
+
+  [task_spec.py]
+  TaskSpec — структурований опис задачі для декомпозиції (Phase 13).  Приймає довільне ТЗ і перетворює його на структурований Plan з milestones.
+
+  [tools_app_recognizer.py]
+  Розпізнавання програм та аналіз їхнього стану.  GUI Automation Phase 4 — "розуміння" якої програма відкрита.
+
+  [tools_browser_cdp.py]
+  Browser automation через CDP (Chrome DevTools Protocol).  Підключається до ІСНУЮЧОГО Chrome з --remote-debugging-port=9222.
+
+  [tools_comfyui.py]
+  ComfyUI integration for image generation (Phase 10).  Provides functions for:
+
+  [tools_excel.py]
+  Microsoft Excel automation tool (Phase 10).  Provides functions for:
+
+  [tools_ffmpeg.py]
+  FFmpeg wrapper for video/audio processing (Phase 10).  Provides functions for:
+
+  [tools_image_pillow.py]
+  Image processing tool using Pillow (Phase 10).  Provides functions for:
+
+  [tools_mouse_keyboard.py]
+  Керування мишею та клавіатурою через pyautogui.  Модуль для GUI Automation Phase 1.
+
+  [tools_notification.py]
+  Notification utilities.  Provides a unified interface for displaying desktop notifications.
+
+  [tools_ocr.py]
+  OCR — Розпізнавання тексту на екрані.  GUI Automation Phase 3 — "очі що читають" агента.
+
+  [tools_pdf.py]
+  PDF processing tool (Phase 10).  Provides functions for:
+
+  [tools_playwright.py]
+  Playwright wrapper for browser automation (Phase 7/9).
+
+  [tools_screen_capture.py]
+  Захоплення екрану та аналіз скріншотів.  GUI Automation Phase 2 — "очі" агента.
+
+  [tools_ui_accessibility.py]
+  Windows UI Automation (UIA) tools — стійкий UI-контроль (V1).  Це Phase V1 — базовий wrapper для Windows Accessibility API.
+
+  [tools_ui_detector.py]
+  Детекція UI-елементів через Computer Vision.  GUI Automation Phase 4 — "розуміння" інтерфейсу агентом.
+
+  [tools_visual_diff.py]
+  Порівняння станів екрану та візуальний diff.  GUI Automation Phase 4 — відстеження змін на екрані.
+
+  [tools_window_manager.py]
+  Керування вікнами Windows через win32 API.  Модуль для GUI Automation Phase 1.
+
+  [tools_windsurf.py]
+  Windsurf-адаптер: тонкий шар поверх Window/OCR-тулів.  Phase 12.5 / V-трек (пробіли до «як людина»).
+
+  [tools_word.py]
+  Microsoft Word automation tool (Phase 10).  Provides functions for:
+
+  [voice_tray_icon.py]
+  Tray Icon для Global Voice Input - показує статус запису біля годинника.
+
+  [windsurf_watcher_executor.py]
+  Windsurf Watcher Executor — міст між WindsurfWatcher та GUI.  Phase 12.5 (W1): GUI кнопка Start/Stop Windsurf Watch.
+
+--- functions\llm/ ---
+
+  [__init__.py]
+  LLM integration module - refactored from logic_llm.py.
+
+  [core_settings.py]
+  Код: from ..core_settings import *
+
+  [endpoint_client.py]
+  Endpoint client for LLM API calls.
+
+  [groq_client.py]
+  Groq API client using official SDK.
+
+  [provider_chain.py]
+  Provider Chain — послідовний fallback ланцюг провайдерів.  Рівень 2 в архітектурі оркестрації ШІ:
+
+  [response_parser.py]
+  Response parser for LLM responses.
+
+  [router.py]
+  Request Router — класифікація запитів за типом задачі.  Рівень 1 в архітектурі оркестрації ШІ:
+
+--- runtime/ ---
+
+  [sync_settings_copy.py]
+  Скрипт для створення копії user_settings.json без секретів (API ключів). Використовується для заливання в GitHub без розкриття секретів.
+
+--- tests/ ---
+
+  [conftest.py]
+  Глобальний conftest.py для тестів.  Мокає Windows/GUI-специфічні залежності, щоб модулі functions/tools_* можна
+
+  [test_action_decider.py]
+  Тести для ActionDecider та logic_agent_tools_schema.
+
+  [test_agent_loop.py]
+  Tests for AgentLoop (Phase 12.1: observe → plan → act → check).
+
+  [test_agent_loop_json_decider.py]
+  Тест AgentLoop + ActionDecider з JSON parsing fallback (без tool-calling).
+
+  [test_ask_user.py]
+  Тести для ask_user функціональності — Phase V6.
+
+  [test_checkpoint_ai_actors.py]
+  Tests for checkpoint/resume + AI actors (S5).
+
+  [test_conditions_windows.py]
+  Тести для functions/conditions_windows.py.  Тести 100% Linux-friendly: всі lister-функції ін'єктуються, pygetwindow
+
+  [test_context_controller.py]
+  Тести для ContextController — єдиний центр управління пам'яттю.
+
+  [test_context_manager.py]
+  Тести для context_manager — стиснення історії дій.
+
+  [test_core_action_recorder.py]
+  Тести для модуля core_action_recorder.py  GUI Automation Phase 2 — Аудит дій.
+
+  [test_core_app_profile.py]
+  Тести для functions/core_app_profile.py.
+
+  [test_core_cache.py]
+  Тести для functions/core_cache.py (CacheManager).  Перевіряє:
+
+  [test_core_executor.py]
+  Тести для core_executor.py  Запуск: python -m pytest tests/test_core_executor.py -v
+
+  [test_core_gui_guardian.py]
+  Тести для модуля core_gui_guardian.py  GUI Automation Phase 6 — GUI Guardian (захист від небезпечних дій).
+
+  [test_core_macro.py]
+  Тести для functions/core_macro.py.
+
+  [test_core_memory.py]
+  Тести для core_memory.py  Запуск: python -m pytest tests/test_core_memory.py -v
+
+  [test_core_plan_compiler.py]
+  Тести для functions/core_plan_compiler.py — Phase 13.2/13.4 skeleton.
+
+  [test_core_planner.py]
+  Тести для core_planner.py  Запуск: python -m pytest tests/test_core_planner.py -v
+
+  [test_core_planner_critic.py]
+  Unit tests for `functions/core_planner_critic.py` — legacy Planner ↔ PlanCritic bridge.  Використовує `CallableProvider` для симуляції відповідей L...
+
+  [test_core_planner_runner.py]
+  Unit-тести для `functions.core_planner_runner`.  Перевіряємо bridge: legacy `List[Dict]` → TaskRunner-виконання через generic-handler.
+
+  [test_core_session_budget.py]
+  Тести для functions/core_session_budget.py.
+
+  [test_core_task_intake.py]
+  Тести для functions/core_task_intake.py — Phase 13.1.
+
+  [test_core_undo_manager.py]
+  Тести для модуля core_undo_manager.py  GUI Automation Phase 6 — Undo/Redo менеджер.
+
+  [test_core_windsurf_watcher.py]
+  Тести для core_windsurf_watcher (Phase 12.5).
+
+  [test_dpi_multimonitor.py]
+  Тести для DPI/мультимонітор підтримки — Phase V5.
+
+  [test_drag_drop.py]
+  Тести для drag-n-drop файлів — Phase V10.
+
+  [test_global_voice_input.py]
+  Тести для Global Voice Input.
+
+  [test_gui_tabs.py]
+  Тести для GUI компонентів вкладок.
+
+  [test_logic_ai_adapter.py]
+  Тести для functions/logic_ai_adapter.py.
+
+  [test_logic_context_analyzer.py]
+  Тести для модуля logic_context_analyzer.py  GUI Automation Phase 5 — Аналіз контексту екрану.
+
+  [test_logic_execution_report.py]
+  Tests for functions.logic_execution_report (Phase 11.3).
+
+  [test_logic_expectations.py]
+  Unit tests for logic_expectations (Phase 12.1).
+
+  [test_logic_llm_tools.py]
+  Тести для `functions.logic_llm_tools` — OpenAI-compatible tool-calling (F1).
+
+  [test_logic_permission_gate.py]
+  Tests for functions.logic_permission_gate (Phase 11.2).
+
+  [test_logic_plan_critic.py]
+  Тести до `logic_plan_critic`.  CallableProvider дозволяє вбудувати будь-який JSON-вердикт у відповідь,
+
+  [test_logic_provider_registry.py]
+  Тести для functions/logic_provider_registry.py.
+
+  [test_logic_repair_loop.py]
+  Тести для logic_repair_loop.py — Phase 12.2.
+
+  [test_logic_report_generator.py]
+  Unit tests for logic_report_generator (Phase 13 S10 / 13.10).
+
+  [test_logic_scenario_runner.py]
+  Тести для модуля logic_scenario_runner.py  GUI Automation Phase 5 — Сценарії виконання.
+
+  [test_logic_task_runner.py]
+  Tests for functions.logic_task_runner (Phase 11.1).
+
+  [test_logic_task_runner_expect.py]
+  Integration tests: TaskRunner + Step-Check (Phase 12.1).
+
+  [test_logic_ui_navigator.py]
+  Тести для модуля logic_ui_navigator.py  GUI Automation Phase 5 — Розумна навігація по UI.
+
+  [test_logic_watcher.py]
+  Тести для functions/logic_watcher.py.  Всі тести запускаємо у blocking-режимі (`start(blocking=True)`) — це дає
+
+  [test_loop_detector.py]
+  Tests for LoopDetector — виявлення зациклення агента.
+
+  [test_phase7_9.py]
+  Тести для Phase 7–9 компонентів.  HTTP-виклики моканні — реальна мережа НЕ зачіпається.
+
+  [test_pipeline_code.py]
+  Тести для functions/pipeline_code.py — Phase 13 S7.
+
+  [test_plan_executor.py]
+  Tests for PlanExecutor (S2: GUI ↔ TaskRunner bridge).
+
+  [test_providers_openai_compatible.py]
+  Тести для functions/providers_openai_compatible.py.  Усі HTTP-виклики моканні — реальна мережа НЕ зачіпається.
+
+  [test_providers_vision.py]
+  Тести для providers_vision.py — Phase V2 (Vision-LM).
+
+  [test_pyqt6_gui.py]
+  Тести PyQt6 GUI (smoke + API контракт).
+
+  [test_router.py]
+  Тести для RequestRouter.
+
+  [test_screen_helper.py]
+  Тести для screen_helper — корекція координат DPI.
+
+  [test_task_spec.py]
+  Tests for TaskSpec (S3: TaskSpec → compile() MVP).
+
+  [test_tools_app_recognizer.py]
+  Тести для модуля tools_app_recognizer.py  GUI Automation Phase 4 — Розпізнавання програм.
+
+  [test_tools_browser_cdp.py]
+  Тести для browser CDP tools — ЕТАП 5.
+
+  [test_tools_comfyui.py]
+  Базові тести для tools_comfyui.py (Phase 10).
+
+  [test_tools_excel.py]
+  Базові тести для tools_excel.py (Phase 10).
+
+  [test_tools_ffmpeg.py]
+  Базові тести для tools_ffmpeg.py (Phase 10).
+
+  [test_tools_mouse_keyboard.py]
+  Тести для модуля tools_mouse_keyboard.py  GUI Automation Phase 1 — керування мишею та клавіатурою.
+
+  [test_tools_ocr.py]
+  Тести для модуля tools_ocr.py  GUI Automation Phase 3 — OCR (розпізнавання тексту).
+
+  [test_tools_open_interpreter.py]
+  Тести для tools_open_interpreter (Open Interpreter integration).
+
+  [test_tools_screen_capture.py]
+  Тести для модуля tools_screen_capture.py  GUI Automation Phase 2 — Скріншоти + аудит дій.
+
+  [test_tools_ui_accessibility.py]
+  Тести для Windows UI Automation (UIA) tools — ЕТАП 3.
+
+  [test_tools_ui_detector.py]
+  Тести для модуля tools_ui_detector.py  GUI Automation Phase 4 — Computer Vision (UI елементи).
+
+  [test_tools_visual_diff.py]
+  Тести для functions/tools_visual_diff.py (VisualDiff).  Використовуємо реальні маленькі PIL-зображення замість mock-ів: PIL + numpy +
+
+  [test_tools_window_manager.py]
+  Тести для модуля tools_window_manager.py  GUI Automation Phase 1 — керування вікнами Windows.
+
+  [test_tools_windsurf.py]
+  Тести для tools_windsurf (Phase 12.5).
+
+  [test_tools_word.py]
+  Базові тести для tools_word.py (Phase 10).
+
+  [test_ui_accessibility.py]
+  Tests for UIA + Vision-LM (S4).
+
+  [test_voice_tray_icon.py]
+  Тести для VoiceTrayIcon.
+
+--- utils/ ---
+
+  [__init__.py]
+  Utility модулі.
+
+  [screen_helper.py]
+  Модуль для корекції координат з урахуванням DPI масштабування Windows.  Цей модуль вирішує проблему коли координати від OCR/UIA бібліотек
+
+--- voices/ ---
+
+  [voice_split.py]
+  Класи: AdvancedVoiceMergerGUI; Функції: main
+
+--- можливі майбутні розробки/ ---
+
+  [test_multi_tab_gui.py]
+  Тестове GUI вікно з багатьма вкладками для перевірки можливостей LLM.
+

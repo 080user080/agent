@@ -159,12 +159,12 @@
 - `set_tts_engine(engine) -> None`: Встановлення TTS
 **Залежності**: `logic_core.py`, `STT`, `TTS`
 
-### `logic_llm.py`
-**Призначення**: LLM інтеграція.
+### `logic_llm_tools.py`
+**Призначення**: OpenAI-compatible tool-calling / JSON mode для LLM.
 **Методи**:
-- `ask_llm(prompt: str) -> str`: Запит до LLM
-- `ask_llm_with_tools(prompt: str, tools: list) -> dict`: Запит з tool-calling
-**Залежності**: `llm/`
+- `ask_llm_with_tools(prompt: str, tools: list) -> ToolCallResult`: Запит з tool-calling
+- `ask_llm_json(prompt: str, response_model: type) -> dict`: JSON-режим
+**Залежності**: `llm/`, `requests`
 
 ### Інші logic_* модулі
 - `logic_agent_tools_schema.py` — Схема інструментів для AgentLoop

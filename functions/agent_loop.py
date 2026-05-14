@@ -95,7 +95,7 @@ class AgentLoopConfig:
     keep_recent_actions: int = 3  # Скільки останніх дій залишати детальними
     expected_files: List[str] = field(default_factory=lambda: [
         "constants.py", "base_tab.py", "chat_tab.py", "settings_tab.py",
-        "logs_tab.py", "statistics_tab.py", "about_tab.py", "tools_tab.py", "run.py",
+        "logs_tab.py", "stats_tab.py", "about_tab.py", "tools_tab.py", "main.py",
     ])  # Список очікуваних файлів для перевірки завершеності
 
 
@@ -149,6 +149,7 @@ class ActionDecider:
         "10. If you need information from user — action=\"ask_user\"\n"
         "11. If task is about executing code — use \"execute_python\" (simple) or \"oi_execute_with_healing\" (complex)\n"
         "12. If task is about creating files — use \"write_file\"\n"
+        "12a. Do NOT create or rewrite project files through execute_python with open(..., 'w') or Path.write_text(...). Use write_file for file content, then execute_python only to verify.\n"
         "13. If task is ambiguous or unclear — ask_user for clarification BEFORE taking action\n"
         "14. DO NOT invent new tools — use only the ones listed above\n"
         "15. **TASK CHECKLIST**: After each action, mentally track what's done vs what's left. Example: \"1. constants.py [DONE], 2. base_tab.py [DONE], 3. chat_tab.py [NEXT]\".\n"
@@ -530,6 +531,7 @@ class AgentLoop:
 
         # Блокування повторних ідентичних write_file
         self._blocked_write_fingerprints: set = set()
+        self._execute_python_write_targets: set = set()
 
         # Пам'ять про відсутні файли (для A-B-A-B циклів)
         self.failed_reads: set = set()
@@ -557,6 +559,24 @@ class AgentLoop:
                 logger.debug("GUI callback error: %s", e)
 
     # ─── observe() ─────────────────────────────────────────────────────────────
+
+    def _extract_python_write_targets(self, code: str) -> List[str]:
+        """Best-effort detection of files written by generated Python code."""
+        import os
+        import re
+
+        targets: List[str] = []
+        patterns = [
+            r"open\(\s*r?['\"]([^'\"]+)['\"]\s*,\s*['\"][^'\"]*w",
+            r"with\s+open\(\s*r?['\"]([^'\"]+)['\"]\s*,\s*['\"][^'\"]*w",
+            r"Path\(\s*r?['\"]([^'\"]+)['\"]\s*\)\.write_text\(",
+        ]
+        for pattern in patterns:
+            for match in re.finditer(pattern, code, flags=re.IGNORECASE | re.DOTALL):
+                path = match.group(1).strip()
+                if path:
+                    targets.append(os.path.normcase(os.path.abspath(path)))
+        return sorted(set(targets))
 
     def _needs_screen_observation(self, task: str) -> bool:
         """Чи потрібен скріншот для цієї задачі?"""
@@ -1453,6 +1473,33 @@ class AgentLoop:
                 state.step += 1
                 time.sleep(0.3)
                 return True  # Продовжуємо цикл — LLM отримає ok=True в історії
+
+        if action == "execute_python":
+            code = str(args.get("code", "") or "")
+            write_targets = self._extract_python_write_targets(code)
+            repeated_targets = [t for t in write_targets if t in self._execute_python_write_targets]
+            if repeated_targets:
+                target_list = ", ".join(repeated_targets)
+                logger.info("Repeated execute_python file write skipped: %s", target_list)
+                print(f"[AgentLoop]   ⏭️ Repeated execute_python file write skipped: {target_list}")
+                self._gui_msg('add_message', ('assistant',
+                    f'⏭️ Повторний execute_python для запису того самого файлу пропущено: {target_list}. Використай write_file або done.'))
+                act_result = {"ok": True, "result": f"repeated execute_python file write skipped: {target_list}"}
+                action_data = {
+                    "step": state.step,
+                    "action": action,
+                    "args": args,
+                    "act_result": act_result,
+                    "check_result": {"success": True, "detail": "repeated execute_python file write skipped"},
+                    "from_decider": plan.get("from_decider", False),
+                    "reasoning": reasoning,
+                }
+                state.actions_history.append(action_data)
+                state.consecutive_failures = 0
+                state.step += 1
+                time.sleep(0.3)
+                return True
+            self._execute_python_write_targets.update(write_targets)
 
         # 3. Act
         act_result = self.act(plan)

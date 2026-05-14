@@ -52,18 +52,20 @@ gui_callback('process_text', 'Створи файл test.py')
 
 ## LLM API
 
-### Запит до LLM
+### Запит до LLM (через llm-шар)
 
 ```python
-from functions.logic_llm import ask_llm
+from functions.logic_core import FunctionRegistry
 
-response = ask_llm("Привіт, як справи?")
+# Або напряму через endpoint_client:
+from functions.llm.endpoint_client import ask_endpoint
+response = ask_endpoint("Привіт, як справи?")
 ```
 
 ### Запит з tool-calling
 
 ```python
-from functions.logic_llm import ask_llm_with_tools
+from functions.logic_llm_tools import ask_llm_with_tools
 
 tools = [
     {"name": "create_file", "description": "Створити файл"},

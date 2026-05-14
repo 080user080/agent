@@ -183,7 +183,7 @@ agent/
 │   ├── logic_*.py                 # Логіка (~20)
 │   │   ├── logic_core.py              # FunctionRegistry
 │   │   ├── logic_commands.py          # Обробка команд
-│   │   ├── logic_llm.py               # LLM взаємодія
+│   │   ├── logic_llm_tools.py          # OpenAI-compatible tool-calling
 │   │   ├── logic_tts.py / logic_stt.py / logic_audio.py / logic_audio_filtering.py
 │   │   ├── logic_continuous_listener.py
 │   │   ├── logic_context_analyzer.py  # Аналіз контексту
@@ -272,7 +272,7 @@ agent/
     Planner (якщо      Кеш (якщо
     потрібен план)     увімкнено)
             ↓               ↓
-    core_executor    logic_llm.ask_llm()
+    core_executor    logic_llm_tools.ask_llm_with_tools()
     (виконання)              ↓
             ↓          Streaming/Regular
             └───────┬───────┘
@@ -318,7 +318,7 @@ agent/
 
 ### Logic та Tools (скорочено)
 
-- **`logic_*`** — `logic_core` (FunctionRegistry), `logic_commands`, `logic_llm`, `logic_tts`/`logic_stt`/`logic_audio*`, `logic_continuous_listener`, а також модулі Phase 5: `logic_context_analyzer`, `logic_ui_navigator`, `logic_scenario_runner`.
+- **`logic_*`** — `logic_core` (FunctionRegistry), `logic_commands`, `logic_llm_tools`, `logic_tts`/`logic_stt`/`logic_audio*`, `logic_continuous_listener`, а також модулі Phase 5–11: `logic_context_analyzer`, `logic_ui_navigator`, `logic_scenario_runner`, `logic_task_runner`, `logic_repair_loop`, `logic_watcher`, `logic_permission_gate`, `logic_plan_critic`, `logic_execution_report`.
 - **`tools_*`** — GUI-інструменти Phase 1–4: `tools_mouse_keyboard`, `tools_window_manager`, `tools_screen_capture`, `tools_ocr`, `tools_ui_detector`, `tools_app_recognizer`, `tools_visual_diff`.
 - **`aaa_*`** — LLM-обгортки (tool wrappers), які викликаються з планів: `aaa_create_file`, `aaa_edit_file`, `aaa_execute_python`, `aaa_open_browser`, `aaa_programs`, `aaa_system`, тощо.
 
