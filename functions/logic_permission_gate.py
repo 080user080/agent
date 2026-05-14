@@ -9,7 +9,7 @@ writefile, HTTP-виклик). Повертає `Decision(allow=..., reason=...)
    `sudo *`, запис у `/etc`, виконання через `C:\\Windows\\System32\\`
    прямо, і т.д.).
 2. **Always-allow** — безпечний whitelist (git читання, `ls`, `cat`,
-   `python -m pytest`, `ruff check`, будь-що в межах `project_root`).
+   `python -m pytest`, `ruff check`). Дозволяється лише в межах d:\Python\MARK\.
 3. **Session-cache** — рішення користувача за цей run (persist=False).
 4. **ask_fn(request) -> Decision** — callback до GUI-попап / CLI-prompt.
 
@@ -69,7 +69,6 @@ class Decision:
 # Default patterns
 # ---------------------------------------------------------------------------
 
-
 DEFAULT_DENY_COMMAND_PATTERNS: List[str] = [
     r"rm\s+-rf\s+/(?:\s|$)",
     r"\bmkfs\b",
@@ -121,10 +120,10 @@ DEFAULT_ALLOW_COMMAND_PREFIXES: List[str] = [
 # Policy dataclass
 # ---------------------------------------------------------------------------
 
-
 @dataclass
 class PermissionPolicy:
-    project_root: Optional[str] = None
+    """Конфігурація політик безпеки."""
+    restricted_root: str = r"d:\\Python\\MARK" # Жорсткий кореневий шлях для всіх операцій.
     deny_command_patterns: List[str] = field(
         default_factory=lambda: list(DEFAULT_DENY_COMMAND_PATTERNS)
     )
@@ -134,14 +133,13 @@ class PermissionPolicy:
     allow_command_prefixes: List[str] = field(
         default_factory=lambda: list(DEFAULT_ALLOW_COMMAND_PREFIXES)
     )
-    allow_any_in_project_root: bool = True
-    allow_read_file_anywhere: bool = True
+    allow_any_in_project_root: bool = False # Примусово вимкнено для жорсткого режиму
+    allow_read_file_outside_root: bool = True
 
 
 # ---------------------------------------------------------------------------
 # Gate
 # ---------------------------------------------------------------------------
-
 
 AskFn = Callable[[PermissionRequest], Decision]
 
@@ -194,16 +192,16 @@ class PermissionGate:
     def _evaluate(
         self, request: PermissionRequest, *, use_ask_fn: bool = False
     ) -> Decision:
-        # 1. Always-deny
+        # 1. Always-deny (загальні заборони)
         deny = self._check_deny(request)
         if deny is not None:
             return deny
 
-        # 2. Auto-approve read-only operations (Phase 12.5 W3)
+        # 2. Auto-approve read-only operations (для діагностики в обмеженому режимі)
         if self.auto_approve_read_only and request.action == ACTION_READ_FILE:
             return Decision.approve(reason="read-only mode: auto-approve")
 
-        # 3. Persistent allow (from JSON)
+        # 3. Persistent allow (від користувача, збережені назавжди)
         key = request.cache_key()
         with self._lock:
             cached = self._persistent_allow.get(key)
@@ -214,12 +212,12 @@ class PermissionGate:
                 persist=True,
             )
 
-        # 4. Always-allow whitelist
+        # 4. Always-allow whitelist (безпечні команди Git/тестування в корені)
         allow = self._check_allow(request)
         if allow is not None:
             return allow
 
-        # 5. Session cache
+        # 5. Session cache (рішення за поточний run)
         with self._lock:
             cached = self._session_cache.get(key)
         if cached is not None:
@@ -239,6 +237,7 @@ class PermissionGate:
     def _check_deny(
         self, request: PermissionRequest
     ) -> Optional[Decision]:
+        """Перевіряє на загальні заборонені патерни (наприклад, 'rm -rf /')."""
         if request.action == ACTION_RUN_COMMAND:
             for pat in self.policy.deny_command_patterns:
                 if re.search(pat, request.resource):
@@ -249,49 +248,55 @@ class PermissionGate:
             ACTION_WRITE_FILE,
             ACTION_DELETE_FILE,
         }:
-            for pat in self.policy.deny_path_patterns:
-                if re.search(pat, request.resource):
-                    return Decision.deny(
-                        reason=f"path matches deny pattern: {pat}"
-                    )
+            # Додаткова перевірка на шлях поза дозволеною зоною (це повторює _in_project_root, але є додатковим шаром захисту)
+            if not self._in_project_root(request.resource):
+                 return Decision.deny(
+                    reason=f"path outside restricted root: {self.policy.restricted_root}"
+                )
         return None
 
     def _check_allow(
         self, request: PermissionRequest
     ) -> Optional[Decision]:
+        """Перевіряє на дозволені команди та файлові операції в корені."""
         if request.action == ACTION_RUN_COMMAND:
             for prefix in self.policy.allow_command_prefixes:
                 if request.resource.startswith(prefix):
                     return Decision.approve(reason=f"safe prefix: {prefix!r}")
 
+        # Обмеження для файлових операцій
         if request.action in {ACTION_WRITE_FILE, ACTION_DELETE_FILE}:
-            if self.policy.allow_any_in_project_root and self._in_project_root(
-                request.resource
-            ):
-                return Decision.approve(reason="path inside project_root")
+            if self._in_project_root(request.resource):
+                return Decision.approve(reason="path inside restricted root")
 
-        if (
-            request.action == ACTION_READ_FILE
-            and self.policy.allow_read_file_anywhere
-        ):
-            return Decision.approve(reason="read_file is safe by default")
+        # Дозволено читання лише з дозволеного кореня (за замовчуванням)
+        if request.action == ACTION_READ_FILE and self._in_project_root(request.resource):
+            return Decision.approve(reason="read_file inside restricted root")
+
+        # Якщо read-only режим вимкнено, дозволяємо читання будь-де (для діагностики)
+        if request.action == ACTION_READ_FILE and self.policy.allow_read_file_outside_root:
+            return Decision.approve(reason="reading outside restricted root allowed")
 
         return None
 
     def _in_project_root(self, path: str) -> bool:
-        root = self.policy.project_root
-        if not root:
+        """Перевіряє, чи шлях знаходиться в дозволеному корені."""
+        restricted_path = self.policy.restricted_root
+        if not restricted_path:
             return False
         try:
-            target = os.path.abspath(path)
-            rooted = os.path.abspath(root)
+            # Звертаємо увагу на нормалізацію шляху (забезпечуємо слеш)
+            normalized_rooted = os.path.normpath(restricted_path.rstrip('\\/') + '\\')
+            target = os.path.normpath(os.path.abspath(path))
+
         except Exception:  # noqa: BLE001
             return False
         try:
-            return os.path.commonpath([target, rooted]) == rooted
-        except ValueError:
-            # шляхи з різних дисків на Windows
+            # Перевіряємо, чи шлях починається з кореневого шляху
+            return target.startswith(normalized_rooted)
+        except Exception:
             return False
+
 
     def _remember(
         self, request: PermissionRequest, decision: Decision
@@ -353,7 +358,6 @@ class PermissionGate:
 # ---------------------------------------------------------------------------
 # Convenience builders
 # ---------------------------------------------------------------------------
-
 
 def always_allow() -> AskFn:
     """ask_fn, що завжди відповідає allow. Для CI / unattended test runs."""
