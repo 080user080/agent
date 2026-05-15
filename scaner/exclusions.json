@@ -33,6 +33,7 @@
     "backup/розробка на завтра.txt",
     "backup/створи план вдосконалення коду.txt",
     "backup/тестові питання.txt",
+    "debug_logs",
     "logs",
     "logs/checkpoints",
     "logs/screenshots",
@@ -115,7 +116,6 @@
     "voices/default",
     "voices/voice_split.py",
     "можливі майбутні розробки",
-    "можливі майбутні розробки/test_multi_tab_gui.py",
-    "Full_doc_doc_context_20260515_092836.txt"
+    "можливі майбутні розробки/test_multi_tab_gui.py"
   ]
 }
