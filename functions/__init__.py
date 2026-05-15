@@ -1,0 +1,1 @@
+"""Backward compatibility layer for A2 restructuring."""

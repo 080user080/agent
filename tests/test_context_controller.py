@@ -2,7 +2,7 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
-from core.context_controller import ContextController, TIKTOKEN_AVAILABLE
+from functions.planning.context_controller import ContextController, TIKTOKEN_AVAILABLE
 
 
 class TestContextController(unittest.TestCase):
@@ -115,7 +115,7 @@ class TestContextController(unittest.TestCase):
     def test_count_tokens_fallback(self):
         """Fallback підрахунок токенів без tiktoken."""
         # Емулюємо відсутність tiktoken
-        with patch('core.context_controller.TIKTOKEN_AVAILABLE', False):
+        with patch('functions.planning.context_controller.TIKTOKEN_AVAILABLE', False):
             controller = ContextController(ask_llm_fn=None)
             text = "Hello, world!"  # ~13 символів
             tokens = controller.count_tokens(text)

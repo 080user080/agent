@@ -38,6 +38,8 @@
     "logs/screenshots",
     "logs/snapshots",
     "logs/@AutomationLog.txt",
+    "scaner",
+    "scaner/scaner.py",
     "tests",
     "tests/conftest.py",
     "tests/test_action_decider.py",
@@ -99,7 +101,6 @@
     "tests/test_tools_ffmpeg.py",
     "tests/test_tools_mouse_keyboard.py",
     "tests/test_tools_ocr.py",
-    "tests/test_tools_open_interpreter.py",
     "tests/test_tools_screen_capture.py",
     "tests/test_tools_ui_accessibility.py",
     "tests/test_tools_ui_detector.py",
@@ -115,8 +116,6 @@
     "voices/voice_split.py",
     "можливі майбутні розробки",
     "можливі майбутні розробки/test_multi_tab_gui.py",
-    "all_py_files.txt",
-    "info2.txt",
-    "scaner.py"
+    "Full_doc_doc_context_20260515_092836.txt"
   ]
 }

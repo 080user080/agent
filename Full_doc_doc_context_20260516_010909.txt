@@ -137,7 +137,6 @@ TASKS.md
 TASKS_Done.md
 info.txt
 main.py
-project_context_20260515_091754.txt
 remove_secrets.py
 requirements-dev.txt
 requirements.txt
@@ -148,76 +147,10 @@ status.md
 ============================================================
 ДЕТАЛІЗАЦІЯ КОДУ (рівень: full_doc)
 ============================================================
+# [Помилка читання] D:\Python\agent\core\__init__.py: [Errno 2] No such file or directory: 'D:\\Python\\agent\\core\\__init__.py'
 
-============================================================
-Файл: D:\Python\agent\core\__init__.py
-============================================================
-(немає класів чи функцій верхнього рівня)
+# [Помилка читання] D:\Python\agent\core\context_controller.py: [Errno 2] No such file or directory: 'D:\\Python\\agent\\core\\context_controller.py'
 
-============================================================
-Файл: D:\Python\agent\core\context_controller.py
-============================================================
-Сутності:
-class ContextController:
-    """Єдиний контролер контексту для AgentLoop та VoiceAssistant.
-
-Зберігає:
-- global_summary: стислий підсумок виконання завдання
-- short_term_memory: останні 3-5 детальних подій
-- Використовує LLM для автоматичного підсумовування старих дій
-- Стискає довгі дані (OCR, UIA) перед записом"""
-    def __init__(self, ask_llm_fn: Optional[Callable[[str, Optional[str]], str]], model_name: str, max_short_term: int, max_content_chars: int):
-        """Args:
-    ask_llm_fn: Функція для виклику LLM (prompt, system_prompt) -> str
-    model_name: Назва моделі для токенометрії
-    max_short_term: Скільки подій тримати в деталях
-    max_content_chars: Максимальна довжина контенту перед стисненням"""
-    def add_event(self, event_type: str, content: Any) -> Optional[str]:
-        """Додає подію в короткочасову пам'ять.
-
-Args:
-    event_type: Тип події ('action', 'observation', 'voice_command', 'error')
-    content: Дані події
-    
-Returns:
-    Новий global_summary якщо відбулося підсумовування, інакше None"""
-    def _clean_content(self, content: Any) -> str:
-        """Очищення та стиснення контенту перед записом в історію.
-
-Args:
-    content: Вхідні дані (будь-якого типу)
-    
-Returns:
-    Очищений та стиснутий текст"""
-    def _summarize_oldest(self) -> str:
-        """Викликає LLM для оновлення глобального підсумку.
-
-Returns:
-    Новий global_summary"""
-    def get_full_context(self) -> str:
-        """Повертає повний контекст для вставки в системний промпт.
-
-Returns:
-    Рядок з global_summary та останніми детальними кроками"""
-    def count_tokens(self, text: str) -> int:
-        """Підраховує кількість токенів у тексті.
-
-Args:
-    text: Текст для підрахунку
-    
-Returns:
-    Кількість токенів (або груба оцінка якщо tiktoken недоступний)"""
-    def get_compressed_ocr(self, ocr_text: str, max_chars: int) -> str:
-        """Стискає OCR текст.
-
-Args:
-    ocr_text: Текст OCR
-    max_chars: Максимальна кількість символів
-    
-Returns:
-    Стиснутий текст"""
-    def reset(self):
-        """Скидає стан контролера (для нових завдань)."""
 
 ============================================================
 Файл: D:\Python\agent\core_gui_pyqt6\__init__.py
@@ -3613,433 +3546,82 @@ python -m pytest tests/ -v
 ============================================================
 Файл: D:\Python\agent\functions\aaa_architect.py
 ============================================================
-Сутності:
-def fix_indentation(code_body, spaces):
-def validate_code(code):
-def llm_function_reg(name, description, parameters):
-def create_skill(task_description):
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_code_tools.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-    """Декоратор для реєстрації функцій"""
-def _resolve_path(filepath: str) -> str:
-    """Нормалізувати шлях: якщо не абсолютний - шукати на Desktop."""
-def read_code_file(filepath, start_line, max_lines):
-    """Прочитати файл з обмеженням кількості рядків."""
-def search_in_code(pattern, directory, file_pattern, max_results):
-    """Пошук по файлах за патерном."""
-def list_directory(directory):
-    """Перелічити файли в директорії."""
-def git_status(directory):
-    """Виконати git status."""
-def git_diff(directory, staged):
-    """Виконати git diff."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_confirmation.py
 ============================================================
-Сутності:
-def set_gui_instance(gui):
-    """Встановити екземпляр GUI"""
-def llm_function(name, description, parameters):
-def confirm_action(action, question):
-    """Система підтвердження через GUI з підтримкою 'Автоматично'."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_create_file.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-    """Декоратор для реєстрації функцій"""
-def create_file(filename, content, filepath, path, name):
-    """Створити файл (txt/py).
-
-Підтримує кілька ім'я аргументу (`filename`, `filepath`, `path`, `name`),
-бо LLM іноді плутається у назві параметра."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_debug_code.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-    """Декоратор для реєстрації функцій"""
-class AutoDebugger:
-    """Автоматичне виправлення коду"""
-    def __init__(self, max_attempts):
-    def parse_error(self, stderr):
-        """Витягти інформацію про помилку"""
-    def ask_llm_to_fix(self, code, error_info, attempt):
-        """Попросити LLM виправити код"""
-    def debug_and_fix(self, code):
-        """Виправити код автоматично (до max_attempts спроб)"""
-def debug_python_code(code):
-    """Автоматичне виправлення коду"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_edit_file.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-    """Декоратор для реєстрації функцій"""
-def edit_file(filepath, new_content):
-    """Редагувати файл з бекапом. Якщо файл не існує — створити його (upsert)."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_execute_python.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-    """Декоратор для реєстрації функцій"""
-class PythonSandbox:
-    """Безпечна пісочниця для Python коду"""
-    def __init__(self):
-    def validate_code(self, code):
-        """Перевірити код на безпеку"""
-    def _auto_wrap_print(self, code: str) -> str:
-        """Обгорнути однорядковий вираз у print(), щоб було що виводити.
-
-Приклади які обгортаємо:
-- `sum(range(1,101))`  →  `print(sum(range(1,101)))`
-- `max([1,2,3])`        →  `print(max([1,2,3]))`
-Не чіпаємо:
-- Багаторядкові скрипти
-- Скрипти з `print`, `=`, `import`, `def`, `class`, `for`, `if`, `while`, `try`, `with`"""
-    def execute(self, code, script_name):
-        """Виконати код в пісочниці"""
-def execute_python(code, script_name):
-    """Виконати Python код з fallback на Open Interpreter при ModuleNotFoundError"""
-def execute_python_code(code, script_name):
-    """Alias для execute_python для сумісності з LLM"""
-def execute_python_file(filename):
-    """Виконати існуючий Python файл"""
-def list_sandbox_scripts():
-    """Список скриптів"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_file_operations.py
 ============================================================
-Сутності:
-def write_file(filepath: str, content: str) -> dict:
-    """Створити або перезаписати текстовий файл.
-
-Args:
-    filepath: Шлях до файлу (відносний або абсолютний)
-    content: Вміст файлу
-
-Returns:
-    dict: {'ok': True, 'result': 'Файл створено: {path}'} або помилка"""
-def list_directory(directory: str) -> dict:
-    """Показати вміст директорії.
-
-Args:
-    directory: Шлях до директорії (за замовчуванням поточна)
-
-Returns:
-    dict: {'ok': True, 'result': 'вміст директорії'} або помилка"""
-def read_file(filepath: str) -> dict:
-    """Прочитати вміст текстового файлу.
-
-Args:
-    filepath: Шлях до файлу
-
-Returns:
-    dict: {'ok': True, 'result': 'вміст файлу'} або помилка"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_help.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-def help():
-    """Функція з назвою 'help' приймає параметри: {'program_name': 'WindSurf'}"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_open_browser.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-    """Декоратор для реєстрації функцій"""
-def open_browser(url):
-    """Відкрити URL у браузері"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_open_interpreter.py
 ============================================================
-Сутності:
-class OIResult:
-    """Result from Open Interpreter execution."""
-class OpenInterpreterExecutor:
-    """Executor for Open Interpreter with local LM Studio backend."""
-    def __init__(self, lm_studio_url: str):
-        """Initialize executor with local LM Studio URL.
-
-Args:
-    lm_studio_url: URL of local LM Studio server (OpenAI-compatible)"""
-    def _initialize(self) -> bool:
-        """Initialize Open Interpreter with local LM Studio.
-
-Returns:
-    True if successful, False otherwise"""
-    def execute_with_healing(self, code: str, task_description: str, auto_run: bool) -> OIResult:
-        """Execute code with self-healing via Open Interpreter.
-
-When ModuleNotFoundError occurs in normal execute_python,
-OI can install missing packages and retry.
-
-Args:
-    code: Python code to execute
-    task_description: Description of what the code should do (helps OI understand context)
-    auto_run: If True, OI will auto-run installation commands
-    
-Returns:
-    OIResult with success status, output, and error if any"""
-def get_executor(lm_studio_url: Optional[str]) -> OpenInterpreterExecutor:
-    """Get singleton Open Interpreter executor.
-
-Args:
-    lm_studio_url: Optional custom LM Studio URL
-    
-Returns:
-    OpenInterpreterExecutor instance"""
-def oi_execute_with_healing(code: str, task_description: str, auto_run: bool) -> OIResult:
-    """Execute code with self-healing via Open Interpreter.
-
-This is the main entry point for OI integration.
-Should be called when execute_python fails with ModuleNotFoundError.
-
-Args:
-    code: Python code that failed to execute
-    task_description: What the code should do (helps OI understand)
-    auto_run: If True, OI will auto-run installation commands
-    
-Returns:
-    OIResult with execution results"""
-def is_available() -> bool:
-    """Check if Open Interpreter is available and enabled.
-
-Returns:
-    True if OI can be used, False otherwise"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_programs.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-    """Декоратор для реєстрації функцій в LLM"""
-def open_program(program_name, file_path):
-    """Відкрити програму через SafetySandbox (з можливістю передати файл)"""
-def close_program(process_name):
-    """Закрити програму через SafetySandbox"""
-def add_allowed_program(program_name, program_path):
-    """Додати програму в whitelist"""
-def show_sandbox_status():
-    """Показати статус sandbox"""
-def enable_auto_confirm():
-def disable_auto_confirm():
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_system.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-def clear_cache():
-    """Очистити кеш асистента."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_utility_tools.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-    """Декоратор для реєстрації функцій"""
-def create_folder(folder_name, path, name, foldername):
-    """Створити папку. Якщо шлях відносний — на Desktop."""
-def search_in_text(text, query, regex, pattern, search):
-    """Шукати query в text. Повертає кількість збігів і позиції."""
-def count_words(text, content, string):
-    """Порахувати кількість слів у тексті."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\aaa_voice_input.py
 ============================================================
-Сутності:
-def llm_function(name, description, parameters):
-    """Декоратор для реєстрації функцій"""
-def set_assistant(assistant):
-    """Встановити асистента (викликається з main.py)"""
-def clean_recognized_text(text):
-    """Очистити розпізнаний текст від зайвих пробілів та символів"""
-def get_active_window_info():
-    """Отримати інформацію про активне вікно (Windows)"""
-def activate_window_by_hwnd(hwnd):
-    """Активувати вікно за дескриптором (Windows)"""
-def activate_window_by_title(title):
-    """Знайти та активувати вікно за заголовком (надійно через Win32)."""
-def safe_paste_text():
-    """Безпечна вставка тексту з декількома спробами"""
-def transcribe_audio_w2v(audio, sample_rate):
-    """Транскрибувати аудіо за допомогою w2v-bert-uk"""
-def voice_input(duration):
-    """Голосовий ввід зі збереженням фокусу активного вікна"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\agent_loop.py
 ============================================================
-Сутності:
-class Observation:
-    """Результат observe() — поточний стан системи."""
-class AgentAction:
-    """Структурована дія, яку повертає ActionDecider.
-
-Аналог OpenAI tool_call: name + arguments. Спеціальні значення
-`name`: ``done`` (завершити цикл), ``ask_user`` (запитати користувача)."""
-class AgentState:
-    """Стат агента між ітераціями."""
-class AgentLoopConfig:
-    """Конфігурація AgentLoop."""
-class ActionDecider:
-    """LLM-driven decider: на основі observation повертає наступну `AgentAction`.
-
-Використовує OpenAI-compatible tool-calling через `logic_llm_tools.ask_llm_with_tools`.
-Якщо LLM повертає `tool_calls` — беремо перший і конвертуємо в `AgentAction`.
-Якщо ні (немає tools_calls, лише content) — інтерпретуємо як `done`.
-
-Якщо LLM-шар недоступний (немає endpoint, немає logic_llm_tools, тощо) —
-`decide()` повертає `AgentAction(name="noop")`, що змусить AgentLoop впасти
-на наступний пріоритет (CompiledPlan / Planner)."""
-    def __init__(self, ask_llm_with_tools_fn: Optional[Callable[..., Any]], tools_schema: Optional[List[Dict[str, Any]]], tool_aliases: Optional[Dict[str, str]], system_prompt: Optional[str], history_max: int):
-    def is_available(self) -> bool:
-        """Чи доступний LLM-шар для прийняття рішень."""
-    def resolve_alias(self, tool_name: str) -> str:
-        """Перетворити alias імені інструменту на реальне ім'я в FunctionRegistry."""
-    def _format_observation(self, obs: Optional[Observation]) -> str:
-    def _format_history(self, history: List[Dict[str, Any]]) -> str:
-    def build_messages(self, goal: str, observation: Optional[Observation], history: List[Dict[str, Any]], last_result: Optional[Dict[str, Any]], extra_instructions: str, current_step: int, progress_summary: str, context_controller: Optional[Any], stuck_warning: str) -> List[Dict[str, str]]:
-    def decide(self, goal: str, observation: Optional[Observation], history: List[Dict[str, Any]], last_result: Optional[Dict[str, Any]], progress_summary: str, context_controller: Optional[Any], stuck_warning: str, extra_instructions: str) -> AgentAction:
-        """Один крок рішення через LLM (JSON parsing fallback)."""
-    def replan(self, goal: str, observation: Optional[Observation], history: List[Dict[str, Any]], consecutive_failures: int, progress_summary: str, context_controller: Optional[Any]) -> AgentAction:
-        """Переосмислити підхід після кількох невдач підряд."""
-class AgentLoop:
-    """Замкнутий цикл агента з observe → plan → act → check.
-
-Замінює legacy linear execution на справжній agent loop з feedback."""
-    def __init__(self, assistant, registry, config: Optional[AgentLoopConfig], ask_user_callback: Optional[Callable[[str, List[str]], str]], decider: Optional[ActionDecider], repairer: Optional[Any], context_controller: Optional[Any]):
-    def _gui_msg(self, msg_type: str, data: Any) -> None:
-        """Відправити повідомлення в GUI.
-
-Args:
-    msg_type: Тип повідомлення
-    data: Дані для передачі"""
-    def _extract_python_write_targets(self, code: str) -> List[str]:
-        """Best-effort detection of files written by generated Python code."""
-    def _needs_screen_observation(self, task: str) -> bool:
-        """Чи потрібен скріншот для цієї задачі?"""
-    def observe(self) -> Observation:
-        """Отримати поточний стан системи (скрін + OCR + UIA + UI elements + Vision-LM)."""
-    def _get_active_window_title(self) -> str:
-        """Повернути заголовок активного вікна (без винятків)."""
-    def _collect_ui_elements(self) -> List[Dict[str, Any]]:
-        """Зібрати список видимих UI-елементів через ui_detector / app_recognizer."""
-    def _safe_uia_dict(self, element) -> Dict[str, Any]:
-        """Безпечне dict-представлення UIA-елемента."""
-    def _build_uia_tree(self, uia) -> Optional[Dict[str, Any]]:
-        """Зібрати скорочене UIA-дерево активного вікна для LLM."""
-    def _hash_screenshot(self, path: str) -> str:
-        """Порахувати MD5 хеш скріншоту для швидкого порівняння.
-
-Оптимізація: читаємо файл частинами для великих файлів.
-
-Args:
-    path: Шлях до файлу скріншоту
-    
-Returns:
-    MD5 хеш файлу або порожній рядок при помилці"""
-    def check(self, action: str, obs: Observation, act_result: Optional[Dict[str, Any]], expectations: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
-        """Перевірити чи дія спрацювала.
-
-Перевірки (по черзі):
-1. Якщо act_result явно повернув ok=False — fail.
-2. Якщо передані expectations — перевірити через ExpectRegistry.
-3. Інакше — порівняти screen_hash зі попереднім.
-
-Дії, які не змінюють екран фізично (`take_screenshot`, `ocr_screen`,
-`describe_screen`, `wait_seconds`, `done`, `ask_user`), не вважаються
-провальними при незмінному екрані."""
-    def _run_expectations(self, expectations: List[Dict[str, Any]], obs: Observation, act_result: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Виконати список ExpectSpec через ExpectRegistry.
-
-Кожен expectation — `{"kind": "...", "params": {...}}`.
-Повертає список dict-результатів `{kind, ok, reason}`."""
-    def set_compiled_plan(self, compiled_plan):
-        """Встановити CompiledPlan від TaskSpec."""
-    def _save_checkpoint(self, state: AgentState) -> None:
-        """Зберегти чекпоїнт."""
-    def _load_checkpoint(self) -> Optional[AgentState]:
-        """Завантажити чекпоїнт."""
-    def _get_step_from_plan(self, step: Dict[str, Any], state: AgentState, total_steps: int, from_compiled: bool) -> Dict[str, Any]:
-        """Отримати план кроку з обробкою ask_user."""
-    def _plan_from_compiled(self, state: AgentState) -> Optional[Dict[str, Any]]:
-        """Отримати наступний крок з CompiledPlan."""
-    def _plan_from_planner(self, task: str, state: AgentState) -> Optional[Dict[str, Any]]:
-        """Отримати наступний крок з Planner (тільки для першого кроку)."""
-    def _plan_from_history(self, state: AgentState) -> Optional[Dict[str, Any]]:
-        """Отримати наступний крок з історії планів."""
-    def _plan_from_decider(self, task: str, obs: Observation, state: AgentState) -> Optional[Dict[str, Any]]:
-        """Отримати наступний крок з LLM tool-calling decider."""
-    def plan(self, task: str, obs: Observation, state: AgentState) -> Dict[str, Any]:
-        """Вирішити що робити далі.
-
-Пріоритет:
-1. LLM ActionDecider (tool-calling)
-2. CompiledPlan (від TaskSpec)
-3. Planner (legacy, тільки для першого кроку)
-4. Історія планів
-5. noop / done
-
-Повертає: {"action": "...", "args": {...}, "replan": bool, "done": bool}"""
-    def _handle_ask_user_step(self, step: Dict[str, Any], state: AgentState, total_steps: int, from_compiled: bool) -> Dict[str, Any]:
-        """Обробити крок що вимагає запиту користувача."""
-    def act(self, plan: Dict[str, Any]) -> Dict[str, Any]:
-        """Виконати дію через registry."""
-    def _should_stop(self, state: AgentState, start_time: float) -> bool:
-        """Перевірити чи треба зупинити виконання."""
-    def request_stop(self):
-        """Запит на зупинку AgentLoop (з GUI кнопки 'Стоп')."""
-    def _execute_single_step(self, task: str, state: AgentState, start_time: float) -> bool:
-        """Виконати одну ітерацію циклу. Повертає True якщо треба продовжувати."""
-    def _try_repair(self, action: str, args: Dict[str, Any], reasoning: str, act_result: Dict[str, Any], obs: Observation, state: AgentState, expectations: Optional[List[Dict[str, Any]]]) -> None:
-        """Викликати StepRepairer для адаптивного відновлення.
-
-Модифікує state на основі рішення:
-- RETRY: додає модифіковану дію в actions_history із прапором "repair_retry"
-         (наступна ітерація plan() використає її через decider context)
-- SKIP: ресетить consecutive_failures (продовжуємо)
-- REPLAN: ресетить consecutive_failures (decider зробить replan на наступному кроці)
-- STOP: ставить state.done=True із summary"""
-    def _cleanup_checkpoint(self) -> None:
-        """Видалити чекпоїнт після завершення."""
-    def _send_completion_summary(self, state: AgentState, duration: float) -> None:
-        """Відправити summary про завершення в GUI з перевіркою чек-лісту."""
-    def _try_open_interpreter_fallback(self, task: str, state: AgentState) -> None:
-        """Спробувати вирішити задачу через Open Interpreter як останній рятівник.
-
-Викликається коли AgentLoop не зміг виконати задачу.
-Передає повний контекст: завдання, створені файли, цільову папку."""
-    def run(self, task: str) -> Dict[str, Any]:
-        """Основний цикл агента: observe → plan → act → check.
-
-Args:
-    task: Опис задачі
-
-Returns:
-    dict з результатами виконання"""
-def build_default_decider() -> Optional[ActionDecider]:
-    """Зібрати ActionDecider із дефолтним LLM-шаром і tool-схемою.
-
-Повертає None якщо `logic_llm_tools` або `logic_agent_tools_schema` не
-імпортуються (середовище без LLM endpoint, тести без мережі тощо)."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\ai_actors.py
@@ -4211,82 +3793,7 @@ Returns:
 ============================================================
 Файл: D:\Python\agent\functions\core_action_recorder.py
 ============================================================
-Сутності:
-class ActionRecord:
-    """Запис про виконану дію."""
-class ActionRecorder:
-    """Recorder для GUI дій.
-Singleton, автоматично записує всі дії зі скріншотами."""
-    def __new__(cls):
-    def __init__(self, logs_dir: str):
-    def _cleanup_old_records(self):
-        """Видалити записи старші за retention_days."""
-    def _generate_screenshot_filename(self, action_type: str, before: bool) -> str:
-        """Генерувати ім'я файлу для скріншоту."""
-    def record_action(self, action_type: str, function_name: str, params: Dict[str, Any], result: Dict[str, Any], capture_screenshots: bool) -> ActionRecord:
-        """Записати дію зі скріншотами.
-
-Args:
-    action_type: Тип дії ("click", "type", "screenshot", etc.)
-    function_name: Назва функції
-    params: Параметри виклику
-    result: Результат виконання
-    capture_screenshots: Чи робити скріншоти
-
-Returns:
-    ActionRecord"""
-    def _save_record(self, record: ActionRecord):
-        """Зберегти запис у файл та кеш."""
-    def _truncate_params(self, params: Dict[str, Any], max_len: int) -> Dict[str, Any]:
-        """Обмежити розмір параметрів для запису."""
-    def get_recent_actions(self, count: int) -> List[Dict[str, Any]]:
-        """Отримати останні N дій.
-
-Args:
-    count: Кількість дій
-
-Returns:
-    Список записів"""
-    def export_session_log(self, format: str) -> str:
-        """Експортувати лог поточної сесії.
-
-Args:
-    format: "json" або "text"
-
-Returns:
-    Лог у вказаному форматі"""
-    def generate_action_report(self) -> str:
-        """Згенерувати читабельний звіт.
-
-Returns:
-    Текстовий звіт"""
-    def search_actions(self, filter_dict: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Пошук дій за фільтром.
-
-Args:
-    filter_dict: Фільтр {"action_type": "click", "success": True, ...}
-
-Returns:
-    Відфільтровані записи"""
-def get_recorder() -> ActionRecorder:
-    """Отримати singleton екземпляр ActionRecorder."""
-def record_action(action_type: str, function_name: str, params: Dict[str, Any], result: Dict[str, Any], capture_screenshots: bool) -> Dict[str, Any]:
-    """Записати дію."""
-def get_recent_actions(count: int) -> List[Dict[str, Any]]:
-    """Отримати останні дії."""
-def export_session_log(format: str) -> str:
-    """Експортувати лог сесії."""
-def generate_action_report() -> str:
-    """Згенерувати звіт."""
-def search_actions(filter_dict: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Пошук дій."""
-def recordable(action_type: str, capture_screenshots: bool):
-    """Декоратор для автоматичного запису функцій.
-
-Usage:
-    @recordable("click")
-    def mouse_click(x, y):
-        ..."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_app_profile.py
@@ -4342,63 +3849,7 @@ class AppProfileRegistry:
 ============================================================
 Файл: D:\Python\agent\functions\core_cache.py
 ============================================================
-Сутності:
-class CacheManager:
-    """Менеджер кешування тільки для ідемпотентних команд.
-
-Кешує тільки команди, які:
-- Не мають побічних ефектів (не змінюють файли/систему)
-- Повертають той самий результат для тих самих вхідних даних
-- Помічені як idempotent=True в TOOL_POLICIES
-
-Приклади ідемпотентних команд: calculate, count_words, search_in_text, read_code_file
-Не кешуються: create_file, open_program, close_program, edit_file"""
-    def __init__(self, registry, cache_duration_hours: int):
-    def _load_cache(self) -> Dict[str, Any]:
-        """Завантажити кеш з файлу з очищенням прострочених записів."""
-    def _save_cache(self) -> None:
-        """Зберегти кеш у файл."""
-    def _is_idempotent_command(self, command_text: str, action: Optional[str]) -> bool:
-        """Перевірити чи команда ідемпотентна (безпечна для кешування).
-
-Args:
-    command_text: Текст команди
-    action: Назва функції (опціонально)
-
-Returns:
-    True якщо команда ідемпотентна"""
-    def _extract_action_from_command(self, command_text: str) -> Optional[str]:
-        """Витягти назву дії з команди для перевірки ідемпотентності."""
-    def get(self, command_text: str) -> Tuple[Optional[str], bool]:
-        """Отримати результат з кешу.
-
-Args:
-    command_text: Текст команди
-
-Returns:
-    (response, is_cached): tuple з відповіддю та флагом кешу"""
-    def set(self, command_text: str, response: str, action: Optional[str]) -> bool:
-        """Додати відповідь в кеш тільки для ідемпотентних команд.
-
-Args:
-    command_text: Текст команди
-    response: Відповідь для кешування
-    action: Назва функції (для перевірки)
-
-Returns:
-    True якщо додано в кеш"""
-    def clear(self) -> int:
-        """Очистити весь кеш.
-
-Returns:
-    Кількість видалених записів"""
-    def get_stats(self) -> Dict[str, Any]:
-        """Отримати статистику кешу."""
-    def execute_cached_action(self, action_info: Optional[Dict]) -> None:
-        """DEPRECATED: Небезпечний метод видалено.
-
-Раніше виконував дії автоматично — це небезпечно.
-Кеш тепер тільки для читання результатів."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_checkpoint.py
@@ -4446,96 +3897,7 @@ class Dispatcher:
 ============================================================
 Файл: D:\Python\agent\functions\core_gui_guardian.py
 ============================================================
-Сутності:
-class GUIRiskLevel(Enum):
-    """Рівні ризику GUI дій."""
-class RiskAssessment:
-    """Оцінка ризику дії."""
-class SafetyZone:
-    """Безпечна зона для дій."""
-class GUIGuardian:
-    """Guardian для GUI автоматизації.
-Аналізує дії на небезпечність, контролює sandbox."""
-    def __init__(self):
-    def enable_sandbox_mode(self, allowed_region: Optional[Tuple[int, int, int, int]], allowed_apps: Optional[List[str]]):
-        """Увімкнути sandbox режим.
-
-Args:
-    allowed_region: (x, y, width, height) — дозволена зона
-    allowed_apps: Список дозволених програм"""
-    def disable_sandbox_mode(self):
-        """Вимкнути sandbox режим."""
-    def set_allowed_region(self, x: int, y: int, width: int, height: int):
-        """Встановити дозволену зону."""
-    def set_allowed_applications(self, app_names: List[str]):
-        """Встановити дозволені програми."""
-    def add_blocked_application(self, app_name: str):
-        """Додати програму в чорний список."""
-    def assess_risk(self, action: str, params: Dict[str, Any], target_text: Optional[str]) -> RiskAssessment:
-        """Оцінити ризик дії.
-
-Args:
-    action: Тип дії ("click", "type", "delete", ...)
-    params: Параметри
-    target_text: Текст цільового елементу
-
-Returns:
-    RiskAssessment"""
-    def is_action_allowed(self, action: str, params: Dict[str, Any], target_text: Optional[str]) -> Dict[str, Any]:
-        """Перевірити чи дозволена дія.
-
-Returns:
-    {"allowed": bool, "reason": str, "risk": RiskAssessment}"""
-    def preview_action(self, action: str, params: Dict[str, Any]) -> str:
-        """Створити опис того що буде зроблено.
-
-Args:
-    action: Тип дії
-    params: Параметри
-
-Returns:
-    Текстовий опис"""
-    def simulate_action(self, action: str, params: Dict[str, Any]) -> Dict[str, Any]:
-        """"Сухий" прогін дії без виконання.
-
-Returns:
-    {"would_succeed": bool, "preview": str, "risk": RiskAssessment}"""
-    def get_safety_report(self) -> str:
-        """Згенерувати звіт про безпеку.
-
-Returns:
-    Текстовий звіт"""
-    def get_blocked_actions_history(self) -> List[Dict[str, Any]]:
-        """Отримати історію заблокованих дій."""
-def get_guardian() -> GUIGuardian:
-    """Отримати singleton GUIGuardian."""
-def enable_sandbox_mode(allowed_region: Optional[Tuple[int, int, int, int]], allowed_apps: Optional[List[str]]):
-    """Увімкнути sandbox."""
-def disable_sandbox_mode():
-    """Вимкнути sandbox."""
-def set_allowed_region(x: int, y: int, width: int, height: int):
-    """Встановити дозволену зону."""
-def set_allowed_applications(app_names: List[str]):
-    """Встановити дозволені програми."""
-def add_blocked_application(app_name: str):
-    """Додати в blacklist."""
-def assess_risk(action: str, params: Dict[str, Any], target_text: Optional[str]) -> Dict[str, Any]:
-    """Оцінити ризик."""
-def is_action_allowed(action: str, params: Dict[str, Any], target_text: Optional[str]) -> Dict[str, Any]:
-    """Перевірити чи дія дозволена."""
-def preview_action(action: str, params: Dict[str, Any]) -> str:
-    """Отримати preview дії."""
-def simulate_action(action: str, params: Dict[str, Any]) -> Dict[str, Any]:
-    """Симулювати дію."""
-def get_safety_report() -> str:
-    """Отримати звіт безпеки."""
-def guarded(action_name: str, require_confirmation_for: List[str]):
-    """Декоратор для захищених функцій.
-
-Usage:
-    @guarded("click", require_confirmation_for=["high", "critical"])
-    def mouse_click(x, y):
-        ..."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_loop_detector.py
@@ -4681,299 +4043,27 @@ def _substitute_vars(params: Dict[str, Any], variables: Dict[str, Any]) -> Dict[
 ============================================================
 Файл: D:\Python\agent\functions\core_memory.py
 ============================================================
-Сутності:
-class SessionMemory:
-    """Пам'ять поточної сесії (в RAM, не зберігається на диск).
-
-Тримає тимчасові дані: активні файли, поточний контекст, лічильники."""
-    def __init__(self):
-    def track_command(self) -> None:
-    def track_plan(self) -> None:
-    def track_error(self) -> None:
-    def set_current_task(self, task: str) -> None:
-    def add_active_file(self, path: str) -> None:
-    def snapshot(self) -> Dict[str, Any]:
-        """Поточний стан сесії."""
-class TaskMemory:
-    """Пам'ять однієї задачі: план, кроки, артефакти, проміжні результати."""
-    def __init__(self, task_id: str, task_text: str):
-    def record_plan(self, plan: List[Dict[str, Any]]) -> None:
-    def record_step(self, step_result: Dict[str, Any]) -> None:
-    def set_artifact(self, key: str, value: Any) -> None:
-    def finish(self, status: str) -> None:
-    def to_dict(self) -> Dict[str, Any]:
-class MemoryManager:
-    """Трирівнева пам'ять: довготривала (файл) + сесія (RAM) + задача (RAM+dump)."""
-    def __init__(self, storage_path: Optional[Path], llm_caller):
-    def _load(self) -> Dict[str, Any]:
-        """Завантажити пам'ять із файлу."""
-    def save(self) -> None:
-        """Зберегти поточний стан довготривалої пам'яті."""
-    def update_task(self, task: str, plan: list, results: list) -> None:
-        """Оновити інформацію про останнє виконане завдання."""
-    def add_file_path(self, path: str) -> None:
-        """Додати шлях до файлу."""
-    def set_variable(self, key: str, value: Any) -> None:
-    def get_variable(self, key: str, default) -> Any:
-    def get_last_files(self, extension: Optional[str]) -> list:
-    def clear_memory(self) -> None:
-    def start_task(self, task_text: str) -> str:
-        """Почати нову задачу. Повертає task_id."""
-    def current_task(self) -> Optional[TaskMemory]:
-    def record_task_plan(self, plan: List[Dict[str, Any]]) -> None:
-        """Записати план у поточну задачу."""
-    def record_task_step(self, step_result: Dict[str, Any]) -> None:
-        """Записати результат кроку у поточну задачу."""
-    def finish_task(self, status: str) -> Optional[TaskMemory]:
-        """Завершити поточну задачу. Генерує summary якщо можливо."""
-    def set_llm_caller(self, caller) -> None:
-        """Встановити функцію ask_llm(prompt) -> str для генерації summary."""
-    def _summarize_task(self, task: TaskMemory) -> Optional[str]:
-        """Згенерувати короткий summary задачі через LLM."""
-    def _fallback_task_summary(self, task: TaskMemory) -> str:
-        """Просте текстове summary, якщо LLM недоступний."""
-    def summarize_conversation(self, messages: List[Dict[str, str]], max_messages: int) -> str:
-        """Створити summary перших N повідомлень через LLM."""
-    def get_task_summaries(self, count: int) -> List[Dict[str, Any]]:
-        """Отримати останні summaries задач."""
-    def get_session_info(self) -> Dict[str, Any]:
-        """Інформація про поточну сесію."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_plan_compiler.py
 ============================================================
-Сутності:
-class Pipeline(Protocol):
-    """Контракт pipeline-а: знає як скомпілювати Plan для одного домену."""
-    def compile(self, spec: TaskSpec) -> Plan:
-    def required_tools(self, spec: TaskSpec) -> List[str]:
-class PipelineRegistryError(RuntimeError):
-    """Помилки реєстру (дубль ключа тощо)."""
-class PipelineRegistry:
-    """Реєстр pipeline-ів за доменом.
-
-Ключі — значення з `ALLOWED_DOMAINS` (див. `core_task_intake`). Якщо
-у реєстрі нема pipeline-а для конкретного домену — `resolve()` бере
-pipeline для `DOMAIN_MIXED` як fallback. Якщо й того нема — падає."""
-    def __init__(self) -> None:
-    def register(self, domain: str, pipeline: Pipeline) -> None:
-    def unregister(self, domain: str) -> None:
-    def get(self, domain: str) -> Optional[Pipeline]:
-    def resolve(self, domain: str) -> Pipeline:
-        """Повернути pipeline для домену з fallback на mixed/unknown."""
-    def list_domains(self) -> List[str]:
-class SkeletonPipeline:
-    """Placeholder pipeline — повертає Plan з одним `log_task_spec` Task-ом.
-
-Використовується поки реальний pipeline для цього домену не написано
-(S6 MVP). Plan позначений `metadata.placeholder=True` + у Task-і
-`params.placeholder_step=True`, щоб подальша перевірка/ревью могли
-легко відрізнити."""
-    def compile(self, spec: TaskSpec) -> Plan:
-    def required_tools(self, spec: TaskSpec) -> List[str]:
-def make_default_registry() -> PipelineRegistry:
-    """Створити реєстр з pipeline-ами під усі відомі домени.
-
-Стан реєстру по спринтах:
-
-- S6 (PR #25) — всі домени мапились на `SkeletonPipeline`.
-- S7 (поточний) — `DOMAIN_CODE` переключений на реальний
-  `CodePipeline` (pipeline_code). Решта — ще `SkeletonPipeline`.
-- S8-S11 — інші домени переключатимуться аналогічно без змін
-  API (`DOMAIN_PHOTO_BATCH` → `PhotoBatchPipeline` тощо)."""
-def compile_plan_from_spec(spec: TaskSpec) -> Plan:
-    """Обрати pipeline за `spec.domain` і повернути `Plan`.
-
-Якщо `registry=None` — створюється дефолтний (`make_default_registry`)."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_planner.py
 ============================================================
-Сутності:
-class Planner:
-    """Планує, перевіряє, виконує та переплановує багатокрокові задачі."""
-    def __init__(self, assistant):
-    def _ask_llm(self, prompt: str) -> str:
-        """Спрощений доступ до LLM через асистента."""
-    def _detect_llm_error(self, response: str, task: str) -> bool:
-        """Детектувати помилки моделі або з'єднання.
-
-Args:
-    response: Відповідь від LLM
-    task: Оригінальна задача
-
-Returns:
-    True якщо це помилка (помилка вже залогована)"""
-    def should_plan(self, task: str) -> bool:
-        """Чи схожа задача на багатокрокову."""
-    def _is_coding_task(self, task: str) -> bool:
-        """Чи є задача кодовою (передбачає роботу з файлами/кодом)."""
-    def _available_actions_description(self) -> str:
-        """Зібрати доступні функції з реєстру (скорочений список для планера)."""
-    def _extract_json(self, text: str) -> Optional[Any]:
-        """Витягнути JSON-масив або об'єкт з відповіді LLM.
-
-Підтримує:
-- Прибирання токенів `<|channel|>`, `<|message|>` тощо.
-- Код у блоках ```json ... ```.
-- Список об'єктів без зовнішніх `[]`: `{...}, {...}` → `[{...}, {...}]`."""
-    def normalize_plan(self, raw_plan: Any) -> List[Dict[str, Any]]:
-        """Нормалізувати план до списку кроків."""
-    def _recent_history_section(self, limit: int) -> str:
-        """Взяти останні N повідомлень з діалогу для контексту planner-а."""
-    def create_plan(self, task: str, context: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Побудувати план для задачі з врахуванням контексту."""
-    def validate_plan_safety(self, plan: List[Dict[str, Any]], task: str) -> Tuple[bool, str]:
-        """Перевірити план на безпеку з використанням централізованих політик."""
-    def _extract_file_path(self, result_text: str) -> Optional[str]:
-        """Спробувати витягти шлях або назву створеного файлу."""
-    def _resolve_placeholders(self, value: Any, context: Dict[str, Any]) -> Any:
-        """Замінити placeholder-и в значенні на реальні дані з контексту."""
-    def prepare_step(self, step: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
-        """Підготувати крок до виконання з урахуванням контексту та артефактів."""
-    def _validate_step(self, action: str, args: Dict[str, Any], result: str, context: Dict[str, Any]) -> Tuple[bool, str]:
-        """Перевірити, чи крок відпрацював успішно."""
-    def update_context_from_result(self, step: Dict[str, Any], result: str, context: Dict[str, Any]) -> Dict[str, Any]:
-        """Оновити контекст після виконання кроку зі збереженням артефактів."""
-    def _build_artifacts_summary(self, context: Dict[str, Any]) -> str:
-        """Побудувати текстове summary артефактів для передачі в LLM."""
-    def propose_repair_step(self, task: str, failed_step: Dict[str, Any], result: str, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Спробувати отримати один repair-крок після невдалого виконання."""
-    def propose_replan(self, task: str, failed_step: Dict[str, Any], result: str, context: Dict[str, Any], remaining_steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """Перебудувати решту плану після проваленого repair-кроку."""
-    def build_execution_context(self, task: str, plan: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Створити початковий контекст виконання з усіма необхідними полями."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_planner_critic.py
 ============================================================
-Сутності:
-def legacy_step_to_task(step: Mapping[str, Any], idx: int) -> Task:
-    """Перетворити один запис legacy-плану на `Task`.
-
-Правила:
-    - `step["action"]` → `Task.kind` (fallback `"step_{idx}"`).
-    - `step["args"]` → `Task.params` (deep-copied dict).
-    - `step.get("goal")` → `Task.name` (або `kind`, якщо порожнє).
-    - Зберігаємо допоміжні поля (`goal`, `validation`) у
-      `Task.params["_legacy"]`, щоб критик міг на них дивитись."""
-def legacy_plan_to_plan(legacy: Sequence[Mapping[str, Any]]) -> Plan:
-    """Конвертує `List[Dict]` з `Planner.create_plan()` у `Plan`."""
-class LegacyCritiqueResult:
-    """Результат `review_and_replan_legacy()` — фінальний план і критика."""
-    def blocking(self) -> bool:
-    def to_dict(self) -> Dict[str, Any]:
-def review_legacy_plan(legacy: Sequence[Mapping[str, Any]]) -> CritiqueResult:
-    """One-shot критика legacy-плану.
-
-Просто конвертує план → `Plan` → викликає `critic.review()`.
-Не робить replan; повертає `CritiqueResult` як є."""
-def review_and_replan_legacy(legacy: Sequence[Mapping[str, Any]]) -> LegacyCritiqueResult:
-    """Повний цикл: критика → (опційно replan) → критика → до `max_redos`.
-
-Args:
-    legacy: Початковий план у legacy-форматі.
-    critic: Сконфігурований `PlanCritic`.
-    task_description: Контекст-рядок для критика (що юзер просив).
-    policies: Мета-інформація для критика (tool_policies, project_root).
-    replan_fn: Якщо `blocking`-вердикт — викликаємо цю функцію для нового плану.
-    max_redos: Скільки разів дозволено перечитувати (1 = ще одна спроба).
-    plan_name: Назва для серіалізованого плану у промпті критика.
-
-Returns:
-    `LegacyCritiqueResult` з фінальним планом, останньою критикою,
-    прапором `approved` та кількістю спроб."""
-def _format_concerns_for_prompt(critique: CritiqueResult) -> str:
-    """Готує текстовий блок зауважень критика для інʼєкції у новий промпт."""
-def make_planner_replan_fn(planner: Any, task_description: str) -> ReplanFn:
-    """Factory: повертає `ReplanFn`, яка викликає `planner.create_plan()` з
-інʼєкцією зауважень критика у формулювання задачі.
-
-Використовує public API `Planner.create_plan(task, context=None)` і
-нічого не чіпає у самому планері."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_planner_runner.py
 ============================================================
-Сутності:
-def _coerce_status(raw: Mapping[str, Any]) -> str:
-    """Витягти `STATUS_OK` / `STATUS_ERROR` з raw-dict-у `last_tool_result`.
-
-Порядок:
-  1. `raw["ok"]` (bool) — формат `make_tool_result` (core_tool_runtime).
-  2. `raw["status"]` — якщо функція сама повертає legacy-статус.
-  3. За відсутності сигналів — `STATUS_OK` (невдача була б у exception)."""
-def _extract_tool_result(function_registry: Any, fallback_message: Any) -> Dict[str, Any]:
-    """Повернути нормалізований результат останнього виклику tool-а.
-
-`FunctionRegistry.execute_function()` повертає тільки рядок (`message`),
-а структуровану інформацію зберігає у `self.last_tool_result`. Ми читаємо
-саме її для достовірного `status` / `data` / `error`."""
-def make_legacy_action_handler(function_registry: Any) -> HandlerFn:
-    """Фабрика generic-handler-а для TaskRunner, який диспетчеризує
-`task.kind` → `function_registry.execute_function(action, params)`.
-
-Args:
-    function_registry: обʼєкт з методом `execute_function(action, params,
-        auto_create=False)` та атрибутом `last_tool_result`.
-    auto_create: чи дозволити Архітектору створювати відсутні функції
-        під час виконання (за замовчанням False — для автономних сесій
-        це небезпечно).
-    name_alias: опційна мапа `{task.kind: real_action_name}` — якщо LLM
-        використовує альтернативну назву.
-
-Returns:
-    `HandlerFn`, який можна зареєструвати на TaskRunner-і."""
-def register_legacy_actions(runner: TaskRunner, function_registry: Any) -> List[str]:
-    """Зареєструвати legacy-tools на TaskRunner як окремі `kind`-и.
-
-Args:
-    runner: TaskRunner, де буде зареєстровано handler-и.
-    function_registry: `FunctionRegistry` з `.functions: Dict[str, ...]`.
-    kinds: Обмежити реєстрацію заданим переліком tool-назв. Якщо `None`
-        — зареєструвати всі з `function_registry.functions`.
-    auto_create: Прокидається у generic-handler (див. вище).
-    name_alias: Передається у generic-handler.
-    override: Чи перезаписувати handler, якщо `kind` уже зареєстровано.
-    include_generic: Додатково зареєструвати `LEGACY_ACTION_KIND` —
-        універсальний kind, який дозволяє LLM генерувати
-        `{"kind": "legacy_action", "params": {"action": "...", ...}}`
-        без потреби заздалегідь знати всі назви.
-
-Returns:
-    Список `kind`-ів, які успішно зареєстровано в цьому виклику."""
-def _make_generic_dispatch_handler(function_registry: Any) -> HandlerFn:
-    """Handler для `LEGACY_ACTION_KIND`: читає `params["action"]` і диспетчеризує.
-
-Відрізняється від `make_legacy_action_handler` лише тим, що назва tool-а
-береться не з `task.kind` (який фіксовано `legacy_action`), а з
-`task.params["action"]`, а решта params передається у сам tool."""
-class LegacyRunResult:
-    """Обʼєднаний результат: критика + виконання legacy-плану через TaskRunner."""
-    def executed(self) -> bool:
-    def to_dict(self) -> Dict[str, Any]:
-def run_legacy_plan_via_runner(legacy_plan: Sequence[Mapping[str, Any]], function_registry: Any) -> LegacyRunResult:
-    """Повний pipeline: (опц. критика) → конвертація → виконання через TaskRunner.
-
-Args:
-    legacy_plan: Список словників з `Planner.create_plan()`.
-    function_registry: `FunctionRegistry` з legacy-tools.
-    runner: Якщо `None` — створюється новий порожній `TaskRunner`.
-        Якщо передано — використовується як є, tools реєструються в ньому.
-    critic: Опційний `PlanCritic`. Якщо задано — план проходить критику
-        перед виконанням; якщо `blocking` — спроба replan.
-    replan_fn: Функція перепланування (див. `core_planner_critic`).
-    task_description: Передається критику як контекст.
-    policies: Передається критику як policies.
-    max_redos: Скільки разів дозволено перевиконати критика.
-    plan_name: Імʼя для серіалізованого Plan-у.
-    metadata: Метадані для Plan.
-    auto_create_missing_tools: Прокидається у generic-handler.
-    include_generic_kind: Реєструвати `LEGACY_ACTION_KIND` чи ні.
-    report: `ExecutionReport`, куди пише runner (див. `logic_task_runner`).
-
-Returns:
-    `LegacyRunResult`."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_safety_sandbox.py
@@ -5033,69 +4123,12 @@ def get_sandbox():
 ============================================================
 Файл: D:\Python\agent\functions\core_session_budget.py
 ============================================================
-Сутності:
-class SessionLimits:
-    """Жорсткі обмеження автономної сесії.
-
-Поле `None` означає «без ліміту» (використовуйте обережно)."""
-class SessionUsage:
-    """Накопичені лічильники використання."""
-    def duration_seconds(self) -> float:
-class BudgetCheckResult:
-    """Результат виклику `budget.check()`.
-
-`ok=True`  → можна продовжувати.
-`ok=False` → зупинитись; `reason` описує, чого саме не вистачає."""
-    def as_dict(self) -> Dict[str, Any]:
-class SessionBudget:
-    """Трекер лімітів автономної сесії з kill-switch-ами."""
-    def __init__(self, limits: Optional[SessionLimits]):
-    def record_step(self, n: int) -> None:
-    def record_tokens(self, n: int) -> None:
-    def record_error(self, n: int) -> None:
-    def record_cost(self, usd: float) -> None:
-    def stop(self, reason: str) -> None:
-        """Явна зупинка (наприклад, з UI-кнопки)."""
-    def _external_stop_triggered(self) -> Optional[str]:
-    def check(self) -> BudgetCheckResult:
-        """Повертає BudgetCheckResult. `.ok=False` → треба зупинитись."""
-    def is_exhausted(self) -> bool:
-        """Shortcut для швидкого if-ну."""
-    def snapshot(self) -> Dict[str, Any]:
-    def reset(self) -> None:
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_settings.py
 ============================================================
-Сутності:
-class SettingsManager:
-    """Зчитує/оновлює налаштування поверх `config.py`."""
-    def __init__(self):
-    def _load(self):
-    def _save(self):
-    def get(self, key: str, default: Any) -> Any:
-        """Повернути поточне значення (runtime > user > config.py > schema default > default)."""
-    def set(self, key: str, value: Any, persist: bool) -> None:
-        """Змінити значення. persist=True — зберегти в user_settings.json.
-
-Також оновлює `base_config` в пам'яті, щоб модулі, що читають
-`from .config import X`, бачили нове значення при наступному імпорті."""
-    def set_runtime(self, key: str, value: Any) -> None:
-        """Змінити значення тільки на час життя процесу."""
-    def reset(self, key: str) -> None:
-        """Скинути значення до оригінального дефолту з config.py."""
-    def all_known_keys(self):
-        """Усі ключі, про які ми знаємо (зі схеми + з user)."""
-    def as_dict(self) -> Dict[str, Any]:
-        """Дамп поточних значень (для UI)."""
-    def is_auto_approve_all(self) -> bool:
-        """Чи включено глобальне автопідтвердження."""
-    def enable_auto_approve_all(self, duration_seconds: Optional[int]) -> None:
-        """Увімкнути автопідтвердження. duration_seconds: 0 або None = до вимкнення."""
-    def disable_auto_approve_all(self) -> None:
-def get_settings() -> SettingsManager:
-def get_setting(key: str, default: Any) -> Any:
-    """Зручний шорткат."""
+(немає класів чи функцій верхнього рівня)
 # [Помилка синтаксису] D:\Python\agent\functions\core_streaming.py
 
 
@@ -5219,152 +4252,12 @@ def load_task_spec(path: Path) -> TaskSpec:
 ============================================================
 Файл: D:\Python\agent\functions\core_tool_runtime.py
 ============================================================
-Сутності:
-class AuditLog:
-    """Журнал аудиту виконаних дій."""
-    def __init__(self, log_dir: Optional[Path], max_entries: int):
-    def log(self, action: str, params: Dict[str, Any], result: Dict[str, Any], risk: str) -> None:
-        """Записати дію в аудит."""
-    def _summarize_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Скоротити великі параметри (напр. code) для логу."""
-    def get_recent(self, count: int) -> List[Dict[str, Any]]:
-        """Отримати останні записи з аудиту."""
-def get_audit_log() -> AuditLog:
-    """Отримати глобальний аудит."""
-def check_dangerous_content(content: str) -> Optional[str]:
-    """Перевірити текст на небезпечні патерни. Повертає знайдений патерн або None.
-
-Перевіряє (1) літеральні substring та (2) регулярні вирази."""
-def check_ambiguous_content(content: str) -> Optional[str]:
-    """Перевірити текст на двозначні патерни (літеральні + regex)."""
-def check_dangerous_content_full(content: str) -> Optional[Tuple[str, str]]:
-    """Як check_dangerous_content, але повертає (pattern, kind) де kind='literal'|'regex'."""
-def check_params_safety(action: str, params: Dict[str, Any]) -> Optional[Dict[str, str]]:
-    """Перевірити параметри виклику інструменту на небезпечні/двозначні патерни.
-
-Повертає dict з полями {kind, pattern, param} або None якщо все чисто.
-kind='dangerous' або 'ambiguous'."""
-def make_tool_result(ok: bool, message: str) -> Dict[str, Any]:
-    """Побудувати єдиний формат результату інструмента."""
-def normalize_tool_result(raw_result: Any) -> Dict[str, Any]:
-    """Звести довільний результат до єдиного формату."""
-def get_tool_policy(action: str) -> Dict[str, Any]:
-    """Отримати політику інструмента."""
-def get_tool_risk(action: str) -> str:
-    """Отримати risk-level для інструмента."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_undo_manager.py
 ============================================================
-Сутності:
-class StateSnapshot:
-    """Snapshot стану системи."""
-class UndoAction:
-    """Опис зворотної дії."""
-class UndoResult:
-    """Результат undo операції."""
-class UndoManager:
-    """Менеджер відкату дій.
-Зберігає snapshots та виконує undo операції."""
-    def __new__(cls):
-    def __init__(self, snapshots_dir: str):
-    def save_snapshot(self, label: str) -> Dict[str, Any]:
-        """Зберегти поточний стан.
-
-Args:
-    label: Опис snapshot
-
-Returns:
-    {"success": bool, "snapshot_id": str, "path": str}"""
-    def restore_snapshot(self, snapshot_id: str) -> Dict[str, Any]:
-        """Відновити стан з snapshot.
-
-Args:
-    snapshot_id: ID snapshot
-
-Returns:
-    {"success": bool, "message": str}"""
-    def list_snapshots(self) -> List[Dict[str, Any]]:
-        """Отримати список доступних snapshots.
-
-Returns:
-    [{"id", "label", "timestamp"}]"""
-    def register_undoable(self, action: str, undo_fn: Callable, reversible: bool, irreversible_reason: Optional[str]):
-        """Зареєструвати undo handler для типу дії.
-
-Args:
-    action: Тип дії
-    undo_fn: Функція undo
-    reversible: Чи можна відкатити
-    irreversible_reason: Причина якщо не можна"""
-    def undo_last(self, count: int) -> Dict[str, Any]:
-        """Відкатити останні N дій.
-
-Args:
-    count: Кількість дій для undo
-
-Returns:
-    {"success": bool, "actions_undone": int, "errors": [str]}"""
-    def undo_to_snapshot(self, snapshot_id: str) -> Dict[str, Any]:
-        """Відкатити до конкретного snapshot.
-
-Args:
-    snapshot_id: ID snapshot
-
-Returns:
-    {"success": bool, "message": str}"""
-    def add_to_undo_stack(self, action: str, params: Dict[str, Any], reversible: bool, irreversible_reason: Optional[str]):
-        """Додати дію в undo stack.
-
-Args:
-    action: Тип дії
-    params: Параметри для undo
-    reversible: Чи можна відкатити
-    irreversible_reason: Причина якщо не можна"""
-    def clear_undo_stack(self):
-        """Очистити undo stack."""
-    def get_undo_stack(self) -> List[Dict[str, Any]]:
-        """Отримати поточний undo stack.
-
-Returns:
-    Список undo actions"""
-    def _undo_mouse_click(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Undo для кліку миші — просто інформуємо."""
-    def _undo_keyboard_type(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Undo для введення тексту — видаляємо текст."""
-    def _undo_file_move(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Undo для переміщення файлу — повертаємо назад."""
-    def _undo_file_delete(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Undo для видалення файлу — відновлюємо з кошика або backup."""
-    def _undo_window_close(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Undo для закриття вікна — відкриваємо заново."""
-    def _undo_fill_form(self, params: Dict[str, Any]) -> Dict[str, Any]:
-        """Undo для заповнення форми — очищаємо поля."""
-def get_undo_manager() -> UndoManager:
-    """Отримати singleton екземпляр UndoManager."""
-def save_snapshot(label: str) -> Dict[str, Any]:
-    """Зберегти snapshot."""
-def restore_snapshot(snapshot_id: str) -> Dict[str, Any]:
-    """Відновити snapshot."""
-def list_snapshots() -> List[Dict[str, Any]]:
-    """Список snapshots."""
-def undo_last(count: int) -> Dict[str, Any]:
-    """Відкатити останні дії."""
-def undo_to_snapshot(snapshot_id: str) -> Dict[str, Any]:
-    """Відкатити до snapshot."""
-def add_to_undo_stack(action: str, params: Dict[str, Any], reversible: bool, irreversible_reason: Optional[str]):
-    """Додати в undo stack."""
-def get_undo_stack() -> List[Dict[str, Any]]:
-    """Отримати undo stack."""
-def clear_undo_stack():
-    """Очистити undo stack."""
-class SnapshotContext:
-    """Контекстний менеджер для автоматичного snapshot."""
-    def __init__(self, label: str):
-    def __enter__(self):
-    def __exit__(self, exc_type, exc_val, exc_tb):
-    def restore(self):
-        """Відновити snapshot вручну."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\core_windsurf_watcher.py
@@ -5827,66 +4720,7 @@ def _format_duration(seconds: float) -> str:
 ============================================================
 Файл: D:\Python\agent\functions\logic_expectations.py
 ============================================================
-Сутності:
-class ExpectSpec:
-    """Одне очікування: `kind` + параметри."""
-    def from_dict(cls, data: Dict[str, Any]) -> 'ExpectSpec':
-    def to_dict(self) -> Dict[str, Any]:
-class ExpectationResult:
-    """Результат перевірки одного `ExpectSpec`."""
-    def to_dict(self) -> Dict[str, Any]:
-class ExpectContext:
-    """Контекст, доступний evaluator-у."""
-def _resolve_path(path_raw: str, cwd: Optional[str]) -> Path:
-def _eval_file_exists(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _eval_file_missing(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _eval_stdout_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _eval_stderr_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _eval_return_code(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _eval_window_title_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _eval_process_running(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _eval_process_not_running(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _eval_no_error_in_report(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _eval_ok_count_at_least(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-def _read_file_text(spec: ExpectSpec, ctx: ExpectContext, default_encoding: str) -> Optional[str]:
-    """Helper: завантажує файл як текст або повертає None з reason у caller."""
-def _eval_file_size_between(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-    """Перевірка, що розмір файлу у межах [min_bytes, max_bytes]. Обидва опційні."""
-def _eval_file_lines_at_least(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-    """Перевірка що файл має принаймні N не-порожніх рядків."""
-def _eval_file_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-    """Перевірка що файл містить підрядок (опційно case-insensitive)."""
-def _eval_file_not_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-    """Перевірка що файл НЕ містить жодного з перелічених підрядків (typic:
-'TODO', 'FIXME', 'XXX' у згенерованому коді; або секрети у конфізі)."""
-def _eval_regex_match(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-    """Універсальна regex-перевірка: `where` = stdout / stderr / file.
-
-params:
-  pattern: str (required) — regex.
-  where: "stdout" | "stderr" | "file" (default: "stdout").
-  path: str — обовʼязково якщо where="file".
-  flags: "i" | "m" | "s" | "im" ... — комбінація (default: "").
-  invert: bool — якщо true, очікуємо що pattern НЕ матчиться."""
-def _eval_json_valid(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-    """Перевірка що JSON-файл валідний. Опційно — тип root-елемента."""
-def _eval_python_parseable(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-    """Перевірка що .py файл синтаксично коректний (без виконання)."""
-class ExpectRegistry:
-    """Mapping kind → evaluator function. Thread-safety — не потрібна (
-реєструється один раз на старті)."""
-    def __init__(self) -> None:
-    def register(self, kind: str, fn: EvaluatorFn) -> None:
-    def unregister(self, kind: str) -> bool:
-    def kinds(self) -> List[str]:
-    def get(self, kind: str) -> Optional[EvaluatorFn]:
-    def evaluate(self, spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
-    def evaluate_all(self, specs: List[ExpectSpec], ctx: ExpectContext) -> List[ExpectationResult]:
-    def _install_builtins(self) -> None:
-def parse_expect_list(raw: Any) -> List[ExpectSpec]:
-    """Толерантно перетворює `raw` (None / list / dict) на список `ExpectSpec`."""
-def all_ok(results: List[ExpectationResult]) -> bool:
-def failures(results: List[ExpectationResult]) -> List[ExpectationResult]:
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\logic_llm_tools.py
@@ -6461,82 +5295,7 @@ Returns:
 ============================================================
 Файл: D:\Python\agent\functions\logic_task_runner.py
 ============================================================
-Сутності:
-class Task:
-    """Один крок плану."""
-    def display(self) -> str:
-class Plan:
-    """Упорядкований список `Task`-ів + метадані."""
-    def from_dict(cls, data: Dict[str, Any]) -> 'Plan':
-    def from_json(cls, payload: str) -> 'Plan':
-    def from_file(cls, path: str) -> 'Plan':
-class TaskContext:
-    """Що отримує handler."""
-class RunResult:
-    """Що повертає `TaskRunner.run(plan)`."""
-class TaskRunner:
-    """Core orchestrator. Thread-safe через per-instance lock навколо state."""
-    def __init__(self, gate: Optional[PermissionGate]):
-    def register(self, kind: str, handler: HandlerFn) -> None:
-    def unregister(self, kind: str) -> bool:
-    def _install_builtin_handlers(self) -> None:
-    def run(self, plan: Plan) -> RunResult:
-    def _run_one(self, task: Task, report: ExecutionReport, previous: Dict[str, Dict[str, Any]]) -> StepReport:
-    def _evaluate_expectations(self, specs: List[ExpectSpec]) -> List[ExpectationResult]:
-    def _budget_says_stop(self) -> bool:
-def _handler_noop(ctx: TaskContext) -> Dict[str, Any]:
-def _handler_log(ctx: TaskContext) -> Dict[str, Any]:
-def _handler_log_task_spec(ctx: TaskContext) -> Dict[str, Any]:
-    """Safe placeholder handler — логує `TaskSpec`-поля з `task.params`.
-
-Використовується `SkeletonPipeline` (Phase 13 S6 MVP) щоб наскрізний
-Plan міг бути виконаний (хоча й без корисної дії). Коли домен отримує
-реальний pipeline (S7+), skeleton перестає реєструватись і handler
-не викликається у виробничому потоці."""
-def _handler_sleep(ctx: TaskContext) -> Dict[str, Any]:
-def _handler_run_command(ctx: TaskContext) -> Dict[str, Any]:
-def _handler_read_file(ctx: TaskContext) -> Dict[str, Any]:
-def _handler_write_file(ctx: TaskContext) -> Dict[str, Any]:
-def _handler_call_provider(ctx: TaskContext) -> Dict[str, Any]:
-def _handler_sub_plan(ctx: TaskContext) -> Dict[str, Any]:
-def _handler_batch_task(ctx: TaskContext) -> Dict[str, Any]:
-    """Phase 13 S8a — batch primitive.
-
-Виконує один і той самий під-task для кожного елемента списку `items`.
-Для кожного елемента будується свіжий `Task` на основі `task_template`,
-`item` інжектиться у params під ключем `item_param` (default: "item").
-Виконання — послідовне (concurrency — майбутнє розширення).
-
-Params:
-  items: List[Any] — обовʼязково, елементи для ітерації.
-  task_template: dict — обовʼязково, шаблон під-таска з полями:
-    kind (str, required), params (dict, optional),
-    on_error (str, optional), max_retries (int, optional),
-    retry_delay_s (float, optional), expect (list, optional).
-  item_param: str — ключ у params під який кладеться поточний item
-    (default: "item").
-  item_id_prefix: str — префікс для id під-таска (default: parent_id).
-  on_item_error: "stop" | "skip" — поведінка на рівні batch
-    (default: "skip" — пропустити проблемний item, продовжити).
-  max_failures: int — поріг толерантності до fail-ів.
-    -1 (default) — strict-режим: будь-який fail → агрегований
-    STATUS_ERROR (але батч проходить усі items, якщо
-    on_item_error="skip").
-    >=0 — толерантний режим: до `max_failures` fail-ів
-    допускається, агрегований статус лишається OK; як тільки
-    fail > max_failures → батч зупиняється і статус ERROR.
-  progress_every: int — скільки items записувати у report.events
-    (default: 10, -1 — не логувати).
-
-Returns:
-  status: STATUS_OK якщо (strict-режим і failed==0) АБО
-    (толерантний режим і failed<=max_failures), і не було
-    stopped_early.
-  summary: агрегований рядок "N items: X ok, Y failed, Z skipped".
-  metadata.items_total / items_ok / items_failed / items_skipped
-  metadata.per_item: список {index, item_id, status, error}."""
-def _handler_ask_user(ctx: TaskContext) -> Dict[str, Any]:
-    """Запитує користувача про вхід."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\logic_tts.py
@@ -7169,1863 +5928,102 @@ def get_self_learning(data_dir: str) -> SelfLearning:
 ============================================================
 Файл: D:\Python\agent\functions\task_spec.py
 ============================================================
-Сутності:
-class Domain(Enum):
-    """Домен задачі — визначає доступні інструменти та стратегії."""
-class Priority(Enum):
-    """Пріоритет задачі."""
-class TaskSpec:
-    """Структурований опис задачі.
-
-Приклад ТЗ: "Напиши функцію сортування списку на Python з тестами"
-→ TaskSpec(domain=CODE, description="...", deliverables=["sort_function.py", "tests/"])"""
-    def __post_init__(self):
-    def to_dict(self) -> Dict[str, Any]:
-        """Конвертувати в dict для LLM."""
-class CompiledPlan:
-    """Результат compile() — структурований план виконання."""
-    def to_dict(self) -> Dict[str, Any]:
-        """Конвертувати в dict."""
-class TaskSpecCompiler:
-    """Компілятор TaskSpec → CompiledPlan.
-
-Використовує LLM для декомпозиції ТЗ на кроки з milestones."""
-    def __init__(self, assistant, registry):
-    def _detect_domain(self, description: str) -> Domain:
-        """Авто-детекція домену з опису."""
-    def parse(self, description: str, context: Optional[Dict[str, Any]]) -> TaskSpec:
-        """Парсити текстове ТЗ в TaskSpec."""
-    def compile(self, spec: TaskSpec) -> CompiledPlan:
-        """Компілювати TaskSpec в CompiledPlan з кроками.
-
-Використовує LLM для декомпозиції."""
-    def validate_plan(self, plan: CompiledPlan) -> tuple[bool, str]:
-        """Валідація CompiledPlan."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_app_recognizer.py
 ============================================================
-Сутності:
-class AppRecognizer:
-    """Розпізнавання програм та їхнього стану."""
-    def __init__(self, screen_capture: Optional[ScreenCapture], screen_ocr: Optional[ScreenOCR]):
-    def _load_default_profiles(self) -> Dict[str, Dict[str, Any]]:
-        """Завантажити профілі типових програм."""
-    def detect_active_application(self, hwnd: Optional[int]) -> Dict[str, Any]:
-        """Визначити яка програма активна.
-
-Args:
-    hwnd: Handle вікна (None = активне вікно)
-
-Returns:
-    {"name": str, "type": str, "confidence": float, "exe_path": str, "pid": int}"""
-    def detect_application_state(self, hwnd: Optional[int]) -> Dict[str, Any]:
-        """Визначити стан програми (idle, loading, error, dialog).
-
-Args:
-    hwnd: Handle вікна
-
-Returns:
-    {"state": str, "details": dict}"""
-    def is_application_ready(self, hwnd: Optional[int], timeout: float) -> Dict[str, Any]:
-        """Перевірити чи програма завершила завантаження.
-
-Args:
-    hwnd: Handle вікна
-    timeout: Час очікування стабільності
-
-Returns:
-    {"ready": bool, "state": str}"""
-    def detect_file_dialog(self, hwnd: Optional[int]) -> Optional[Dict[str, Any]]:
-        """Визначити чи відкрито файловий діалог (Open/Save).
-
-Args:
-    hwnd: Handle вікна
-
-Returns:
-    {"type": "open"|"save", "current_path": str, "title": str} або None"""
-    def detect_error_dialog(self, hwnd: Optional[int]) -> Optional[Dict[str, Any]]:
-        """Визначити чи є діалог помилки.
-
-Args:
-    hwnd: Handle вікна
-
-Returns:
-    {"title": str, "message": str, "buttons": [str]} або None"""
-    def detect_context_menu(self, hwnd: Optional[int]) -> Optional[Dict[str, Any]]:
-        """Визначити чи відкрито контекстне меню.
-
-Args:
-    hwnd: Handle вікна
-
-Returns:
-    {"items": [str], "positions": [{"x": int, "y": int}]} або None"""
-    def _calculate_app_match(self, title: str, exe_name: str, profile: Dict[str, Any]) -> float:
-        """Обчислити ймовірність співпадіння з профілем програми."""
-    def _determine_app_type(self, exe_name: str, title: str, matched_profile: Optional[str]) -> str:
-        """Визначити тип програми."""
-    def _detect_dialog_state(self, screenshot) -> Dict[str, Any]:
-        """Визначити чи це діалогове вікно."""
-    def _detect_error_state(self, screenshot) -> Dict[str, Any]:
-        """Визначити чи це вікно помилки."""
-    def _detect_loading_state(self, screenshot) -> Dict[str, Any]:
-        """Визначити чи йде завантаження."""
-def get_app_recognizer() -> AppRecognizer:
-    """Отримати глобальний екземпляр AppRecognizer."""
-def detect_active_application(hwnd: Optional[int]) -> Dict[str, Any]:
-    """Визначити активну програму."""
-def detect_application_state(hwnd: Optional[int]) -> Dict[str, Any]:
-    """Визначити стан програми."""
-def is_application_ready(hwnd: Optional[int], timeout: float) -> Dict[str, Any]:
-    """Перевірити чи програма готова."""
-def detect_file_dialog(hwnd: Optional[int]) -> Dict[str, Any]:
-    """Визначити чи відкрито файловий діалог."""
-def detect_error_dialog(hwnd: Optional[int]) -> Dict[str, Any]:
-    """Визначити чи є діалог помилки."""
-def detect_context_menu(hwnd: Optional[int]) -> Dict[str, Any]:
-    """Визначити чи відкрито контекстне меню."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_browser_cdp.py
 ============================================================
-Сутності:
-def is_ai_refusal(text: str) -> bool:
-    """Перевіряє чи є відповідь відмовою AI."""
-def _is_port_open(host: str, port: int) -> bool:
-    """Перевірити чи відкритий CDP порт."""
-def _find_chrome_exe() -> Optional[str]:
-    """Знайти шлях до Chrome."""
-def _launch_chrome(port: int, url: str, timeout: int) -> bool:
-    """Запустити Chrome з --remote-debugging-port якщо ще не запущений."""
-def _connect_cdp(port: int, timeout_s: int) -> Tuple[Any, Any]:
-    """Підключитись до Chrome через CDP. Повертає (playwright, browser)."""
-def _get_all_pages(browser) -> List:
-    """Отримати всі вкладки з усіх контекстів."""
-def _find_page_by(pages: List, title_pattern: str, url_pattern: str) -> Optional[Any]:
-    """Знайти вкладку за заголовком або URL (регістронезалежно)."""
-def _ensure_cdp_connection(port: int, auto_launch: bool) -> Tuple[Any, Any]:
-    """Гарантувати CDP з'єднання. Якщо Chrome не запущений — запустити."""
-def _disconnect_cdp():
-    """Закрити CDP з'єднання (Chrome продовжує працювати)."""
-def _get_or_find_page(title: str, url: str) -> Any:
-    """Знайти або створити сторінку через CDP."""
-def _first_visible(page, selectors: List[str]):
-    """Знайти перший видимий елемент зі списку селекторів."""
-def _click_first_visible(page, selectors: List[str], timeout_ms: int) -> bool:
-    """Клікнути перший видимий елемент."""
-def _type_via_clipboard(page, text: str) -> bool:
-    """Ввести текст через буфер обміну (працює з будь-якою мовою/кирилицею)."""
-def _wait_for_response(page, timeout: int, poll_interval: float) -> bool:
-    """Чекати поки з'явиться кнопка Copy (ознака готовності відповіді)."""
-def _click_copy_button(page) -> bool:
-    """Натиснути кнопку Copy для копіювання відповіді в буфер."""
-def _read_response_dom(page) -> Optional[str]:
-    """Прочитати відповідь з DOM (fallback якщо Copy не спрацював)."""
-def cdp_ensure_chrome(url: str, port: int) -> Dict[str, Any]:
-    """Переконатися що Chrome запущений з CDP і підключитися."""
-def cdp_list_tabs() -> Dict[str, Any]:
-    """Список всіх вкладок Chrome."""
-def cdp_open_tab(url: str, reuse_tab: bool) -> Dict[str, Any]:
-    """Відкрити URL у Chrome через CDP."""
-def cdp_switch_tab(title: str, url: str, index: int) -> Dict[str, Any]:
-    """Переключити активну вкладку."""
-def cdp_type_text(text: str, selector: str, submit: bool) -> Dict[str, Any]:
-    """Ввести текст через CDP."""
-def cdp_get_response(timeout: int, max_retries: int) -> Dict[str, Any]:
-    """Отримати відповідь AI з активної вкладки."""
-def cdp_get_page_text(selector: str) -> Dict[str, Any]:
-    """Прочитати текст зі сторінки."""
-def cdp_click(selector: str, force: bool) -> Dict[str, Any]:
-    """Клікнути елемент через CDP."""
-def cdp_click_text(text: str, exact: bool, timeout: int) -> Dict[str, Any]:
-    """Клікнути по тексту на сторінці (без CSS-селектора)."""
-def cdp_wait_for_text(text: str, timeout: int) -> Dict[str, Any]:
-    """Чекати поки на сторінці з'явиться вказаний текст."""
-def cdp_fill(selector_or_label: str, text: str) -> Dict[str, Any]:
-    """Заповнити поле через Playwright fill (надійніше за keyboard.type)."""
-def cdp_screenshot(selector: str) -> Dict[str, Any]:
-    """Зробити скріншот через CDP."""
-def cdp_evaluate_js(code: str) -> Dict[str, Any]:
-    """Виконати JavaScript через CDP."""
-def cdp_send_to_ai(prompt: str, wait_timeout: int, max_retries: int) -> Dict[str, Any]:
-    """Відправити промпт і отримати відповідь (end-to-end).
-
-Об'єднує: ввести текст → відправити → чекати → скопіювати відповідь.
-При відмові AI — повторює з новим чатом."""
-def cdp_disconnect() -> Dict[str, Any]:
-    """Відключити CDP з'єднання."""
-def register_cdp_tools(registry):
-    """Зареєструвати CDP інструменти в реєстрі."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_comfyui.py
 ============================================================
-Сутності:
-class ComfyUIClient:
-    """Клієнт для ComfyUI API."""
-    def __init__(self, base_url: str):
-        """Args:
-    base_url: URL ComfyUI сервера"""
-    def check_connection(self) -> Dict[str, Any]:
-        """Перевірити з'єднання з ComfyUI.
-
-Returns:
-    dict з success, error"""
-    def get_queue_info(self) -> Dict[str, Any]:
-        """Отримати інформацію про чергу.
-
-Returns:
-    dict з success, queue_info, error"""
-    def get_history(self, prompt_id: Optional[str]) -> Dict[str, Any]:
-        """Отримати історію виконання.
-
-Args:
-    prompt_id: ID промпту (опційно)
-
-Returns:
-    dict з success, history, error"""
-    def upload_image(self, image_path: str, overwrite: bool) -> Dict[str, Any]:
-        """Завантажити зображення в ComfyUI.
-
-Args:
-    image_path: Шлях до зображення
-    overwrite: Перезаписати, якщо існує
-
-Returns:
-    dict з success, filename, error"""
-    def get_view_metadata(self, filename: str, subfolder: str, type: str) -> Dict[str, Any]:
-        """Отримати метадані зображення.
-
-Args:
-    filename: Ім'я файлу
-    subfolder: Підпапка
-    type: Тип (input/output)
-
-Returns:
-    dict з success, metadata, error"""
-    def execute_workflow(self, workflow: Dict[str, Any], output_dir: str) -> Dict[str, Any]:
-        """Виконати workflow.
-
-Args:
-    workflow: JSON workflow
-    output_dir: Директорія для виводу
-
-Returns:
-    dict з success, prompt_id, images, error"""
-    def generate_text_to_image(self, prompt: str, negative_prompt: str, width: int, height: int, steps: int, cfg: float, seed: int, output_dir: str) -> Dict[str, Any]:
-        """Генерувати зображення з тексту (Text-to-Image).
-
-Args:
-    prompt: Текстовий промпт
-    negative_prompt: Негативний промпт
-    width: Ширина зображення
-    height: Висота зображення
-    steps: Кількість кроків
-    cfg: CFG scale
-    seed: Seed (-1 = random)
-    output_dir: Директорія для виводу
-
-Returns:
-    dict з success, images, prompt_id, error"""
-    def interrupt(self) -> Dict[str, Any]:
-        """Перервати поточне виконання."""
-def create_comfyui_client(base_url: str) -> ComfyUIClient:
-    """Створити клієнт ComfyUI.
-
-Args:
-    base_url: URL ComfyUI сервера
-
-Returns:
-    ComfyUIClient"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_excel.py
 ============================================================
-Сутності:
-def open_excel_workbook(file_path: str, read_only: bool) -> Dict[str, Any]:
-    """Відкрити Excel робочу книгу.
-
-Args:
-    file_path: Шлях до файлу .xlsx
-    read_only: Відкрити в режимі лише для читання
-
-Returns:
-    dict з success, workbook_object, error"""
-def create_excel_workbook() -> Dict[str, Any]:
-    """Створити нову Excel робочу книгу.
-
-Returns:
-    dict з success, workbook_object, error"""
-def read_cell(workbook: Any, sheet_name: str, cell: str) -> Dict[str, Any]:
-    """Прочитати значення клітинки.
-
-Args:
-    workbook: COM об'єкт робочої книги Excel
-    sheet_name: Назва аркуша
-    cell: Адреса клітинки (наприклад, "A1")
-
-Returns:
-    dict з success, value, error"""
-def write_cell(workbook: Any, sheet_name: str, cell: str, value: Any) -> Dict[str, Any]:
-    """Записати значення в клітинку.
-
-Args:
-    workbook: COM об'єкт робочої книги Excel
-    sheet_name: Назва аркуша
-    cell: Адреса клітинки (наприклад, "A1")
-    value: Значення для запису
-
-Returns:
-    dict з success, error"""
-def read_range(workbook: Any, sheet_name: str, range_str: str) -> Dict[str, Any]:
-    """Прочитати діапазон клітинок.
-
-Args:
-    workbook: COM об'єкт робочої книги Excel
-    sheet_name: Назва аркуша
-    range_str: Діапазон (наприклад, "A1:C10")
-
-Returns:
-    dict з success, values (2D list), error"""
-def write_range(workbook: Any, sheet_name: str, range_str: str, values: List[List[Any]]) -> Dict[str, Any]:
-    """Записати значення в діапазон клітинок.
-
-Args:
-    workbook: COM об'єкт робочої книги Excel
-    sheet_name: Назва аркуша
-    range_str: Діапазон (наприклад, "A1:C10")
-    values: 2D список значень
-
-Returns:
-    dict з success, error"""
-def format_cell(workbook: Any, sheet_name: str, cell: str, bold: bool, italic: bool, font_size: int, color: Optional[str]) -> Dict[str, Any]:
-    """Форматувати клітинку.
-
-Args:
-    workbook: COM об'єкт робочої книги Excel
-    sheet_name: Назва аркуша
-    cell: Адреса клітинки
-    bold: Жирний шрифт
-    italic: Курсив
-    font_size: Розмір шрифту
-    color: Колір шрифту (RGB hex або назва)
-
-Returns:
-    dict з success, error"""
-def add_worksheet(workbook: Any, sheet_name: str) -> Dict[str, Any]:
-    """Додати новий аркуш.
-
-Args:
-    workbook: COM об'єкт робочої книги Excel
-    sheet_name: Назва нового аркуша
-
-Returns:
-    dict з success, sheet_object, error"""
-def save_workbook(workbook: Any, excel: Any, file_path: str, close: bool) -> Dict[str, Any]:
-    """Зберегти робочу книгу.
-
-Args:
-    workbook: COM об'єкт робочої книги Excel
-    excel: COM об'єкт Excel Application
-    file_path: Шлях для збереження
-    close: Закрити книгу після збереження
-
-Returns:
-    dict з success, error"""
-def get_used_range(workbook: Any, sheet_name: str) -> Dict[str, Any]:
-    """Отримати діапазон використовуваних клітинок.
-
-Args:
-    workbook: COM об'єкт робочої книги Excel
-    sheet_name: Назва аркуша
-
-Returns:
-    dict з success, range_address, row_count, col_count, error"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_ffmpeg.py
 ============================================================
-Сутності:
-def check_ffmpeg_available() -> Dict[str, Any]:
-    """Перевірити, чи встановлений ffmpeg.
-
-Returns:
-    dict з success, version, error"""
-def get_video_metadata(file_path: str) -> Dict[str, Any]:
-    """Отримати метадані відео/аудіо файлу.
-
-Args:
-    file_path: Шлях до файлу
-
-Returns:
-    dict з success, metadata (duration, codec, resolution, etc.), error"""
-def convert_video(input_path: str, output_path: str, codec: str, crf: int, preset: str) -> Dict[str, Any]:
-    """Конвертувати відео в інший формат.
-
-Args:
-    input_path: Вхідний файл
-    output_path: Вихідний файл
-    codec: Відео кодек (libx264, libx265, etc.)
-    crf: Якість (0-51, менше = краща якість)
-    preset: Пресет (ultrafast, superfast, veryfast, faster, fast, medium, slow, slower, veryslow)
-
-Returns:
-    dict з success, output_path, error"""
-def extract_audio(input_path: str, output_path: str, codec: str) -> Dict[str, Any]:
-    """Витягти аудіо з відео.
-
-Args:
-    input_path: Вхідний відео файл
-    output_path: Вихідний аудіо файл
-    codec: Аудіо кодек (aac, mp3, libmp3lame)
-
-Returns:
-    dict з success, output_path, error"""
-def trim_video(input_path: str, output_path: str, start_time: str, duration: Optional[str], end_time: Optional[str]) -> Dict[str, Any]:
-    """Обрізати відео.
-
-Args:
-    input_path: Вхідний файл
-    output_path: Вихідний файл
-    start_time: Час початку (HH:MM:SS або секунди)
-    duration: Тривалість (HH:MM:SS або секунди)
-    end_time: Час кінця (HH:MM:SS або секунди) - альтернатива до duration
-
-Returns:
-    dict з success, output_path, error"""
-def extract_frames(input_path: str, output_dir: str, fps: float, start_time: Optional[str], duration: Optional[str]) -> Dict[str, Any]:
-    """Витягти кадри з відео.
-
-Args:
-    input_path: Вхідний файл
-    output_dir: Директорія для збереження кадрів
-    fps: Кадрів на секунду
-    start_time: Час початку (опційно)
-    duration: Тривалість (опційно)
-
-Returns:
-    dict з success, frame_count, output_dir, error"""
-def create_thumbnail(input_path: str, output_path: str, timestamp: str, width: int, height: int) -> Dict[str, Any]:
-    """Створити мініатюру для відео.
-
-Args:
-    input_path: Вхідний файл
-    output_path: Вихідний файл
-    timestamp: Часовий штамп для кадру
-    width: Ширина мініатюри
-    height: Висота мініатюри (-1 = auto)
-
-Returns:
-    dict з success, output_path, error"""
-def combine_videos(input_paths: List[str], output_path: str, concat_file: Optional[str]) -> Dict[str, Any]:
-    """Об'єднати кілька відео в одне.
-
-Args:
-    input_paths: Список вхідних файлів
-    output_path: Вихідний файл
-    concat_file: Шлях до файлу зі списком (опційно)
-
-Returns:
-    dict з success, output_path, error"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_image_pillow.py
 ============================================================
-Сутності:
-def open_image(file_path: str) -> Dict[str, Any]:
-    """Відкрити зображення.
-
-Args:
-    file_path: Шлях до файлу зображення
-
-Returns:
-    dict з success, image_object, width, height, mode, error"""
-def save_image(img: Any, file_path: str, quality: int) -> Dict[str, Any]:
-    """Зберегти зображення.
-
-Args:
-    img: PIL Image об'єкт
-    file_path: Шлях для збереження
-    quality: Якість для JPEG (1-100)
-
-Returns:
-    dict з success, file_path, error"""
-def resize_image(img: Any, width: int, height: Optional[int], maintain_aspect: bool) -> Dict[str, Any]:
-    """Змінити розмір зображення.
-
-Args:
-    img: PIL Image об'єкт
-    width: Нова ширина
-    height: Нова висота (якщо None, обчислюється автоматично)
-    maintain_aspect: Зберігати співвідношення сторін
-
-Returns:
-    dict з success, resized_image, new_width, new_height, error"""
-def crop_image(img: Any, left: int, top: int, right: int, bottom: int) -> Dict[str, Any]:
-    """Обрізати зображення.
-
-Args:
-    img: PIL Image об'єкт
-    left: Ліва межа
-    top: Верхня межа
-    right: Права межа
-    bottom: Нижня межа
-
-Returns:
-    dict з success, cropped_image, error"""
-def rotate_image(img: Any, degrees: float) -> Dict[str, Any]:
-    """Повернути зображення.
-
-Args:
-    img: PIL Image об'єкт
-    degrees: Кут повороту в градусах (проти годинникової стрілки)
-
-Returns:
-    dict з success, rotated_image, error"""
-def convert_format(img: Any, target_format: str) -> Dict[str, Any]:
-    """Конвертувати зображення в інший формат.
-
-Args:
-    img: PIL Image об'єкт
-    target_format: Цільовий формат (RGB, RGBA, L, CMYK)
-
-Returns:
-    dict з success, converted_image, error"""
-def apply_blur(img: Any, radius: float) -> Dict[str, Any]:
-    """Застосувати розмиття.
-
-Args:
-    img: PIL Image об'єкт
-    radius: Радіус розмиття
-
-Returns:
-    dict з success, blurred_image, error"""
-def adjust_brightness(img: Any, factor: float) -> Dict[str, Any]:
-    """Налаштувати яскравість.
-
-Args:
-    img: PIL Image об'єкт
-    factor: Фактор яскравості (1.0 = без змін, >1.0 = яскравіше, <1.0 = темніше)
-
-Returns:
-    dict з success, adjusted_image, error"""
-def adjust_contrast(img: Any, factor: float) -> Dict[str, Any]:
-    """Налаштувати контраст.
-
-Args:
-    img: PIL Image об'єкт
-    factor: Фактор контрасту (1.0 = без змін, >1.0 = більше контрасту, <1.0 = менше контрасту)
-
-Returns:
-    dict з success, adjusted_image, error"""
-def add_text_to_image(img: Any, text: str, position: Tuple[int, int], size: int, color: str) -> Dict[str, Any]:
-    """Додати текст на зображення.
-
-Args:
-    img: PIL Image об'єкт
-    text: Текст для додавання
-    position: Позиція тексту (x, y)
-    size: Розмір шрифту
-    color: Колір тексту
-
-Returns:
-    dict з success, image_with_text, error"""
-def get_image_info(img: Any) -> Dict[str, Any]:
-    """Отримати інформацію про зображення.
-
-Args:
-    img: PIL Image об'єкт
-
-Returns:
-    dict з success, width, height, mode, format, size_bytes, error"""
-def create_thumbnail(img: Any, size: Tuple[int, int]) -> Dict[str, Any]:
-    """Створити ескіз зображення.
-
-Args:
-    img: PIL Image об'єкт
-    size: Розмір ескізу (width, height)
-
-Returns:
-    dict з success, thumbnail_image, error"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_mouse_keyboard.py
 ============================================================
-Сутності:
-def _get_dpi_scaling_cached() -> float:
-    """Отримати DPI scaling з кешуванням.
-
-Використовує utils.screen_helper для отримання масштабу.
-
-Returns:
-    DPI scaling factor (наприклад, 1.0 для 100% DPI, 1.5 для 150%)"""
-def _apply_dpi_correction(x: int, y: int) -> Tuple[int, int]:
-    """Застосувати DPI correction до координат з кешуванням.
-
-Args:
-    x: X координата
-    y: Y координата
-    
-Returns:
-    Кореговані координати (x, y) з урахуванням DPI"""
-class MouseKeyboardController:
-    """Контролер для керування мишею та клавіатурою."""
-    def __init__(self):
-    def mouse_click(self, x: int, y: int, button: str, clicks: int, interval: float) -> Dict[str, Any]:
-        """Клік мишою."""
-    def mouse_move(self, x: int, y: int, duration: float) -> Dict[str, Any]:
-        """Плавне переміщення курсора в координати (x, y).
-
-Args:
-    x: Координата X
-    y: Координата Y
-    duration: Час переміщення в секундах
-
-Returns:
-    {"success": True, "from": {"x": x0, "y": y0}, "to": {"x": x, "y": y}}"""
-    def mouse_scroll(self, amount: int, direction: str, x: Optional[int], y: Optional[int]) -> Dict[str, Any]:
-        """Прокрутка мишою.
-
-Args:
-    amount: Кількість "кліків" прокрутки (позитивне = вниз/вправо, негативне = вгору/вліво)
-    direction: 'vertical' або 'horizontal'
-    x, y: Координати для позиціонування перед скролом (опціонально)
-
-Returns:
-    {"success": True, "amount": amount, "direction": direction}"""
-    def mouse_drag(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: float, button: str) -> Dict[str, Any]:
-        """Перетягування (drag & drop) з (start_x, start_y) в (end_x, end_y).
-
-Args:
-    start_x, start_y: Початкові координати
-    end_x, end_y: Кінцеві координати
-    duration: Час перетягування
-    button: 'left' або 'right'
-
-Returns:
-    {"success": True, "start": {...}, "end": {...}}"""
-    def get_mouse_position(self) -> Dict[str, Any]:
-        """Отримати поточні координати курсора миші.
-
-Returns:
-    {"x": int, "y": int}"""
-    def mouse_click_image(self, image_path: str, confidence: float) -> Dict[str, Any]:
-        """Знайти зображення на екрані та клікнути по ньому (template matching).
-
-Args:
-    image_path: Шлях до зображення для пошуку
-    confidence: Поріг впевненості (0.0 - 1.0)
-
-Returns:
-    {"success": True, "position": {"x": x, "y": y}, "confidence": confidence}"""
-    def keyboard_press(self, key: str) -> Dict[str, Any]:
-        """Натиснути клавішу.
-
-Args:
-    key: Назва клавіші ('enter', 'esc', 'tab', 'f5', 'delete', 'space', ...)
-
-Returns:
-    {"success": True, "key": key}"""
-    def _get_foreground_window_title(self) -> str:
-        """Отримати заголовок активного вікна."""
-    def _paste_via_win32(self) -> bool:
-        """Вставити текст через Win32 keybd_event (Ctrl+V). Повертає True якщо успішно."""
-    def keyboard_type(self, text: str, interval: float) -> Dict[str, Any]:
-        """Ввести текст у активне вікно через pyautogui.typewrite (Unicode-ready)."""
-    def keyboard_hotkey(self) -> Dict[str, Any]:
-        """Натиснути комбінацію клавіш.
-
-Args:
-    *keys: Клавіші комбінації ('ctrl', 'c', 'alt', 'f4', 'win', 'd')
-
-Returns:
-    {"success": True, "hotkey": [...]}"""
-    def keyboard_hold(self, key: str, duration: float) -> Dict[str, Any]:
-        """Утримувати клавішу протягом часу.
-
-Args:
-    key: Клавіша для утримання
-    duration: Час утримання в секундах
-
-Returns:
-    {"success": True, "key": key, "duration": duration}"""
-    def keyboard_send_special(self, key_name: str) -> Dict[str, Any]:
-        """Натиснути спеціальну клавішу.
-
-Args:
-    key_name: 'printscreen', 'numlock', 'scrolllock', 'capslock', 'pause', ...
-
-Returns:
-    {"success": True, "key": key_name}"""
-    def clipboard_copy_text(self, text: str) -> Dict[str, Any]:
-        """Записати текст у буфер обміну.
-
-Args:
-    text: Текст для копіювання
-
-Returns:
-    {"success": True, "length": len(text)}"""
-    def clipboard_get_text(self) -> Dict[str, Any]:
-        """Прочитати текст з буфера обміну.
-
-Returns:
-    {"success": True, "text": "..."}"""
-    def send_input_unicode(self, text: str) -> Dict[str, Any]:
-        """Вставити текст через SendInput з KEYEVENTF_UNICODE (працює з кирилицею).
-
-⚠️ КРИТИЧНИЙ МЕТОД - НЕ ЗМІНЮВАТИ БЕЗ УЗГОДЖЕННЯ
-Логіка оптимізована для Windows 10/11 з підтримкою кирилиці та емодзі.
-
-Args:
-    text: Текст для вставки
-    
-Returns:
-    {"success": True, "sent": n} або {"success": False, "error": "..."}"""
-    def insert_text_smart(self, text: str) -> Dict[str, Any]:
-        """Універсальна вставка тексту з адаптивною логікою для Windows 10/11:
-
-- Chrome/Qt/Notepad: SendInput Unicode (найнадійніший для сучасних UI)
-- Старий Win32: WM_PASTE (fallback)
-- Last fallback: Ctrl+V
-
-⚠️ КРИТИЧНИЙ МЕТОД - НЕ ЗМІНЮВАТИ БЕЗ УЗГОДЖЕННЯ
-Логіка оптимізована для Windows 10/11 з підтримкою кирилиці та емодзі.
-
-Args:
-    text: Текст для вставки
-    
-Returns:
-    {"success": True, "method": "..."} або {"success": False, "error": "..."}"""
-    def _convert_image_to_dib(self, image_path: str) -> bytes:
-        """Конвертувати зображення в DIB формат для clipboard."""
-    def clipboard_copy_image(self, image_path: str) -> Dict[str, Any]:
-        """Скопіювати зображення у буфер обміну.
-
-Args:
-    image_path: Шлях до зображення
-
-Returns:
-    {"success": True, "path": image_path}"""
-def mouse_click(x: int, y: int, button: str, clicks: int, interval: float) -> Dict[str, Any]:
-    """Клік мишою в координати."""
-def mouse_move(x: int, y: int, duration: float) -> Dict[str, Any]:
-    """Перемістити курсор в координати."""
-def mouse_scroll(amount: int, direction: str, x: Optional[int], y: Optional[int]) -> Dict[str, Any]:
-    """Прокрутка мишою."""
-def mouse_drag(start_x: int, start_y: int, end_x: int, end_y: int, duration: float, button: str) -> Dict[str, Any]:
-    """Перетягування drag & drop."""
-def get_mouse_position() -> Dict[str, Any]:
-    """Поточні координати курсора."""
-def wait_for_response(duration: int, check_interval: int, check_for_confirmation: bool, check_for_response: bool, response_keywords: list, use_uia: bool) -> Dict[str, Any]:
-    """Зачекати відповіді від програми (універсально для будь-якого вікна/додатку).
-
-Args:
-    duration: Максимальний час очікування в секундах (дефолт 300 = 5 хв)
-    check_interval: Інтервал перевірки в секундах (дефолт 25 = перевірка кожні 25с)
-    check_for_confirmation: Чи перевіряти наявність запиту на підтвердження через OCR
-    check_for_response: Чи перевіряти наявність нової відповіді через OCR або UIA
-    response_keywords: Ключові слова що вказують на відповідь (дефолт: ['відповідь', 'response', 'answer'])
-    use_uia: Чи використовувати UI Automation для перевірки (швидше і надійніше за OCR)
-    
-Returns:
-    {"ok": True, "waited_seconds": <time>, "status": "completed|timeout|confirmation_found|response_found"}"""
-def mouse_click_image(image_path: str, confidence: float) -> Dict[str, Any]:
-    """Клік по зображенню на екрані."""
-def keyboard_press(key: str) -> Dict[str, Any]:
-    """Натиснути клавішу."""
-def keyboard_type(text: str, interval: float) -> Dict[str, Any]:
-    """Ввести текст посимвольно."""
-def keyboard_hotkey() -> Dict[str, Any]:
-    """Комбінація клавіш."""
-def keyboard_hold(key: str, duration: float) -> Dict[str, Any]:
-    """Утримувати клавішу."""
-def keyboard_send_special(key_name: str) -> Dict[str, Any]:
-    """Спеціальна клавіша (PrintScreen, NumLock, ...)."""
-def clipboard_copy_text(text: str) -> Dict[str, Any]:
-    """Копіювати текст у буфер."""
-def clipboard_get_text() -> Dict[str, Any]:
-    """Отримати текст з буфера."""
-def send_input_unicode(text: str) -> Dict[str, Any]:
-    """Вставити текст через SendInput з KEYEVENTF_UNICODE (працює з кирилицею)."""
-def insert_text_smart(text: str) -> Dict[str, Any]:
-    """Універсальна вставка тексту з адаптивною логікою:
-
-- Chrome: SendInput Unicode (WM_PASTE не працює)
-- PyQt6/Win32: WM_PASTE
-- Fallback: SendInput Unicode
-- Last fallback: Ctrl+V"""
-def clipboard_copy_image(image_path: str) -> Dict[str, Any]:
-    """Копіювати зображення у буфер."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_notification.py
 ============================================================
-Сутності:
-def notify_user(title: str, message: str, duration_seconds: int) -> None:
-    """Displays a desktop notification (toast or tray icon).
-
-Tries to use `plyer.notification`, then falls back to `win10toast`,
-and finally falls back to printing to stdout + beep on Windows.
-Runs asynchronously to avoid blocking the caller."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_ocr.py
 ============================================================
-Сутності:
-class OCREngine:
-    """Движун OCR для розпізнавання тексту на екрані."""
-    def __init__(self, engine: str, languages: List[str]):
-        """Args:
-    engine: "pytesseract", "easyocr", або "auto" (вибрати найкращий)
-    languages: Список мов (наприклад, ["ukr", "eng"] для pytesseract)"""
-    def _init_engines(self):
-        """Ініціалізувати доступні OCR движки."""
-    def _get_easyocr_reader(self):
-        """Лінива ініціалізація EasyOCR (довге завантаження моделей)."""
-    def _preprocess_image(self, img: Image.Image, enhance: bool) -> Image.Image:
-        """Попередня обробка зображення для кращого OCR."""
-    def recognize(self, image: Union[Image.Image, str, np.ndarray], engine: Optional[str]) -> Dict[str, Any]:
-        """Розпізнати текст на зображенні.
-
-Args:
-    image: PIL Image, шлях до файлу, або numpy array
-    engine: Движок (якщо None — використовує self.engine_type)
-
-Returns:
-    {"text": str, "confidence": float, "engine": str, "boxes": [...]}"""
-    def _recognize_pytesseract(self, img: Image.Image) -> Dict[str, Any]:
-        """Розпізнання через PyTesseract."""
-    def _recognize_easyocr(self, img: Image.Image) -> Dict[str, Any]:
-        """Розпізнання через EasyOCR."""
-    def recognize_with_fallback(self, image: Union[Image.Image, str, np.ndarray]) -> Dict[str, Any]:
-        """Розпізнання з fallback на інший движок при невдачі."""
-class ScreenOCR:
-    """OCR для екрану — комбінує захоплення та розпізнавання."""
-    def __init__(self, engine: str, languages: List[str]):
-    def ocr_screen(self, save_screenshot: Optional[str]) -> Dict[str, Any]:
-        """Розпізнати текст на всьому екрані."""
-    def ocr_region(self, x: int, y: int, width: int, height: int, save_screenshot: Optional[str]) -> Dict[str, Any]:
-        """Розпізнати текст в області екрану."""
-    def ocr_window(self, hwnd: int, save_screenshot: Optional[str]) -> Dict[str, Any]:
-        """Розпізнати текст у вікні."""
-    def ocr_image(self, image_path: str) -> Dict[str, Any]:
-        """Розпізнати текст на зображенні з файлу."""
-    def _capture_window_image(self, hwnd: int) -> Optional[Image.Image]:
-        """Допоміжний метод для захоплення вікна в PIL Image."""
-    def find_text_on_screen(self, search_text: str, case_sensitive: bool, confidence_threshold: float) -> Dict[str, Any]:
-        """Знайти текст на екрані.
-
-Returns:
-    {"found": True, "x": int, "y": int, "text": str, "confidence": float}
-    або {"found": False}"""
-    def find_all_text_on_screen(self, search_text: str, case_sensitive: bool) -> List[Dict[str, Any]]:
-        """Знайти всі входження тексту на екрані."""
-    def click_text(self, search_text: str, offset_x: int, offset_y: int, case_sensitive: bool) -> Dict[str, Any]:
-        """Знайти текст і клікнути по ньому."""
-    def wait_for_text(self, search_text: str, timeout: float, interval: float, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
-        """Очікувати появи тексту на екрані."""
-    def ocr_to_string(self, region: Optional[Tuple[int, int, int, int]]) -> str:
-        """Просте розпізнавання — повертає тільки текст (для LLM)."""
-def _get_screen_ocr() -> ScreenOCR:
-    """Отримати глобальний екземпляр ScreenOCR (lazy initialization)."""
-def ocr_screen(save_screenshot: Optional[str]) -> Dict[str, Any]:
-    """Розпізнати текст на всьому екрані."""
-def ocr_region(x: int, y: int, width: int, height: int, save_screenshot: Optional[str]) -> Dict[str, Any]:
-    """Розпізнати текст в області."""
-def ocr_window(hwnd: int, save_screenshot: Optional[str]) -> Dict[str, Any]:
-    """Розпізнати текст у вікні."""
-def ocr_image(image_path: str) -> Dict[str, Any]:
-    """Розпізнати текст на зображенні."""
-def find_text_on_screen(search_text: str, case_sensitive: bool) -> Dict[str, Any]:
-    """Знайти текст на екрані."""
-def find_all_text_on_screen(search_text: str, case_sensitive: bool) -> List[Dict[str, Any]]:
-    """Знайти всі входження тексту."""
-def click_text(search_text: str, offset_x: int, offset_y: int) -> Dict[str, Any]:
-    """Знайти текст і клікнути по ньому."""
-def wait_for_text(search_text: str, timeout: float, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
-    """Очікувати появи тексту."""
-def ocr_to_string(region: Optional[Tuple[int, int, int, int]]) -> str:
-    """Просте розпізнавання — повертає тільки текст."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_pdf.py
 ============================================================
-Сутності:
-def read_pdf_text(file_path: str, page_numbers: Optional[List[int]]) -> Dict[str, Any]:
-    """Прочитати текст з PDF файлу.
-
-Args:
-    file_path: Шлях до PDF файлу
-    page_numbers: Список номерів сторінок для читання (0-based). Якщо None - всі сторінки.
-
-Returns:
-    dict з success, text, pages_count, error"""
-def get_pdf_info(file_path: str) -> Dict[str, Any]:
-    """Отримати інформацію про PDF файл.
-
-Args:
-    file_path: Шлях до PDF файлу
-
-Returns:
-    dict з success, pages_count, metadata, error"""
-def extract_pages(file_path: str, output_path: str, page_numbers: List[int]) -> Dict[str, Any]:
-    """Витягти сторінки з PDF і зберегти в новий файл.
-
-Args:
-    file_path: Шлях до вихідного PDF файлу
-    output_path: Шлях для збереження нового PDF
-    page_numbers: Список номерів сторінок для витягування (0-based)
-
-Returns:
-    dict з success, pages_extracted, error"""
-def merge_pdfs(file_paths: List[str], output_path: str) -> Dict[str, Any]:
-    """Об'єднати кілька PDF файлів в один.
-
-Args:
-    file_paths: Список шляхів до PDF файлів для об'єднання
-    output_path: Шлях для збереження об'єднаного PDF
-
-Returns:
-    dict з success, files_merged, error"""
-def split_pdf(file_path: str, output_dir: str) -> Dict[str, Any]:
-    """Розділити PDF на окремі сторінки.
-
-Args:
-    file_path: Шлях до PDF файлу
-    output_dir: Директорія для збереження окремих сторінок
-
-Returns:
-    dict з success, pages_created, error"""
-def create_pdf_from_images(image_paths: List[str], output_path: str) -> Dict[str, Any]:
-    """Створити PDF з зображень.
-
-Args:
-    image_paths: Список шляхів до зображень
-    output_path: Шлях для збереження PDF
-
-Returns:
-    dict з success, images_added, error"""
-def rotate_pdf_pages(file_path: str, output_path: str, rotation: int) -> Dict[str, Any]:
-    """Повернути сторінки PDF.
-
-Args:
-    file_path: Шлях до PDF файлу
-    output_path: Шлях для збереження повернутого PDF
-    rotation: Кут повороту (90, 180, 270)
-
-Returns:
-    dict з success, pages_rotated, error"""
-def add_watermark(file_path: str, watermark_text: str, output_path: str) -> Dict[str, Any]:
-    """Додати водяний знак на PDF.
-
-Args:
-    file_path: Шлях до PDF файлу
-    watermark_text: Текст водяного знаку
-    output_path: Шлях для збереження PDF з водяним знаком
-
-Returns:
-    dict з success, pages_watermarked, error"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_playwright.py
 ============================================================
-Сутності:
-def _is_cdp_port_open(port: int) -> bool:
-    """Перевірити чи відкритий CDP порт."""
-def _ensure_browser(headless: bool, cdp_port: int, prefer_cdp: bool) -> Page:
-    """Отримати сторінку браузера.
-
-Якщо Chrome з CDP портом доступний і prefer_cdp=True — підключається до нього.
-Інакше запускає новий Chromium."""
-def _close_browser() -> None:
-def _screenshot_dir() -> Path:
-def playwright_navigate(url: str) -> Dict[str, Any]:
-def playwright_click(selector: str, wait: int) -> Dict[str, Any]:
-def playwright_type(selector: str, text: str, submit) -> Dict[str, Any]:
-def playwright_screenshot(selector: Optional[str], full_page: bool) -> Dict[str, Any]:
-def playwright_get_text(selector: Optional[str]) -> Dict[str, Any]:
-def playwright_evaluate(js_code: str) -> Dict[str, Any]:
-def playwright_close() -> Dict[str, Any]:
-def register_playwright_tools(registry):
-def open_browser_playwright(url: str) -> Dict[str, Any]:
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_screen_capture.py
 ============================================================
-Сутності:
-def get_dpi_scaling() -> float:
-    """Отримати DPI scaling factor для Windows з кешуванням.
-
-Кеш дійсний протягом 5 секунд для зменшення кількості дорогих викликів.
-
-Returns:
-    DPI scaling factor (наприклад, 1.0 для 100% DPI, 1.5 для 150%)"""
-def get_dpi_scaling_global() -> float:
-    """Глобальна функція для отримання DPI scaling factor (backward compatibility)."""
-class ScreenCapture:
-    """Клас для захоплення та аналізу екрану."""
-    def __init__(self):
-    def take_screenshot(self, save_path: Optional[str]) -> Dict[str, Any]:
-        """Зняти скріншот всього екрану (усіх моніторів).
-
-Args:
-    save_path: Шлях для збереження (опціонально)
-
-Returns:
-    {"success": True, "image": PIL.Image, "size": (w, h), "path": save_path}"""
-    def capture_monitor(self, monitor_index: int, save_path: Optional[str]) -> Dict[str, Any]:
-        """Захопити конкретний монітор.
-
-Args:
-    monitor_index: Індекс монітора (0 = основний, 1+ = додаткові)
-    save_path: Шлях для збереження
-
-Returns:
-    {"success": True, "image": PIL.Image, "monitor": index, "size": (w, h)}"""
-    def capture_region(self, x: int, y: int, width: int, height: int, save_path: Optional[str]) -> Dict[str, Any]:
-        """Захопити прямокутну область екрану.
-
-Args:
-    x, y: Лівий верхній кут
-    width, height: Розмір області
-    save_path: Шлях для збереження
-
-Returns:
-    {"success": True, "image": PIL.Image, "region": (x, y, w, h)}"""
-    def capture_window(self, hwnd: int, save_path: Optional[str]) -> Dict[str, Any]:
-        """Захопити скріншот конкретного вікна (навіть якщо перекрите).
-
-Args:
-    hwnd: Handle вікна
-    save_path: Шлях для збереження
-
-Returns:
-    {"success": True, "image": PIL.Image, "hwnd": hwnd}"""
-    def capture_active_window(self, save_path: Optional[str]) -> Dict[str, Any]:
-        """Захопити активне (foreground) вікно.
-
-Args:
-    save_path: Шлях для збереження
-
-Returns:
-    {"success": True, "image": PIL.Image}"""
-    def get_screen_size(self) -> Dict[str, Any]:
-        """Отримати роздільну здатність екрану.
-
-Returns:
-    {"width": int, "height": int}"""
-    def get_monitors_info(self) -> List[Dict[str, Any]]:
-        """Отримати інформацію про всі монітори.
-
-Returns:
-    [{index, x, y, width, height, primary, dpi_scaling}, ...]"""
-    def get_pixel_color(self, x: int, y: int) -> Dict[str, Any]:
-        """Отримати колір пікселя в точці.
-
-Args:
-    x, y: Координати
-
-Returns:
-    {"r": int, "g": int, "b": int, "hex": str}"""
-    def find_image_on_screen(self, template_path: str, confidence: float) -> Dict[str, Any]:
-        """Знайти зображення на екрані (template matching).
-
-Args:
-    template_path: Шлях до шаблону
-    confidence: Поріг впевненості (0.0-1.0)
-
-Returns:
-    {"found": True, "x": int, "y": int, "confidence": float} або {"found": False}"""
-    def wait_for_image(self, template_path: str, timeout: float, interval: float, confidence: float) -> Dict[str, Any]:
-        """Очікувати появи зображення на екрані.
-
-Args:
-    template_path: Шлях до шаблону
-    timeout: Максимальний час очікування (сек)
-    interval: Інтервал між перевірками
-    confidence: Поріг впевненості
-
-Returns:
-    {"found": True, "x": int, "y": int, "waited": float} або {"found": False}"""
-    def pixel_matches_color(self, x: int, y: int, color: Tuple[int, int, int], tolerance: int) -> Dict[str, Any]:
-        """Перевірити, чи піксель відповідає кольору (з допуском).
-
-Args:
-    x, y: Координати
-    color: Очікуваний колір (R, G, B)
-    tolerance: Допуск для кожного каналу
-
-Returns:
-    {"matches": bool, "actual": (r, g, b), "expected": (r, g, b)}"""
-    def wait_for_color(self, x: int, y: int, color: Tuple[int, int, int], timeout: float, tolerance: int) -> Dict[str, Any]:
-        """Очікувати певний колір в точці.
-
-Args:
-    x, y: Координати
-    color: Очікуваний колір (R, G, B)
-    timeout: Максимальний час
-    tolerance: Допуск
-
-Returns:
-    {"matches": True, "waited": float} або {"matches": False, "timeout": True}"""
-    def _screenshot_pil(self) -> Image.Image:
-        """Fallback скріншот через Pillow (повільніше)."""
-    def _cache_screenshot(self, img: Image.Image):
-        """Зберегти скріншот в кеш."""
-    def clear_cache(self):
-        """Очистити кеш скріншотів."""
-def take_screenshot(save_path: Optional[str]) -> Dict[str, Any]:
-    """Зняти скріншот всього екрану."""
-def capture_monitor(monitor_index: int, save_path: Optional[str]) -> Dict[str, Any]:
-    """Захопити конкретний монітор."""
-def capture_region(x: int, y: int, width: int, height: int, save_path: Optional[str]) -> Dict[str, Any]:
-    """Захопити область екрану."""
-def capture_window(hwnd: int, save_path: Optional[str]) -> Dict[str, Any]:
-    """Захопити вікно."""
-def capture_active_window(save_path: Optional[str]) -> Dict[str, Any]:
-    """Захопити активне вікно."""
-def get_screen_size() -> Dict[str, Any]:
-    """Розмір екрану."""
-def get_monitors_info() -> List[Dict[str, Any]]:
-    """Інформація про монітори."""
-def get_pixel_color(x: int, y: int) -> Dict[str, Any]:
-    """Колір пікселя."""
-def get_dpi_scaling_global() -> float:
-    """Глобальна функція для отримання DPI scaling factor."""
-def find_image_on_screen(template_path: str, confidence: float) -> Dict[str, Any]:
-    """Знайти зображення на екрані."""
-def wait_for_image(template_path: str, timeout: float, interval: float, confidence: float) -> Dict[str, Any]:
-    """Очікувати зображення."""
-def pixel_matches_color(x: int, y: int, color: Tuple[int, int, int], tolerance: int) -> Dict[str, Any]:
-    """Перевірити колір пікселя."""
-def wait_for_color(x: int, y: int, color: Tuple[int, int, int], timeout: float, tolerance: int) -> Dict[str, Any]:
-    """Очікувати колір."""
-def capture_screen(save_path: Optional[str]) -> Dict[str, Any]:
-    """Зняти скріншот всього екрану (backward compatibility)."""
-def save_screenshot(save_path: str) -> Dict[str, Any]:
-    """Зберегти скріншот у файл (backward compatibility)."""
-def clear_screenshot_cache() -> Dict[str, Any]:
-    """Очистити кеш скріншотів."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_ui_accessibility.py
 ============================================================
-Сутності:
-class UIElement:
-    """Елемент UI з Accessibility API."""
-    def __post_init__(self):
-class UIAWrapper:
-    """Wrapper для Windows UI Automation API.
-
-MVP — базовий інтерфейс, який можна розширити з pywinauto або IUIAutomation."""
-    def __init__(self):
-    def _init_uia(self):
-        """Ініціалізувати UIA з uiautomation (основний) + pywinauto fallback."""
-    def is_available(self) -> bool:
-        """Перевірити чи UIA доступний."""
-    def get_root_element(self) -> Optional[UIElement]:
-        """Отримати кореневий елемент (desktop)."""
-    def get_focused_element(self) -> Optional[UIElement]:
-        """Отримати фокований елемент."""
-    def find_element_by_name(self, name: str, root: Optional[UIElement]) -> Optional[UIElement]:
-        """Знайти елемент за іменем."""
-    def find_element_by_automation_id(self, automation_id: str, root: Optional[UIElement]) -> Optional[UIElement]:
-        """Знайти елемент за AutomationId."""
-    def get_children(self, element: UIElement, max_depth: int) -> List[UIElement]:
-        """Отримати дочірні елементи (рекурсивно до max_depth)."""
-    def get_ui_tree(self, hwnd: Optional[int], depth: int) -> Optional[Dict[str, Any]]:
-        """Отримати UIA-дерево для вікна (JSON-friendly для LLM).
-
-Args:
-    hwnd: HWND вікна (опційно, якщо None — активне вікно)
-    depth: Глибина обходу дерева (за замовчуванням 3)
-
-Returns:
-    Dict з деревом елементів або None при помилці."""
-    def list_all_buttons(self, root: Optional[UIElement], max_count: int) -> List[UIElement]:
-        """Отримати список всіх кнопок у вікні/дереві."""
-    def list_all_inputs(self, root: Optional[UIElement], max_count: int) -> List[UIElement]:
-        """Отримати список всіх полів вводу (Edit, ComboBox) у вікні/дереві."""
-    def list_all_checkboxes(self, root: Optional[UIElement], max_count: int) -> List[UIElement]:
-        """Отримати список всіх чекбоксів у вікні/дереві."""
-    def get_value(self, element: UIElement) -> Dict[str, Any]:
-        """Отримати значення елемента (наприклад текст у полі вводу)."""
-    def wait_for_element(self, name: str, timeout: float, poll_interval: float) -> Optional[UIElement]:
-        """Чекати появи елемента за іменем.
-
-Args:
-    name: Ім'я елемента
-    timeout: Максимальний час очікування (секунди)
-    poll_interval: Інтервал перевірки (секунди)
-
-Returns:
-    UIElement якщо знайдено, None якщо timeout."""
-    def click_element(self, element: UIElement) -> Dict[str, Any]:
-        """Клікнути на елемент через UIA (більш надійно ніж пікселі)."""
-    def set_text(self, element: UIElement, text: str) -> Dict[str, Any]:
-        """Встановити текст в елемент (Edit, ComboBox тощо)."""
-def get_uia_wrapper() -> UIAWrapper:
-    """Отримати singleton UIA wrapper."""
-def uia_list_elements(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Отримати список UI елементів з активного вікна.
-
-Args:
-    args: {"window_title": "optional window title", "max_count": 50}
-
-Returns:
-    {"ok": bool, "elements": [...], "count": int, "error": "..."}"""
-def uia_find_button(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Знайти кнопку за іменем або automation_id.
-
-Args:
-    args: {"name": "button name", "automation_id": "...", "window_title": "optional"}
-
-Returns:
-    {"ok": bool, "element": {...}, "error": "..."}"""
-def uia_click_element(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Клікнути на UI елемент через Accessibility API.
-
-Args:
-    args: {"automation_id": "..."} або {"name": "..."}
-
-Returns:
-    {"ok": bool, "result": "...", "error": "..."}"""
-def uia_set_text(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Ввести текст в поле через UIA.
-
-Args:
-    args: {"automation_id": "...", "text": "..."} або {"name": "...", "text": "..."}
-
-Returns:
-    {"ok": bool, "result": "...", "error": "..."}"""
-def uia_get_value(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Отримати значення елемента.
-
-Args:
-    args: {"automation_id": "..."} або {"name": "..."}
-
-Returns:
-    {"ok": bool, "value": "...", "error": "..."}"""
-def uia_wait_for_element(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Чекати появи елемента за іменем.
-
-Args:
-    args: {"name": "...", "timeout": 10.0, "poll_interval": 0.5}
-
-Returns:
-    {"ok": bool, "element": {...}, "error": "..."}"""
-def uia_list_buttons(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Отримати список всіх кнопок в активному вікні.
-
-Args:
-    args: {"max_count": 50}
-
-Returns:
-    {"ok": bool, "buttons": [...], "count": int}"""
-def uia_list_inputs(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Отримати список всіх полів вводу в активному вікні.
-
-Args:
-    args: {"max_count": 50}
-
-Returns:
-    {"ok": bool, "inputs": [...], "count": int}"""
-def uia_get_focused_element(args: Dict[str, Any]) -> Dict[str, Any]:
-    """Отримати фокований елемент.
-
-Returns:
-    {"ok": bool, "element": {...}, "error": "..."}"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_ui_detector.py
 ============================================================
-Сутності:
-class UIDetector:
-    """Детектор UI-елементів на екрані."""
-    def __init__(self, screen_capture: Optional[ScreenCapture], screen_ocr: Optional[ScreenOCR]):
-    def find_button_by_image(self, template_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]]) -> Optional[Dict[str, Any]]:
-        """Знайти кнопку за зображенням-шаблоном.
-
-Args:
-    template_path: Шлях до зображення кнопки
-    confidence: Мінімальний поріг співпадіння (0.0-1.0)
-    region: Обмежити пошук регіоном (x, y, w, h)
-
-Returns:
-    {"x": int, "y": int, "width": int, "height": int, "confidence": float} або None"""
-    def find_icon(self, icon_name_or_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]]) -> Optional[Dict[str, Any]]:
-        """Знайти іконку на екрані.
-
-Args:
-    icon_name_or_path: Назва відомої іконки або шлях до файлу
-    confidence: Поріг співпадіння
-    region: Обмежити пошук регіоном
-
-Returns:
-    {"x": int, "y": int, "confidence": float} або None"""
-    def find_all_matches(self, template_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]], max_results: int) -> List[Dict[str, Any]]:
-        """Знайти всі входження шаблону на екрані.
-
-Args:
-    template_path: Шлях до зображення-шаблону
-    confidence: Поріг співпадіння
-    region: Обмежити пошук
-    max_results: Максимальна кількість результатів
-
-Returns:
-    Список {"x", "y", "width", "height", "confidence"}"""
-    def find_checkbox(self, region: Optional[Tuple[int, int, int, int]], checked: Optional[bool]) -> List[Dict[str, Any]]:
-        """Знайти чекбокси на екрані за допомогою CV.
-
-Args:
-    region: Область для пошуку
-    checked: Фільтр за станом (True=включений, False=вимкнений, None=всі)
-
-Returns:
-    Список {"x", "y", "width", "height", "checked": bool}"""
-    def find_input_field(self, region: Optional[Tuple[int, int, int, int]], min_width: int, min_height: int, use_uia_first: bool) -> List[Dict[str, Any]]:
-        """Знайти поля вводу (input fields) на екрані (UIA fallback, потім CV).
-
-Args:
-    region: Область для пошуку
-    min_width: Мінімальна ширина поля
-    min_height: Мінімальна висота поля
-    use_uia_first: Спочатку спробувати UIA (default: True)
-
-Returns:
-    Список {"x", "y", "width", "height", "method": "uia"|"cv"}"""
-    def find_progress_bar(self, region: Optional[Tuple[int, int, int, int]], min_width: int) -> Optional[Dict[str, Any]]:
-        """Знайти прогрес-бар на екрані.
-
-Args:
-    region: Область для пошуку
-    min_width: Мінімальна ширина прогрес-бару
-
-Returns:
-    {"x", "y", "width", "height", "percent": float} або None"""
-    def find_button_by_text(self, text: str, region: Optional[Tuple[int, int, int, int]], confidence: float, use_uia_first: bool) -> Optional[Dict[str, Any]]:
-        """Знайти кнопку за текстом (UIA fallback, потім OCR + CV евристики).
-
-Args:
-    text: Текст на кнопці
-    region: Область для пошуку
-    confidence: Мінімальна впевненість OCR
-    use_uia_first: Спочатку спробувати UIA (default: True)
-
-Returns:
-    {"x", "y", "center_x", "center_y", "text", "confidence", "method": "uia"|"ocr"} або None"""
-    def find_label(self, text: str, region: Optional[Tuple[int, int, int, int]]) -> Optional[Dict[str, Any]]:
-        """Знайти мітку (label) з вказаним текстом.
-
-Args:
-    text: Текст мітки
-    region: Область для пошуку
-
-Returns:
-    {"x", "y", "center_x", "center_y", "text"} або None"""
-    def find_input_near_label(self, label_text: str, region: Optional[Tuple[int, int, int, int]], max_distance: int) -> Optional[Dict[str, Any]]:
-        """Знайти поле вводу поруч з міткою.
-
-Args:
-    label_text: Текст мітки
-    region: Область для пошуку
-    max_distance: Максимальна відстань від мітки до поля
-
-Returns:
-    {"x", "y", "width", "height", "label": {...}} або None"""
-    def is_button_enabled(self, x: int, y: int, width: int, height: int) -> bool:
-        """Визначити чи кнопка активна (не disabled) за кольором.
-
-Args:
-    x, y, width, height: Координати кнопки
-
-Returns:
-    True якщо кнопка активна, False якщо disabled"""
-    def is_checkbox_checked(self, x: int, y: int, width: int, height: int) -> bool:
-        """Визначити стан чекбокса (включений/вимкнений).
-
-Args:
-    x, y: Координати чекбокса
-    width, height: Розмір (за замовчуванням 16x16)
-
-Returns:
-    True якщо включений, False якщо вимкнений"""
-    def get_button_state(self, x: int, y: int, width: int, height: int) -> str:
-        """Визначити візуальний стан кнопки.
-
-Args:
-    x, y: Координати кнопки
-    width, height: Розмір кнопки
-
-Returns:
-    "normal" | "hovered" | "pressed" | "disabled""""
-    def _get_screenshot(self, region: Optional[Tuple[int, int, int, int]]) -> np.ndarray:
-        """Отримати скріншот як numpy array (BGR для OpenCV)."""
-    def _load_template(self, template_path: str) -> np.ndarray:
-        """Завантажити шаблон з кешуванням."""
-    def _analyze_checkbox_state(self, roi: np.ndarray) -> bool:
-        """Аналізувати чи включений чекбокс."""
-    def _has_border(self, gray_img: np.ndarray, x: int, y: int, w: int, h: int) -> bool:
-        """Перевірити чи має область рамку (характерно для input field)."""
-    def _estimate_progress_percent(self, screenshot: np.ndarray, x: int, y: int, w: int, h: int) -> float:
-        """Оцінити відсоток заповнення прогрес-бару."""
-def get_ui_detector() -> UIDetector:
-    """Отримати глобальний екземпляр UIDetector."""
-def find_button_by_image(template_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
-    """Знайти кнопку за зображенням-шаблоном."""
-def find_icon(icon_name_or_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
-    """Знайти іконку на екрані."""
-def find_checkbox(region: Optional[Tuple[int, int, int, int]], checked: Optional[bool]) -> Dict[str, Any]:
-    """Знайти чекбокси на екрані."""
-def find_input_field(region: Optional[Tuple[int, int, int, int]], min_width: int, min_height: int, use_uia_first: bool) -> Dict[str, Any]:
-    """Знайти поля вводу на екрані (UIA fallback, потім CV)."""
-def find_progress_bar(region: Optional[Tuple[int, int, int, int]], min_width: int) -> Dict[str, Any]:
-    """Знайти прогрес-бар на екрані."""
-def find_button_by_text(text: str, region: Optional[Tuple[int, int, int, int]], confidence: float, use_uia_first: bool) -> Dict[str, Any]:
-    """Знайти кнопку за текстом (UIA fallback, потім OCR + CV)."""
-def click_text(text: str, region: Optional[Tuple[int, int, int, int]], confidence: float, use_uia_first: bool) -> Dict[str, Any]:
-    """Знайти і клікнути на текст (UIA fallback, потім OCR + CV)."""
-def find_label(text: str, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
-    """Знайти мітку з вказаним текстом."""
-def find_input_near_label(label_text: str, region: Optional[Tuple[int, int, int, int]], max_distance: int) -> Dict[str, Any]:
-    """Знайти поле вводу поруч з міткою."""
-def is_button_enabled(x: int, y: int, width: int, height: int) -> Dict[str, Any]:
-    """Перевірити чи кнопка активна."""
-def is_checkbox_checked(x: int, y: int, width: int, height: int) -> Dict[str, Any]:
-    """Перевірити стан чекбокса."""
-def get_button_state(x: int, y: int, width: int, height: int) -> Dict[str, Any]:
-    """Отримати візуальний стан кнопки."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_visual_diff.py
 ============================================================
-Сутності:
-class VisualDiff:
-    """Порівняння зображень та виявлення змін на екрані."""
-    def __init__(self, baseline_dir: str, screen_capture: Optional[ScreenCapture]):
-    def compare_images(self, image1: Image.Image, image2: Image.Image, threshold: float) -> Dict[str, Any]:
-        """Порівняти два зображення.
-
-Args:
-    image1: Перше зображення (базове)
-    image2: Друге зображення (поточне)
-    threshold: Поріг значущої зміни (0.0-1.0)
-
-Returns:
-    {"identical": bool, "diff_percent": float, "diff_regions": [...]}"""
-    def compare_with_baseline(self, name: str, current_image: Optional[Image.Image], threshold: float) -> Dict[str, Any]:
-        """Порівняти поточний стан з еталонним.
-
-Args:
-    name: Ім'я еталону
-    current_image: Поточне зображення (None = зняти скріншот)
-    threshold: Поріг значущої зміни
-
-Returns:
-    {"changed": bool, "diff_regions": [...], "diff_percent": float}"""
-    def highlight_changes(self, before: Image.Image, after: Image.Image, highlight_color: Tuple[int, int, int]) -> Image.Image:
-        """Створити зображення з підсвіченими змінами.
-
-Args:
-    before: Зображення "до"
-    after: Зображення "після"
-    highlight_color: Колір підсвічування (R, G, B)
-
-Returns:
-    PIL.Image з виділеними змінами"""
-    def capture_baseline(self, name: str, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
-        """Зберегти еталонний скріншот.
-
-Args:
-    name: Ім'я еталону
-    region: Область для захоплення (None = весь екран)
-
-Returns:
-    {"success": bool, "path": str}"""
-    def delete_baseline(self, name: str) -> Dict[str, Any]:
-        """Видалити еталон."""
-    def list_baselines(self) -> List[Dict[str, Any]]:
-        """Отримати список всіх еталонів."""
-    def wait_for_visual_change(self, region: Optional[Tuple[int, int, int, int]], timeout: float, interval: float, threshold: float) -> Dict[str, Any]:
-        """Очікувати будь-яку зміну на екрані.
-
-Args:
-    region: Область для моніторингу
-    timeout: Максимальний час очікування (сек)
-    interval: Інтервал між перевірками (сек)
-    threshold: Поріг значущої зміни
-
-Returns:
-    {"changed": bool, "diff_percent": float, "wait_time": float}"""
-    def wait_for_visual_stable(self, region: Optional[Tuple[int, int, int, int]], stable_time: float, timeout: float, interval: float, threshold: float) -> Dict[str, Any]:
-        """Очікувати стабільності (відсутності змін) на екрані.
-
-Args:
-    region: Область для моніторингу
-    stable_time: Час без змін для вважання "стабільним"
-    timeout: Максимальний час очікування
-    interval: Інтервал між перевірками
-    threshold: Поріг значущої зміни
-
-Returns:
-    {"stable": bool, "stable_duration": float, "wait_time": float}"""
-    def wait_for_element_appear(self, element_checker: callable, timeout: float, interval: float) -> Dict[str, Any]:
-        """Очікувати появи елемента (за допомогою callback функції).
-
-Args:
-    element_checker: Функція яка повертає True якщо елемент знайдено
-    timeout: Максимальний час очікування
-    interval: Інтервал між перевірками
-
-Returns:
-    {"found": bool, "wait_time": float}"""
-    def _find_diff_regions(self, thresh: np.ndarray, min_area: int) -> List[Dict[str, Any]]:
-        """Знайти регіони змін на бінаризованому зображенні."""
-def get_visual_diff() -> VisualDiff:
-    """Отримати глобальний екземпляр VisualDiff."""
-def capture_baseline(name: str, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
-    """Зберегти еталонний скріншот."""
-def delete_baseline(name: str) -> Dict[str, Any]:
-    """Видалити еталон."""
-def list_baselines() -> Dict[str, Any]:
-    """Отримати список еталонів."""
-def compare_with_baseline(name: str, threshold: float) -> Dict[str, Any]:
-    """Порівняти поточний стан з еталоном."""
-def highlight_changes(before_path: str, after_path: str, save_path: Optional[str]) -> Dict[str, Any]:
-    """Створити зображення з підсвіченими змінами."""
-def wait_for_visual_change(region: Optional[Tuple[int, int, int, int]], timeout: float, threshold: float) -> Dict[str, Any]:
-    """Очікувати будь-яку зміну на екрані."""
-def wait_for_visual_stable(region: Optional[Tuple[int, int, int, int]], stable_time: float, timeout: float, threshold: float) -> Dict[str, Any]:
-    """Очікувати стабільності на екрані."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_window_manager.py
 ============================================================
-Сутності:
-class WindowManager:
-    """Менеджер для роботи з вікнами Windows."""
-    def __init__(self):
-    def list_windows(self, include_hidden: bool) -> List[Dict[str, Any]]:
-        """Отримати список всіх вікон.
-
-Args:
-    include_hidden: Включати приховані вікна
-
-Returns:
-    [{hwnd, title, process_name, pid, rect, visible}]"""
-    def find_window_by_title(self, pattern: str, exact: bool) -> Optional[int]:
-        """Знайти вікно за заголовком.
-
-Args:
-    pattern: Текст або regex для пошуку
-    exact: Точний збіг (True) або частковий (False)
-
-Returns:
-    hwnd або None"""
-    def find_window_by_process(self, process_name: str) -> List[int]:
-        """Знайти всі вікна процесу.
-
-Args:
-    process_name: Назва процесу (без .exe)
-
-Returns:
-    [hwnd, ...]"""
-    def find_window_by_class(self, class_name: str) -> List[int]:
-        """Знайти вікна за класом Windows.
-
-Args:
-    class_name: Ім'я класу вікна (напр. "Notepad", "Chrome_WidgetWin_1")
-
-Returns:
-    [hwnd, ...]"""
-    def get_active_window(self) -> Dict[str, Any]:
-        """Отримати активне (foreground) вікно.
-
-Returns:
-    {hwnd, title, process_name, rect}"""
-    def activate_window(self, hwnd: int) -> Dict[str, Any]:
-        """Перевести вікно на передній план (SetForegroundWindow).
-
-Args:
-    hwnd: Handle вікна
-
-Returns:
-    {"success": True, "hwnd": hwnd}"""
-    def minimize_window(self, hwnd: int) -> Dict[str, Any]:
-        """Згорнути вікно."""
-    def maximize_window(self, hwnd: int) -> Dict[str, Any]:
-        """Розгорнути вікно на весь екран."""
-    def restore_window(self, hwnd: int) -> Dict[str, Any]:
-        """Відновити вікно з мінімізованого/максимізованого стану."""
-    def close_window(self, hwnd: int, force: bool) -> Dict[str, Any]:
-        """Закрити вікно.
-
-Args:
-    hwnd: Handle вікна
-    force: True = TerminateProcess, False = WM_CLOSE"""
-    def hide_window(self, hwnd: int) -> Dict[str, Any]:
-        """Приховати вікно."""
-    def show_window(self, hwnd: int) -> Dict[str, Any]:
-        """Показати приховане вікно."""
-    def move_window(self, hwnd: int, x: int, y: int) -> Dict[str, Any]:
-        """Перемістити вікно (зберігаючи розмір)."""
-    def resize_window(self, hwnd: int, width: int, height: int) -> Dict[str, Any]:
-        """Змінити розмір вікна (зберігаючи позицію)."""
-    def move_resize_window(self, hwnd: int, x: int, y: int, width: int, height: int) -> Dict[str, Any]:
-        """Одночасно перемістити та змінити розмір вікна."""
-    def get_window_rect(self, hwnd: int) -> Dict[str, Any]:
-        """Отримати координати та розмір вікна."""
-    def center_window(self, hwnd: int) -> Dict[str, Any]:
-        """Відцентрувати вікно на екрані."""
-    def is_window_visible(self, hwnd: int) -> bool:
-        """Чи видиме вікно."""
-    def is_window_minimized(self, hwnd: int) -> bool:
-        """Чи вікно згорнуте."""
-    def is_window_maximized(self, hwnd: int) -> bool:
-        """Чи вікно розгорнуте на весь екран."""
-    def wait_for_window(self, title_pattern: str, timeout: float) -> Optional[int]:
-        """Очікувати появи вікна.
-
-Args:
-    title_pattern: Шаблон заголовка
-    timeout: Максимальний час очікування (сек)
-
-Returns:
-    hwnd або None"""
-    def wait_window_close(self, hwnd: int, timeout: float) -> bool:
-        """Очікувати закриття вікна.
-
-Args:
-    hwnd: Handle вікна
-    timeout: Максимальний час очікування (сек)
-
-Returns:
-    True якщо вікно закрилось, False якщо timeout"""
-    def bring_all_to_top(self, process_name: str) -> Dict[str, Any]:
-        """Підняти всі вікна процесу на передній план.
-
-Args:
-    process_name: Назва процесу
-
-Returns:
-    {"success": True, "activated": [hwnd, ...]}"""
-    def _get_window_pid(self, hwnd: int) -> Optional[int]:
-        """Отримати PID процесу вікна."""
-    def _get_process_name(self, pid: int) -> str:
-        """Отримати назву процесу за PID."""
-def list_windows(include_hidden: bool, format_output: bool) -> str:
-    """Список всіх вікон у читабельному форматі."""
-def find_window_by_title(pattern: str, exact: bool) -> Optional[int]:
-    """Знайти вікно за заголовком."""
-def find_window_by_process(process_name: str) -> List[int]:
-    """Знайти вікна процесу."""
-def find_window_by_class(class_name: str) -> List[int]:
-    """Знайти вікна за класом."""
-def get_active_window() -> Dict[str, Any]:
-    """Активне вікно."""
-def activate_window(hwnd: int) -> Dict[str, Any]:
-    """Активувати вікно."""
-def minimize_window(hwnd: int) -> Dict[str, Any]:
-    """Згорнути вікно."""
-def maximize_window(hwnd: int) -> Dict[str, Any]:
-    """Розгорнути вікно."""
-def restore_window(hwnd: int) -> Dict[str, Any]:
-    """Відновити вікно."""
-def close_window(hwnd: int, force: bool) -> Dict[str, Any]:
-    """Закрити вікно."""
-def hide_window(hwnd: int) -> Dict[str, Any]:
-    """Приховати вікно."""
-def show_window(hwnd: int) -> Dict[str, Any]:
-    """Показати вікно."""
-def move_window(hwnd: int, x: int, y: int) -> Dict[str, Any]:
-    """Перемістити вікно."""
-def resize_window(hwnd: int, width: int, height: int) -> Dict[str, Any]:
-    """Змінити розмір вікна."""
-def move_resize_window(hwnd: int, x: int, y: int, width: int, height: int) -> Dict[str, Any]:
-    """Перемістити та змінити розмір."""
-def get_window_rect(hwnd: int) -> Dict[str, Any]:
-    """Отримати координати вікна."""
-def center_window(hwnd: int) -> Dict[str, Any]:
-    """Відцентрувати вікно."""
-def is_window_visible(hwnd: int) -> bool:
-    """Чи видиме вікно."""
-def is_window_minimized(hwnd: int) -> bool:
-    """Чи згорнуте вікно."""
-def is_window_maximized(hwnd: int) -> bool:
-    """Чи розгорнуте вікно."""
-def wait_for_window(title_pattern: str, timeout: float) -> Optional[int]:
-    """Очікувати появи вікна."""
-def wait_window_close(hwnd: int, timeout: float) -> bool:
-    """Очікувати закриття вікна."""
-def bring_all_to_top(process_name: str) -> Dict[str, Any]:
-    """Підняти всі вікна процесу."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_windsurf.py
 ============================================================
-Сутності:
-def _default_list_windows() -> List[Dict[str, Any]]:
-    """Спроба скористатись `tools_window_manager.WindowManager.list_windows()`.
-
-На Linux / без pywin32 — повертає `[]`. Це тригерить `find_windsurf_window`
-повернути `None` — коректно без raise."""
-def _default_ocr_window(hwnd: int) -> Dict[str, Any]:
-    """Спроба скористатись `tools_ocr.ocr_window`."""
-def make_default_window_finder() -> WindowFinder:
-    """Фабрика `WindowFinder`-а на основі list-of-windows.
-
-Патерни й процеси — case-insensitive substring."""
-def find_windsurf_window() -> Optional[WindsurfWindow]:
-    """Одноразовий пошук Windsurf-вікна. Зручна обгортка над
-`make_default_window_finder()`."""
-def normalize_text(text: str) -> str:
-    """Прибирає blinking-cursor знаки й зводить whitespace до одного пробілу.
-
-Це ключове для `condition_chat_idle`: OCR на кожному кадрі ловить
-моргаючий каретка-символ як різний → idle ніколи не настає. Нормалізація
-робить два сусідні кадри однаковими, поки реальний текст не змінився."""
-def compute_text_hash(text: str) -> str:
-    """SHA-256 хеш нормалізованого тексту — стабільний snapshot-id."""
-def make_default_snapshot_fn(ocr_window_fn: Optional[Callable[[int], Dict[str, Any]]]) -> SnapshotFn:
-    """Фабрика SnapshotFn поверх `tools_ocr.ocr_window`.
-
-На помилках OCR повертає порожній рядок — condition_chat_idle
-спрацює по стабільності (порожній == порожній)."""
-class ResponseDiff:
-    """Різниця між попереднім і поточним snapshot-ом чату."""
-def diff_snapshots(previous: str, current: str) -> ResponseDiff:
-    """Порахувати diff двох snapshot-ів чату.
-
-Повертає `ResponseDiff` з `new_text`, що є найкращою апроксимацією
-свіжо-згенерованої відповіді для логу."""
-class WindsurfState:
-    """Статистика live-сесії Watcher-а для Windsurf.
-
-Мутабельний контейнер; Watcher-context тримає одну таку структуру як
-`ctx["windsurf"]`. Кожен дозволений на запис тільки з action-handler-а
-(single-threaded всередині Watcher-а)."""
-    def register_response(self) -> Dict[str, Any]:
-        """Додати нову відповідь у буфер і оновити лічильники."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\tools_word.py
 ============================================================
-Сутності:
-def open_word_document(file_path: str) -> Dict[str, Any]:
-    """Відкрити Word документ.
-
-Args:
-    file_path: Шлях до файлу .docx
-
-Returns:
-    dict з success, doc_object, error"""
-def read_word_document(file_path: str) -> Dict[str, Any]:
-    """Прочитати текст з Word документа.
-
-Args:
-    file_path: Шлях до файлу .docx
-
-Returns:
-    dict з success, text, error"""
-def create_word_document(file_path: str) -> Dict[str, Any]:
-    """Створити новий Word документ.
-
-Args:
-    file_path: Шлях для збереження файлу .docx
-
-Returns:
-    dict з success, doc_object, error"""
-def write_text_to_document(doc: Any, text: str, at_end: bool) -> Dict[str, Any]:
-    """Додати текст в документ.
-
-Args:
-    doc: COM об'єкт документа Word
-    text: Текст для вставки
-    at_end: Якщо True, додає в кінець, інакше замінює весь вміст
-
-Returns:
-    dict з success, error"""
-def save_document(doc: Any, word: Any, file_path: str, close: bool) -> Dict[str, Any]:
-    """Зберегти документ.
-
-Args:
-    doc: COM об'єкт документа Word
-    word: COM об'єкт Word Application
-    file_path: Шлях для збереження
-    close: Закрити документ після збереження
-
-Returns:
-    dict з success, error"""
-def format_paragraph(doc: Any, bold: bool, italic: bool, size: int) -> Dict[str, Any]:
-    """Форматувати останній параграф.
-
-Args:
-    doc: COM об'єкт документа Word
-    bold: Жирний шрифт
-    italic: Курсив
-    size: Розмір шрифту
-
-Returns:
-    dict з success, error"""
-def insert_table(doc: Any, rows: int, cols: int) -> Dict[str, Any]:
-    """Вставити таблицю в документ.
-
-Args:
-    doc: COM об'єкт документа Word
-    rows: Кількість рядків
-    cols: Кількість стовпчиків
-
-Returns:
-    dict з success, table_object, error"""
-def set_cell_text(table: Any, row: int, col: int, text: str) -> Dict[str, Any]:
-    """Встановити текст в клітинку таблиці.
-
-Args:
-    table: COM об'єкт таблиці Word
-    row: Номер рядка (1-based)
-    col: Номер стовпчика (1-based)
-    text: Текст для вставки
-
-Returns:
-    dict з success, error"""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\voice_tray_icon.py
 ============================================================
-Сутності:
-class _StatusUpdateEvent(QEvent):
-    """Кастомний QEvent для оновлення статусу tray icon."""
-    def __init__(self, status: VoiceStatus, text: str):
-class VoiceStatus(Enum):
-    """Статус голосового введення."""
-class _TrayStatusData:
-    """Дані для оновлення статусу."""
-    def __init__(self, status: VoiceStatus, text: str):
-class VoiceTrayIcon(QObject):
-    """Tray icon для показу статусу голосового введення."""
-    def __init__(self, parent):
-    def initialize(self) -> bool:
-        """Ініціалізувати tray icon."""
-    def _run_event_loop(self):
-        """Запустити Qt event loop в окремому потоці."""
-    def set_status(self, status: VoiceStatus, text: str):
-        """Встановити статус tray icon (потокобезпечно)."""
-    def customEvent(self, event: QEvent):
-        """Обробити кастомний event для оновлення статусу."""
-    def _do_set_status(self, status: VoiceStatus, text: str):
-        """Внутрішній метод - виконується в основному потоці Qt."""
-    def _create_icon(self, status: VoiceStatus) -> QIcon:
-        """Створити іконку мікрофона з кольором статусу."""
-    def _get_tooltip(self, status: VoiceStatus, text: str) -> str:
-        """Отримати tooltip для статусу."""
-    def show(self):
-        """Показати tray icon."""
-    def hide(self):
-        """Приховати tray icon."""
-    def cleanup(self):
-        """Очистити ресурси."""
-def get_voice_tray_icon() -> Optional[VoiceTrayIcon]:
-    """Отримати singleton екземпляр VoiceTrayIcon."""
+(немає класів чи функцій верхнього рівня)
 
 ============================================================
 Файл: D:\Python\agent\functions\windsurf_watcher_executor.py
@@ -9061,47 +6059,10 @@ def sync_settings_copy():
     """Створити копію user_settings.json без API ключів."""
 # Невідомий тип: D:\Python\agent\scenarios
 
+# [Помилка читання] D:\Python\agent\utils\__init__.py: [Errno 2] No such file or directory: 'D:\\Python\\agent\\utils\\__init__.py'
 
-============================================================
-Файл: D:\Python\agent\utils\__init__.py
-============================================================
-(немає класів чи функцій верхнього рівня)
+# [Помилка читання] D:\Python\agent\utils\screen_helper.py: [Errno 2] No such file or directory: 'D:\\Python\\agent\\utils\\screen_helper.py'
 
-============================================================
-Файл: D:\Python\agent\utils\screen_helper.py
-============================================================
-Сутності:
-def get_windows_scale_factor() -> float:
-    """Отримує коефіцієнт масштабування Windows.
-
-Returns:
-    float: Коефіцієнт масштабування (наприклад, 1.25 для 125%, 1.5 для 150%)
-           Повертає 1.0 якщо не вдалося отримати масштаб."""
-def normalize_coordinates(x: int, y: int) -> tuple[int, int]:
-    """Перетворює координати з OCR-простору в реальні координати кліку.
-
-Args:
-    x: Координата X з OCR/UIA
-    y: Координата Y з OCR/UIA
-    
-Returns:
-    tuple[int, int]: Нормалізовані координати для кліку"""
-def get_screen_resolution() -> tuple[int, int] | None:
-    """Повертає реальну роздільну здатність екрана.
-
-Returns:
-    tuple[int, int] | None: (width, height) або None якщо pyautogui недоступний"""
-def denormalize_coordinates(x: int, y: int) -> tuple[int, int]:
-    """Зворотна операція: перетворює реальні координати в масштабовані.
-
-Корисно для порівняння з координатами від OCR/UIA.
-
-Args:
-    x: Реальна координата X
-    y: Реальна координата Y
-    
-Returns:
-    tuple[int, int]: Масштабовані координати"""
 
 ============================================================
 Документація/файл: D:\Python\agent\README.md
@@ -9584,14 +6545,14 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 **Проблема:** В `main.py:process_text_command()` існують два конкуруючі шляхи виконання — Planner legacy (`VoiceAssistant.process_command`) і AgentLoop (`run_agent_loop`). Класифікація між ними через ключові слова ненадійна, команди можуть потрапляти в обидва шляхи. Крім того, `run_agent_loop()` містить гілку `task_type == "CHAT"`, яка передоручає виконання назад у `process_command()` — це створює "підводний камінь" і зациклення.
 
 **Рішення:**
-- [ ] Зробити AgentLoop єдиним шляхом виконання команд з GUI
-- [ ] `VoiceAssistant.process_command` залишити тільки для голосового режиму (STT), прибрати з нього Planner legacy
-- [ ] Planner legacy використовується тільки всередині AgentLoop як інструмент планування (`_plan_from_planner`), а не як окремий шлях з GUI
-- [ ] **Прибрати Planner legacy з `process_command()`** (`should_plan` → `create_plan` → `execute_plan_async`). Замість нього — виклик AgentLoop для команд і ask_llm для розмов.
-- [ ] Прибрати гілку `task_type == "CHAT"` в `run_agent_loop()` — вона передоручає виконання в `process_command`, що створює дублювання
-- [ ] Спростити `process_text_command()`: замість класифікації через ключові слова — завжди пускати через AgentLoop. Якщо AgentLoop вирішить що це "чайт" — він сам запустить LLM.
-- [ ] `process_command()` після А0 виконує тільки: перевірка активаційного слова → визначення "команда vs розмова" → AgentLoop (для команд) / ask_llm (для розмов) → TTS → conversation_history
-- [ ] Видалити або закомітити методи Planner з `logic_commands.py`, які більше не потрібні на цьому шляху
+- [x] Зробити AgentLoop єдиним шляхом виконання команд з GUI
+- [x] `VoiceAssistant.process_command` залишити тільки для голосового режиму (STT), прибрати з нього Planner legacy
+- [x] Planner legacy використовується тільки всередині AgentLoop як інструмент планування (`_plan_from_planner`), а не як окремий шлях з GUI
+- [x] **Прибрати Planner legacy з `process_command()`** (`should_plan` → `create_plan` → `execute_plan_async`). Замість нього — виклик AgentLoop для команд і ask_llm для розмов.
+- [x] Прибрати гілку `task_type == "CHAT"` в `run_agent_loop()` — вона передоручає виконання в `process_command`, що створює дублювання
+- [x] Спростити `process_text_command()`: замість класифікації через ключові слова — завжди пускати через AgentLoop. Якщо AgentLoop вирішить що це "чайт" — він сам запустить LLM.
+- [x] `process_command()` після А0 виконує тільки: перевірка активаційного слова → визначення "команда vs розмова" → AgentLoop (для команд) / ask_llm (для розмов) → TTS → conversation_history
+- [x] Видалити або закомітити методи Planner з `logic_commands.py`, які більше не потрібні на цьому шляху
 
 **Очікуваний pipeline після А0:**
 ```
@@ -9605,24 +6566,32 @@ STT команда → process_command() → (якщо задача) → AgentLo
 - `main.py` — `process_text_command()`, `run_agent_loop()`, `_classify_task()`
 - `functions/logic_commands.py` — перевірити чи process_command використовується з GUI
 
-#### А1. Полагодити pytest collection (P0)
+#### А1. Полагодити pytest collection (P0) ✅
 
-- [ ] Повернути сумісність між тестами і `logic_task_runner`
-- [ ] Добитися щоб `pytest tests/` проходив хоча б collection без помилок
-- [ ] Зафіксувати публічні API для parser/runner/plan-об'єктів
+- [x] Повернути сумісність між тестами і `logic_task_runner`
+- [x] Добитися щоб `pytest tests/` проходив хоча б collection без помилок
+- [x] Зафіксувати публічні API для parser/runner/plan-об'єктів
 
-#### А2. Реструктуризація папки functions/
+#### А2. Реструктуризація папки functions/ ✅
 
 Зараз у `functions/` 100+ файлів у плоскій структурі — це ускладнює навігацію. Згрупувати модулі по підпапках:
 
-- [ ] Створити `functions/llm/` — вже є, залишити
-- [ ] Створити `functions/tools/` — перенести всі `tools_*.py`
-- [ ] Створити `functions/planning/` — `core_planner.py`, `core_executor.py`, `logic_task_runner.py`, `logic_expectations.py`
-- [ ] Створити `functions/runtime/` — `core_tool_runtime.py`, `core_settings.py`, `core_memory.py`, `core_cache.py`
-- [ ] Створити `functions/gui_logic/` — модулі що стосуються GUI-взаємодії
-- [ ] Створити `functions/legacy/` — всі `aaa_*.py` (позначити як legacy-обгортки)
-- [ ] Після перенесення — виправити всі імпорти
-- [ ] Переконатись що pytest і запуск через `run.py` працюють
+- [x] Створити `functions/llm/` — вже є, залишити без змін
+- [x] Створити `functions/tools/` — перенести всі `tools_*.py` і `aaa_*.py`
+- [x] Створити `functions/planning/` — перенести: `agent_loop.py`, `core_planner.py`, `core_plan_compiler.py`, `core_planner_critic.py`, `core_planner_runner.py`, `logic_task_runner.py`, `logic_expectations.py`, `task_spec.py`
+- [x] Створити `functions/runtime/` — перенести: `core_tool_runtime.py`, `core_settings.py`, `core_memory.py`, `core_cache.py`, `core_session_budget.py`, `core_undo_manager.py`, `core_action_recorder.py`
+- [x] Створити `functions/gui/` — перенести: `core_gui_guardian.py`, `tools_screen_capture.py`, `tools_ocr.py`, `tools_mouse_keyboard.py`, `tools_window_manager.py`, `tools_ui_detector.py`, `tools_ui_accessibility.py`, `tools_visual_diff.py`, `voice_tray_icon.py`
+- [x] Виправити всі імпорти всередині переміщених файлів
+- [x] Додати файли-заглушки для зворотної сумісності (49 файлів)
+- [x] Переконатись що `pytest` проходить collection без помилок ✅ (1400 tests)
+
+#### Розширення задачі А2.1: інтеграція core/ та utils/ ✅
+
+- [x] Перенести `core/context_controller.py` до `functions/planning/`
+- [x] Перенести `utils/screen_helper.py` до `functions/gui/`
+- [x] Після перенесення виправити імпорти у всіх залежних модулях (tools_mouse_keyboard + тести)
+- [x] Видалити порожні папки `core/` та `utils/`
+- [x] Переконатись, що `pytest` проходить collection без помилок ✅ (1400 tests)
 
 #### А3. Розрізати великі модулі
 
@@ -10236,6 +7205,87 @@ STT команда → process_command() → (якщо задача) → AgentLo
 
 ---
 
+### ЕТАП 13: МАРШРУТИЗАЦІЯ КРОКІВ ЗА СКЛАДНІСТЮ (БРАУЗЕРНІ AI)
+
+**Мета:** Розширити `AgentLoop` можливістю делегувати виконання «кодогенеруючих» кроків різним зовнішнім AI залежно від оціненої складності. Прості кроки виконує локальний LLM (через існуючий `ActionDecider`), середні – DeepSeek або Grok через браузер (CDP), складні – ChatGPT/Claude через браузер. Результат зберігається у файл і проходить автоматичну перевірку (`execute_python`).
+
+**Пріоритет:** P1 (підвищує якість складних завдань без втрати швидкості на простих)
+
+**Залежності:**
+- ✅ `tools_browser_cdp.py` (CDP – Chrome DevTools Protocol)
+- ✅ `aaa_execute_python.py` (перевірка згенерованого коду)
+- ✅ `agent_loop.py` (основний цикл, метод `act`)
+- 🟡 `logic_llm_tools.ask_llm_with_tools` (локальний LLM для простих кроків)
+
+---
+
+#### Завдання 13.1. Класифікатор складності кроку
+
+- [ ] Створити `functions/step_difficulty.py`
+- [ ] Реалізувати функцію `classify_step(step: dict) -> 'simple'|'medium'|'hard'`
+- [ ] Критерії:
+  - `simple`: дії типу `read_code_file`, `list_directory`, `search_in_code`; або генерація коду довжиною до 20 рядків без `class`/складних алгоритмів.
+  - `medium`: `write_file` з кодом 20–100 рядків, наявність функцій, помірна логіка.
+  - `hard`: генерація багатофайлових проєктів, використання `asyncio`, класів, зовнішніх API; ключові слова «складний», «архітектура», «оптимізуй».
+- [ ] Покрити тестами (`tests/test_step_difficulty.py`)
+
+#### Завдання 13.2. Браузерні виконавці для зовнішніх AI
+
+- [ ] Створити `functions/browser_ai_executors.py`
+- [ ] Реалізувати функції:
+  - `execute_with_deepseek(task: str) -> dict` – відкриває chat.deepseek.com, вводить `task`, чекає відповідь, повертає текст.
+  - `execute_with_grok(task: str) -> dict`
+  - `execute_with_chatgpt(task: str) -> dict`
+- [ ] Використовувати `tools_browser_cdp` для:
+  - `cdp_ensure_chrome` (запуск Chrome з портом 9222)
+  - `cdp_open_tab`, `cdp_type_text`, `cdp_click_text` (або `cdp_click`), `cdp_wait_for_text`, `cdp_get_response`
+- [ ] Додати конфігурацію селекторів у `runtime/browser_selectors.json` (URL, textarea, кнопка submit, контейнер відповіді)
+- [ ] Додати таймаути (120 секунд) та повторні спроби (2–3)
+- [ ] Тести: `tests/test_browser_ai_executors.py` (з моками CDP або реальні smoke)
+
+#### Завдання 13.3. Інтеграція в AgentLoop (метод `act`)
+
+- [ ] У `functions/agent_loop.py` імпортувати `classify_step`, `execute_with_deepseek`, `execute_with_grok`, `execute_with_chatgpt`
+- [ ] Модифікувати метод `act`:
+  - Якщо `action` НЕ є кодогенеруючим (`write_file`, `edit_file`, `execute_python`, `create_file`) → виконати локально через `registry.execute_function` (без змін).
+  - Якщо кодогенеруючий крок:
+    - `difficulty = classify_step(step)`
+    - `simple` → використати локальний LLM (через `ask_llm_with_tools` або `self.decider`), зберегти у файл (якщо `write_file`).
+    - `medium` → спробувати `execute_with_deepseek`, при невдачі – `execute_with_grok`. Результат зберегти, викликати `execute_python` для перевірки.
+    - `hard` → виконати через `execute_with_chatgpt`, також з перевіркою.
+- [ ] Результат `act` має містити поля `success`, `result` (текст коду або повідомлення), `engine` (local/deepseek/grok/chatgpt), `verified` (True/False після `execute_python`).
+
+#### Завдання 13.4. Обробка невдалої перевірки коду (repair)
+
+- [ ] У `AgentLoop._execute_single_step` після виклику `act` перевірити `result.get("verified")`.
+- [ ] Якщо `verified == False` і є `result["error"]` (помилка виконання), викликати існуючий `StepRepairer` з контекстом.
+- [ ] Розширити `StepRepairer` (`logic_repair_loop.py`) можливістю повторно відправити завдання з текстом помилки в той самий браузерний AI (наприклад, «Твій код не працює: ... Виправ»).
+- [ ] Максимум 2 спроби repair на крок.
+
+#### Завдання 13.5. Налаштування та документація
+
+- [ ] Додати в `SETTINGS_SCHEMA` (`core_settings.py`):
+  - `ROUTE_BY_DIFFICULTY_ENABLED` (bool, default False) – глобальний вимикач.
+  - `BROWSER_AI_TIMEOUT` (int, default 120)
+  - `BROWSER_AI_RETRIES` (int, default 2)
+  - `LOCAL_LLM_FOR_SIMPLE` (bool, default True)
+- [ ] Оновити `docs/ARCHITECTURE.md` – додати розділ «Маршрутизація кроків за складністю».
+- [ ] Оновити `README.md` – згадати можливість делегування ChatGPT/DeepSeek через браузер.
+
+#### Завдання 13.6. Тестування інтеграції
+
+- [ ] Написати інтеграційний тест `tests/test_agent_loop_routing.py`:
+  - Завдання з простим кодом → переконатися, що виконався локальний LLM.
+  - Завдання із середнім кодом → викликався DeepSeek (або Grok), результат збережено, перевірка пройшла.
+  - Завдання зі складним кодом → викликався ChatGPT, збережено, перевірено.
+- [ ] Smoke-тест на реальному Chrome (опціонально, вручну).
+
+---
+**Результат після виконання етапу:**
+AgentLoop вміє самостійно вирішувати, кому доручити генерацію коду – локальній моделі, DeepSeek, Grok чи ChatGPT. Код автоматично зберігається у файли і перевіряється на працездатність. При помилках – запускається виправлення через той самий зовнішній AI. Усі дії відбуваються без участі користувача, в межах одного циклу `observe → plan → act → check`.
+
+---
+
 #### ЕТАП 11: ТЕСТИ + CI
 
 
@@ -10311,6 +7361,8 @@ STT команда → process_command() → (якщо задача) → AgentLo
 ЕТАП 10 (Phase 13 — Кодогенерація) ← незалежний, використовує ai_actors [PENDING]
 
 ЕТАП 12 (Оркестрація ШІ) ← Router + Provider Chain, інтегрується в AgentLoop [PENDING]
+
+ЕТАП 13 (Маршрутизація кроків за складністю) ← браузерні AI (DeepSeek/Grok/ChatGPT), залежить від Browser CDP + AgentLoop [PENDING]
 
 ЕТАП 11 (Тести + CI) ← паралельно з усім [PENDING]
 
@@ -11084,7 +8136,7 @@ STT команда → process_command() → (якщо задача) → AgentLo
 Документація/файл: D:\Python\agent\TASKS_Done.md
 ============================================================
 # Виконані задачі МАРК
-> Останнє оновлення: 05.05.2026 (22:00)
+> Останнє оновлення: 15.05.2026 (18:42)
 
 **ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
 
@@ -11094,6 +8146,29 @@ cd /d D:\Python\TEXT\LLM_model
 call venv\Scripts\activate.bat
 cd /d D:\Python\agent
 ```
+
+---
+
+## НЕДАВНІ ВИПРАВЛЕННЯ (15.05.2026)
+
+### A0. Усунуто конфлікт шляхів виконання (P0)
+
+**Проблема:** В `main.py:process_text_command()` існували два конкуруючі шляхи виконання — Planner legacy (`VoiceAssistant.process_command`) і AgentLoop (`run_agent_loop`). Класифікація між ними через ключові слова була ненадійна. `run_agent_loop()` містив гілку `task_type == "CHAT"`, яка передоручала виконання назад у `process_command()` — це створювало зациклення.
+
+**Виконано:**
+- `process_text_command()` — замінено keyword-класифікацію на прямий виклик AgentLoop
+- `run_agent_loop()` — видалено гілку `task_type == "CHAT"` і PlanExecutor fallback; тепер лише AgentLoop або fallback на `assistant.process_command()`
+- `logic_commands.py:process_command()` — видалено `should_plan()` і AgentLoop-редирект; тепер тільки для STT-вводу
+
+**Очікуваний pipeline:**
+```
+GUI команда → run_agent_loop() → AgentLoop → виконання
+STT команда → process_command() → (якщо задача) → AgentLoop / (якщо чат) → LLM
+```
+
+**Файли:**
+- `main.py` — `process_text_command()`, `run_agent_loop()`
+- `functions/logic_commands.py` — `process_command()`
 
 ---
 
@@ -11112,353 +8187,6 @@ cd /d D:\Python\agent
 
 ### Виправлено Global Voice Input - вставка буфера обміну
 **Проблема:** При натисканні Ctrl+F9 вставляється вміст буфера обміну Windows замість розпізнаного тексту
-
-**Виправлено:**
-- Прибрано clipboard+Ctrl+V метод для не-ASCII тексту (keyboard_type)
-- Тепер використовується pyautogui.typewrite для ВСЬОГО тексту (включаючи Unicode/кирилицю)
-- Немає конфлікту з буфером обміну користувача
-
-**Файли:**
-- `functions/tools_mouse_keyboard.py` - keyboard_type тепер завжди typewrite, видалено _type_non_ascii
-
-### Виправлено Global Voice Input — архітектура через зовнішній макрос
-**Проблема:** Внутрішні методи вставки (clipboard+Ctrl+V, SendInput, keyboard_type) не працювали надійно у всіх програмах, особливо в браузерах Chrome/Gemini.
-
-**Рішення (03.05.2026):**
-- **НЕ РЕДАГУЙТЕ логіку вставки в `global_voice_input.py` без узгодження!**
-- Архітектура змінена на делегування вставки **зовнішньому макросу** (Robotask / AutoHotkey / інший)
-
-**Алгоритм:**
-1. **Ctrl+F9** — запускає запис голосу, очищає буфер обміну
-2. Після розпізнавання — копіює текст у буфер, натискає **Shift+F10**
-3. **Зовнішній макрос** (Robotask) ловить Shift+F10 і виконує Ctrl+V у цільове вікно
-4. Чекає 2 сек, потім очищає буфер обміну
-
-**Чому так:**
-- Внутрішні методи (clipboard+Ctrl+V, SendInput, pyautogui.typewrite) мають обмеження з Unicode/кирилицею в різних програмах
-- Зовнішній макрос працює з правами користувача і надійніше вставляє текст
-- Для зміни поведінки вставки редагуйте **ЗОВНІШНІЙ макрос**, НЕ `global_voice_input.py`
-
-**Файли:**
-- `functions/global_voice_input.py` — тільки запис голосу + тригер Shift+F10 (логіку вставки НЕ змінювати)
-- Ваш зовнішній макрос (Robotask/AutoHotkey) — ловить Shift+F10 і виконує Ctrl+V
-
-**Скрипт:** `test_duplication_direct.py` - автоматизований тест для перевірки дублювання повідомлень
-
-**Фільтрація JSON:**
-- Додана фільтрація JSON чанків в `append_stream_chunk` в `core_gui_pyqt6/main_window.py`
-- JSON чанки не відображаються в чаті, але зберігаються в буфері для парсингу
-
-**Виправлення дублювання в чаті GUI:**
-- Прибрано виклик `stream_start` в `functions/logic_commands.py` - не додає порожній префікс "⚡ МАРК:"
-- Прибрано виклик `assistant_stream_chunk` в `flush_buffer` - не додає текст через streaming
-- Прибрано виклик `stream_end` - не завершує streaming
-- Всі відповіді тепер додаватимуться через `log_to_gui` без дублювання префікса
-
----
-
-## НЕДАВНІ ВИПРАВЛЕННЯ (05.05.2026, 22:00)
-
-### Виправлено STT Streaming - псевдопотокове розпізнавання
-**Проблема:** STT не працював коректно після змін:
-- Аудіо захоплювалося але не ділиться на сегменти
-- Не зупинялося після 10 секунд тиші
-- При повторному натисканні Ctrl+F9 зупинялося без розпізнавання і вставки тексту
-- `threshold=0.0` - поріг гучності був 0, тому тиша ніколи не детектувалася
-- Текст вставлявся одним шматком після завершення запису, а не чанками в реальному часі
-
-**Виправлено:**
-- Додано імпорт `os`, `json`, `logging` на початок `core_stt_listener.py`
-- Виправлено ініціалізацію `VOLUME_THRESHOLD` - тепер використовується з `user_settings.json` (дефолт 0.003 з config.py)
-- Додано файлове логування в `stt_debug.log` з UTF-8 кодуванням
-- Додано JSON логування в `stt_logs.jsonl` для подій STT (segment_recognized, recording_started тощо)
-- Рефакторинг логування - використання FileHandler замість logging.basicConfig для уникнення дублювання
-- Додано налаштування `STT_LOGGING_ENABLED` в user_settings.json
-- Створено тест `TEST_GUI/test_stt_hotkey.py` для перевірки STT та комбінації клавіш Ctrl+F9
-- **Реалізовано чанкову вставку тексту в реальному часі:**
-  - Додано параметр `segment_callback` в `listen_streaming()` для callback на кожен розпізнаний сегмент
-  - Додано метод `_insert_segment()` в `global_voice_input.py` для вставки кожного сегмента через Shift+F10
-  - Тепер текст вставляється чанками по мірі розпізнавання, а не одним шматком в кінці
-
-**Результати тесту:**
-- ✅ `threshold=0.003` - правильне значення
-- ✅ Сегментація працює: `segment 1: 2.2s`, `segment 2: 3.4s`
-- ✅ Розпізнано текст: "Дякую! Дякую за перегляд!"
-- ✅ Чанки вставляються в реальному часі через Shift+F10
-- ✅ `stt_debug.log` створено з правильним кодуванням
-- ✅ `stt_logs.jsonl` створено з JSON-записами
-
-**Файли:**
-- `functions/core_stt_listener.py` - рефакторинг логування, виправлення volume_threshold, додавання segment_callback
-- `functions/global_voice_input.py` - додавання _insert_segment(), чанкова вставка через callback
-- `functions/config.py` - додано MIN_SILENCE_DURATION, MAX_SILENCE_DURATION, STT_LOGGING_ENABLED
-- `functions/core_settings.py` - додано налаштування в SETTINGS_SCHEMA
-- `runtime/user_settings.json` - оновлено VOLUME_THRESHOLD=0.003, STT_LOGGING_ENABLED=True
-- `TEST_GUI/test_stt_hotkey.py` - новий тест для STT з чанковою вставкою
-
-**Unit тести:**
-- `tests/test_global_voice_input.py` - 8/10 pass (2 fail не критичні для STT)
-
----
-
-## НЕДАВНІ ВИПРАВЛЕННЯ (30.04.2026, 23:26)
-
-### Виправлено LLM Context Overflow
-**Проблема:** Промпт LLM був занадто великим (12636 токенів > 12032 контекст DeepSeek Coder)
-
-**Виправлено:**
-- `functions/logic_core.py`: Обмежено `get_coding_system_prompt()` до 15 функцій (раніше 100+)
-- Додано browser tools та приклад "відкрий браузер" в промпт
-- DeepSeek Coder: max_tokens зменшено з 6000 до 2048
-
-### Виправлено Browser Automation
-**Проблема:** Команда "відкрий браузер" використовувала legacy Playwright launch з помилкою
-
-**Виправлено:**
-- `functions/llm/response_parser.py`: alias `open_browser` → `cdp_ensure_chrome`
-- `functions/logic_agent_tools_schema.py`: додано alias mapping
-- `functions/logic_core.py`: видалено legacy `open_browser_playwright` з priority_funcs
-
-**Результат:** Команда "відкрий браузер" працює через Chrome DevTools Protocol (CDP)
-
-### Виправлено Planner для аналізу коду (повністю)
-**Проблема:** Команда "проаналізуй код d:\Python\agent\" не тригерила planner
-
-**Виправлено:**
-- `functions/core_planner.py`: додано маркери "проаналізуй", "аналізуй", "аналіз"
-- Зменшено поріг слів для команд з шляхами файлів
-- Додано приклад з правильними параметрами в промпт
-
-**Результат:**
-- ✅ Planner тригериться (should_plan: True)
-- ✅ Planner створює коректний план з параметром `directory`
-- ✅ Крок виконується успішно (success=True)
-- ✅ Отримано повний список файлів директорії
-- ✅ Task завершується з LLM summary
-
-### Виправлено PlanExecutor
-**Проблеми:** Конфлікт імен параметрів (path vs directory), repair зависання
-
-**Виправлено:**
-- `functions/plan_executor.py`: конвертація параметрів (path → directory, filepath, filename)
-- `functions/core_planner.py`: спеціальна перевірка для `list_directory` в validation
-- `functions/logic_commands.py`: відключено repair для простих дій (list_directory, read_code_file, search_in_code)
-
-**Результат:** Кроки виконуються без repair зависання
-
-### Постійні тести
-- Позначено `test_llm_endpoint.py` та `test_duplication_direct.py` як невидаляємі
-- Додано документацію в README.md (розділ "🧪 Діагностичні тести")
-- Обидва тести працюють коректно
-
-### DeepSeek Coder відновлено як primary
-- `runtime/user_settings_copy.json`: role="1", enabled=true, max_tokens=2048
-- Gemini змінено на role="2" (secondary)
-
----
-
-## P0: COMPUTER USE АГЕНТ — ВИКОНАНІ ЕТАПИ
-
-### ЕТАП 1: ПОВНОЦІННИЙ AGENT LOOP З LLM TOOL-CALLING — DONE ✅
-
-**Ціль:** AgentLoop приймає рішення через LLM tool-calling замість попередньо складеного плану.
-
-- [x] Створити `functions/logic_agent_tools_schema.py` (~440 рядків) — DONE 30.04.2026
-- [x] Розширити `functions/agent_loop.py` — додати `ActionDecider` (~220 рядків) — DONE 30.04.2026
-- [x] Розширити `functions/agent_loop.py` — посилити `observe()` (~120 рядків) — DONE 30.04.2026
-- [x] Покращити `check()` в `agent_loop.py` (~140 рядків) — DONE 30.04.2026
-- [x] Виправити інтеграцію `AgentLoop` з GUI (~30 рядків змін у main.py) — DONE 30.04.2026
-
-**Статус:** Виконано 30.04.2026.
-
-**Файли змінено:**
-- `functions/logic_agent_tools_schema.py` — новий файл (~440 рядків)
-- `functions/agent_loop.py` — розширено (~1190 рядків)
-- `main.py` — інтеграція з GUI
-- `tests/test_action_decider.py` — новий файл (26 тестів)
-
----
-
-### ЕТАП 3: ПОСИЛЕННЯ UIA (СТАБІЛЬНІСТЬ КЛІКІВ) — DONE ✅
-
-**Ціль:** Перевести GUI-кліки з OCR+template matching на UIA для стабільності проти DPI/тем/мови.
-
-- [x] Доробити `tools_ui_accessibility.py` (потрібні методи)
-- [x] Додати UIA fallback у `tools_ui_detector.py` (~100 рядків змін)
-- [x] Smoke-тести UIA на Windows (`tests/test_tools_ui_accessibility.py`, ~200 рядків)
-
-**Статус:** Виконано 30.04.2026.
-
-**Файли змінено:**
-- `functions/tools_ui_accessibility.py` — додано `get_ui_tree()`, `list_all_buttons()`, `list_all_inputs()`, `list_all_checkboxes()`, `get_value()`, `wait_for_element()`, реалізовано LLM tools
-- `functions/tools_ui_detector.py` — додано UIA fallback для `find_button_by_text()`, `find_input_field()`, додано `click_text()`
-- `functions/core_settings.py` — додано `USE_UIA_FIRST` setting (default: True)
-- `tests/test_tools_ui_accessibility.py` — новий файл з 30 тестами
-
----
-
-### ЕТАП 5: БРАУЗЕРНА АВТОМАТИЗАЦІЯ (ВЕБ-ЗАДАЧІ) — DONE ✅
-
-**Ціль:** МАРК може працювати з веб-сайтами через Playwright/CDP як людина.
-
-- [x] Перевірити та доробити `tools_browser_cdp.py` + `tools_playwright.py`
-- [x] Browser-tools у schema (`logic_agent_tools_schema.py`)
-- [x] Browser handler в TOOL_POLICIES (`core_tool_runtime.py`)
-- [x] Тести (`tests/test_tools_browser_cdp.py`, 23 тести)
-
-**Статус:** Виконано 30.04.2026.
-
-**Файли змінено:**
-- `functions/tools_browser_cdp.py` — додано `cdp_click_text`, `cdp_wait_for_text`, `cdp_fill` (~140 рядків)
-- `functions/core_tool_runtime.py` — додано 3 tools у TOOL_POLICIES
-- `functions/logic_agent_tools_schema.py` — виправлено TOOL_NAME_ALIASES (browser_click_text→cdp_click_text, browser_fill→cdp_fill)
-- `tests/test_tools_browser_cdp.py` — новий файл з 23 тестами
-
----
-
-### ЕТАП 6: REPAIR LOOP — АДАПТИВНІСТЬ ПРИ ПОМИЛКАХ — DONE ✅
-
-**Ціль:** Коли крок провалився — LLM аналізує контекст і пропонує модифікований план.
-
-- [x] Перевірити та доробити `logic_repair_loop.py`
-- [x] Тести (`tests/test_logic_repair_loop.py`, ~150 рядків)
-
-**Статус:** Виконано.
-
----
-
-## P0: Стабільність і узгодженість контрактів — ВИКОНАНІ
-
-- [x] Визначити відповідність між проєктом та external AI-архітектурою
-  - Статус: Завершено
-  - Дата: 28.04.2026
-  - Опис: Порівняно поточний стан з external AI-архітектурою (observe → plan → act → check → repeat)
-  - Результат: Виявлено що основний цикл (AgentLoop) вже реалізовано (Phase 12.1), але потребує кращої інтеграції з GUI
-
----
-
-## P1: Оркестрація (кілька агентів) — ВИКОНАНІ
-
-- [x] Створити AI actors для делегування
-  - Статус: Завершено
-  - Дата: 26.04.2026
-  - Опис: AIActor база, ActorRegistry, автоматичний fallback між провайдерами (S5)
-
----
-
-## P1: Глобальне голосове введення (global hook) — DONE ✅
-
-- [x] Створено модуль `functions/global_voice_input.py` — Global Voice Input (Windows hooks + STT)
-  - HotkeyHook — Windows low-level keyboard hook для перехоплення гарячих клавіш
-  - GlobalVoiceInput — клас для глобального голосового введення
-  - Використовує існуючий STTListener для розпізнавання
-  - ⚠️ **Вставка тексту делегується ЗОВНІШНЬОМУ макросу** (Robotask / AutoHotkey / інший)
-    - Алгоритм: Ctrl+F9 → запис → буфер обміну → Shift+F10 → макрос вставляє Ctrl+V
-    - Для зміни поведінки вставки редагуйте **ЗОВНІШНІЙ макрос**, НЕ `global_voice_input.py`
-  - Hotkey за замовчуванням: Ctrl+F9
-- [x] Додано налаштування GLOBAL_VOICE_HOTKEY та GLOBAL_VOICE_ENABLED в SETTINGS_SCHEMA
-- [x] Інтегровано GlobalVoiceInput в main.py (автоматичний запуск при GLOBAL_VOICE_ENABLED=True)
-- [x] Створено unit-тести в `tests/test_global_voice_input.py`
-- [x] Тестування на реальній Windows системі з включеним GLOBAL_VOICE_ENABLED
-
----
-
-## P1: Самонавчання — DONE ✅
-
-- [x] Створено модуль `functions/self_learning.py` — SelfLearning (логування, аналіз помилок, skills база)
-  - log_execution() — логування виконання задач (task, result, success, error, steps)
-  - analyze_errors() — аналіз останніх помилок
-  - generate_rules_from_errors() — генерування правил з помилок (heuristic + LLM)
-  - add_skill() / get_skill() — skills база для накопичення досвіду
-  - get_stats() — статистика виконань
-- [x] Інтегровано SelfLearning в AssistantCore (main.py)
-  - Ініціалізація в initialize()
-  - Логування виконання в run_agent_loop()
-
----
-
-## P1: Міграція GUI на PyQt6 — DONE ✅ (Phase A-D)
-
-- [x] Phase A — Підготовка та feature-flag (P1) — DONE
-- [x] Phase B — Ядро PyQt6 (P1) — DONE
-- [x] Phase C — Модулі (P1) — DONE
-  - [x] `settings_tab_qt.py` — SettingsTabQtMixin з динамічним рендерингом SETTINGS_SCHEMA (DONE)
-  - [x] `llm_endpoints_editor_qt.py` — LLMEndpointsEditor для PyQt6 (DONE)
-  - [x] `chat_panel_qt.py` — ChatPanelQtMixin (історія, ввід, clipboard, стрімінг, контекстні меню) (DONE)
-  - [x] `plan_panel_qt.py` — PlanPanelQtMixin (кроки, прогрес, статуси) (DONE)
-  - [x] `confirmation_qt.py` — ConfirmationQtMixin (кастомні діалоги підтвердження з таймаутом) (DONE)
-- [x] Phase D — Інтеграція (P1) — DONE
-  - [x] `AssistantAppQt` у `run_assistant_qt.py` — паралельний до `AssistantApp`
-  - [x] Реалізовано queue_dispatcher (фоновий потік: `gui_queue` → Qt-сигнал)
-  - [x] Callbacks: `process_text`, `run_agent`, `run_plan`, `stop_plan`, `stop_execution`, mic
-  - [x] Smoke test: 17 unit-тестів (`tests/test_pyqt6_gui.py`)
-  - [x] Реальний запуск з ядром асистента (manual test з `python run.py --qt`)
-
-**Статус:** PyQt6 MVP готовий до використання. Tkinter залишається default для стабільності.
-
----
-
-## Перевірка правильності (P1, high priority) — DONE ✅
-
-### CHECK: P1 Глобальне голосове введення — PASSED (архітектура через зовнішній макрос)
-
-- [x] `functions/global_voice_input.py` — HotkeyHook парсить `ctrl+f9` правильно
-- [x] SETTINGS_SCHEMA містить `GLOBAL_VOICE_HOTKEY` (str, "ctrl+f9") та `GLOBAL_VOICE_ENABLED` (bool, False)
-- [x] `main.py` імпортує `GlobalVoiceInput`, ініціалізує `self.global_voice_input` при `GLOBAL_VOICE_ENABLED=True`
-- [x] Архітектура вставки через **зовнішній макрос** (Robotask/AutoHotkey):
-  - Ctrl+F9 запускає запис, очищає буфер обміну
-  - Після розпізнавання: копіює текст → натискає **Shift+F10**
-  - Зовнішній макрос ловить Shift+F10 і виконує Ctrl+V
-  - Чекає 2 сек → очищає буфер обміну
-- [x] Для зміни поведінки вставки редагується **ЗОВНІШНІЙ макрос**, НЕ `global_voice_input.py`
-
-### CHECK: P1 Самонавчання — PASSED
-
-- [x] `functions/self_learning.py` — всі методи присутні: `log_execution`, `analyze_errors`, `generate_rules_from_errors`, `add_skill`, `get_skill`, `get_stats`
-- [x] `AssistantCore` (main.py): імпорт `get_self_learning`, ініціалізація в `initialize()`, виклик `log_execution` в `run_agent_loop` (try/except/finally)
-- [x] JSONL логи пишуться в `D:\Python\agent\runtime\self_learning\execution_logs.jsonl`
-
----
-
-## Модульна перевірка PyQt6 (P1, high priority) — DONE ✅
-
-### MODULAR CHECK: main_window.py — PASSED (10/10)
-### MODULAR CHECK: chat_panel_qt.py — PASSED (8/8)
-### MODULAR CHECK: plan_panel_qt.py — PASSED (6/6)
-### MODULAR CHECK: settings_tab_qt.py — PASSED (8/8)
-### MODULAR CHECK: confirmation_qt.py — PASSED (6/6)
-### MODULAR CHECK: llm_endpoints_editor_qt.py — PASSED (6/6)
-### INTEGRATION CHECK: run_assistant_qt.py — PASSED (7/7)
-### END-TO-END CHECK: синтаксис та інтеграція — PASSED (6/6)
-
-**Всього перевірено:** 8 модулів, 57 перевірок, все PASSED ✅
-
----
-
-## Завершено
-
-### GUI інтеграція
-
-- [x] Додати назву LLM та час виконання в статус GUI
-  - Дата: 28.04.2026
-  - Опис: Статус-бар показує назву LLM, час виконання та час завершення відповіді
-
-### LLM конфігурація
-
-- [x] Виправити помилку `llm_time` referenced before assignment
-  - Дата: 28.04.2026
-  - Опис: Розрахунок `llm_time` перенесено перед використанням в GUI update
-
-- [x] Додати `name` в `_normalize_endpoint`
-  - Дата: 28.04.2026
-  - Опис: Endpoint зберігає назву LLM для відображення в GUI
-
-### Кодування
-
-- [x] Виправити кодування виводу Python-скрипта на Windows
-  - Дата: 28.04.2026
-  - Опис: Додано UTF-8 encoding для stdout/stderr у Python sandbox/скриптах
-
 
 ============================================================
 Документація/файл: D:\Python\agent\info.txt
@@ -12047,8 +8775,6 @@ cd /d D:\Python\agent
 
 </file_content>
 # [Помилка синтаксису] D:\Python\agent\main.py
-
-# [Помилка читання] D:\Python\agent\project_context_20260515_091754.txt: [Errno 2] No such file or directory: 'D:\\Python\\agent\\project_context_20260515_091754.txt'
 
 
 ============================================================
