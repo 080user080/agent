@@ -212,26 +212,11 @@ class VoiceAssistant:
                 self.conversation_history.append({"role": "user", "content": command_text})
                 self._history_already_added = True
 
-            # --- Planner branch (LEGACY - replaced by AgentLoop in A0) --- #GPT
-            # Planner legacy прибрано з process_command. Тепер він використовується тільки
-            # всередині AgentLoop як один із інструментів планування (_plan_from_planner).
-            # Якщо команда потребує виконання дій — вона має йти через AgentLoop.
-            
-            # Визначаємо чи це команда до виконання чи звичайна розмова
-            has_planner = hasattr(self, "planner") and self.planner is not None
-            is_task = self.planner.should_plan(command_text) if has_planner else False
-            
-            if is_task:
-                print(f"{Fore.CYAN}🎤 [DEBUG] Команда до виконання виявлена, використовуємо AgentLoop")
-                if hasattr(self, 'agent_loop') and self.agent_loop:
-                    # Використовувати AgentLoop для задач
-                    self.run_agent_loop(command_text)
-                    if self.gui_log_callback:
-                        self.gui_log_callback("update_status", '✅ Готовий до роботи')
-                    return
-                else:
-                    print(f"{Fore.YELLOW}⚠️ AgentLoop недоступний, fallback на звичайний чат")
-            
+            # Після A0: process_command більше не класифікує task vs chat.
+            # Це робиться в main.py:process_text_command → AgentLoop.
+            # process_command тут — тільки для STT-вводу (голосовий режим).
+            # Якщо команда потребує виконання — main.py:process_text_command
+            # спрямує її в AgentLoop.
             from .config import ASSISTANT_DISPLAY_NAME
             
             print(f"{Fore.CYAN}[DEBUG logic_commands] BEFORE remove_activation_word: command_text='{command_text}', from_gui={from_gui}")

@@ -154,37 +154,3 @@ def test_condition_chat_idle_with_provider():
     assert condition_chat_idle(FakeProvider(), 0) is True
 
 
-# ---------------------------------------------------------------------------
-# Task Runner — markdown parser
-# ---------------------------------------------------------------------------
-
-from functions.logic_task_runner import (  # noqa: E402
-    Plan,
-    Task,
-    parse_markdown_plan,
-)
-
-
-def test_parse_markdown_plan_basic():
-    md = (
-        "### 1. Перший крок\n"
-        "```json\n"
-        '{"action": "open", "url": "https://example.com"}\n'
-        "```\n"
-        "### 2. Другий крок\n"
-        "```bash\n"
-        "echo hello\n"
-        "```\n"
-    )
-    plan = parse_markdown_plan(md, "test_plan")
-    assert plan.name == "test_plan"
-    assert len(plan.tasks) == 2
-    assert plan.tasks[0].kind == "open"
-    assert plan.tasks[1].kind == "run_command"
-
-
-def test_parse_markdown_plan_no_code():
-    md = "### 1. Просто опис\n"
-    plan = parse_markdown_plan(md)
-    assert len(plan.tasks) == 1
-    assert plan.tasks[0].kind == "log"

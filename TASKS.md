@@ -43,14 +43,14 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 **Проблема:** В `main.py:process_text_command()` існують два конкуруючі шляхи виконання — Planner legacy (`VoiceAssistant.process_command`) і AgentLoop (`run_agent_loop`). Класифікація між ними через ключові слова ненадійна, команди можуть потрапляти в обидва шляхи. Крім того, `run_agent_loop()` містить гілку `task_type == "CHAT"`, яка передоручає виконання назад у `process_command()` — це створює "підводний камінь" і зациклення.
 
 **Рішення:**
-- [ ] Зробити AgentLoop єдиним шляхом виконання команд з GUI
-- [ ] `VoiceAssistant.process_command` залишити тільки для голосового режиму (STT), прибрати з нього Planner legacy
-- [ ] Planner legacy використовується тільки всередині AgentLoop як інструмент планування (`_plan_from_planner`), а не як окремий шлях з GUI
-- [ ] **Прибрати Planner legacy з `process_command()`** (`should_plan` → `create_plan` → `execute_plan_async`). Замість нього — виклик AgentLoop для команд і ask_llm для розмов.
-- [ ] Прибрати гілку `task_type == "CHAT"` в `run_agent_loop()` — вона передоручає виконання в `process_command`, що створює дублювання
-- [ ] Спростити `process_text_command()`: замість класифікації через ключові слова — завжди пускати через AgentLoop. Якщо AgentLoop вирішить що це "чайт" — він сам запустить LLM.
-- [ ] `process_command()` після А0 виконує тільки: перевірка активаційного слова → визначення "команда vs розмова" → AgentLoop (для команд) / ask_llm (для розмов) → TTS → conversation_history
-- [ ] Видалити або закомітити методи Planner з `logic_commands.py`, які більше не потрібні на цьому шляху
+- [x] Зробити AgentLoop єдиним шляхом виконання команд з GUI
+- [x] `VoiceAssistant.process_command` залишити тільки для голосового режиму (STT), прибрати з нього Planner legacy
+- [x] Planner legacy використовується тільки всередині AgentLoop як інструмент планування (`_plan_from_planner`), а не як окремий шлях з GUI
+- [x] **Прибрати Planner legacy з `process_command()`** (`should_plan` → `create_plan` → `execute_plan_async`). Замість нього — виклик AgentLoop для команд і ask_llm для розмов.
+- [x] Прибрати гілку `task_type == "CHAT"` в `run_agent_loop()` — вона передоручає виконання в `process_command`, що створює дублювання
+- [x] Спростити `process_text_command()`: замість класифікації через ключові слова — завжди пускати через AgentLoop. Якщо AgentLoop вирішить що це "чайт" — він сам запустить LLM.
+- [x] `process_command()` після А0 виконує тільки: перевірка активаційного слова → визначення "команда vs розмова" → AgentLoop (для команд) / ask_llm (для розмов) → TTS → conversation_history
+- [x] Видалити або закомітити методи Planner з `logic_commands.py`, які більше не потрібні на цьому шляху
 
 **Очікуваний pipeline після А0:**
 ```
@@ -64,11 +64,11 @@ STT команда → process_command() → (якщо задача) → AgentLo
 - `main.py` — `process_text_command()`, `run_agent_loop()`, `_classify_task()`
 - `functions/logic_commands.py` — перевірити чи process_command використовується з GUI
 
-#### А1. Полагодити pytest collection (P0)
+#### А1. Полагодити pytest collection (P0) ✅
 
-- [ ] Повернути сумісність між тестами і `logic_task_runner`
-- [ ] Добитися щоб `pytest tests/` проходив хоча б collection без помилок
-- [ ] Зафіксувати публічні API для parser/runner/plan-об'єктів
+- [x] Повернути сумісність між тестами і `logic_task_runner`
+- [x] Добитися щоб `pytest tests/` проходив хоча б collection без помилок
+- [x] Зафіксувати публічні API для parser/runner/plan-об'єктів
 
 #### А2. Реструктуризація папки functions/
 
@@ -695,6 +695,87 @@ STT команда → process_command() → (якщо задача) → AgentLo
 
 ---
 
+### ЕТАП 13: МАРШРУТИЗАЦІЯ КРОКІВ ЗА СКЛАДНІСТЮ (БРАУЗЕРНІ AI)
+
+**Мета:** Розширити `AgentLoop` можливістю делегувати виконання «кодогенеруючих» кроків різним зовнішнім AI залежно від оціненої складності. Прості кроки виконує локальний LLM (через існуючий `ActionDecider`), середні – DeepSeek або Grok через браузер (CDP), складні – ChatGPT/Claude через браузер. Результат зберігається у файл і проходить автоматичну перевірку (`execute_python`).
+
+**Пріоритет:** P1 (підвищує якість складних завдань без втрати швидкості на простих)
+
+**Залежності:**
+- ✅ `tools_browser_cdp.py` (CDP – Chrome DevTools Protocol)
+- ✅ `aaa_execute_python.py` (перевірка згенерованого коду)
+- ✅ `agent_loop.py` (основний цикл, метод `act`)
+- 🟡 `logic_llm_tools.ask_llm_with_tools` (локальний LLM для простих кроків)
+
+---
+
+#### Завдання 13.1. Класифікатор складності кроку
+
+- [ ] Створити `functions/step_difficulty.py`
+- [ ] Реалізувати функцію `classify_step(step: dict) -> 'simple'|'medium'|'hard'`
+- [ ] Критерії:
+  - `simple`: дії типу `read_code_file`, `list_directory`, `search_in_code`; або генерація коду довжиною до 20 рядків без `class`/складних алгоритмів.
+  - `medium`: `write_file` з кодом 20–100 рядків, наявність функцій, помірна логіка.
+  - `hard`: генерація багатофайлових проєктів, використання `asyncio`, класів, зовнішніх API; ключові слова «складний», «архітектура», «оптимізуй».
+- [ ] Покрити тестами (`tests/test_step_difficulty.py`)
+
+#### Завдання 13.2. Браузерні виконавці для зовнішніх AI
+
+- [ ] Створити `functions/browser_ai_executors.py`
+- [ ] Реалізувати функції:
+  - `execute_with_deepseek(task: str) -> dict` – відкриває chat.deepseek.com, вводить `task`, чекає відповідь, повертає текст.
+  - `execute_with_grok(task: str) -> dict`
+  - `execute_with_chatgpt(task: str) -> dict`
+- [ ] Використовувати `tools_browser_cdp` для:
+  - `cdp_ensure_chrome` (запуск Chrome з портом 9222)
+  - `cdp_open_tab`, `cdp_type_text`, `cdp_click_text` (або `cdp_click`), `cdp_wait_for_text`, `cdp_get_response`
+- [ ] Додати конфігурацію селекторів у `runtime/browser_selectors.json` (URL, textarea, кнопка submit, контейнер відповіді)
+- [ ] Додати таймаути (120 секунд) та повторні спроби (2–3)
+- [ ] Тести: `tests/test_browser_ai_executors.py` (з моками CDP або реальні smoke)
+
+#### Завдання 13.3. Інтеграція в AgentLoop (метод `act`)
+
+- [ ] У `functions/agent_loop.py` імпортувати `classify_step`, `execute_with_deepseek`, `execute_with_grok`, `execute_with_chatgpt`
+- [ ] Модифікувати метод `act`:
+  - Якщо `action` НЕ є кодогенеруючим (`write_file`, `edit_file`, `execute_python`, `create_file`) → виконати локально через `registry.execute_function` (без змін).
+  - Якщо кодогенеруючий крок:
+    - `difficulty = classify_step(step)`
+    - `simple` → використати локальний LLM (через `ask_llm_with_tools` або `self.decider`), зберегти у файл (якщо `write_file`).
+    - `medium` → спробувати `execute_with_deepseek`, при невдачі – `execute_with_grok`. Результат зберегти, викликати `execute_python` для перевірки.
+    - `hard` → виконати через `execute_with_chatgpt`, також з перевіркою.
+- [ ] Результат `act` має містити поля `success`, `result` (текст коду або повідомлення), `engine` (local/deepseek/grok/chatgpt), `verified` (True/False після `execute_python`).
+
+#### Завдання 13.4. Обробка невдалої перевірки коду (repair)
+
+- [ ] У `AgentLoop._execute_single_step` після виклику `act` перевірити `result.get("verified")`.
+- [ ] Якщо `verified == False` і є `result["error"]` (помилка виконання), викликати існуючий `StepRepairer` з контекстом.
+- [ ] Розширити `StepRepairer` (`logic_repair_loop.py`) можливістю повторно відправити завдання з текстом помилки в той самий браузерний AI (наприклад, «Твій код не працює: ... Виправ»).
+- [ ] Максимум 2 спроби repair на крок.
+
+#### Завдання 13.5. Налаштування та документація
+
+- [ ] Додати в `SETTINGS_SCHEMA` (`core_settings.py`):
+  - `ROUTE_BY_DIFFICULTY_ENABLED` (bool, default False) – глобальний вимикач.
+  - `BROWSER_AI_TIMEOUT` (int, default 120)
+  - `BROWSER_AI_RETRIES` (int, default 2)
+  - `LOCAL_LLM_FOR_SIMPLE` (bool, default True)
+- [ ] Оновити `docs/ARCHITECTURE.md` – додати розділ «Маршрутизація кроків за складністю».
+- [ ] Оновити `README.md` – згадати можливість делегування ChatGPT/DeepSeek через браузер.
+
+#### Завдання 13.6. Тестування інтеграції
+
+- [ ] Написати інтеграційний тест `tests/test_agent_loop_routing.py`:
+  - Завдання з простим кодом → переконатися, що виконався локальний LLM.
+  - Завдання із середнім кодом → викликався DeepSeek (або Grok), результат збережено, перевірка пройшла.
+  - Завдання зі складним кодом → викликався ChatGPT, збережено, перевірено.
+- [ ] Smoke-тест на реальному Chrome (опціонально, вручну).
+
+---
+**Результат після виконання етапу:**
+AgentLoop вміє самостійно вирішувати, кому доручити генерацію коду – локальній моделі, DeepSeek, Grok чи ChatGPT. Код автоматично зберігається у файли і перевіряється на працездатність. При помилках – запускається виправлення через той самий зовнішній AI. Усі дії відбуваються без участі користувача, в межах одного циклу `observe → plan → act → check`.
+
+---
+
 #### ЕТАП 11: ТЕСТИ + CI
 
 
@@ -770,6 +851,8 @@ STT команда → process_command() → (якщо задача) → AgentLo
 ЕТАП 10 (Phase 13 — Кодогенерація) ← незалежний, використовує ai_actors [PENDING]
 
 ЕТАП 12 (Оркестрація ШІ) ← Router + Provider Chain, інтегрується в AgentLoop [PENDING]
+
+ЕТАП 13 (Маршрутизація кроків за складністю) ← браузерні AI (DeepSeek/Grok/ChatGPT), залежить від Browser CDP + AgentLoop [PENDING]
 
 ЕТАП 11 (Тести + CI) ← паралельно з усім [PENDING]
 

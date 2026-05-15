@@ -480,35 +480,30 @@ class AssistantCore:
             return False
     
     def process_text_command(self, text):
-        """Обробити текстову команду з GUI - LLM вирішує чи запускати AgentLoop або чат."""
+        """Обробити текстову команду з GUI — єдиний шлях через AgentLoop.
+        
+        Після A0: AgentLoop — єдиний шлях виконання команд з GUI.
+        AgentLoop сам вирішує чи це задача (observe→plan→act→check) чи чат (просто ask_llm).
+        """
         if not text or len(text.strip()) == 0:
             return
 
-        # Ключові слова які вказують на задачу для виконання
-        task_keywords = [
-            "зроби", "створи", "аналізуй", "знайди", "пошук", "відкрий", "запиши",
-            "видал", "зміни", "онови", "завантаж", "збереж", "прочитай",
-            "виконай", "запусти", "зупини", "перевір", "протестуй", "налаштуй",
-            "do", "create", "analyze", "find", "search", "open", "write",
-            "delete", "change", "update", "download", "save", "read",
-            "execute", "run", "stop", "check", "test", "configure"
-        ]
+        print(f"[DEBUG] process_text_command: '{text[:80]}...'")
         
-        text_lower = text.lower()
-        is_task = any(keyword in text_lower for keyword in task_keywords)
-        
-        if is_task:
-            # Це задача для виконання - запускаємо AgentLoop
-            print(f"[DEBUG] Виявлено задачу для виконання, запускаю AgentLoop")
+        # Логуємо повідомлення користувача в GUI
+        if self.gui_queue:
+            self.gui_queue.put(('add_message', ('user', text)))
+
+        # AgentLoop — єдиний шлях (він сам вирішить чат vs задача)
+        agent_loop = getattr(self, 'agent_loop', None)
+        if agent_loop:
             self.run_agent_loop(text)
+        elif self.assistant:
+            # Fallback: якщо AgentLoop ще не ініціалізовано — чистий чат
+            self.assistant.process_command(text, from_gui=True)
         else:
-            # Це просте повідомлення - звичайний чат
-            print(f"[DEBUG] Звичайне повідомлення, чат з LLM")
-            if self.assistant:
-                self.assistant.process_command(text, from_gui=True)
-            else:
-                if self.gui_queue:
-                    self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації асистента...')))
+            if self.gui_queue:
+                self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації асистента...')))
     
     def stop_execution(self):
         """Остановить текущее выполнение плана."""
@@ -677,102 +672,43 @@ class AssistantCore:
                 self.gui_queue.put(('add_message', ('assistant', '❌ Немає задачі для виконання.')))
             return
 
-        # Логуємо повідомлення користувача в GUI
+        # Повідомлення користувача вже логовано в process_text_command — не дублюємо
         if self.gui_queue:
-            self.gui_queue.put(('add_message', ('user', task)))
+            self.gui_queue.put(('update_status', '🤖 AgentLoop: observe → plan → act → check'))
 
-        # Класифікація завдання
-        task_type = self._classify_task(task)
-        print(f"[DEBUG] Task type: {task_type}")
+        # AgentLoop — основний шлях
+        agent_loop = getattr(self, 'agent_loop', None)
+        print(f"[DEBUG] agent_loop exists: {agent_loop is not None}")
+        if agent_loop:
+            print(f"[DEBUG] AgentLoop calling run() in thread with task: {task[:50]}...")
+            # Виконуємо в окремому потоці щоб не блокувати GUI
+            def _run_agent():
+                try:
+                    result = self.agent_loop.run(task)
+                    if self.gui_queue:
+                        ok = result.get("ok")
+                        msg = (
+                            f'📊 Agent loop: {result.get("steps", 0)} кроків за {result.get("duration", 0):.1f}с ✅'
+                            if ok else f'❌ Помилка: {result.get("summary", "")}'
+                        )
+                        self.gui_queue.put(('add_message', ('assistant', msg)))
+                except Exception as e:
+                    import traceback
+                    traceback.print_exc()
+                    if self.gui_queue:
+                        self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка AgentLoop: {e}')))
 
-        # --- Прямий шлях без observe() ---
-        if task_type == "FILE_OP":
-            self._execute_direct(task, "write_file")
+            thread = threading.Thread(target=_run_agent, daemon=False)
+            thread.start()
+            thread.join(timeout=45)
             return
-
-        if task_type == "CHAT":
+        else:
+            print(f"[DEBUG] AgentLoop not available, falling back to assistant.process_command")
             if self.assistant:
                 self.assistant.process_command(task, from_gui=True)
-            return
-
-        # --- Повний AgentLoop для всіх інших задач (включаючи виконання коду) ---
-        if task_type == "GUI_ACTION" or task_type == "AGENT":
-            execution_success = False
-            execution_error = None
-            execution_steps = []
-
-        try:
-            # AgentLoop — основний шлях виконання
-            agent_loop = getattr(self, 'agent_loop', None)
-            print(f"[DEBUG] agent_loop exists: {agent_loop is not None}")
-            if agent_loop:
-                print(f"[DEBUG] AgentLoop available, calling run() in thread with task: {task[:50]}...")
-                if self.gui_queue:
-                    self.gui_queue.put(('update_status', '🤖 AgentLoop: observe → plan → act → check'))
-
-                # Виконуємо в окремому потоці щоб не блокувати GUI
-                def _run_agent():
-                    try:
-                        result = self.agent_loop.run(task)
-                        if self.gui_queue:
-                            ok = result.get("ok")
-                            msg = (
-                                f'📊 Agent loop: {result.get("steps", 0)} кроків за {result.get("duration", 0):.1f}с ✅'
-                                if ok else f'❌ Помилка: {result.get("summary", "")}'
-                            )
-                            self.gui_queue.put(('add_message', ('assistant', msg)))
-                    except Exception as e:
-                        import traceback
-                        traceback.print_exc()
-                        if self.gui_queue:
-                            self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка AgentLoop: {e}')))
-
-                thread = threading.Thread(target=_run_agent, daemon=False)
-                thread.start()
-                thread.join(timeout=45)
-                execution_success = True
-                return
             else:
-                print(f"[DEBUG] AgentLoop not available, falling back to PlanExecutor")
-
-            # Fallback до PlanExecutor (legacy)
-            steps = None
-            if self.assistant:
-                steps = getattr(self.assistant, '_last_plan', None)
-
-            if not steps:
-                steps = getattr(self, '_pending_plan_steps', None)
-
-            if not steps and getattr(self, 'plan_executor', None):
-                steps = self.plan_executor.create_plan(task)
-
-            if not steps:
                 if self.gui_queue:
-                    self.gui_queue.put(('add_message', ('assistant', '❌ Не вдалося створити план')))
-                execution_error = "Failed to create plan"
-                return
-
-            if getattr(self, 'plan_executor', None):
-                self._pending_plan_steps = None
-                self.plan_executor.execute_plan(steps, task)
-                execution_success = True
-
-        except Exception as e:
-            execution_error = str(e)
-            execution_success = False
-            if self.gui_queue:
-                self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка виконання: {e}')))
-        finally:
-            # Логування в self-learning
-            if self.self_learning:
-                self.self_learning.log_execution(
-                    task=task,
-                    result="success" if execution_success else "failed",
-                    success=execution_success,
-                    error=execution_error,
-                    steps=execution_steps,
-                    metadata={"method": "agent_loop"}
-                )
+                    self.gui_queue.put(('add_message', ('assistant', '❌ AgentLoop та Assistant недоступні')))
 
     def stop_plan_execution(self):
         """Зупинити виконання плану (з GUI кнопки 'Стоп план')."""
