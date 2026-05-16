@@ -16,6 +16,7 @@
     "TEST_GUI/test_stt_hotkey.py",
     "TEST_GUI/test_tray_icon.py",
     "TTS",
+    "_backup",
     "backup",
     "backup/gui_tabs",
     "backup/tkinter_legacy",
@@ -34,6 +35,7 @@
     "backup/створи план вдосконалення коду.txt",
     "backup/тестові питання.txt",
     "debug_logs",
+    "docs/agent_loop_line_length_analysis.txt",
     "logs",
     "logs/checkpoints",
     "logs/screenshots",
@@ -116,6 +118,7 @@
     "voices/default",
     "voices/voice_split.py",
     "можливі майбутні розробки",
-    "можливі майбутні розробки/test_multi_tab_gui.py"
+    "можливі майбутні розробки/test_multi_tab_gui.py",
+    "info.txt"
   ]
 }

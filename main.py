@@ -484,7 +484,7 @@ class AssistantCore:
         
         Класифікує текст:
         - Завдання (створи, зроби, напиши, редагуй, знайди, ...) → AgentLoop
-        - Звичайний чат (привіт, питання, ...) → LLM напряму через assistant.ask_llm
+        - Звичайний чат (привіт, питання, ...) → assistant.process_command (LLM зі стрімінгом)
         """
         if not text or len(text.strip()) == 0:
             return
@@ -543,25 +543,15 @@ class AssistantCore:
                 if self.gui_queue:
                     self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації асистента...')))
         else:
-            # Звичайний чат — відповідаємо через LLM напряму
-            print(f"[DEBUG] Chat detected, using direct LLM for: '{text[:60]}...'")
+            # Звичайний чат — використовуємо assistant.process_command
+            # (він сам додає в conversation_history, використовує стрімінг,
+            #  обробляє вітання, озвучує TTS, кешує)
+            print(f"[DEBUG] Chat detected, using process_command for: '{text[:60]}...'")
             if self.assistant:
                 try:
-                    response = self.assistant.ask_llm(text, minimal=False)
-                    if response:
-                        if self.gui_queue:
-                            self.gui_queue.put(('add_message', ('assistant', response)))
-                        # TTS озвучення
-                        if hasattr(self.assistant, 'should_speak_response') and self.assistant.should_speak_response(response):
-                            speakable = self.assistant.extract_speakable_text(response)
-                            if speakable:
-                                threading.Thread(
-                                    target=self.assistant.speak_response,
-                                    args=(speakable,),
-                                    daemon=True
-                                ).start()
+                    self.assistant.process_command(text, from_gui=True)
                 except Exception as e:
-                    print(f"[ERROR] Direct LLM chat failed: {e}")
+                    print(f"[ERROR] process_command failed: {e}")
                     if self.gui_queue:
                         self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка: {e}')))
             else:
