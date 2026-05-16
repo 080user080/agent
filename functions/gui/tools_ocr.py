@@ -299,8 +299,13 @@ class ScreenOCR:
 
     # --- Базові методи OCR ---
 
-    def ocr_screen(self, save_screenshot: Optional[str] = None) -> Dict[str, Any]:
-        """Розпізнати текст на всьому екрані."""
+    def ocr_screen(self, save_screenshot: Optional[str] = None, lang: str = "eng+ukr") -> Dict[str, Any]:
+        """Розпізнати текст на всьому екрані.
+        
+        Args:
+            save_screenshot: Зберегти скріншот у файл
+            lang: Мови розпізнавання (наприклад "eng+ukr"). Поки ігнорується.
+        """
         # Захоплюємо екран
         result = self.capture.take_screenshot(save_path=save_screenshot)
         if not result.get("success"):
@@ -318,8 +323,15 @@ class ScreenOCR:
             return {"success": False, "error": str(e)}
 
     def ocr_region(self, x: int, y: int, width: int, height: int,
-                   save_screenshot: Optional[str] = None) -> Dict[str, Any]:
-        """Розпізнати текст в області екрану."""
+                   save_screenshot: Optional[str] = None,
+                   lang: str = "eng+ukr") -> Dict[str, Any]:
+        """Розпізнати текст в області екрану.
+        
+        Args:
+            x, y, width, height: Область екрану
+            save_screenshot: Зберегти скріншот у файл
+            lang: Мови розпізнавання. Поки ігнорується.
+        """
         try:
             # Захоплюємо область
             result = self.capture.capture_region(x, y, width, height, save_path=save_screenshot)
@@ -337,8 +349,15 @@ class ScreenOCR:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def ocr_window(self, hwnd: int, save_screenshot: Optional[str] = None) -> Dict[str, Any]:
-        """Розпізнати текст у вікні."""
+    def ocr_window(self, hwnd: int, save_screenshot: Optional[str] = None,
+                   lang: str = "eng+ukr") -> Dict[str, Any]:
+        """Розпізнати текст у вікні.
+        
+        Args:
+            hwnd: Хендл вікна
+            save_screenshot: Зберегти скріншот у файл
+            lang: Мови розпізнавання. Поки ігнорується.
+        """
         try:
             result = self.capture.capture_window(hwnd, save_path=save_screenshot)
             if not result.get("success"):
@@ -560,20 +579,39 @@ def _get_screen_ocr() -> ScreenOCR:
     return _screen_ocr
 
 
-def ocr_screen(save_screenshot: Optional[str] = None) -> Dict[str, Any]:
-    """Розпізнати текст на всьому екрані."""
-    return _get_screen_ocr().ocr_screen(save_screenshot)
+def ocr_screen(save_screenshot: Optional[str] = None, lang: str = "eng+ukr") -> Dict[str, Any]:
+    """Розпізнати текст на всьому екрані.
+    
+    Args:
+        save_screenshot: Зберегти скріншот у файл
+        lang: Мови розпізнавання (наприклад "eng+ukr"). Поки ігнорується.
+    """
+    return _get_screen_ocr().ocr_screen(save_screenshot, lang=lang)
 
 
 def ocr_region(x: int, y: int, width: int, height: int,
-              save_screenshot: Optional[str] = None) -> Dict[str, Any]:
-    """Розпізнати текст в області."""
-    return _get_screen_ocr().ocr_region(x, y, width, height, save_screenshot)
+              save_screenshot: Optional[str] = None,
+              lang: str = "eng+ukr") -> Dict[str, Any]:
+    """Розпізнати текст в області.
+    
+    Args:
+        x, y, width, height: Область екрану
+        save_screenshot: Зберегти скріншот у файл
+        lang: Мови розпізнавання. Поки ігнорується.
+    """
+    return _get_screen_ocr().ocr_region(x, y, width, height, save_screenshot, lang=lang)
 
 
-def ocr_window(hwnd: int, save_screenshot: Optional[str] = None) -> Dict[str, Any]:
-    """Розпізнати текст у вікні."""
-    return _get_screen_ocr().ocr_window(hwnd, save_screenshot)
+def ocr_window(hwnd: int, save_screenshot: Optional[str] = None,
+               lang: str = "eng+ukr") -> Dict[str, Any]:
+    """Розпізнати текст у вікні.
+    
+    Args:
+        hwnd: Хендл вікна
+        save_screenshot: Зберегти скріншот у файл
+        lang: Мови розпізнавання. Поки ігнорується.
+    """
+    return _get_screen_ocr().ocr_window(hwnd, save_screenshot, lang=lang)
 
 
 def ocr_image(image_path: str) -> Dict[str, Any]:

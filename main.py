@@ -480,10 +480,11 @@ class AssistantCore:
             return False
     
     def process_text_command(self, text):
-        """Обробити текстову команду з GUI — єдиний шлях через AgentLoop.
+        """Обробити текстову команду з GUI.
         
-        Після A0: AgentLoop — єдиний шлях виконання команд з GUI.
-        AgentLoop сам вирішує чи це задача (observe→plan→act→check) чи чат (просто ask_llm).
+        Класифікує текст:
+        - Завдання (створи, зроби, напиши, редагуй, знайди, ...) → AgentLoop
+        - Звичайний чат (привіт, питання, ...) → LLM напряму через assistant.ask_llm
         """
         if not text or len(text.strip()) == 0:
             return
@@ -494,16 +495,78 @@ class AssistantCore:
         if self.gui_queue:
             self.gui_queue.put(('add_message', ('user', text)))
 
-        # AgentLoop — єдиний шлях (він сам вирішить чат vs задача)
-        agent_loop = getattr(self, 'agent_loop', None)
-        if agent_loop:
-            self.run_agent_loop(text)
-        elif self.assistant:
-            # Fallback: якщо AgentLoop ще не ініціалізовано — чистий чат
-            self.assistant.process_command(text, from_gui=True)
+        # Класифікація: задача чи чат?
+        text_lower = text.lower().strip()
+        task_keywords = [
+            "створи", "зроби", "напиши", "виконай", "редагуй", "знайди",
+            "заміни", "видали", "скопіюй", "перемісти", "відкрий", "запусти",
+            "збережи", "скомпілюй", "протестуй", "рефакторинг", "оптимізуй",
+            "додай функцію", "виправ помилку", "згенеруй код",
+            "create", "make", "write", "execute", "edit", "find",
+            "replace", "delete", "copy", "move", "open", "run",
+            "save", "compile", "test", "refactor", "optimize",
+            "add function", "fix bug", "generate code",
+        ]
+        # Короткі фрази (< 4 слів) без ключових слів — чат
+        word_count = len(text_lower.split())
+        is_task = any(kw in text_lower for kw in task_keywords)
+        
+        # Додатковий захист: питання з "?" — точно чат
+        if "?" in text_lower:
+            is_task = False
+        
+        # Дуже короткі фрази без ключових слів — чат
+        if word_count < 4 and not is_task:
+            # Перевіряємо чи це не команда з одним ключовим словом
+            single_word_cmds = {"створи", "зроби", "напиши", "виконай", "редагуй", "знайди",
+                               "create", "make", "write", "run", "open", "find"}
+            words_set = set(text_lower.split())
+            if not words_set.intersection(single_word_cmds):
+                is_task = False
+
+        # Базова перевірка: якщо це просто привітання/питання — чат
+        chat_greetings = {"привіт", "вітаю", "hello", "hi", "hey", "добрий день", "доброго дня",
+                         "як справи", "what's up", "how are you"}
+        if text_lower.strip() in chat_greetings or text_lower.startswith("привіт"):
+            is_task = False
+
+        if is_task:
+            # Це завдання — запускаємо AgentLoop
+            agent_loop = getattr(self, 'agent_loop', None)
+            if agent_loop:
+                self.run_agent_loop(text)
+            elif self.assistant:
+                # Fallback: якщо AgentLoop ще не ініціалізовано
+                print(f"[DEBUG] AgentLoop not available for task, using assistant.process_command")
+                self.assistant.process_command(text, from_gui=True)
+            else:
+                if self.gui_queue:
+                    self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації асистента...')))
         else:
-            if self.gui_queue:
-                self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації асистента...')))
+            # Звичайний чат — відповідаємо через LLM напряму
+            print(f"[DEBUG] Chat detected, using direct LLM for: '{text[:60]}...'")
+            if self.assistant:
+                try:
+                    response = self.assistant.ask_llm(text, minimal=False)
+                    if response:
+                        if self.gui_queue:
+                            self.gui_queue.put(('add_message', ('assistant', response)))
+                        # TTS озвучення
+                        if hasattr(self.assistant, 'should_speak_response') and self.assistant.should_speak_response(response):
+                            speakable = self.assistant.extract_speakable_text(response)
+                            if speakable:
+                                threading.Thread(
+                                    target=self.assistant.speak_response,
+                                    args=(speakable,),
+                                    daemon=True
+                                ).start()
+                except Exception as e:
+                    print(f"[ERROR] Direct LLM chat failed: {e}")
+                    if self.gui_queue:
+                        self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка: {e}')))
+            else:
+                if self.gui_queue:
+                    self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації асистента...')))
     
     def stop_execution(self):
         """Остановить текущее выполнение плана."""

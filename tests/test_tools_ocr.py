@@ -245,7 +245,19 @@ class TestOCRIntegration:
         result = ocr_screen()
 
         assert result['success'] is True
-        mock_ocr.ocr_screen.assert_called_once()
+        mock_ocr.ocr_screen.assert_called_once_with(None, lang='eng+ukr')
+
+    @patch('functions.tools_ocr._get_screen_ocr')
+    def test_ocr_screen_with_lang(self, mock_get_ocr):
+        """Тест ocr_screen з параметром lang."""
+        mock_ocr = MagicMock()
+        mock_ocr.ocr_screen.return_value = {'success': True, 'text': 'Test'}
+        mock_get_ocr.return_value = mock_ocr
+
+        result = ocr_screen(lang="ukr+eng")
+
+        assert result['success'] is True
+        mock_ocr.ocr_screen.assert_called_once_with(None, lang='ukr+eng')
 
     @patch('functions.tools_ocr._get_screen_ocr')
     def test_ocr_region_integration(self, mock_get_ocr):
@@ -257,7 +269,7 @@ class TestOCRIntegration:
         result = ocr_region(100, 100, 200, 100)
 
         assert result['success'] is True
-        mock_ocr.ocr_region.assert_called_once_with(100, 100, 200, 100, None)
+        mock_ocr.ocr_region.assert_called_once_with(100, 100, 200, 100, None, lang='eng+ukr')
 
     @patch('functions.tools_ocr._get_screen_ocr')
     def test_find_text_on_screen_integration(self, mock_get_ocr):

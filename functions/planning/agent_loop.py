@@ -87,16 +87,14 @@ class AgentLoopConfig:
     checkpoint_interval_steps: int = 5
     screen_diff_threshold: float = 0.01
     history_max_entries: int = 10
+    max_observation_tokens: int =1500
     replan_after_failures: int = 3
     repair_after_failures: int = 2  # Викликати repairer при N consecutive failures
     enable_repair: bool = True
     skip_observe_for_simple: bool = False  # Пропускати скріншоти для простих задач
     summary_threshold: int = 7  # Кількість кроків після якої робити підсумовування
     keep_recent_actions: int = 3  # Скільки останніх дій залишати детальними
-    expected_files: List[str] = field(default_factory=lambda: [
-        "constants.py", "base_tab.py", "chat_tab.py", "settings_tab.py",
-        "logs_tab.py", "stats_tab.py", "about_tab.py", "tools_tab.py", "main.py",
-    ])  # Список очікуваних файлів для перевірки завершеності
+    expected_files: List[str] = field(default_factory=list)  # Список очікуваних файлів для перевірки завершеності (порожній за замовчуванням)
 
 
 class ActionDecider:
@@ -197,7 +195,7 @@ class ActionDecider:
         """Перетворити alias імені інструменту на реальне ім'я в FunctionRegistry."""
         return self._aliases.get(tool_name, tool_name)
 
-    def _format_observation(self, obs: Optional[Observation]) -> str:
+    def _format_observation(self, obs: Optional[Observation], max_chars: int = 1500) -> str:
         if not obs:
             return "(немає спостереження)"
         parts: List[str] = []
@@ -207,8 +205,8 @@ class ActionDecider:
             parts.append(f"Скріншот: {obs.screenshot_path}")
         if obs.ocr_text:
             text = obs.ocr_text.strip()
-            if len(text) > 1500:
-                text = text[:1500] + "…"
+            if len(text) > max_chars:
+                text = text[:max_chars] + "…"
             parts.append(f"OCR-текст:\n{text}")
         if obs.ui_elements:
             elements = obs.ui_elements[:30]
@@ -1732,33 +1730,37 @@ class AgentLoop:
         """Відправити summary про завершення в GUI з перевіркою чек-лісту."""
         self._gui_msg('execution_finished', None)
 
-        # Фінальна перевірка чек-лісту для завдань створення файлів
-        import os
-        target_dir = "."
-
-        # Пробуємо отримати правильну директорію з context_controller
-        if self.context_controller and hasattr(self.context_controller, 'target_dir'):
-            target_dir = self.context_controller.target_dir
-        elif hasattr(self.assistant, 'target_dir'):
-            target_dir = self.assistant.target_dir
-        else:
-            # Пробуємо витягти з останнього list_directory з історії
-            for h in reversed(state.actions_history):
-                if h.get('action') == 'list_directory':
-                    dir_arg = h.get('args', {}).get('directory', '')
-                    if dir_arg and os.path.isdir(dir_arg):
-                        target_dir = dir_arg
-                        break
-
-        # Перевіряємо наявність файлів згідно з конфігурацією
+        # Перевірка файлів тільки якщо expected_files задано (не порожній список)
         required_files = self.config.expected_files
-        try:
-            actual_files = os.listdir(target_dir) if os.path.isdir(target_dir) else []
-        except Exception:
-            actual_files = []
+        is_incomplete = False
+        missing_files = []
 
-        missing_files = [f for f in required_files if f not in actual_files]
-        is_incomplete = len(missing_files) > 0
+        if required_files:
+            import os
+            target_dir = "."
+
+            # Пробуємо отримати правильну директорію з context_controller
+            if self.context_controller and hasattr(self.context_controller, 'target_dir'):
+                target_dir = self.context_controller.target_dir
+            elif hasattr(self.assistant, 'target_dir'):
+                target_dir = self.assistant.target_dir
+            else:
+                # Пробуємо витягти з останнього list_directory з історії
+                for h in reversed(state.actions_history):
+                    if h.get('action') == 'list_directory':
+                        dir_arg = h.get('args', {}).get('directory', '')
+                        if dir_arg and os.path.isdir(dir_arg):
+                            target_dir = dir_arg
+                            break
+
+            # Перевіряємо наявність файлів згідно з конфігурацією
+            try:
+                actual_files = os.listdir(target_dir) if os.path.isdir(target_dir) else []
+            except Exception:
+                actual_files = []
+
+            missing_files = [f for f in required_files if f not in actual_files]
+            is_incomplete = len(missing_files) > 0
 
         summary = f"📊 Agent loop завершено: {state.step} кроків за {duration:.1f}с"
         if state.success and not is_incomplete:

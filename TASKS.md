@@ -91,6 +91,41 @@ STT команда → process_command() → (якщо задача) → AgentLo
 - [x] Видалити порожні папки `core/` та `utils/`
 - [x] Переконатись, що `pytest` проходить collection без помилок ✅ (1400 tests)
 
+### P0: Стабілізація AgentLoop для коду (перед А3)
+
+- [ ] 1. Налаштувати Groq API пріоритетним LLM:
+  - URL: `https://api.groq.com/openai/v1`, модель: `llama3-70b-8192`
+  - Перевірити ключ тестовим скриптом (curl/python)
+  - Виправити помилки 401/404/400 в логах
+- [ ] 2. Заборонити `execute_python` для створення/редагування файлів:
+  - Оновити `SYSTEM_PROMPT` в `agent_loop.py` (жорстке правило)
+  - Додати валідацію в `aaa_execute_python.py`: якщо code >5 рядків або містить `def/class` → error
+- [ ] 3. Автоматична перевірка коду після `write_file`/`edit_file`:
+  - У `agent_loop._execute_single_step` після запису `.py` файлу викликати `execute_python`
+  - Результат (`auto_test_passed`) додати в `observation`
+- [ ] 4. Посилити repair loop для коду:
+  - При `auto_test_passed=False` сформувати repair_prompt з помилкою
+  - Викликати LLM для отримання `edit_file` і повторити перевірку
+
+### P1: А3. Розрізати великі модулі (після стабілізації)
+
+- [ ] `agent_loop.py` → `observe.py`, `plan.py`, `act.py`, `check.py`
+- [ ] `main.py` → винести STT/TTS/LM Studio ініціалізацію
+- [ ] `logic_commands.py` → розділити за типами команд
+- [ ] `core_planner.py` → розділити prompt/валідацію/repair
+
+### P1: ЕТАП 2. GUI Tester (самотестування)
+
+- [ ] Створити `functions/logic_gui_tester.py`
+- [ ] Додати вкладку "Тестування" в `core_gui_pyqt6/`
+- [ ] Написати сценарії для Notepad та власного GUI
+
+### P1: ЕТАП 10. Phase 13 – реальна кодогенерація (після всього)
+
+- [ ] Реалізувати `_execute_windsurf` та `_execute_cursor` через CDP
+- [ ] Замінити `_scaffold_content()` на виклик `AIActor.execute()`
+- [ ] Інтегрувати `ai_actors.py` з `pipeline_code.py`
+
 #### А3. Розрізати великі модулі
 
 Пріоритетні файли для розбиття:
