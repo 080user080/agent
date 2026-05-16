@@ -97,6 +97,10 @@ STT команда → process_command() → (якщо задача) → AgentLo
   - URL: `https://api.groq.com/openai/v1`, модель: `llama3-70b-8192`
   - Перевірити ключ тестовим скриптом (curl/python)
   - Виправити помилки 401/404/400 в логах
+туту низькі ліміти треба передивитися
+
+
+
 - [ ] 2. Заборонити `execute_python` для створення/редагування файлів:
   - Оновити `SYSTEM_PROMPT` в `agent_loop.py` (жорстке правило)
   - Додати валідацію в `aaa_execute_python.py`: якщо code >5 рядків або містить `def/class` → error
