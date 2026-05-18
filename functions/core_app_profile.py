@@ -269,7 +269,7 @@ class AppProfileRegistry:
         """Легкий hook — додає запис у `notes` профілю (або створює новий).
 
         Повертає оновлений профіль. Повноцінна pattern-detection логіка
-        винесена у `logic_task_learner` (D3 у roadmap).
+        винесена у `functions.planning.logic_task_learner` (D3 у roadmap).
         """
         self._load_all()
         key = app_name.lower()

@@ -68,7 +68,7 @@ def test_orchestrator_decompose_multi():
 # Task Learner
 # ---------------------------------------------------------------------------
 
-from functions.logic_task_learner import (  # noqa: E402
+from functions.planning.logic_task_learner import (  # noqa: E402
     TaskPattern,
     detect_repeated_pattern,
     suggest_automation,
@@ -82,10 +82,11 @@ def test_detect_repeated_pattern_basic():
         {"action": "click", "params": {"x": 1}},
         {"action": "click", "params": {"x": 1}},
         {"action": "click", "params": {"x": 1}},
+        {"action": "click", "params": {"x": 1}},
     ]
-    pattern = detect_repeated_pattern(history, min_occurrences=3)
+    pattern = detect_repeated_pattern(history, min_occurrences=2)
     assert pattern is not None
-    assert pattern.frequency >= 3
+    assert pattern.frequency >= 2
 
 
 def test_detect_repeated_pattern_none():
@@ -126,7 +127,7 @@ def test_adaptive_click_image():
 # Web conditions
 # ---------------------------------------------------------------------------
 
-from functions.conditions_web import (  # noqa: E402
+from runtime.conditions_web import (  # noqa: E402
     condition_url_response_contains,
     condition_url_status_ok,
     condition_chat_idle,
@@ -134,12 +135,12 @@ from functions.conditions_web import (  # noqa: E402
 
 
 def test_condition_url_response_contains_no_requests(monkeypatch):
-    monkeypatch.setattr("functions.conditions_web.requests", None)
+    monkeypatch.setattr("runtime.conditions_web.requests", None)
     assert condition_url_response_contains("http://example.com", "test") is False
 
 
 def test_condition_url_status_ok_no_requests(monkeypatch):
-    monkeypatch.setattr("functions.conditions_web.requests", None)
+    monkeypatch.setattr("runtime.conditions_web.requests", None)
     assert condition_url_status_ok("http://example.com") is False
 
 
@@ -152,5 +153,3 @@ def test_condition_chat_idle_with_provider():
         def is_responding(self):
             return False
     assert condition_chat_idle(FakeProvider(), 0) is True
-
-

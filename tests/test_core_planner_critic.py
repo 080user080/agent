@@ -26,7 +26,7 @@ from functions.logic_ai_adapter import (
     ProviderCapabilities,
     UsageInfo,
 )
-from functions.logic_plan_critic import (
+from functions.planning.logic_plan_critic import (
     CritiqueResult,
     PlanCritic,
     SEVERITY_BLOCK,

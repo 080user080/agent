@@ -141,20 +141,20 @@ voice_tray_icon.py
   - [x] `test_gui.bat` – Виконай test_gui.bat, за 3 секунди GUI закриється. Перевір наявність помилок за цей час. Не чекай довше 5 секунд.
   - [x] Голосовий ввід / код працюють.
   - [x] Поставити відмітку про виконання в task1.md
-- [ ] 3.1.11 Перемістити `logic_task_learner.py` → `planning/logic_task_learner.py`
-  - [ ] Оновити імпорти.
-  - [ ] `pytest tests/` – успішно.
-  - [ ] `test_gui.bat` – Виконай test_gui.bat, за 3 секунди GUI закриється. Перевір наявність помилок за цей час. Не чекай довше 5 секунд.
-  - [ ] Голосовий ввід / код працюють.
-  - [ ] Поставити відмітку про виконання в task1.md
+- [x] 3.1.11 Перемістити `logic_task_learner.py` → `planning/logic_task_learner.py`
+  - [x] Оновити імпорти.
+  - [x] `pytest tests/` – успішно.
+  - [x] `test_gui.bat` – Виконай test_gui.bat, за 3 секунди GUI закриється. Перевір наявність помилок за цей час. Не чекай довше 5 секунд.
+  - [x] Голосовий ввід / код працюють.
+  - [x] Поставити відмітку про виконання в task1.md
 
 ### Група 3.2 – Рантайм (`runtime/`)
-- [ ] 3.2.1 Перемістити `conditions_web.py` → `runtime/conditions_web.py`
-  - [ ] Оновити імпорти.
-  - [ ] `pytest tests/` – успішно.
-  - [ ] `test_gui.bat` – без помилок.
-  - [ ] Голосовий ввід та код працюють.
-  - [ ] Немає імпортів `from functions.conditions_web`.
+- [x] 3.2.1 Перемістити `conditions_web.py` → `runtime/conditions_web.py`
+  - [х] Оновити імпорти.
+  - [х] `pytest tests/` – успішно.
+  - [х] `test_gui.bat` – без помилок.
+  - [х] Голосовий ввід та код працюють.
+  - [х] Немає імпортів `from functions.conditions_web`.
 - [ ] 3.2.2 Перемістити `conditions_windows.py` → `runtime/conditions_windows.py`
   - [ ] Оновити імпорти.
   - [ ] `pytest tests/` – успішно.

@@ -17,8 +17,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
-from .core_macro import Macro, MacroStep
-from .core_app_profile import AppProfile
+from ..core_macro import Macro, MacroStep
+from ..core_app_profile import AppProfile
 
 
 @dataclass

@@ -34,7 +34,7 @@ from functions.planning.core_planner_critic import (
     legacy_plan_to_plan,
     review_and_replan_legacy,
 )
-from functions.logic_plan_critic import CritiqueResult, PlanCritic
+from functions.planning.logic_plan_critic import CritiqueResult, PlanCritic
 from functions.planning.logic_task_runner import (
     HandlerFn,
     Plan,

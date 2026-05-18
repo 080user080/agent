@@ -17,7 +17,7 @@ from functions.planning.core_planner_runner import (
     register_legacy_actions,
     run_legacy_plan_via_runner,
 )
-from functions.logic_plan_critic import (
+from functions.planning.logic_plan_critic import (
     CritiqueResult,
     PlanCritic,
     VERDICT_APPROVE,
