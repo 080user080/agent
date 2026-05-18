@@ -48,7 +48,7 @@ from functions.planning.logic_expectations import (
     failures,
     parse_expect_list,
 )
-from functions.logic_repair_loop import RepairLoop, RepairProposer
+from functions.planning.logic_repair_loop import RepairLoop, RepairProposer
 from functions.logic_permission_gate import (
     ACTION_READ_FILE,
     ACTION_RUN_COMMAND,

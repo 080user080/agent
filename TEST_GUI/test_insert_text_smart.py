@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PyQt6.QtWidgets import QApplication, QMainWindow, QTextEdit, QVBoxLayout, QWidget, QPushButton
 from PyQt6.QtCore import QTimer, QEventLoop
 
-from functions.tools_mouse_keyboard import insert_text_smart
+from functions.tools.tools_mouse_keyboard import insert_text_smart
 
 class TestWindow(QMainWindow):
     def __init__(self):

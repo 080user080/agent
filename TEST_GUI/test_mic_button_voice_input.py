@@ -57,7 +57,7 @@ def main():
     # Тест voice_input через GUI (Planner розпізнає "_ 5" як voice_input)
     try:
         from functions.aaa_voice_input import activate_window_by_title
-        from functions.tools_mouse_keyboard import keyboard_type, keyboard_press
+        from functions.tools.tools_mouse_keyboard import keyboard_type, keyboard_press
 
         print("\n📝 Активація вікна агента...")
         result = activate_window_by_title("МАРК — Асистент (PyQt6)")

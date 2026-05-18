@@ -1,4 +1,4 @@
-"""Unit-тести для `functions.core_planner_runner`.
+"""Unit-тести для `functions.planning.core_planner_runner`.
 
 Перевіряємо bridge: legacy `List[Dict]` → TaskRunner-виконання через generic-handler.
 """

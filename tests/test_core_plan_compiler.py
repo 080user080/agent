@@ -16,7 +16,7 @@ from functions.planning.core_plan_compiler import (  # noqa: E402
     compile_plan_from_spec,
     make_default_registry,
 )
-from functions.core_task_intake import (  # noqa: E402
+from functions.planning.core_task_intake import (  # noqa: E402
     DOMAIN_CODE,
     DOMAIN_MIXED,
     DOMAIN_PHOTO_BATCH,
@@ -179,7 +179,7 @@ class TestDefaultRegistry:
             assert reg.get(d) is not None
 
     def test_code_domain_uses_code_pipeline(self):
-        from functions.pipeline_code import CodePipeline
+        from functions.planning.pipeline_code import CodePipeline
 
         reg = make_default_registry()
         code_pipe = reg.get(DOMAIN_CODE)

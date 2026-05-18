@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 
-from .core_settings import get_setting
+from .runtime.core_settings import get_setting
 
 logger = logging.getLogger("vision_provider")
 

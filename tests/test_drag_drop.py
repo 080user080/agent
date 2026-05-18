@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import Mock, patch
 
-from functions.tools_mouse_keyboard import MouseKeyboardController, mouse_drag
+from functions.tools.tools_mouse_keyboard import MouseKeyboardController, mouse_drag
 
 
 class TestMouseDrag:
@@ -12,7 +12,7 @@ class TestMouseDrag:
         """Базовий drag & drop."""
         controller = MouseKeyboardController()
 
-        with patch("functions.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
+        with patch("functions.tools.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
             mock_pyautogui.position.return_value = Mock(x=0, y=0)
             result = controller.mouse_drag(100, 200, 300, 400, duration=0.5, button='left')
 
@@ -26,10 +26,10 @@ class TestMouseDrag:
         """Drag & drop з DPI correction."""
         controller = MouseKeyboardController()
 
-        with patch("functions.tools_mouse_keyboard._apply_dpi_correction") as mock_dpi:
+        with patch("functions.tools.tools_mouse_keyboard._apply_dpi_correction") as mock_dpi:
             mock_dpi.side_effect = lambda x, y: (int(x / 1.5), int(y / 1.5))
 
-            with patch("functions.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
+            with patch("functions.tools.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
                 result = controller.mouse_drag(150, 300, 450, 600)
 
                 # DPI correction має бути застосовано
@@ -40,7 +40,7 @@ class TestMouseDrag:
         """Drag & drop з помилкою."""
         controller = MouseKeyboardController()
 
-        with patch("functions.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
+        with patch("functions.tools.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
             mock_pyautogui.dragTo.side_effect = Exception("Test error")
 
             result = controller.mouse_drag(100, 200, 300, 400)
@@ -50,7 +50,7 @@ class TestMouseDrag:
 
     def test_mouse_drag_global_function(self):
         """Глобальна функція mouse_drag."""
-        with patch("functions.tools_mouse_keyboard._controller") as mock_controller:
+        with patch("functions.tools.tools_mouse_keyboard._controller") as mock_controller:
             mock_controller.mouse_drag.return_value = {
                 "success": True,
                 "start": {"x": 100, "y": 200},
@@ -76,7 +76,7 @@ class TestDragDropFileScenarios:
         """
         controller = MouseKeyboardController()
 
-        with patch("functions.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
+        with patch("functions.tools.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
             # Симуляція перетягування
             result = controller.mouse_drag(
                 start_x=100, start_y=200,  # Координати файлу в Explorer
@@ -97,7 +97,7 @@ class TestDragDropFileScenarios:
         """
         controller = MouseKeyboardController()
 
-        with patch("functions.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
+        with patch("functions.tools.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
             result = controller.mouse_drag(
                 start_x=200, start_y=300,  # App A
                 end_x=800, end_y=400,  # App B
@@ -110,7 +110,7 @@ class TestDragDropFileScenarios:
         """Перетягування з правою кнопкою."""
         controller = MouseKeyboardController()
 
-        with patch("functions.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
+        with patch("functions.tools.tools_mouse_keyboard.pyautogui") as mock_pyautogui:
             result = controller.mouse_drag(
                 start_x=100, start_y=200,
                 end_x=300, end_y=400,

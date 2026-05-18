@@ -53,7 +53,7 @@ class SettingsTabQtMixin:
 
     def _build_settings_tab(self) -> None:
         """Побудувати UI вкладки Налаштування на основі SETTINGS_SCHEMA."""
-        from functions.core_settings import get_settings, SETTINGS_SCHEMA
+        from functions.runtime.core_settings import get_settings, SETTINGS_SCHEMA
 
         settings = get_settings()
         self._settings_vars: dict[str, Any] = {}  # key → widget
@@ -311,7 +311,7 @@ class SettingsTabQtMixin:
 
     def _apply_settings_filter(self) -> None:
         """Фільтрувати налаштування за пошуком."""
-        from functions.core_settings import SETTINGS_SCHEMA
+        from functions.runtime.core_settings import SETTINGS_SCHEMA
 
         query = self._settings_search_edit.text().strip().lower()
 
@@ -334,7 +334,7 @@ class SettingsTabQtMixin:
 
     def _save_all_settings(self) -> None:
         """Зберегти всі налаштування."""
-        from functions.core_settings import get_settings, SETTINGS_SCHEMA
+        from functions.runtime.core_settings import get_settings, SETTINGS_SCHEMA
 
         settings = get_settings()
         saved = 0
@@ -387,7 +387,7 @@ class SettingsTabQtMixin:
 
     def _reset_all_settings(self) -> None:
         """Скинути до дефолтів config.py."""
-        from functions.core_settings import get_settings, SETTINGS_SCHEMA
+        from functions.runtime.core_settings import get_settings, SETTINGS_SCHEMA
 
         settings = get_settings()
         for key in SETTINGS_SCHEMA.keys():

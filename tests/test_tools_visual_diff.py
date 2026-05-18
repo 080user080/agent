@@ -12,7 +12,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.tools_visual_diff import VisualDiff  # noqa: E402
+from functions.tools.tools_visual_diff import VisualDiff  # noqa: E402
 
 
 @pytest.fixture

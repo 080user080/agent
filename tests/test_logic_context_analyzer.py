@@ -19,15 +19,15 @@ class TestContextAnalyzer:
 
     def test_init(self):
         """Тест ініціалізації ContextAnalyzer."""
-        from functions.logic_context_analyzer import ContextAnalyzer
+        from functions.planning.logic_context_analyzer import ContextAnalyzer
 
         analyzer = ContextAnalyzer()
         assert analyzer is not None
 
-    @patch('functions.logic_context_analyzer.capture_screen')
+    @patch('functions.planning.logic_context_analyzer.capture_screen')
     def test_analyze_screen(self, mock_capture):
         """Тест аналізу екрану."""
-        from functions.logic_context_analyzer import ContextAnalyzer
+        from functions.planning.logic_context_analyzer import ContextAnalyzer
 
         # Mock image
         from PIL import Image
@@ -39,10 +39,10 @@ class TestContextAnalyzer:
 
         assert result is not None
 
-    @patch('functions.logic_context_analyzer.capture_screen')
+    @patch('functions.planning.logic_context_analyzer.capture_screen')
     def test_detect_ui_elements(self, mock_capture):
         """Тест виявлення UI елементів."""
-        from functions.logic_context_analyzer import ContextAnalyzer
+        from functions.planning.logic_context_analyzer import ContextAnalyzer
 
         # Mock image
         from PIL import Image
@@ -54,10 +54,10 @@ class TestContextAnalyzer:
 
         assert result is not None
 
-    @patch('functions.logic_context_analyzer.capture_screen')
+    @patch('functions.planning.logic_context_analyzer.capture_screen')
     def test_extract_text_regions(self, mock_capture):
         """Тест виділення текстових регіонів."""
-        from functions.logic_context_analyzer import ContextAnalyzer
+        from functions.planning.logic_context_analyzer import ContextAnalyzer
 
         # Mock image
         from PIL import Image
@@ -75,28 +75,28 @@ class TestContextSnapshot:
 
     def test_init(self):
         """Тест ініціалізації ContextSnapshot."""
-        from functions.logic_context_analyzer import ContextSnapshot
+        from functions.planning.logic_context_analyzer import ContextSnapshot
 
         snapshot = ContextSnapshot()
         assert snapshot is not None
 
     def test_capture(self):
         """Тест захоплення снепшоту."""
-        from functions.logic_context_analyzer import ContextSnapshot
+        from functions.planning.logic_context_analyzer import ContextSnapshot
 
         snapshot = ContextSnapshot()
-        with patch('functions.logic_context_analyzer.capture_screen'):
+        with patch('functions.planning.logic_context_analyzer.capture_screen'):
             result = snapshot.capture()
             assert result is not None
 
     def test_compare_snapshots(self):
         """Тест порівняння снепшотів."""
-        from functions.logic_context_analyzer import ContextSnapshot
+        from functions.planning.logic_context_analyzer import ContextSnapshot
 
         snapshot1 = ContextSnapshot()
         snapshot2 = ContextSnapshot()
 
-        with patch('functions.logic_context_analyzer.capture_screen'):
+        with patch('functions.planning.logic_context_analyzer.capture_screen'):
             snapshot1.capture()
             snapshot2.capture()
 
@@ -109,7 +109,7 @@ class TestContextHistory:
 
     def test_init(self):
         """Тест ініціалізації ContextHistory."""
-        from functions.logic_context_analyzer import ContextHistory
+        from functions.planning.logic_context_analyzer import ContextHistory
 
         history = ContextHistory(max_size=10)
         assert history is not None
@@ -117,7 +117,7 @@ class TestContextHistory:
 
     def test_add_snapshot(self):
         """Тест додавання снепшоту."""
-        from functions.logic_context_analyzer import ContextHistory
+        from functions.planning.logic_context_analyzer import ContextHistory
 
         history = ContextHistory(max_size=10)
         snapshot = MagicMock()
@@ -127,7 +127,7 @@ class TestContextHistory:
 
     def test_max_size_limit(self):
         """Тест обмеження розміру історії."""
-        from functions.logic_context_analyzer import ContextHistory
+        from functions.planning.logic_context_analyzer import ContextHistory
 
         history = ContextHistory(max_size=5)
         for i in range(10):

@@ -76,7 +76,7 @@ class TestGlobalVoiceInput:
 
     @patch("functions.global_voice_input.STTListener")
     @patch("functions.global_voice_input.time.sleep", return_value=None)
-    @patch("functions.tools_mouse_keyboard.keyboard_hotkey")
+    @patch("functions.tools.tools_mouse_keyboard.keyboard_hotkey")
     def test_insert_segment_fallback_to_ctrl_v(
         self,
         mock_keyboard_hotkey,

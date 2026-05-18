@@ -16,7 +16,7 @@ from pathlib import Path
 import threading
 import uuid
 
-from functions.tools_screen_capture import ScreenCapture
+from functions.tools.tools_screen_capture import ScreenCapture
 
 
 @dataclass

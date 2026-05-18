@@ -50,7 +50,7 @@ def get_endpoint_by_role(role: str, default: Optional[Dict] = None) -> Optional[
         Dict з url, model, api_key, temperature, max_tokens, timeout або default або None
     """
     try:
-        from ..core_settings import get_setting
+        from ..runtime.core_settings import get_setting
         endpoints = get_setting("LLM_ENDPOINTS", [])
 
         # Шукаємо endpoint за role напряму (чи то число, чи то текст)
@@ -88,7 +88,7 @@ def get_primary_endpoint():
     Якщо primary не налаштовано — повертає дефолт (LM Studio).
     """
     try:
-        from ..core_settings import get_setting
+        from ..runtime.core_settings import get_setting
         endpoints = get_setting("LLM_ENDPOINTS", [])
 
         # Шукаємо endpoint з role="1"

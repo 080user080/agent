@@ -13,7 +13,7 @@ import os
 # Додаємо батьківську папку в шлях
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from functions.tools_ocr import (
+from functions.tools.tools_ocr import (
     OCREngine, ScreenOCR,
     ocr_screen, ocr_region, ocr_image,
     find_text_on_screen, click_text
@@ -33,8 +33,8 @@ class TestOCREngine:
         from PIL import Image
         return Image.new('RGB', (100, 30), color='white')
 
-    @patch('functions.tools_ocr.PYTESSERACT_AVAILABLE', True)
-    @patch('functions.tools_ocr.pytesseract')
+    @patch('functions.tools.tools_ocr.PYTESSERACT_AVAILABLE', True)
+    @patch('functions.tools.tools_ocr.pytesseract')
     def test_init_pytesseract_available(self, mock_pytesseract):
         """Тест ініціалізації з доступним PyTesseract."""
         mock_pytesseract.image_to_string.return_value = "test"
@@ -44,8 +44,8 @@ class TestOCREngine:
         assert "pytesseract" in engine.available_engines
         assert engine.engine_type == "pytesseract"
 
-    @patch('functions.tools_ocr.PYTESSERACT_AVAILABLE', False)
-    @patch('functions.tools_ocr.EASYOCR_AVAILABLE', True)
+    @patch('functions.tools.tools_ocr.PYTESSERACT_AVAILABLE', False)
+    @patch('functions.tools.tools_ocr.EASYOCR_AVAILABLE', True)
     def test_init_fallback_to_easyocr(self):
         """Тест fallback на EasyOCR коли PyTesseract недоступний."""
         engine = OCREngine(engine="auto", languages=["ukr"])
@@ -53,8 +53,8 @@ class TestOCREngine:
         assert engine.engine_type == "easyocr"
         assert "easyocr" in engine.available_engines
 
-    @patch('functions.tools_ocr.PYTESSERACT_AVAILABLE', True)
-    @patch('functions.tools_ocr.pytesseract')
+    @patch('functions.tools.tools_ocr.PYTESSERACT_AVAILABLE', True)
+    @patch('functions.tools.tools_ocr.pytesseract')
     def test_recognize_pytesseract_success(self, mock_pytesseract, mock_pil_image):
         """Тест успішного розпізнавання через PyTesseract."""
         # Мокуємо дані pytesseract
@@ -76,8 +76,8 @@ class TestOCREngine:
         assert 'text' in result
         assert 'boxes' in result
 
-    @patch('functions.tools_ocr.PYTESSERACT_AVAILABLE', True)
-    @patch('functions.tools_ocr.pytesseract')
+    @patch('functions.tools.tools_ocr.PYTESSERACT_AVAILABLE', True)
+    @patch('functions.tools.tools_ocr.pytesseract')
     def test_recognize_pytesseract_empty(self, mock_pytesseract, mock_pil_image):
         """Тест розпізнавання порожнього зображення."""
         mock_pytesseract.image_to_data.return_value = {
@@ -96,8 +96,8 @@ class TestOCREngine:
         assert result['success'] is True
         assert result['word_count'] == 0
 
-    @patch('functions.tools_ocr.PYTESSERACT_AVAILABLE', True)
-    @patch('functions.tools_ocr.pytesseract')
+    @patch('functions.tools.tools_ocr.PYTESSERACT_AVAILABLE', True)
+    @patch('functions.tools.tools_ocr.pytesseract')
     def test_recognize_pytesseract_error(self, mock_pytesseract, mock_pil_image):
         """Тест обробки помилки PyTesseract."""
         mock_pytesseract.image_to_data.side_effect = Exception("Tesseract error")
@@ -150,14 +150,14 @@ class TestScreenOCR:
     @pytest.fixture
     def mock_screen_ocr(self):
         """Фікстура для ScreenOCR з замоканим захопленням."""
-        with patch('functions.tools_ocr.ScreenCapture'):
-            with patch('functions.tools_ocr.OCREngine'):
+        with patch('functions.tools.tools_ocr.ScreenCapture'):
+            with patch('functions.tools.tools_ocr.OCREngine'):
                 ocr = ScreenOCR(engine="pytesseract")
                 # Мокуємо метод захоплення
                 ocr._capture_window_image = MagicMock(return_value=MagicMock())
                 return ocr
 
-    @patch('functions.tools_ocr.ScreenCapture')
+    @patch('functions.tools.tools_ocr.ScreenCapture')
     def test_ocr_image_file_not_found(self, mock_capture):
         """Тест ocr_image з неіснуючим файлом."""
         ocr = ScreenOCR(engine="pytesseract")
@@ -166,10 +166,10 @@ class TestScreenOCR:
         assert result['success'] is False
         assert 'не знайдено' in result['error'].lower() or 'not found' in result['error'].lower()
 
-    @patch('functions.tools_ocr.ScreenCapture')
+    @patch('functions.tools.tools_ocr.ScreenCapture')
     @patch('builtins.open', mock_open(read_data=b'fake_image_data'))
-    @patch('functions.tools_ocr.Image.open')
-    @patch('functions.tools_ocr.OCREngine.recognize_with_fallback')
+    @patch('functions.tools.tools_ocr.Image.open')
+    @patch('functions.tools.tools_ocr.OCREngine.recognize_with_fallback')
     def test_ocr_image_success(self, mock_recognize, mock_img_open, mock_capture):
         """Тест успішного розпізнавання файлу."""
         mock_recognize.return_value = {
@@ -235,7 +235,7 @@ class TestScreenOCR:
 class TestOCRIntegration:
     """Інтеграційні тести OCR функцій."""
 
-    @patch('functions.tools_ocr._get_screen_ocr')
+    @patch('functions.tools.tools_ocr._get_screen_ocr')
     def test_ocr_screen_integration(self, mock_get_ocr):
         """Тест інтеграції ocr_screen функції."""
         mock_ocr = MagicMock()
@@ -247,7 +247,7 @@ class TestOCRIntegration:
         assert result['success'] is True
         mock_ocr.ocr_screen.assert_called_once_with(None, lang='eng+ukr')
 
-    @patch('functions.tools_ocr._get_screen_ocr')
+    @patch('functions.tools.tools_ocr._get_screen_ocr')
     def test_ocr_screen_with_lang(self, mock_get_ocr):
         """Тест ocr_screen з параметром lang."""
         mock_ocr = MagicMock()
@@ -259,7 +259,7 @@ class TestOCRIntegration:
         assert result['success'] is True
         mock_ocr.ocr_screen.assert_called_once_with(None, lang='ukr+eng')
 
-    @patch('functions.tools_ocr._get_screen_ocr')
+    @patch('functions.tools.tools_ocr._get_screen_ocr')
     def test_ocr_region_integration(self, mock_get_ocr):
         """Тест інтеграції ocr_region функції."""
         mock_ocr = MagicMock()
@@ -271,7 +271,7 @@ class TestOCRIntegration:
         assert result['success'] is True
         mock_ocr.ocr_region.assert_called_once_with(100, 100, 200, 100, None, lang='eng+ukr')
 
-    @patch('functions.tools_ocr._get_screen_ocr')
+    @patch('functions.tools.tools_ocr._get_screen_ocr')
     def test_find_text_on_screen_integration(self, mock_get_ocr):
         """Тест інтеграції find_text_on_screen функції."""
         mock_ocr = MagicMock()
@@ -291,8 +291,8 @@ class TestOCRSmoke:
 
     def test_engine_creation_no_external_deps(self):
         """Тест створення engine без зовнішніх залежностей."""
-        with patch('functions.tools_ocr.PYTESSERACT_AVAILABLE', False):
-            with patch('functions.tools_ocr.EASYOCR_AVAILABLE', False):
+        with patch('functions.tools.tools_ocr.PYTESSERACT_AVAILABLE', False):
+            with patch('functions.tools.tools_ocr.EASYOCR_AVAILABLE', False):
                 # Має викликати RuntimeError
                 try:
                     OCREngine(engine="auto")

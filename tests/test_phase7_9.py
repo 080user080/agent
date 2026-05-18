@@ -44,7 +44,7 @@ def test_google_adapter_no_key():
 # Orchestrator
 # ---------------------------------------------------------------------------
 
-from functions.logic_orchestrator import Orchestrator, SubTask, OrchestrationResult  # noqa: E402
+from functions.planning.logic_orchestrator import Orchestrator, SubTask, OrchestrationResult  # noqa: E402
 from functions.logic_provider_registry import ProviderRegistry, SelectionCriteria  # noqa: E402
 
 

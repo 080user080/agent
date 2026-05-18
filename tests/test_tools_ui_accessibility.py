@@ -1,7 +1,7 @@
 """Тести для Windows UI Automation (UIA) tools — ЕТАП 3."""
 import pytest
 from unittest.mock import Mock, patch, MagicMock
-from functions.tools_ui_accessibility import (
+from functions.tools.tools_ui_accessibility import (
     UIElement,
     UIAWrapper,
     get_uia_wrapper,
@@ -47,7 +47,7 @@ class TestUIElement:
 class TestUIAWrapper:
     """Тести для UIAWrapper."""
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_singleton(self, mock_init):
         """Singleton instance."""
         wrapper1 = get_uia_wrapper()
@@ -55,49 +55,49 @@ class TestUIAWrapper:
         assert wrapper1 is wrapper2
         mock_init.assert_called_once()
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_is_available_true(self, mock_init):
         """is_available повертає True при успішній ініціалізації."""
         wrapper = UIAWrapper()
         wrapper._available = True
         assert wrapper.is_available() is True
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_is_available_false(self, mock_init):
         """is_available повертає False при неуспішній ініціалізації."""
         wrapper = UIAWrapper()
         wrapper._available = False
         assert wrapper.is_available() is False
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_get_root_element_unavailable(self, mock_init):
         """get_root_element повертає None якщо UIA недоступний."""
         wrapper = UIAWrapper()
         wrapper._available = False
         assert wrapper.get_root_element() is None
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_get_focused_element_unavailable(self, mock_init):
         """get_focused_element повертає None якщо UIA недоступний."""
         wrapper = UIAWrapper()
         wrapper._available = False
         assert wrapper.get_focused_element() is None
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_find_element_by_name_unavailable(self, mock_init):
         """find_element_by_name повертає None якщо UIA недоступний."""
         wrapper = UIAWrapper()
         wrapper._available = False
         assert wrapper.find_element_by_name("Test") is None
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_find_element_by_automation_id_unavailable(self, mock_init):
         """find_element_by_automation_id повертає None якщо UIA недоступний."""
         wrapper = UIAWrapper()
         wrapper._available = False
         assert wrapper.find_element_by_automation_id("id1") is None
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_click_element_unavailable(self, mock_init):
         """click_element повертає error якщо UIA недоступний."""
         wrapper = UIAWrapper()
@@ -107,7 +107,7 @@ class TestUIAWrapper:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_set_text_unavailable(self, mock_init):
         """set_text повертає error якщо UIA недоступний."""
         wrapper = UIAWrapper()
@@ -117,7 +117,7 @@ class TestUIAWrapper:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_get_value_unavailable(self, mock_init):
         """get_value повертає error якщо UIA недоступний."""
         wrapper = UIAWrapper()
@@ -127,35 +127,35 @@ class TestUIAWrapper:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_wait_for_element_unavailable(self, mock_init):
         """wait_for_element повертає None якщо UIA недоступний."""
         wrapper = UIAWrapper()
         wrapper._available = False
         assert wrapper.wait_for_element("Test", timeout=1.0) is None
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_list_all_buttons_unavailable(self, mock_init):
         """list_all_buttons повертає пустий список якщо UIA недоступний."""
         wrapper = UIAWrapper()
         wrapper._available = False
         assert wrapper.list_all_buttons() == []
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_list_all_inputs_unavailable(self, mock_init):
         """list_all_inputs повертає пустий список якщо UIA недоступний."""
         wrapper = UIAWrapper()
         wrapper._available = False
         assert wrapper.list_all_inputs() == []
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_list_all_checkboxes_unavailable(self, mock_init):
         """list_all_checkboxes повертає пустий список якщо UIA недоступний."""
         wrapper = UIAWrapper()
         wrapper._available = False
         assert wrapper.list_all_checkboxes() == []
 
-    @patch("functions.tools_ui_accessibility.UIAWrapper._init_uia")
+    @patch("functions.tools.tools_ui_accessibility.UIAWrapper._init_uia")
     def test_get_ui_tree_unavailable(self, mock_init):
         """get_ui_tree повертає None якщо UIA недоступний."""
         wrapper = UIAWrapper()
@@ -166,7 +166,7 @@ class TestUIAWrapper:
 class TestLLMTools:
     """Тести для LLM tools."""
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_list_elements_unavailable(self, mock_get_wrapper):
         """uia_list_elements повертає error якщо UIA недоступний."""
         mock_wrapper = Mock()
@@ -177,7 +177,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_find_button_unavailable(self, mock_get_wrapper):
         """uia_find_button повертає error якщо UIA недоступний."""
         mock_wrapper = Mock()
@@ -188,7 +188,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_find_button_missing_name(self, mock_get_wrapper):
         """uia_find_button повертає error якщо не задано name або automation_id."""
         mock_wrapper = Mock()
@@ -199,7 +199,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "name або automation_id required" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_click_element_unavailable(self, mock_get_wrapper):
         """uia_click_element повертає error якщо UIA недоступний."""
         mock_wrapper = Mock()
@@ -210,7 +210,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_set_text_unavailable(self, mock_get_wrapper):
         """uia_set_text повертає error якщо UIA недоступний."""
         mock_wrapper = Mock()
@@ -221,7 +221,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_set_text_missing_text(self, mock_get_wrapper):
         """uia_set_text повертає error якщо не задано text."""
         mock_wrapper = Mock()
@@ -232,7 +232,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "text required" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_get_value_unavailable(self, mock_get_wrapper):
         """uia_get_value повертає error якщо UIA недоступний."""
         mock_wrapper = Mock()
@@ -243,7 +243,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_wait_for_element_unavailable(self, mock_get_wrapper):
         """uia_wait_for_element повертає error якщо UIA недоступний."""
         mock_wrapper = Mock()
@@ -254,7 +254,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_wait_for_element_missing_name(self, mock_get_wrapper):
         """uia_wait_for_element повертає error якщо не задано name."""
         mock_wrapper = Mock()
@@ -265,7 +265,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "name required" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_list_buttons_unavailable(self, mock_get_wrapper):
         """uia_list_buttons повертає error якщо UIA недоступний."""
         mock_wrapper = Mock()
@@ -276,7 +276,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_list_inputs_unavailable(self, mock_get_wrapper):
         """uia_list_inputs повертає error якщо UIA недоступний."""
         mock_wrapper = Mock()
@@ -287,7 +287,7 @@ class TestLLMTools:
         assert result["ok"] is False
         assert "недоступний" in result["error"]
 
-    @patch("functions.tools_ui_accessibility.get_uia_wrapper")
+    @patch("functions.tools.tools_ui_accessibility.get_uia_wrapper")
     def test_uia_get_focused_element_unavailable(self, mock_get_wrapper):
         """uia_get_focused_element повертає error якщо UIA недоступний."""
         mock_wrapper = Mock()
@@ -302,10 +302,10 @@ class TestLLMTools:
 class TestUIAFallbackIntegration:
     """Тести для UIA fallback в tools_ui_detector."""
 
-    @patch("functions.tools_ui_detector.UIA_AVAILABLE", False)
+    @patch("functions.tools.tools_ui_detector.UIA_AVAILABLE", False)
     def test_uia_fallback_disabled(self):
         """Перевірка що fallback працює коли UIA недоступний."""
-        from functions.tools_ui_detector import find_button_by_text
+        from functions.tools.tools_ui_detector import find_button_by_text
 
         # Якщо UIA недоступний, fallback на OCR+CV
         # (тут тільки перевіряємо що функція не крашиться)

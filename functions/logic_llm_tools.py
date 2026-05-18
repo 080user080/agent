@@ -26,7 +26,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 import requests
 
 # Re-використовуємо endpoint-розвʼязання зі старого модуля.
-from .llm import get_primary_endpoint
+from .llm.endpoint_client import get_primary_endpoint
 
 # Retry логіка для HTTP помилок
 RETRYABLE_STATUSES = (408, 425, 429, 500, 502, 503, 504)

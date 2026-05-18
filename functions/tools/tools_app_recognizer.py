@@ -12,9 +12,9 @@ import win32gui
 import win32process
 import psutil
 
-from functions.tools_screen_capture import ScreenCapture
-from functions.tools_ocr import ScreenOCR
-from functions.tools_window_manager import WindowManager
+from functions.tools.tools_screen_capture import ScreenCapture
+from functions.tools.tools_ocr import ScreenOCR
+from functions.tools.tools_window_manager import WindowManager
 
 
 class AppRecognizer:

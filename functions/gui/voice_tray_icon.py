@@ -241,7 +241,7 @@ class VoiceTrayIcon(QObject):
         """Отримати tooltip для статусу."""
         # 🔥 Отримати реальну комбінацію клавіш з налаштувань
         try:
-            from functions.core_settings import get_setting
+            from functions.runtime.core_settings import get_setting
             hotkey = get_setting("GLOBAL_VOICE_HOTKEY", "ctrl+f9")
             hotkey_display = hotkey.replace("+", "+").upper()  # Форматування для відображення
         except:

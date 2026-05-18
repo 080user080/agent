@@ -5,7 +5,7 @@ import os
 # Додати шлях до agent
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from functions.core_settings import get_setting, get_settings
+from functions.runtime.core_settings import get_setting, get_settings
 
 print("=" * 60)
 print("ДІАГНОСТИКА ГЛОБАЛЬНОГО ГОЛОСОВОГО ВВЕДЕННЯ")

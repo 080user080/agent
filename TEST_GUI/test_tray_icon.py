@@ -5,7 +5,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from functions.voice_tray_icon import get_voice_tray_icon, VoiceStatus
+from functions.gui.voice_tray_icon import get_voice_tray_icon, VoiceStatus
 
 print("=" * 60)
 print("ТЕСТ VOICE TRAY ICON")

@@ -109,7 +109,7 @@ class StreamingHandler:
         print(f"[DEBUG] stream_response_with_callback called")
 
         # Отримуємо всі enabled endpoints в порядку цифрового role
-        from .core_settings import get_setting
+        from .runtime.core_settings import get_setting
         endpoints = get_setting("LLM_ENDPOINTS", [])
 
         # Сортуємо endpoints за цифровим role (1, 2, 3, ...)

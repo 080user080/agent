@@ -15,7 +15,7 @@ from functions.planning.agent_loop import (
     Observation,
     build_default_decider,
 )
-from functions.logic_agent_tools_schema import (
+from functions.planning.logic_agent_tools_schema import (
     AGENT_TOOLS,
     ALL_AGENT_TOOLS,
     BROWSER_TOOLS,

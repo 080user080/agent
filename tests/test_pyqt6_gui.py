@@ -158,7 +158,7 @@ class TestSettingsTab:
 
     def test_settings_widgets_created(self, window, qapp):
         """Віджети налаштувань створюються для всіх ключів SETTINGS_SCHEMA."""
-        from functions.core_settings import SETTINGS_SCHEMA
+        from functions.runtime.core_settings import SETTINGS_SCHEMA
 
         window.notebook.setCurrentIndex(2)
         from PyQt6.QtCore import QTimer

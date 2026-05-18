@@ -88,7 +88,7 @@ def main():
 
     # Тест STT
     try:
-        from functions.tools_mouse_keyboard import keyboard_hotkey
+        from functions.tools.tools_mouse_keyboard import keyboard_hotkey
 
         print("\n🎤 Тест STT - натискання Ctrl+F9...")
         print("⌨️ Натискання Ctrl+F9 (початок запису)...")

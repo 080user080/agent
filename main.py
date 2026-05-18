@@ -215,7 +215,7 @@ class AssistantCore:
     
     def _init_stt_engine(self):
         """Ініціалізувати STT двигун (спільний метод для initialize та initialize_without_listener)."""
-        from functions.core_settings import get_setting
+        from functions.runtime.core_settings import get_setting
         stt_enabled = get_setting("STT_ENABLED", False)
 
         if not stt_enabled:
@@ -344,7 +344,7 @@ class AssistantCore:
         # Отримати primary endpoint з налаштувань
         def get_primary_endpoint():
             try:
-                from functions.core_settings import get_setting
+                from functions.runtime.core_settings import get_setting
                 endpoints = get_setting("LLM_ENDPOINTS", [])
                 # Шукаємо endpoint з role="1" або "primary"
                 for ep in endpoints:
@@ -954,7 +954,7 @@ class AssistantCore:
 
         # --- PlanExecutor init (S2: GUI ↔ TaskRunner bridge) ---
         try:
-            from functions.plan_executor import PlanExecutor
+            from functions.planning.plan_executor import PlanExecutor
             self.plan_executor = PlanExecutor(
                 assistant=self.assistant,
                 gui_callback=lambda msg_type, data: self.log_to_gui(msg_type, data),
@@ -977,7 +977,7 @@ class AssistantCore:
             print(f"{Fore.YELLOW}⚠️  WindsurfWatcherExecutor недоступний: {e}")
 
         # --- Ініціалізація STT контролера для GUI (кнопка мікрофона) ---
-        from functions.core_settings import get_setting
+        from functions.runtime.core_settings import get_setting
         stt_enabled = get_setting("STT_ENABLED", False)
         if stt_enabled and self.gui_queue is not None:
             try:
@@ -1073,7 +1073,7 @@ class AssistantCore:
 
         # --- Ініціалізація Global Voice Input (глобальний hook для голосового вводу) ---
         try:
-            from functions.core_settings import get_setting
+            from functions.runtime.core_settings import get_setting
             global_voice_enabled = get_setting("GLOBAL_VOICE_ENABLED", False)
             if global_voice_enabled:
                 from functions.global_voice_input import GlobalVoiceInput

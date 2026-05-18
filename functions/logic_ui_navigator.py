@@ -14,18 +14,18 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 # Імпорти з попередніх фаз
-from .tools_mouse_keyboard import (
+from .tools.tools_mouse_keyboard import (
     mouse_click, mouse_move, mouse_scroll,
     keyboard_type, keyboard_press, keyboard_hotkey
 )
-from .tools_screen_capture import ScreenCapture
-from .tools_ocr import find_text_on_screen, click_text
-from .tools_ui_detector import (
+from .tools.tools_screen_capture import ScreenCapture
+from .tools.tools_ocr import find_text_on_screen, click_text
+from .tools.tools_ui_detector import (
     find_button_by_text, find_input_field,
     find_label, find_input_near_label,
     find_checkbox, is_checkbox_checked
 )
-from .tools_app_recognizer import detect_active_application, detect_application_state
+from .tools.tools_app_recognizer import detect_active_application, detect_application_state
 
 
 class UIActionType(Enum):
@@ -435,7 +435,7 @@ class UINavigator:
             {"success": bool, "values": {field: value}}
         """
         # Потребує OCR для читання значень
-        from .tools_ocr import ocr_screen
+        from .tools.tools_ocr import ocr_screen
 
         try:
             ocr_result = ocr_screen()
@@ -623,7 +623,7 @@ class UINavigator:
         try:
             # Перевіримо текст діалогу якщо потрібно
             if expected_text:
-                from .tools_ocr import find_text_on_screen
+                from .tools.tools_ocr import find_text_on_screen
                 check = find_text_on_screen(expected_text)
                 if not check["found"]:
                     return {

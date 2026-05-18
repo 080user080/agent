@@ -16,10 +16,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 class TestScreenCapture:
     """Тести для функцій скріншотів."""
 
-    @patch('functions.tools_screen_capture.mss')
+    @patch('functions.tools.tools_screen_capture.mss')
     def test_capture_screen_basic(self, mock_mss):
         """Тест базового захоплення екрану."""
-        from functions.tools_screen_capture import capture_screen
+        from functions.tools.tools_screen_capture import capture_screen
 
         # Mock mss screenshot
         mock_sct = MagicMock()
@@ -31,10 +31,10 @@ class TestScreenCapture:
         assert result is not None
         mock_sct.shot.assert_called_once()
 
-    @patch('functions.tools_screen_capture.mss')
+    @patch('functions.tools.tools_screen_capture.mss')
     def test_capture_region(self, mock_mss):
         """Тест захоплення регіону екрану."""
-        from functions.tools_screen_capture import capture_region
+        from functions.tools.tools_screen_capture import capture_region
 
         # Mock mss screenshot
         mock_sct = MagicMock()
@@ -46,27 +46,27 @@ class TestScreenCapture:
         assert result is not None
         mock_sct.shot.assert_called_once()
 
-    @patch('functions.tools_screen_capture.mss')
+    @patch('functions.tools.tools_screen_capture.mss')
     def test_capture_screen_fallback(self, mock_mss):
         """Тест fallback на PIL коли mss недоступний."""
-        from functions.tools_screen_capture import capture_screen
+        from functions.tools.tools_screen_capture import capture_screen
 
         # Mock mss недоступний
         mock_mss.mss.side_effect = ImportError()
 
-        with patch('functions.tools_screen_capture.ImageGrab'):
+        with patch('functions.tools.tools_screen_capture.ImageGrab'):
             result = capture_screen()
             # Повинно використати fallback або повернути None
 
     def test_save_screenshot(self):
         """Тест збереження скріншоту."""
-        from functions.tools_screen_capture import save_screenshot
+        from functions.tools.tools_screen_capture import save_screenshot
         from PIL import Image
 
         # Створити фейкове зображення
         fake_image = Image.new('RGB', (100, 100), color='red')
 
-        with patch('functions.tools_screen_capture.Path') as mock_path:
+        with patch('functions.tools.tools_screen_capture.Path') as mock_path:
             mock_path.return_value.exists.return_value = False
             mock_file = MagicMock()
             mock_path.return_value.__truediv__.return_value = mock_file
@@ -78,10 +78,10 @@ class TestScreenCapture:
 class TestScreenCaptureIntegration:
     """Інтеграційні тести для скріншотів."""
 
-    @patch('functions.tools_screen_capture.capture_screen')
+    @patch('functions.tools.tools_screen_capture.capture_screen')
     def test_screenshot_workflow(self, mock_capture):
         """Тест повного workflow скріншоту."""
-        from functions.tools_screen_capture import capture_screen, save_screenshot
+        from functions.tools.tools_screen_capture import capture_screen, save_screenshot
 
         # Mock capture
         from PIL import Image
@@ -93,7 +93,7 @@ class TestScreenCaptureIntegration:
         assert screenshot is not None
 
         # Зберегти
-        with patch('functions.tools_screen_capture.Path'):
+        with patch('functions.tools.tools_screen_capture.Path'):
             save_screenshot(screenshot, "workflow_test.png")
 
 

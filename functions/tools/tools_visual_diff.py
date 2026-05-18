@@ -14,7 +14,7 @@ import time
 import os
 from pathlib import Path
 
-from functions.tools_screen_capture import ScreenCapture
+from functions.tools.tools_screen_capture import ScreenCapture
 
 
 class VisualDiff:

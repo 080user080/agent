@@ -9,7 +9,7 @@ handler-ів `TaskRunner` (`run_command` / `write_file`). Без LLM-викли�
 
     1) mkdir_output_dir      — `run_command: mkdir -p {output_dir}`
     2) per deliverable       — `write_file {output_dir}/{filename}` з
-                                placeholder-контентом (docstring + TODO).
+                                 placeholder-контентом (docstring + TODO).
     3) pytest (опційно)      — `run_command: pytest {output_dir}`
                                 якщо `_wants_tests(spec)` повертає True.
     4) ruff check (опційно)  — `run_command: ruff check {output_dir}`

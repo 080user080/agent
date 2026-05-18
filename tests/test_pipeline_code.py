@@ -13,7 +13,7 @@ from functions.planning.core_plan_compiler import (  # noqa: E402
     compile_plan_from_spec,
     make_default_registry,
 )
-from functions.core_task_intake import (  # noqa: E402
+from functions.planning.core_task_intake import (  # noqa: E402
     DOMAIN_CODE,
     DOMAIN_MIXED,
     BudgetHints,
@@ -24,7 +24,7 @@ from functions.planning.logic_expectations import (  # noqa: E402
     EXPECT_RETURN_CODE,
 )
 from functions.planning.logic_task_runner import ON_ERROR_SKIP, ON_ERROR_STOP, Plan  # noqa: E402
-from functions.pipeline_code import (  # noqa: E402
+from functions.planning.pipeline_code import (  # noqa: E402
     DEFAULT_OUTPUT_DIR_PREFIX,
     CodePipeline,
     _derive_filename,
@@ -425,7 +425,7 @@ class TestDefaultRegistryIntegration:
 
     def test_default_registry_lists_code_pipeline_instance(self):
         reg = make_default_registry()
-        from functions.pipeline_code import CodePipeline
+        from functions.planning.pipeline_code import CodePipeline
 
         assert isinstance(reg.get(DOMAIN_CODE), CodePipeline)
 

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from functions.tools_comfyui import (
+from functions.tools.tools_comfyui import (
     REQUESTS_AVAILABLE,
     ComfyUIClient,
     create_comfyui_client,
@@ -35,7 +35,7 @@ class TestComfyUIClient:
         client = ComfyUIClient("http://192.168.1.100:8188")
         assert client.base_url == "http://192.168.1.100:8188"
 
-    @patch("functions.tools_comfyui.REQUESTS_AVAILABLE", False)
+    @patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", False)
     def test_check_connection_without_requests(self):
         """Перевірка з'єднання без requests."""
         client = ComfyUIClient()
@@ -43,7 +43,7 @@ class TestComfyUIClient:
         assert result["success"] is False
         assert "requests" in result["error"].lower()
 
-    @patch("functions.tools_comfyui.REQUESTS_AVAILABLE", False)
+    @patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", False)
     def test_get_queue_info_without_requests(self):
         """Отримання інформації про чергу без requests."""
         client = ComfyUIClient()
@@ -51,7 +51,7 @@ class TestComfyUIClient:
         assert result["success"] is False
         assert "requests" in result["error"].lower()
 
-    @patch("functions.tools_comfyui.REQUESTS_AVAILABLE", False)
+    @patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", False)
     def test_get_history_without_requests(self):
         """Отримання історії без requests."""
         client = ComfyUIClient()
@@ -59,7 +59,7 @@ class TestComfyUIClient:
         assert result["success"] is False
         assert "requests" in result["error"].lower()
 
-    @patch("functions.tools_comfyui.REQUESTS_AVAILABLE", False)
+    @patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", False)
     def test_upload_image_without_requests(self):
         """Завантаження зображення без requests."""
         client = ComfyUIClient()
@@ -67,16 +67,16 @@ class TestComfyUIClient:
         assert result["success"] is False
         assert "requests" in result["error"].lower()
 
-    @patch("functions.tools_comfyui.REQUESTS_AVAILABLE", False)
+    @patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", False)
     def test_upload_image_nonexistent_file(self):
         """Завантаження неіснуючого файлу."""
-        with patch("functions.tools_comfyui.REQUESTS_AVAILABLE", True):
+        with patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", True):
             client = ComfyUIClient()
             result = client.upload_image("nonexistent.png")
             assert result["success"] is False
             assert "не знайдено" in result["error"].lower()
 
-    @patch("functions.tools_comfyui.REQUESTS_AVAILABLE", False)
+    @patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", False)
     def test_get_view_metadata_without_requests(self):
         """Отримання метаданих без requests."""
         client = ComfyUIClient()
@@ -84,7 +84,7 @@ class TestComfyUIClient:
         assert result["success"] is False
         assert "requests" in result["error"].lower()
 
-    @patch("functions.tools_comfyui.REQUESTS_AVAILABLE", False)
+    @patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", False)
     def test_execute_workflow_without_requests(self):
         """Виконання workflow без requests."""
         client = ComfyUIClient()
@@ -92,7 +92,7 @@ class TestComfyUIClient:
         assert result["success"] is False
         assert "requests" in result["error"].lower()
 
-    @patch("functions.tools_comfyui.REQUESTS_AVAILABLE", False)
+    @patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", False)
     def test_generate_text_to_image_without_requests(self):
         """Генерація зображень з тексту без requests."""
         client = ComfyUIClient()
@@ -100,7 +100,7 @@ class TestComfyUIClient:
         assert result["success"] is False
         assert "requests" in result["error"].lower()
 
-    @patch("functions.tools_comfyui.REQUESTS_AVAILABLE", False)
+    @patch("functions.tools.tools_comfyui.REQUESTS_AVAILABLE", False)
     def test_interrupt_without_requests(self):
         """Переривання без requests."""
         client = ComfyUIClient()

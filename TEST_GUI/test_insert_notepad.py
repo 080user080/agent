@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import time
 import subprocess
-from functions.tools_mouse_keyboard import insert_text_smart
+from functions.tools.tools_mouse_keyboard import insert_text_smart
 
 def test_notepad():
     """Тест вставки тексту в Блокнот."""

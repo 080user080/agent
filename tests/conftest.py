@@ -3,16 +3,19 @@
 
 Мокає Windows/GUI-специфічні залежності, щоб модулі functions/tools_* можна
 було імпортувати на Linux-CI (де pyautogui→mouseinfo→tkinter недоступні,
-а win32* взагалі відсутні). Самі тести усередині використовують @patch,
+a win32* взагалі відсутні). Самі тести усередині використовують @patch,
 тож функціональна логіка перевіряється незалежно від платформи.
 
 ВАЖЛИВО: conftest.py виконується ПЕРЕД збором/імпортом тестів.
 """
 from __future__ import annotations
-
+import os
 import sys
 import types
 from unittest.mock import MagicMock
+
+# Додаємо functions у шлях для імпорту під час колекції тестів
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 class _AutoMockModule(types.ModuleType):

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from functions import tools_browser_cdp as cdp
+from functions.tools import tools_browser_cdp as cdp
 
 
 # ─── Mocks helpers ────────────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ class TestRegistration:
         assert "cdp_fill" in TOOL_POLICIES
 
     def test_browser_aliases_resolve(self):
-        from functions.logic_agent_tools_schema import TOOL_NAME_ALIASES
+        from functions.planning.logic_agent_tools_schema import TOOL_NAME_ALIASES
         assert TOOL_NAME_ALIASES["browser_click_text"] == "cdp_click_text"
         assert TOOL_NAME_ALIASES["browser_fill"] == "cdp_fill"
         assert TOOL_NAME_ALIASES["browser_wait_for"] == "cdp_wait_for_text"

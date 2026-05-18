@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from functions import tools_windsurf as tw
+from functions.tools import tools_windsurf as tw
 
 
 # ---------------------------------------------------------------------------

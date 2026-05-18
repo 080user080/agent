@@ -67,7 +67,7 @@ class STTListener:
         try:
             # Перевіряємо актуальне user-налаштування (не тільки config.py константу)
             try:
-                from .core_settings import get_setting
+                from .runtime.core_settings import get_setting
                 stt_on = get_setting("STT_ENABLED", STT_ENABLED)
             except Exception:
                 stt_on = STT_ENABLED
@@ -196,7 +196,7 @@ class STTListener:
             print(f"[STT DEBUG] stt_engine ініціалізовано успішно")
 
         try:
-            from .core_settings import get_setting
+            from .runtime.core_settings import get_setting
             min_silence = get_setting("MIN_SILENCE_DURATION", MIN_SILENCE_DURATION)
             max_silence = get_setting("MAX_SILENCE_DURATION", MAX_SILENCE_DURATION)
             stt_logging = get_setting("STT_LOGGING_ENABLED", STT_LOGGING_ENABLED)
@@ -591,7 +591,7 @@ class STTGuiController:
         # 🔥 Оновити іконку в трей якщо callback встановлено
         if self.tray_status_callback:
             try:
-                from .voice_tray_icon import VoiceStatus
+                from .gui.voice_tray_icon import VoiceStatus
                 if status == "listening":
                     self.tray_status_callback(VoiceStatus.RECORDING, "Слухаю...")
                 elif status == "processing":

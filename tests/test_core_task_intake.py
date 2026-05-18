@@ -1,16 +1,12 @@
-"""Тести для functions/core_task_intake.py — Phase 13.1."""
+"""Тести для functions/planning/core_task_intake.py — Phase 13.1."""
 from __future__ import annotations
 
 import json
-import os
-import sys
 from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-from functions.core_task_intake import (  # noqa: E402
+from functions.planning.core_task_intake import (
     ALLOWED_DOMAINS,
     DOMAIN_CODE,
     DOMAIN_MIXED,
@@ -28,17 +24,12 @@ from functions.core_task_intake import (  # noqa: E402
     parse_intake_response,
     save_task_spec,
 )
-from functions.logic_ai_adapter import (  # noqa: E402
+from functions.logic_ai_adapter import (
     CallableProvider,
     ChatRequest,
     ChatResponse,
 )
-from functions.logic_provider_registry import ProviderRegistry  # noqa: E402
-
-
-# ---------------------------------------------------------------------------
-# BudgetHints
-# ---------------------------------------------------------------------------
+from functions.logic_provider_registry import ProviderRegistry
 
 
 class TestBudgetHints:
@@ -59,11 +50,6 @@ class TestBudgetHints:
         assert b.max_hours == 3.0
         assert b.max_cost_usd == 5.0
         assert b.max_ai_calls == 100
-
-
-# ---------------------------------------------------------------------------
-# TaskSpec
-# ---------------------------------------------------------------------------
 
 
 class TestTaskSpec:
@@ -128,11 +114,6 @@ class TestTaskSpec:
     def test_from_dict_missing_goal_raises(self):
         with pytest.raises(ValueError):
             TaskSpec.from_dict({"goal": ""})
-
-
-# ---------------------------------------------------------------------------
-# parse_intake_response
-# ---------------------------------------------------------------------------
 
 
 def _make_llm_json(**fields):
@@ -253,13 +234,7 @@ class TestParseIntakeResponse:
             parse_intake_response("[1,2,3]", raw_tz="x")
 
 
-# ---------------------------------------------------------------------------
-# create_task_spec_from_tz (with mock ProviderRegistry)
-# ---------------------------------------------------------------------------
-
-
 def _registry_with_scripted_responses(responses):
-    """Реєстр з одним CallableProvider, який повертає відповіді по черзі."""
     responses = list(responses)
     calls = []
 
@@ -333,7 +308,6 @@ class TestCreateTaskSpec:
         assert spec.clarifications[0].answer == "Django"
 
     def test_clarification_without_ask_user_breaks_loop(self):
-        """Якщо є clarifications але нема ask_user — беремо spec як є."""
         with_q = json.dumps(
             {
                 "goal": "tentative",
@@ -347,7 +321,6 @@ class TestCreateTaskSpec:
         assert len(calls) == 1
 
     def test_max_rounds_exhausted_raises(self):
-        """Якщо LLM нескінченно просить уточнення і в кожному раунді spec=None."""
         always_invalid = json.dumps(
             {
                 "goal": "",
@@ -385,7 +358,6 @@ class TestCreateTaskSpec:
         assert payload["task_id"] == spec.task_id
 
     def test_permission_auto_all_detected(self):
-        """Якщо LLM повернув auto_all — воно зберігається."""
         reg, _ = _registry_with_scripted_responses(
             [
                 json.dumps(
@@ -395,11 +367,6 @@ class TestCreateTaskSpec:
         )
         spec = create_task_spec_from_tz("TZ", registry=reg)
         assert spec.permission_mode == PERMISSION_AUTO_ALL
-
-
-# ---------------------------------------------------------------------------
-# save_task_spec / load_task_spec
-# ---------------------------------------------------------------------------
 
 
 class TestPersistence:
@@ -424,3 +391,5 @@ class TestPersistence:
         deep = tmp_path / "a" / "b" / "c" / "spec.json"
         save_task_spec(spec, deep)
         assert deep.exists()
+
+

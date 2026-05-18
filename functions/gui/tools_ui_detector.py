@@ -12,12 +12,12 @@ from typing import Dict, Any, List, Optional, Tuple
 from PIL import Image
 import colorsys
 
-from functions.tools_screen_capture import ScreenCapture
-from functions.tools_ocr import ScreenOCR
+from functions.tools.tools_screen_capture import ScreenCapture
+from functions.tools.tools_ocr import ScreenOCR
 
 # UIA fallback support
 try:
-    from functions.tools_ui_accessibility import get_uia_wrapper
+    from functions.tools.tools_ui_accessibility import get_uia_wrapper
     UIA_AVAILABLE = True
 except ImportError:
     UIA_AVAILABLE = False

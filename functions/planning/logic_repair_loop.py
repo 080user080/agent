@@ -18,12 +18,12 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from .logic_execution_report import ExecutionReport, StepReport
-from .planning.logic_expectations import ExpectationResult, failures, all_ok
-from .logic_llm_tools import ask_llm_with_tools
+from functions.logic_execution_report import ExecutionReport, StepReport
+from functions.planning.logic_expectations import ExpectationResult, failures, all_ok
+from functions.logic_llm_tools import ask_llm_with_tools
 
 if TYPE_CHECKING:
-    from .planning.logic_task_runner import Task
+    from functions.planning.logic_task_runner import Task
 
 logger = logging.getLogger("repair_loop")
 

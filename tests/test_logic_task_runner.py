@@ -1,4 +1,4 @@
-"""Tests for functions.logic_task_runner (Phase 11.1)."""
+"""Tests for functions.planning.logic_task_runner (Phase 11.1)."""
 from __future__ import annotations
 
 import json
@@ -193,7 +193,7 @@ class TestBuiltinSimpleHandlers:
     def test_skeleton_pipeline_plan_runnable(self):
         """Kомплексний тест S6→S7: SkeletonPipeline Plan виконується на TaskRunner."""
         from functions.planning.core_plan_compiler import SkeletonPipeline
-        from functions.core_task_intake import DOMAIN_MIXED, TaskSpec
+        from functions.planning.core_task_intake import DOMAIN_MIXED, TaskSpec
 
         spec = TaskSpec(goal="demo", domain=DOMAIN_MIXED)
         plan = SkeletonPipeline().compile(spec)

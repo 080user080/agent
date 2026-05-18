@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 import pytest
 
 from functions import core_windsurf_watcher as cww
-from functions import tools_windsurf as tw
+from functions.tools import tools_windsurf as tw
 
 
 # ---------------------------------------------------------------------------

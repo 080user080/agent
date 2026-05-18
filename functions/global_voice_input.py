@@ -19,7 +19,7 @@ import sounddevice as sd
 
 from .core_stt_listener import STTListener
 from .config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, SILENCE_DURATION, MICROPHONE_DEVICE_ID
-from .voice_tray_icon import get_voice_tray_icon, VoiceStatus
+from .gui.voice_tray_icon import get_voice_tray_icon, VoiceStatus
 
 
 # Windows API для hooks
@@ -816,7 +816,7 @@ class GlobalVoiceInput:
         """Універсальна вставка: копіювати в буфер, натиснути Shift+F10, чекати 2 сек, очистити буфер."""
         try:
             # 1. Копіювати текст в буфер обміну
-            from functions.tools_mouse_keyboard import clipboard_copy_text
+            from functions.tools.tools_mouse_keyboard import clipboard_copy_text
             copy_result = clipboard_copy_text(text)
             print(f"[GVI] Текст скопійовано в буфер: {copy_result}")
             
@@ -906,7 +906,7 @@ class GlobalVoiceInput:
             except Exception as e:
                 print(f"[GVI] Nie atrymалася прачытаць clipboard: {e}")
 
-            from functions.tools_mouse_keyboard import clipboard_copy_text, keyboard_hotkey
+            from functions.tools.tools_mouse_keyboard import clipboard_copy_text, keyboard_hotkey
 
             copy_result = clipboard_copy_text(text)
             print(f"[GVI] clipboard_copy_text result: {copy_result}")
@@ -937,7 +937,7 @@ class GlobalVoiceInput:
 
             # 7. Fallback на keyboard_type
             if not paste_ok:
-                from functions.tools_mouse_keyboard import keyboard_type
+                from functions.tools.tools_mouse_keyboard import keyboard_type
                 type_result = keyboard_type(text=text)
                 print(f"[GVI] keyboard_type fallback result: {type_result}")
                 paste_ok = bool(type_result and type_result.get("success"))

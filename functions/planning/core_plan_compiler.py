@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
 
-from functions.core_task_intake import (
+from functions.planning.core_task_intake import (
     ALLOWED_DOMAINS,
     DOMAIN_CODE,
     DOMAIN_MIXED,
@@ -177,7 +177,7 @@ def make_default_registry() -> PipelineRegistry:
       API (`DOMAIN_PHOTO_BATCH` → `PhotoBatchPipeline` тощо).
     """
     # Локальний імпорт щоб уникнути циклу `pipeline_code → ... → core_plan_compiler`.
-    from functions.pipeline_code import CodePipeline
+    from functions.planning.pipeline_code import CodePipeline
 
     registry = PipelineRegistry()
     skeleton = SkeletonPipeline(name="skeleton")

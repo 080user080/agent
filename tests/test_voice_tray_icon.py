@@ -3,7 +3,7 @@ import time
 import threading
 import pytest
 
-from functions.voice_tray_icon import (
+from functions.gui.voice_tray_icon import (
     VoiceTrayIcon,
     VoiceStatus,
     get_voice_tray_icon,

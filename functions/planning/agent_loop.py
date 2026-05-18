@@ -2081,7 +2081,7 @@ def build_default_decider(
     """
     try:
         from functions.logic_llm_tools import ask_llm_with_tools
-        from functions.logic_agent_tools_schema import (
+        from functions.planning.logic_agent_tools_schema import (
             get_tools_for_capabilities,
             TOOL_NAME_ALIASES,
         )

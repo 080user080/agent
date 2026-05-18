@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from functions.tools_ffmpeg import (
+from functions.tools.tools_ffmpeg import (
     check_ffmpeg_available,
     combine_videos,
     convert_video,

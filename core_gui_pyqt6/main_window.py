@@ -59,7 +59,7 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
         # Відновити геометрію вікна до show() як в Tkinter
         geom_restored = False
         try:
-            from functions.core_settings import get_setting
+            from functions.runtime.core_settings import get_setting
             saved_geom = get_setting("WINDOW_GEOMETRY", None)
             if saved_geom:
                 # Формат: WxH+X+Y або WxH
@@ -94,7 +94,7 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
     def closeEvent(self, event) -> None:
         """Зберегти геометрію вікна при закритті."""
         try:
-            from functions.core_settings import get_settings
+            from functions.runtime.core_settings import get_settings
             geom = self.geometry()
             w, h = geom.width(), geom.height()
             x, y = geom.x(), geom.y()

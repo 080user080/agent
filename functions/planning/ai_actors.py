@@ -81,7 +81,7 @@ class AIActor:
         try:
             import requests
             import time
-            from .config import get_endpoint_by_role
+            from ..config import get_endpoint_by_role
             
             # Отримуємо primary endpoint (для Gemini/DeepSeek)
             endpoint = get_endpoint_by_role("primary")
@@ -283,7 +283,7 @@ class AIActor:
         try:
             import requests
             import time
-            from .config import get_endpoint_by_role
+            from ..config import get_endpoint_by_role
             
             # Отримуємо primary endpoint (для Gemini/DeepSeek)
             endpoint = get_endpoint_by_role("primary")

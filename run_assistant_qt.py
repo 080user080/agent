@@ -13,14 +13,14 @@ import time
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Завантажити user-налаштування ДО імпортів, що читають config.py
-from functions.core_settings import get_settings  # noqa: E402
+from functions.runtime.core_settings import get_settings  # noqa: E402
 get_settings()
 
 from PyQt6.QtWidgets import QApplication  # noqa: E402
 
 from core_gui_pyqt6 import MainWindowPyQt6  # noqa: E402
 from main import AssistantCore  # noqa: E402
-from functions.aaa_confirmation import set_gui_instance  # noqa: E402
+from functions.tools.aaa_confirmation import set_gui_instance  # noqa: E402
 
 
 def log_console(message: str) -> None:

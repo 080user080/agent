@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from functions.plan_executor import PlanExecutor, PlanExecutionConfig, PlanExecutionState
+from functions.planning.plan_executor import PlanExecutor, PlanExecutionConfig, PlanExecutionState
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from functions.tools_word import (
+from functions.tools.tools_word import (
     WORD_AVAILABLE,
     create_word_document,
     format_paragraph,
@@ -47,7 +47,7 @@ class TestOpenWordDocument:
         assert result["success"] is False
         assert "не знайдено" in result["error"].lower()
 
-    @patch("functions.tools_word.WORD_AVAILABLE", False)
+    @patch("functions.tools.tools_word.WORD_AVAILABLE", False)
     def test_open_without_win32com(self):
         """Відкриття без win32com."""
         result = open_word_document("test.docx")
@@ -58,7 +58,7 @@ class TestOpenWordDocument:
 class TestReadWordDocument:
     """Тести читання Word документів."""
 
-    @patch("functions.tools_word.WORD_AVAILABLE", False)
+    @patch("functions.tools.tools_word.WORD_AVAILABLE", False)
     def test_read_without_win32com(self):
         """Читання без win32com."""
         result = read_word_document("test.docx")
@@ -69,7 +69,7 @@ class TestReadWordDocument:
 class TestCreateWordDocument:
     """Тести створення Word документів."""
 
-    @patch("functions.tools_word.WORD_AVAILABLE", False)
+    @patch("functions.tools.tools_word.WORD_AVAILABLE", False)
     def test_create_without_win32com(self):
         """Створення без win32com."""
         result = create_word_document("test.docx")

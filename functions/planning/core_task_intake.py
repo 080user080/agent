@@ -25,9 +25,9 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable, List, Optional
 
-from .logic_ai_adapter import ChatMessage, ChatRequest, ROLE_SYSTEM, ROLE_USER
-from .llm import clean_llm_tokens, safe_json_loads
-from .logic_provider_registry import ProviderRegistry, SelectionCriteria
+from ..logic_ai_adapter import ChatMessage, ChatRequest, ROLE_SYSTEM, ROLE_USER
+from ..llm.response_parser import clean_llm_tokens, safe_json_loads
+from ..logic_provider_registry import ProviderRegistry, SelectionCriteria
 
 
 # ---------------------------------------------------------------------------

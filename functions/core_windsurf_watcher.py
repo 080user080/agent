@@ -29,7 +29,7 @@ from typing import Any, Callable, Dict, List, Optional
 from .conditions_windows import condition_chat_idle
 from .runtime.core_session_budget import SessionBudget, SessionLimits
 from .logic_watcher import ActionFn, ConditionFn, Watcher, WatcherConfig
-from .tools_windsurf import (
+from .tools.tools_windsurf import (
     SnapshotFn,
     WindowFinder,
     WindsurfState,
@@ -154,7 +154,7 @@ def _make_response_action(
             if lines_count >= auto_scroll_lines:
                 try:
                     # Скролимо вниз
-                    from .tools_mouse_keyboard import mouse_scroll
+                    from .tools.tools_mouse_keyboard import mouse_scroll
                     mouse_scroll(amount=3, direction="down")
                     # Затримка для скролінгу
                     import time
@@ -175,7 +175,7 @@ def _make_response_action(
         
         if notify:
             try:
-                from .tools_notification import notify_user
+                from .tools.tools_notification import notify_user
                 notify_user(
                     title="Windsurf Watcher",
                     message="Отримано нову відповідь від ШІ.",

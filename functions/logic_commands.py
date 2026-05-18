@@ -51,7 +51,7 @@ class VoiceAssistant:
             self.cache_manager = cache_module.CacheManager(registry)
             # Статус кешу читається з налаштувань при кожному запиті
             try:
-                from .core_settings import get_setting
+                from .runtime.core_settings import get_setting
                 cache_on = bool(get_setting("CACHE_ENABLED", False))
             except Exception:
                 cache_on = False
@@ -116,7 +116,7 @@ class VoiceAssistant:
         if not self.cache_manager:
             return False
         try:
-            from .core_settings import get_setting
+            from .runtime.core_settings import get_setting
             return bool(get_setting("CACHE_ENABLED", False))
         except Exception:
             return False

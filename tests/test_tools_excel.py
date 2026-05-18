@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from functions.tools_excel import (
+from functions.tools.tools_excel import (
     EXCEL_AVAILABLE,
     add_worksheet,
     create_excel_workbook,
@@ -49,7 +49,7 @@ class TestOpenExcelWorkbook:
         assert result["success"] is False
         assert "не знайдено" in result["error"].lower()
 
-    @patch("functions.tools_excel.EXCEL_AVAILABLE", False)
+    @patch("functions.tools.tools_excel.EXCEL_AVAILABLE", False)
     def test_open_without_win32com(self):
         """Відкриття без win32com."""
         result = open_excel_workbook("test.xlsx")
@@ -60,7 +60,7 @@ class TestOpenExcelWorkbook:
 class TestCreateExcelWorkbook:
     """Тести створення Excel робочих книг."""
 
-    @patch("functions.tools_excel.EXCEL_AVAILABLE", False)
+    @patch("functions.tools.tools_excel.EXCEL_AVAILABLE", False)
     def test_create_without_win32com(self):
         """Створення без win32com."""
         result = create_excel_workbook()
