@@ -3,7 +3,7 @@
 import os
 import subprocess
 from colorama import Fore
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result
 
 def llm_function(name, description, parameters):
     """Декоратор для реєстрації функцій в LLM"""
@@ -26,7 +26,7 @@ def llm_function(name, description, parameters):
 def open_program(program_name, file_path=None):
     """Відкрити програму через SafetySandbox (з можливістю передати файл)"""
     try:
-        from .core_safety_sandbox import get_sandbox
+        from ..core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
 
         # Отримуємо шлях до програми з whitelist
@@ -110,7 +110,7 @@ def open_program(program_name, file_path=None):
 def close_program(process_name):
     """Закрити програму через SafetySandbox"""
     try:
-        from .core_safety_sandbox import get_sandbox
+        from ..core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         success, message = sandbox.close_safe_program(process_name)
         return make_tool_result(
@@ -135,7 +135,7 @@ def close_program(process_name):
 def add_allowed_program(program_name, program_path):
     """Додати програму в whitelist"""
     try:
-        from .core_safety_sandbox import get_sandbox
+        from ..core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         success = sandbox.add_allowed_program(program_name, program_path)
         if success:
@@ -153,7 +153,7 @@ def add_allowed_program(program_name, program_path):
 def show_sandbox_status():
     """Показати статус sandbox"""
     try:
-        from .core_safety_sandbox import get_sandbox
+        from ..core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         sandbox.print_status()
         return make_tool_result(True, "Статус виведено в консоль.")
@@ -167,7 +167,7 @@ def show_sandbox_status():
 )
 def enable_auto_confirm():
     try:
-        from .core_safety_sandbox import get_sandbox
+        from ..core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         sandbox.enable_auto_confirm()
         return make_tool_result(True, "✅ Автопідтвердження увімкнено для безпечних програм.")
@@ -181,7 +181,7 @@ def enable_auto_confirm():
 )
 def disable_auto_confirm():
     try:
-        from .core_safety_sandbox import get_sandbox
+        from ..core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         sandbox.disable_auto_confirm()
         return make_tool_result(True, "✅ Автопідтвердження вимкнено. Підтвердження потрібне для всіх дій.")

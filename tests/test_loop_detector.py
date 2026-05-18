@@ -208,7 +208,7 @@ class TestStuckWarningMessage:
 
 class TestLoopDetectorWithAgentLoop:
     def test_agent_loop_has_loop_detector(self):
-        from functions.agent_loop import AgentLoop, AgentLoopConfig
+        from functions.planning.agent_loop import AgentLoop, AgentLoopConfig
         assistant = type("FakeAssistant", (), {"planner": None})()
         registry = type("FakeRegistry", (), {
             "execute_function": staticmethod(lambda *a, **kw: {"ok": True, "result": "done"})
@@ -218,7 +218,7 @@ class TestLoopDetectorWithAgentLoop:
         assert loop.loop_detector.max_repeats == 3
 
     def test_loop_detector_reset_on_run(self):
-        from functions.agent_loop import AgentLoop, AgentLoopConfig
+        from functions.planning.agent_loop import AgentLoop, AgentLoopConfig
         assistant = type("FakeAssistant", (), {"planner": None})()
         registry = type("FakeRegistry", (), {
             "execute_function": staticmethod(lambda *a, **kw: {"ok": True, "result": "done"})
@@ -234,7 +234,7 @@ class TestLoopDetectorWithAgentLoop:
         assert loop.loop_detector.total_loops_detected == 0
 
     def test_decider_accepts_stuck_warning(self):
-        from functions.agent_loop import ActionDecider
+        from functions.planning.agent_loop import ActionDecider
         decider = ActionDecider()
         messages = decider.build_messages(
             goal="test",

@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from functions.core_planner_critic import (
+from functions.planning.core_planner_critic import (
     LegacyCritiqueResult,
     legacy_plan_to_plan,
     legacy_step_to_task,

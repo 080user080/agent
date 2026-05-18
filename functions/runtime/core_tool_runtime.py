@@ -524,6 +524,38 @@ def make_tool_result(
     }
 
 
+def validate_path_inside_work_dir(filepath: str) -> Optional[str]:
+    """Перевірити, чи шлях знаходиться всередині AGENT_WORK_DIR.
+
+    Якщо AGENT_WORK_DIR не задано (порожньо) — обмеження знято.
+    Повертає рядок помилки або None, якщо все добре.
+    """
+    from functions.runtime.core_settings import get_setting
+
+    work_dir = get_setting("AGENT_WORK_DIR", "")
+    if not work_dir:
+        return None  # обмеження не встановлено
+
+    work_dir = os.path.abspath(work_dir)
+    if not os.path.exists(work_dir):
+        # Якщо папка не існує — спробуємо створити
+        try:
+            os.makedirs(work_dir, exist_ok=True)
+        except Exception:
+            return f"❌ AGENT_WORK_DIR '{work_dir}' не існує і не може бути створена"
+
+    target = os.path.abspath(filepath)
+
+    # Перевіряємо через commonprefix чи target починається з work_dir
+    if not target.startswith(work_dir):
+        return (
+            f"❌ Заборонено: шлях '{filepath}' знаходиться за межами "
+            f"робочої директорії '{work_dir}'. "
+            f"Всі файлові операції дозволені тільки всередині {work_dir}."
+        )
+    return None
+
+
 def normalize_tool_result(raw_result: Any) -> Dict[str, Any]:
     """Звести довільний результат до єдиного формату."""
     if isinstance(raw_result, dict) and "ok" in raw_result and "message" in raw_result:

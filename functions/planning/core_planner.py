@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple, Set
 
 from colorama import Fore
+from ..runtime.core_tool_runtime import check_dangerous_content, check_ambiguous_content
 
 
 class Planner:
@@ -383,8 +384,6 @@ JSON:"""
 
     def validate_plan_safety(self, plan: List[Dict[str, Any]], task: str) -> Tuple[bool, str]:
         """Перевірити план на безпеку з використанням централізованих політик."""
-        from .core_tool_runtime import check_dangerous_content, check_ambiguous_content
-
         if not plan:
             return False, "План порожній або не згенерувався."
 

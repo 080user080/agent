@@ -29,13 +29,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set
 
-from functions.core_planner_critic import (
+from functions.planning.core_planner_critic import (
     LegacyCritiqueResult,
     legacy_plan_to_plan,
     review_and_replan_legacy,
 )
 from functions.logic_plan_critic import CritiqueResult, PlanCritic
-from functions.logic_task_runner import (
+from functions.planning.logic_task_runner import (
     HandlerFn,
     Plan,
     RunResult,

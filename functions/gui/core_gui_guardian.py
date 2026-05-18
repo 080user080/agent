@@ -342,7 +342,7 @@ class GUIGuardian:
         issues = []
         if action == "click_element":
             # Перевіримо чи елемент існує
-            from .logic_context_analyzer import analyze_current_context
+            from ..logic_context_analyzer import analyze_current_context
             context = analyze_current_context()
             if not context.get("success"):
                 would_succeed = False

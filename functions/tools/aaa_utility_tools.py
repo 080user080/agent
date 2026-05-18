@@ -2,7 +2,7 @@
 import os
 import re
 
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result
 
 DESKTOP_PATH = os.path.join(os.path.expanduser("~"), "Desktop")
 

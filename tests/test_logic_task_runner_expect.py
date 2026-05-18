@@ -6,9 +6,9 @@ from functions.logic_execution_report import (
     STATUS_OK,
     STATUS_PRECHECK_FAILED,
 )
-from functions.logic_expectations import ExpectSpec
+from functions.planning.logic_expectations import ExpectSpec
 from functions.logic_permission_gate import Decision, PermissionGate
-from functions.logic_task_runner import Plan, Task, TaskRunner
+from functions.planning.logic_task_runner import Plan, Task, TaskRunner
 
 
 def _runner(**kw) -> TaskRunner:

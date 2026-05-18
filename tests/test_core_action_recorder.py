@@ -19,7 +19,7 @@ class TestActionRecorder:
 
     def test_init(self):
         """Тест ініціалізації ActionRecorder."""
-        from functions.core_action_recorder import ActionRecorder
+        from functions.runtime.core_action_recorder import ActionRecorder
 
         recorder = ActionRecorder()
         assert recorder is not None
@@ -27,7 +27,7 @@ class TestActionRecorder:
 
     def test_record_action(self):
         """Тест запису дії."""
-        from functions.core_action_recorder import ActionRecorder
+        from functions.runtime.core_action_recorder import ActionRecorder
 
         recorder = ActionRecorder()
         recorder.record_action("mouse_click", {"x": 100, "y": 200})
@@ -38,7 +38,7 @@ class TestActionRecorder:
 
     def test_record_multiple_actions(self):
         """Тест запису кількох дій."""
-        from functions.core_action_recorder import ActionRecorder
+        from functions.runtime.core_action_recorder import ActionRecorder
 
         recorder = ActionRecorder()
         recorder.record_action("mouse_click", {"x": 100, "y": 200})
@@ -49,7 +49,7 @@ class TestActionRecorder:
 
     def test_clear(self):
         """Тест очищення записів."""
-        from functions.core_action_recorder import ActionRecorder
+        from functions.runtime.core_action_recorder import ActionRecorder
 
         recorder = ActionRecorder()
         recorder.record_action("mouse_click", {"x": 100, "y": 200})
@@ -59,7 +59,7 @@ class TestActionRecorder:
 
     def test_get_actions(self):
         """Тест отримання списку дій."""
-        from functions.core_action_recorder import ActionRecorder
+        from functions.runtime.core_action_recorder import ActionRecorder
 
         recorder = ActionRecorder()
         recorder.record_action("mouse_click", {"x": 100, "y": 200})
@@ -70,12 +70,12 @@ class TestActionRecorder:
 
     def test_save_to_file(self):
         """Тест збереження у файл."""
-        from functions.core_action_recorder import ActionRecorder
+        from functions.runtime.core_action_recorder import ActionRecorder
 
         recorder = ActionRecorder()
         recorder.record_action("mouse_click", {"x": 100, "y": 200})
 
-        with patch('functions.core_action_recorder.Path') as mock_path:
+        with patch('functions.runtime.core_action_recorder.Path') as mock_path:
             mock_file = MagicMock()
             mock_path.return_value.__truediv__.return_value = mock_file
 
@@ -84,11 +84,11 @@ class TestActionRecorder:
 
     def test_load_from_file(self):
         """Тест завантаження з файлу."""
-        from functions.core_action_recorder import ActionRecorder
+        from functions.runtime.core_action_recorder import ActionRecorder
 
         recorder = ActionRecorder()
 
-        with patch('functions.core_action_recorder.Path') as mock_path:
+        with patch('functions.runtime.core_action_recorder.Path') as mock_path:
             mock_file = MagicMock()
             mock_path.return_value.__truediv__.return_value = mock_file
             mock_file.read_text.return_value = '[{"action": "test", "args": {}}]'
@@ -102,7 +102,7 @@ class TestActionBuffer:
 
     def test_init(self):
         """Тест ініціалізації ActionBuffer."""
-        from functions.core_action_recorder import ActionBuffer
+        from functions.runtime.core_action_recorder import ActionBuffer
 
         buffer = ActionBuffer(max_size=100)
         assert buffer is not None
@@ -110,7 +110,7 @@ class TestActionBuffer:
 
     def test_add_action(self):
         """Тест додавання дії в буфер."""
-        from functions.core_action_recorder import ActionBuffer
+        from functions.runtime.core_action_recorder import ActionBuffer
 
         buffer = ActionBuffer(max_size=100)
         buffer.add_action("mouse_click", {"x": 100, "y": 200})
@@ -119,7 +119,7 @@ class TestActionBuffer:
 
     def test_max_size_limit(self):
         """Тест обмеження розміру буфера."""
-        from functions.core_action_recorder import ActionBuffer
+        from functions.runtime.core_action_recorder import ActionBuffer
 
         buffer = ActionBuffer(max_size=5)
         for i in range(10):
@@ -131,10 +131,10 @@ class TestActionBuffer:
 class TestConvertBufferToMacro:
     """Тести для конвертації буфера в макрос."""
 
-    @patch('functions.core_action_recorder.MacroStore')
+    @patch('functions.runtime.core_action_recorder.MacroStore')
     def test_convert_buffer_to_macro(self, mock_store):
         """Тест конвертації буфера дій у макрос."""
-        from functions.core_action_recorder import ActionRecorder, convert_buffer_to_macro
+        from functions.runtime.core_action_recorder import ActionRecorder, convert_buffer_to_macro
 
         recorder = ActionRecorder()
         recorder.record_action("mouse_click", {"x": 100, "y": 200})

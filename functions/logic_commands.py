@@ -24,7 +24,7 @@ class VoiceAssistant:
         self.context_controller = context_controller
         
         self.planner = None  #GPT
-        from .core_memory import MemoryManager
+        from .runtime.core_memory import MemoryManager
         self.memory = MemoryManager()  # довготривала + сесія + задачі
         # Підключаємо LLM-caller для генерації summary
         self.memory.set_llm_caller(self._memory_llm_caller)

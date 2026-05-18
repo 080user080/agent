@@ -32,12 +32,12 @@ from dataclasses import dataclass
 from typing import Any, Dict, List
 
 from .core_task_intake import DOMAIN_CODE, TaskSpec
-from .logic_expectations import (
+from .planning.logic_expectations import (
     EXPECT_FILE_EXISTS,
     EXPECT_RETURN_CODE,
     ExpectSpec,
 )
-from .logic_task_runner import ON_ERROR_SKIP, ON_ERROR_STOP, Plan, Task
+from .planning.logic_task_runner import ON_ERROR_SKIP, ON_ERROR_STOP, Plan, Task
 
 # ---------------------------------------------------------------------------
 # Defaults

@@ -39,7 +39,7 @@ from functions.logic_ai_adapter import (
     UsageInfo,
 )
 from functions.logic_provider_registry import ProviderRegistry, SelectionCriteria
-from functions.logic_task_runner import Plan, Task
+from functions.planning.logic_task_runner import Plan, Task
 
 # ---------------------------------------------------------------------------
 # Constants

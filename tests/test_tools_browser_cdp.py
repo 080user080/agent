@@ -216,7 +216,7 @@ class TestRegistration:
         assert registry.register.call_count >= 15
 
     def test_tools_in_tool_policies(self):
-        from functions.core_tool_runtime import TOOL_POLICIES
+        from functions.runtime.core_tool_runtime import TOOL_POLICIES
         assert "cdp_click_text" in TOOL_POLICIES
         assert "cdp_wait_for_text" in TOOL_POLICIES
         assert "cdp_fill" in TOOL_POLICIES

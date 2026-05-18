@@ -18,14 +18,14 @@ class TestGUIGuardian:
 
     def test_init(self):
         """Тест ініціалізації GUIGuardian."""
-        from functions.core_gui_guardian import GUIGuardian
+        from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
         assert guardian is not None
 
     def test_check_action_safety(self):
         """Тест перевірки безпеки дії."""
-        from functions.core_gui_guardian import GUIGuardian
+        from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
         result = guardian.check_action_safety("mouse_click", {"x": 100, "y": 200})
@@ -34,7 +34,7 @@ class TestGUIGuardian:
 
     def test_check_dangerous_action(self):
         """Тест перевірки небезпечної дії."""
-        from functions.core_gui_guardian import GUIGuardian
+        from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
         result = guardian.check_action_safety("delete_file", {"path": "important.txt"})
@@ -43,7 +43,7 @@ class TestGUIGuardian:
 
     def test_add_dangerous_pattern(self):
         """Тест додавання небезпечного патерна."""
-        from functions.core_gui_guardian import GUIGuardian
+        from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
         guardian.add_dangerous_pattern("delete")
@@ -52,7 +52,7 @@ class TestGUIGuardian:
 
     def test_remove_dangerous_pattern(self):
         """Тест видалення небезпечного патерна."""
-        from functions.core_gui_guardian import GUIGuardian
+        from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
         guardian.add_dangerous_pattern("delete")
@@ -62,7 +62,7 @@ class TestGUIGuardian:
 
     def test_whitelist_action(self):
         """Тест білого списку дій."""
-        from functions.core_gui_guardian import GUIGuardian
+        from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
         guardian.whitelist_action("mouse_click")
@@ -71,7 +71,7 @@ class TestGUIGuardian:
 
     def test_is_whitelisted(self):
         """Тест перевірки білого списку."""
-        from functions.core_gui_guardian import GUIGuardian
+        from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
         guardian.whitelist_action("mouse_click")
@@ -85,14 +85,14 @@ class TestActionValidator:
 
     def test_init(self):
         """Тест ініціалізації ActionValidator."""
-        from functions.core_gui_guardian import ActionValidator
+        from functions.gui.core_gui_guardian import ActionValidator
 
         validator = ActionValidator()
         assert validator is not None
 
     def test_validate_mouse_coordinates(self):
         """Тест валідації координат миші."""
-        from functions.core_gui_guardian import ActionValidator
+        from functions.gui.core_gui_guardian import ActionValidator
 
         validator = ActionValidator()
         result = validator.validate_mouse_coordinates(100, 200)
@@ -101,7 +101,7 @@ class TestActionValidator:
 
     def test_validate_text_input(self):
         """Тест валідації текстового вводу."""
-        from functions.core_gui_guardian import ActionValidator
+        from functions.gui.core_gui_guardian import ActionValidator
 
         validator = ActionValidator()
         result = validator.validate_text_input("hello world")
@@ -110,7 +110,7 @@ class TestActionValidator:
 
     def test_validate_file_path(self):
         """Тест валідації шляху до файлу."""
-        from functions.core_gui_guardian import ActionValidator
+        from functions.gui.core_gui_guardian import ActionValidator
 
         validator = ActionValidator()
         result = validator.validate_file_path("test.txt")
@@ -123,14 +123,14 @@ class TestSafetyPolicy:
 
     def test_init(self):
         """Тест ініціалізації SafetyPolicy."""
-        from functions.core_gui_guardian import SafetyPolicy
+        from functions.gui.core_gui_guardian import SafetyPolicy
 
         policy = SafetyPolicy()
         assert policy is not None
 
     def test_add_rule(self):
         """Тест додавання правила."""
-        from functions.core_gui_guardian import SafetyPolicy
+        from functions.gui.core_gui_guardian import SafetyPolicy
 
         policy = SafetyPolicy()
         policy.add_rule("no_delete", lambda action: action != "delete_file")
@@ -139,7 +139,7 @@ class TestSafetyPolicy:
 
     def test_check_policy(self):
         """Тест перевірки політики."""
-        from functions.core_gui_guardian import SafetyPolicy
+        from functions.gui.core_gui_guardian import SafetyPolicy
 
         policy = SafetyPolicy()
         policy.add_rule("no_delete", lambda action: action != "delete_file")
@@ -149,7 +149,7 @@ class TestSafetyPolicy:
 
     def test_remove_rule(self):
         """Тест видалення правила."""
-        from functions.core_gui_guardian import SafetyPolicy
+        from functions.gui.core_gui_guardian import SafetyPolicy
 
         policy = SafetyPolicy()
         policy.add_rule("no_delete", lambda action: action != "delete_file")

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from functions.logic_expectations import (
+from functions.planning.logic_expectations import (
     EXPECT_FILE_CONTAINS,
     EXPECT_FILE_EXISTS,
     EXPECT_FILE_LINES_AT_LEAST,

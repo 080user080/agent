@@ -50,3 +50,36 @@ STT команда → process_command() → (якщо задача) → AgentLo
 
 ### Виправлено Global Voice Input - вставка буфера обміну
 **Проблема:** При натисканні Ctrl+F9 вставляється вміст буфера обміну Windows замість розпізнаного тексту
+
+---
+
+## ВИКОНАНІ ЗАВДАННЯ (перенесено 18.05.2026)
+
+### ЕТАП А. Стабілізація та рефакторинг архітектури
+
+#### А1. Полагодити pytest collection (P0) ✅
+
+- [x] Повернути сумісність між тестами і `logic_task_runner`
+- [x] Добитися щоб `pytest tests/` проходив хоча б collection без помилок
+- [x] Зафіксувати публічні API для parser/runner/plan-об'єктів
+
+#### А2. Реструктуризація папки functions/ ✅
+
+Зараз у `functions/` 100+ файлів у плоскій структурі — це ускладнює навігацію. Згрупувати модулі по підпапках:
+
+- [x] Створити `functions/llm/` — вже є, залишити без змін
+- [x] Створити `functions/tools/` — перенести всі `tools_*.py` і `aaa_*.py`
+- [x] Створити `functions/planning/` — перенести: `agent_loop.py`, `core_planner.py`, `core_plan_compiler.py`, `core_planner_critic.py`, `core_planner_runner.py`, `logic_task_runner.py`, `logic_expectations.py`, `task_spec.py`
+- [x] Створити `functions/runtime/` — перенести: `core_tool_runtime.py`, `core_settings.py`, `core_memory.py`, `core_cache.py`, `core_session_budget.py`, `core_undo_manager.py`, `core_action_recorder.py`
+- [x] Створити `functions/gui/` — перенести: `core_gui_guardian.py`, `tools_screen_capture.py`, `tools_ocr.py`, `tools_mouse_keyboard.py`, `tools_window_manager.py`, `tools_ui_detector.py`, `tools_ui_accessibility.py`, `tools_visual_diff.py`, `voice_tray_icon.py`
+- [x] Виправити всі імпорти всередині переміщених файлів
+- [x] Додати файли-заглушки для зворотної сумісності (49 файлів)
+- [x] Переконатись що `pytest` проходить collection без помилок ✅ (1400 tests)
+
+#### Розширення задачі А2.1: інтеграція core/ та utils/ ✅
+
+- [x] Перенести `core/context_controller.py` до `functions/planning/`
+- [x] Перенести `utils/screen_helper.py` до `functions/gui/`
+- [x] Після перенесення виправити імпорти у всіх залежних модулях (tools_mouse_keyboard + тести)
+- [x] Видалити порожні папки `core/` та `utils/`
+- [x] Переконатись, що `pytest` проходить collection без помилок ✅ (1400 tests)

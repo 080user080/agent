@@ -18,7 +18,7 @@ class TestUndoManager:
 
     def test_init(self):
         """Тест ініціалізації UndoManager."""
-        from functions.core_undo_manager import UndoManager
+        from functions.runtime.core_undo_manager import UndoManager
 
         manager = UndoManager(max_history=100)
         assert manager is not None
@@ -26,7 +26,7 @@ class TestUndoManager:
 
     def test_record_action(self):
         """Тест запису дії."""
-        from functions.core_undo_manager import UndoManager
+        from functions.runtime.core_undo_manager import UndoManager
 
         manager = UndoManager()
         manager.record_action("mouse_click", {"x": 100, "y": 200}, undo_fn=lambda: None)
@@ -35,7 +35,7 @@ class TestUndoManager:
 
     def test_undo(self):
         """Тест undo дії."""
-        from functions.core_undo_manager import UndoManager
+        from functions.runtime.core_undo_manager import UndoManager
 
         manager = UndoManager()
         undo_called = False
@@ -51,7 +51,7 @@ class TestUndoManager:
 
     def test_redo(self):
         """Тест redo дії."""
-        from functions.core_undo_manager import UndoManager
+        from functions.runtime.core_undo_manager import UndoManager
 
         manager = UndoManager()
         redo_called = False
@@ -68,7 +68,7 @@ class TestUndoManager:
 
     def test_max_history_limit(self):
         """Тест обмеження історії."""
-        from functions.core_undo_manager import UndoManager
+        from functions.runtime.core_undo_manager import UndoManager
 
         manager = UndoManager(max_history=5)
         for i in range(10):
@@ -78,7 +78,7 @@ class TestUndoManager:
 
     def test_clear(self):
         """Тест очищення історії."""
-        from functions.core_undo_manager import UndoManager
+        from functions.runtime.core_undo_manager import UndoManager
 
         manager = UndoManager()
         manager.record_action("test", {}, undo_fn=lambda: None)
@@ -92,14 +92,14 @@ class TestActionStack:
 
     def test_init(self):
         """Тест ініціалізації ActionStack."""
-        from functions.core_undo_manager import ActionStack
+        from functions.runtime.core_undo_manager import ActionStack
 
         stack = ActionStack()
         assert stack is not None
 
     def test_push(self):
         """Тест додавання дії в стек."""
-        from functions.core_undo_manager import ActionStack
+        from functions.runtime.core_undo_manager import ActionStack
 
         stack = ActionStack()
         stack.push({"action": "test"})
@@ -108,7 +108,7 @@ class TestActionStack:
 
     def test_pop(self):
         """Тест видалення дії зі стеку."""
-        from functions.core_undo_manager import ActionStack
+        from functions.runtime.core_undo_manager import ActionStack
 
         stack = ActionStack()
         stack.push({"action": "test"})
@@ -119,7 +119,7 @@ class TestActionStack:
 
     def test_peek(self):
         """Тест перегляду верхнього елемента."""
-        from functions.core_undo_manager import ActionStack
+        from functions.runtime.core_undo_manager import ActionStack
 
         stack = ActionStack()
         stack.push({"action": "test"})

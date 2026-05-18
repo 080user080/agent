@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, r"d:\Python\agent")
 
-from functions.agent_loop import (
+from functions.planning.agent_loop import (
     ActionDecider,
     AgentAction,
     AgentLoop,

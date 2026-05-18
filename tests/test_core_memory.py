@@ -10,7 +10,7 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from functions.core_memory import SessionMemory, TaskMemory, MemoryManager
+from functions.runtime.core_memory import SessionMemory, TaskMemory, MemoryManager
 
 
 class TestSessionMemory:

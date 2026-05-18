@@ -5,7 +5,7 @@ import requests
 from colorama import Fore
 
 from functions.config import LM_STUDIO_URL
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result
 
 
 def llm_function(name, description, parameters):

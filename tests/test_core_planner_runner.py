@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Mapping
 
 import pytest
 
-from functions.core_planner_critic import legacy_plan_to_plan
-from functions.core_planner_runner import (
+from functions.planning.core_planner_critic import legacy_plan_to_plan
+from functions.planning.core_planner_runner import (
     LEGACY_ACTION_KIND,
     LegacyRunResult,
     make_legacy_action_handler,
@@ -24,7 +24,7 @@ from functions.logic_plan_critic import (
     VERDICT_REDO,
 )
 from functions.logic_provider_registry import ProviderRegistry
-from functions.logic_task_runner import (
+from functions.planning.logic_task_runner import (
     STATUS_ERROR,
     STATUS_OK,
     Plan,

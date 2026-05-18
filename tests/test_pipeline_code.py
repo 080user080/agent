@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.core_plan_compiler import (  # noqa: E402
+from functions.planning.core_plan_compiler import (  # noqa: E402
     Pipeline,
     compile_plan_from_spec,
     make_default_registry,
@@ -19,11 +19,11 @@ from functions.core_task_intake import (  # noqa: E402
     BudgetHints,
     TaskSpec,
 )
-from functions.logic_expectations import (  # noqa: E402
+from functions.planning.logic_expectations import (  # noqa: E402
     EXPECT_FILE_EXISTS,
     EXPECT_RETURN_CODE,
 )
-from functions.logic_task_runner import ON_ERROR_SKIP, ON_ERROR_STOP, Plan  # noqa: E402
+from functions.planning.logic_task_runner import ON_ERROR_SKIP, ON_ERROR_STOP, Plan  # noqa: E402
 from functions.pipeline_code import (  # noqa: E402
     DEFAULT_OUTPUT_DIR_PREFIX,
     CodePipeline,
@@ -456,7 +456,7 @@ class TestCodePipelineEndToEnd:
         pytest/ruff у PATH). Перевіряємо що файл дійсно створено.
         """
         from functions.logic_permission_gate import PermissionGate, always_allow
-        from functions.logic_task_runner import TaskRunner
+        from functions.planning.logic_task_runner import TaskRunner
 
         out = tmp_path / "s7_out"
         spec = TaskSpec(

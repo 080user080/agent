@@ -1,6 +1,7 @@
 """Файлові операції для AgentLoop."""
 from pathlib import Path
 from functions.common_decorators import llm_function
+from functions.runtime.core_tool_runtime import validate_path_inside_work_dir
 
 
 @llm_function(
@@ -23,6 +24,13 @@ def write_file(filepath: str, content: str) -> dict:
     """
     try:
         path = Path(filepath)
+        abs_path = str(path.resolve())
+
+        # Перевірка AGENT_WORK_DIR
+        validation_error = validate_path_inside_work_dir(abs_path)
+        if validation_error:
+            return {'ok': False, 'error': validation_error}
+
         # Створити батьківські директорії якщо потрібно
         path.parent.mkdir(parents=True, exist_ok=True)
         # Записати файл
@@ -43,6 +51,12 @@ def list_directory(directory: str = '.') -> dict:
     """
     try:
         path = Path(directory)
+
+        # Перевірка AGENT_WORK_DIR
+        validation_error = validate_path_inside_work_dir(str(path.resolve()))
+        if validation_error:
+            return {'ok': False, 'error': validation_error}
+
         if not path.is_dir():
             return {'ok': False, 'error': f'Не директорія: {directory}'}
 
@@ -73,6 +87,12 @@ def read_file(filepath: str) -> dict:
     """
     try:
         path = Path(filepath)
+
+        # Перевірка AGENT_WORK_DIR
+        validation_error = validate_path_inside_work_dir(str(path.resolve()))
+        if validation_error:
+            return {'ok': False, 'error': validation_error}
+
         content = path.read_text(encoding='utf-8')
         return {'ok': True, 'result': content}
     except Exception as e:

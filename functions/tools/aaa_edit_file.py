@@ -2,7 +2,7 @@ import os
 import shutil
 from datetime import datetime
 
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result, validate_path_inside_work_dir
 
 
 def llm_function(name, description, parameters):
@@ -30,6 +30,15 @@ def edit_file(filepath, new_content):
         if not os.path.isabs(filepath):
             desktop = os.path.join(os.path.expanduser("~"), "Desktop")
             filepath = os.path.join(desktop, filepath)
+
+        # Перевірка AGENT_WORK_DIR
+        validation_error = validate_path_inside_work_dir(filepath)
+        if validation_error:
+            return make_tool_result(
+                False,
+                validation_error,
+                error="outside_work_dir",
+            )
 
         if not filepath.endswith((".txt", ".py")):
             return make_tool_result(

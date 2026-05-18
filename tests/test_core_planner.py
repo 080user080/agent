@@ -9,7 +9,7 @@ import os
 # Додаємо parent directory в path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from functions.core_planner import Planner
+from functions.planning.core_planner import Planner
 
 
 class MockAssistant:

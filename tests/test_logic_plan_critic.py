@@ -34,7 +34,7 @@ from functions.logic_plan_critic import (
     serialize_plan,
 )
 from functions.logic_provider_registry import ProviderRegistry
-from functions.logic_task_runner import Plan, Task, TaskRunner
+from functions.planning.logic_task_runner import Plan, Task, TaskRunner
 
 
 # ---------------------------------------------------------------------------

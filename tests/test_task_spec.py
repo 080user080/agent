@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from functions.task_spec import CompiledPlan, Domain, Priority, TaskSpec, TaskSpecCompiler
+from functions.planning.task_spec import CompiledPlan, Domain, Priority, TaskSpec, TaskSpecCompiler
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 from typing import Any, Dict, Optional
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result
 from functions.common_decorators import llm_function
 
 try:

@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
 
 from functions.logic_plan_critic import CritiqueResult, PlanCritic, SEVERITY_BLOCK
-from functions.logic_task_runner import ON_ERROR_STOP, Plan, Task
+from functions.planning.logic_task_runner import ON_ERROR_STOP, Plan, Task
 
 
 # ---------------------------------------------------------------------------

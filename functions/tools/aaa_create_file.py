@@ -1,6 +1,6 @@
 import os
 
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result, validate_path_inside_work_dir
 
 DESKTOP_PATH = os.path.join(os.path.expanduser("~"), "Desktop")
 
@@ -50,15 +50,20 @@ def create_file(filename=None, content="", filepath=None, path=None, name=None):
         else:
             filepath_abs = target
             display_name = os.path.basename(target)
-            # Створити батьківську папку якщо треба
-            parent = os.path.dirname(filepath_abs)
-            if parent:
-                os.makedirs(parent, exist_ok=True)
 
-        # Якщо relative-шлях містить каталоги — створюємо їх всередині Desktop
-        parent_dir = os.path.dirname(filepath_abs)
-        if parent_dir:
-            os.makedirs(parent_dir, exist_ok=True)
+        # Перевірка AGENT_WORK_DIR
+        validation_error = validate_path_inside_work_dir(filepath_abs)
+        if validation_error:
+            return make_tool_result(
+                False,
+                validation_error,
+                error="outside_work_dir",
+            )
+
+        # Створити батьківську папку якщо треба
+        parent = os.path.dirname(filepath_abs)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
 
         with open(filepath_abs, "w", encoding="utf-8") as f:
             f.write(content or "")

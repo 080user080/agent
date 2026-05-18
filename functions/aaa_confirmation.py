@@ -1,5 +1,17 @@
-# Re-export after A2 restructuring
-from functions.tools.aaa_confirmation import *  # noqa: F401, F403
-import functions.tools.aaa_confirmation as _m
-import sys
-sys.modules[__name__] = _m
+"""Підтвердження дій для GUI (legacy обгортка)."""
+
+import logging
+
+logger = logging.getLogger("aaa_confirmation")
+
+_gui_instance = None
+
+def set_gui_instance(gui):
+    """Встановити глобальний екземпляр GUI для діалогів підтвердження."""
+    global _gui_instance
+    _gui_instance = gui
+    logger.info("GUI instance set for confirmation dialogs")
+
+def get_gui_instance():
+    """Отримати глобальний екземпляр GUI."""
+    return _gui_instance

@@ -15,7 +15,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.core_cache import CacheManager  # noqa: E402
+from functions.runtime.core_cache import CacheManager  # noqa: E402
 
 
 @pytest.fixture
@@ -26,7 +26,7 @@ def cache(tmp_path, monkeypatch):
 
     # Перенаправляємо cache_file у tmp_path, щоб не чіпати репо.
     monkeypatch.setattr(
-        "functions.core_cache.Path",
+        "functions.runtime.core_cache.Path",
         lambda *args, **kwargs: Path(*args, **kwargs),
     )
     cm = CacheManager(registry=registry, cache_duration_hours=24)

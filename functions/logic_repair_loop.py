@@ -19,11 +19,11 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .logic_execution_report import ExecutionReport, StepReport
-from .logic_expectations import ExpectationResult, failures, all_ok
+from .planning.logic_expectations import ExpectationResult, failures, all_ok
 from .logic_llm_tools import ask_llm_with_tools
 
 if TYPE_CHECKING:
-    from .logic_task_runner import Task
+    from .planning.logic_task_runner import Task
 
 logger = logging.getLogger("repair_loop")
 

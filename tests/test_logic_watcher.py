@@ -12,7 +12,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.core_session_budget import SessionBudget, SessionLimits  # noqa: E402
+from functions.runtime.core_session_budget import SessionBudget, SessionLimits  # noqa: E402
 from functions.logic_watcher import (  # noqa: E402
     Watcher,
     WatcherConfig,

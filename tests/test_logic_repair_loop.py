@@ -8,8 +8,8 @@ from functions.logic_repair_loop import (
     RepairProposer,
     RepairLoop,
 )
-from functions.logic_expectations import ExpectationResult, ExpectSpec
-from functions.logic_task_runner import Task
+from functions.planning.logic_expectations import ExpectationResult, ExpectSpec
+from functions.planning.logic_task_runner import Task
 from functions.logic_execution_report import ExecutionReport
 
 

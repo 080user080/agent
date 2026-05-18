@@ -7,7 +7,7 @@ import inspect
 from pathlib import Path
 import time
 from colorama import Fore, Back, Style
-from .core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result, get_audit_log
+from .runtime.core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result, get_audit_log
 
 # Глобальне посилання на реєстр, щоб aaa_architect міг його оновити
 global_registry = None

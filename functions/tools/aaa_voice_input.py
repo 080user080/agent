@@ -6,7 +6,7 @@ import time
 import re
 import subprocess
 import pyperclip
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result
 
 # Додайте в імпорти в main.py та aaa_voice_input.py:
 from functions.config import MICROPHONE_DEVICE_ID
@@ -253,7 +253,7 @@ def voice_input(duration="10"):
     print("[VOICE_INPUT DEBUG] voice_input викликано з duration={duration}")
     try:
         # 🔥 Використовуємо STTListener напряму замість assistant.stt_engine
-        from .core_stt_listener import STTListener
+        from ..core_stt_listener import STTListener
         print("[VOICE_INPUT DEBUG] Створення STTListener")
         stt_listener = STTListener(
             command_callback=None,  # Не потрібен callback для одноразового запису

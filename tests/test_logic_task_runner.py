@@ -21,7 +21,7 @@ from functions.logic_permission_gate import (
     always_allow,
     always_deny,
 )
-from functions.logic_task_runner import (
+from functions.planning.logic_task_runner import (
     ON_ERROR_RETRY,
     ON_ERROR_SKIP,
     ON_ERROR_STOP,
@@ -192,7 +192,7 @@ class TestBuiltinSimpleHandlers:
 
     def test_skeleton_pipeline_plan_runnable(self):
         """Kомплексний тест S6→S7: SkeletonPipeline Plan виконується на TaskRunner."""
-        from functions.core_plan_compiler import SkeletonPipeline
+        from functions.planning.core_plan_compiler import SkeletonPipeline
         from functions.core_task_intake import DOMAIN_MIXED, TaskSpec
 
         spec = TaskSpec(goal="demo", domain=DOMAIN_MIXED)

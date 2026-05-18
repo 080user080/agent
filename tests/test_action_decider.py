@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from functions.agent_loop import (
+from functions.planning.agent_loop import (
     ActionDecider,
     AgentAction,
     AgentLoop,

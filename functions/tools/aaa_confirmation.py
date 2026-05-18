@@ -3,7 +3,7 @@
 import time
 import threading
 from colorama import Fore
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result
 from functions.core_settings import get_settings
 
 # Глобальна змінна для GUI

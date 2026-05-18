@@ -8,7 +8,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.core_plan_compiler import (  # noqa: E402
+from functions.planning.core_plan_compiler import (  # noqa: E402
     Pipeline,
     PipelineRegistry,
     PipelineRegistryError,
@@ -25,7 +25,7 @@ from functions.core_task_intake import (  # noqa: E402
     DOMAIN_WEB_RESEARCH,
     TaskSpec,
 )
-from functions.logic_task_runner import Plan  # noqa: E402
+from functions.planning.logic_task_runner import Plan  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

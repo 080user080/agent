@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from functions.agent_loop import AgentLoop, AgentLoopConfig, AgentState, Observation
+from functions.planning.agent_loop import AgentLoop, AgentLoopConfig, AgentState, Observation
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

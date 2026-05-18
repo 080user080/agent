@@ -45,7 +45,7 @@ import requests
 # Імпорт модулів
 from functions.logic_core import FunctionRegistry
 from functions.logic_commands import VoiceAssistant
-from functions.core_planner import Planner  #GPT
+from functions.planning.core_planner import Planner  #GPT
 from functions.logic_audio import (
     should_ignore_command, correct_whisper_text, 
     check_volume, check_activation_word, remove_activation_word,
@@ -1010,7 +1010,7 @@ class AssistantCore:
 
         # --- AgentLoop init (Phase 12.1+: observe → plan → act → check + LLM tool-calling + Repair Loop) ---
         try:
-            from functions.agent_loop import AgentLoop, AgentLoopConfig, build_default_decider
+            from functions.planning.agent_loop import AgentLoop, AgentLoopConfig, build_default_decider
 
             decider = build_default_decider(
                 enable_vision=False,
@@ -1061,7 +1061,7 @@ class AssistantCore:
 
         # --- TaskSpecCompiler init (S3: TaskSpec → compile() MVP) ---
         try:
-            from functions.task_spec import TaskSpecCompiler
+            from functions.planning.task_spec import TaskSpecCompiler
             self.task_spec_compiler = TaskSpecCompiler(
                 assistant=self.assistant,
                 registry=self.registry,

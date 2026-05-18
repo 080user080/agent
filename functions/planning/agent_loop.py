@@ -154,6 +154,8 @@ class ActionDecider:
         "16. **NO REPEATED LIST_DIRECTORY**: NEVER call list_directory twice in a row unless you changed the folder contents. If file is missing — CREATE IT, don't check again!\n"
         "17. **NO REPEATED WRITE_FILE**: After write_file returns ok=True, NEVER write to the same filepath again unless you need to change the content. Move to the NEXT file immediately.\n"
         "18. **INTERNAL CHECKLIST**: Keep a mental checklist. After each write_file ok=True — mark that file as DONE and never touch it again. Move to next file.\n"
+        "19. **ЗАБОРОНА execute_python ДЛЯ ФАЙЛІВ**: Ніколи не використовуй execute_python для створення або редагування файлів. Для цього є write_file та edit_file. execute_python дозволений ТІЛЬКИ для перевірки коротких виразів (≤5 рядків, без def/class) або запуску вже існуючих скриптів через execute_python_file. Код довший за 5 рядків або з def/class буде відхилено валідатором.\n"
+        "20. **АВТОПЕРЕВІРКА**: Після write_file/edit_file для .py файлу система автоматично перевіряє синтаксис. Якщо є помилка — буде запущено repair-loop для виправлення.\n"
         "\n"
         "ПРАВИЛО ВИКОНАВЦЯ (пріоритет дії над перевіркою):\n"
         "A. Якщо завдання передбачає створення N файлів — не намагайся перевірити їх наявність після кожного кроку.\n"
@@ -1516,23 +1518,40 @@ class AgentLoop:
             logger.info("AgentLoop: list_directory збережено (%d файлів)", len(self._last_list_dir_files))
 
         # ─── Автоматичний прогрес після write_file ──────────────────────
-        if action == "write_file" and act_result.get("ok"):
+        if action in ("write_file", "edit_file") and act_result.get("ok"):
             # Позначаємо що був хоч один write_file після list_directory
-            self._has_written_since_list_dir = True
-            # Додаємо до blocked, щоб блокувати повторні записи того самого файлу
-            try:
-                fp = f"write_file:{args.get('filepath', '')}:{_json.dumps(args.get('content', ''), sort_keys=True)}"
-            except Exception:
-                fp = f"write_file:{args.get('filepath', '')}:{str(args.get('content', ''))}"
-            self._blocked_write_fingerprints.add(fp)
+            if action == "write_file":
+                self._has_written_since_list_dir = True
+                # Додаємо до blocked, щоб блокувати повторні записи того самого файлу
+                try:
+                    fp = f"write_file:{args.get('filepath', '')}:{_json.dumps(args.get('content', ''), sort_keys=True)}"
+                except Exception:
+                    fp = f"write_file:{args.get('filepath', '')}:{str(args.get('content', ''))}"
+                self._blocked_write_fingerprints.add(fp)
             
             # Додаємо прогрес
-            filepath = args.get('filepath', '')
+            filepath = args.get('filepath', '') or args.get('filename', '')
             filename = filepath.split('/')[-1].split('\\')[-1] if filepath else 'unknown'
             progress_line = f"✅ Створено: {filename}"
             if progress_line not in state.progress_summary:
                 state.progress_summary += f"\n{progress_line}"
                 logger.info("AgentLoop: додано прогрес: %s", progress_line)
+            
+            # ─── Punkt 3: Автоматична синтаксична перевірка .py файлів ──
+            if filepath.endswith('.py'):
+                # Отримуємо вміст: для write_file — "content", для edit_file — "new_content"
+                content = (args.get('content') or args.get('new_content') or '')
+                try:
+                    compile(content, filepath, 'exec')
+                    act_result["auto_test_passed"] = True
+                    act_result["auto_test_error"] = ""
+                    logger.info("AgentLoop: auto_test_passed=True for %s", filename)
+                    print(f"[AgentLoop]   ✅ Синтаксис OK: {filename}")
+                except SyntaxError as e:
+                    act_result["auto_test_passed"] = False
+                    act_result["auto_test_error"] = str(e)
+                    logger.warning("AgentLoop: auto_test_passed=False for %s: %s", filename, e)
+                    print(f"[AgentLoop]   ❌ Синтаксична помилка: {filename}: {e}")
         state.last_action = action
 
         print(f"[AgentLoop]   ✅ Result: {act_result.get('ok', False)}")
@@ -1540,6 +1559,90 @@ class AgentLoop:
             print(f"[AgentLoop]   📄 Output: {str(act_result.get('result', ''))[:1000]}...")
         if act_result.get('error'):
             print(f"[AgentLoop]   ❌ Error: {act_result.get('error')}")
+
+        # ─── Punkt 4: Repair-loop для коду (LLM виправляє синтаксичні помилки) ──
+        if act_result.get("auto_test_passed") is False and act_result.get("auto_test_error"):
+            # Не блокуємо весь план — даємо шанс виправити
+            _code_repair_tries = getattr(self, '_code_repair_counter', 0)
+            if _code_repair_tries < 2:
+                self._code_repair_counter = _code_repair_tries + 1
+                filepath = args.get('filepath', '') or args.get('filename', '')
+                content = args.get('content') or args.get('new_content') or ''
+                error_text = act_result.get("auto_test_error", "")
+                
+                print(f"[AgentLoop]   🔧 Repair-loop: спроба {self._code_repair_counter}/2 для {filename}")
+                logger.info("Code repair attempt %d/2 for %s: %s", self._code_repair_counter, filename, error_text)
+                
+                # Формуємо repair_prompt для LLM
+                repair_prompt = (
+                    f"⚠️ Синтаксична помилка у файлі '{filepath}'.\n\n"
+                    f"ПОМИЛКА:\n{error_text}\n\n"
+                    f"НЕВДАЛИЙ КОД:\n```python\n{content}\n```\n\n"
+                    f"ЗАВДАННЯ: '{self._current_task}'\n\n"
+                    "Поверни JSON з дією edit_file та виправленим вмістом файлу. "
+                    "Не змінюй логіку, тільки виправ синтаксичні помилки.\n\n"
+                    'Формат: {"action": "edit_file", "args": {"filepath": "...", "new_content": "..."}, "reasoning": "..."}\n'
+                    "Відповідай ТІЛЬКИ JSON."
+                )
+                
+                try:
+                    if hasattr(self, 'decider') and self.decider is not None and self.decider.is_available:
+                        messages = [
+                            {"role": "system", "content": "Ти — repair-агент, який виправляє синтаксичні помилки Python. Повертай ТІЛЬКИ JSON."},
+                            {"role": "user", "content": repair_prompt},
+                        ]
+                        response = self.decider._ask_llm_with_tools(
+                            messages=messages,
+                            tools=[],
+                            tool_choice=None,
+                        )
+                        content_response = str(getattr(response, "content", "") or "").strip()
+                        
+                        # Парсимо JSON з відповіді
+                        import re as _re
+                        json_match = _re.search(r'\{.*"action".*"args".*\}', content_response, _re.DOTALL)
+                        if json_match:
+                            repair_json = json.loads(json_match.group(0))
+                            if repair_json.get("action") == "edit_file":
+                                repair_args = repair_json.get("args", {})
+                                repair_filepath = repair_args.get("filepath", filepath)
+                                repair_content = repair_args.get("new_content", "")
+                                
+                                if repair_content:
+                                    # Виконуємо edit_file через registry
+                                    fix_result = self.act({
+                                        "action": "edit_file",
+                                        "args": {"filepath": repair_filepath, "new_content": repair_content},
+                                    })
+                                    
+                                    if fix_result.get("ok"):
+                                        # Повторна перевірка
+                                        try:
+                                            compile(repair_content, repair_filepath, 'exec')
+                                            act_result["auto_test_passed"] = True
+                                            act_result["auto_test_error"] = ""
+                                            print(f"[AgentLoop]   ✅ Repair-loop: виправлено! Синтаксис OK для {filename}")
+                                            logger.info("Code repair SUCCESS for %s", filename)
+                                            # Скидаємо consecutive_failures — все ок
+                                            state.consecutive_failures = 0
+                                        except SyntaxError as e2:
+                                            print(f"[AgentLoop]   ❌ Repair-loop: друга спроба теж з помилкою: {e2}")
+                                            logger.warning("Code repair FAILED after fix for %s: %s", filename, e2)
+                                            act_result["auto_test_error"] = str(e2)
+                                    else:
+                                        print(f"[AgentLoop]   ❌ Repair-loop: edit_file не вдався: {fix_result.get('error', '')}")
+                                else:
+                                    print(f"[AgentLoop]   ❌ Repair-loop: LLM повернула порожній код")
+                        else:
+                            print(f"[AgentLoop]   ❌ Repair-loop: LLM не повернула JSON або JSON невалідний")
+                    else:
+                        print(f"[AgentLoop]   ⏭️ Repair-loop: LLM decider недоступний, пропускаємо")
+                except Exception as repair_e:
+                    print(f"[AgentLoop]   ❌ Repair-loop: помилка: {repair_e}")
+                    logger.warning("Code repair exception: %s", repair_e)
+            else:
+                print(f"[AgentLoop]   ⏭️ Repair-loop: досягнуто ліміту спроб (2/2), позначаємо як помилку")
+                logger.warning("Code repair max attempts reached for %s", args.get('filepath', '') or args.get('filename', ''))
 
         # ─── Запам'ятовуємо відсутні файли ───────────────────────────
         if action == "read_code_file" and not act_result.get("ok"):

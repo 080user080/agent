@@ -3,7 +3,7 @@
 import os
 import shutil
 from colorama import Fore
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result
 
 def llm_function(name, description, parameters):
     def decorator(func):

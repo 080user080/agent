@@ -183,7 +183,7 @@ def get_executor(lm_studio_url: Optional[str] = None) -> OpenInterpreterExecutor
     if _executor is None:
         # Get LM Studio URL from settings if not provided
         if lm_studio_url is None:
-            from .core_settings import get_setting
+            from ..core_settings import get_setting
             lm_studio_url = get_setting("LM_STUDIO_URL", "http://localhost:1234/v1/chat/completions")
         
         _executor = OpenInterpreterExecutor(lm_studio_url=lm_studio_url)
@@ -218,7 +218,7 @@ def oi_execute_with_healing(
     Returns:
         OIResult with execution results
     """
-    from .core_settings import get_setting
+    from ..core_settings import get_setting
     
     # Check if OI is enabled
     if not get_setting("OI_ENABLED", False):
@@ -238,7 +238,7 @@ def is_available() -> bool:
     Returns:
         True if OI can be used, False otherwise
     """
-    from .core_settings import get_setting
+    from ..core_settings import get_setting
 
     if not get_setting("OI_ENABLED", False):
         return False

@@ -2,8 +2,8 @@
 import pytest
 from unittest.mock import Mock, MagicMock
 
-from functions.logic_task_runner import _handler_ask_user, TaskContext, Task, TaskRunner, ExecutionReport
-from functions.agent_loop import AgentLoop, AgentState, Observation
+from functions.planning.logic_task_runner import _handler_ask_user, TaskContext, Task, TaskRunner, ExecutionReport
+from functions.planning.agent_loop import AgentLoop, AgentState, Observation
 
 
 class TestAskUserHandler:
@@ -156,7 +156,7 @@ class TestAgentLoopAskUser:
         loop = AgentLoop(assistant, ask_user_callback=callback)
 
         # Створюємо CompiledPlan з ask_user кроком
-        from functions.task_spec import CompiledPlan, TaskSpec, Domain, Priority
+        from functions.planning.task_spec import CompiledPlan, TaskSpec, Domain, Priority
         task_spec = TaskSpec(
             description="тест",
             domain=Domain.CODE,

@@ -1,0 +1,18 @@
+{
+  "last_task": null,
+  "last_plan": [],
+  "last_results": [],
+  "variables": {},
+  "file_paths": [],
+  "history": [],
+  "task_summaries": [
+    {
+      "task_id": "20260518_092443_fc90a0",
+      "task_text": "Створи калькулятор",
+      "status": "success",
+      "summary": "Задача: 'Створи калькулятор'. Статус: success. Кроків: 2, успішних: 2.",
+      "timestamp": "2026-05-18T09:24:43.900540"
+    }
+  ],
+  "session_summaries": []
+}

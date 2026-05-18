@@ -5,10 +5,11 @@ import sys
 import subprocess
 import tempfile
 import time
+import re
 from pathlib import Path
 from datetime import datetime
 from colorama import Fore
-from functions.core_tool_runtime import make_tool_result
+from functions.runtime.core_tool_runtime import make_tool_result
 
 def llm_function(name, description, parameters):
     """Декоратор для реєстрації функцій"""
@@ -45,28 +46,53 @@ class PythonSandbox:
             #'open(', 'file(', 'input(', 'raw_input(',
         ]
     
-    def validate_code(self, code):
-        """Перевірити код на безпеку"""
+    def validate_code(self, code: str, script_name: str = "") -> tuple:
+        """Перевірити код на безпеку та обмеження.
+        
+        Args:
+            code: Python код для перевірки
+            script_name: назва скрипта (якщо викликано через execute_python_file)
+            
+        Returns:
+            (is_safe: bool, message: str)
+        """
         code_lower = code.lower()
         
+        # Старі перевірки безпеки
         for forbidden in self.forbidden:
             if forbidden.lower() in code_lower:
                 return False, f"Заборонено використання: {forbidden}"
         
-        # Додаткові перевірки
-        dangerous_patterns = [
-            #'import os',
-            #'import subprocess',
-            #'import shutil',
-            #'from os import',
-            #'__builtins__',
-            #'globals()',
-            #'locals()',
-        ]
-        
-        for pattern in dangerous_patterns:
-            if pattern in code_lower:
-                return False, f"Заборонений патерн: {pattern}"
+        # Заборона створення/редагування файлів через execute_python
+        # Виняток: якщо викликано через execute_python_file (script_name передано)
+        if not script_name:
+            lines = [l for l in code.splitlines() if l.strip()]
+            if len(lines) > 5:
+                return False, (
+                    "❌ execute_python дозволено тільки для коротких фрагментів (≤5 рядків). "
+                    "Використовуй write_file/edit_file для створення або редагування файлів."
+                )
+            
+            # Перевірка на def/class як окремі слова, ігноруючи коментарі
+            has_def = False
+            has_class = False
+            for line in code.splitlines():
+                # Видалити коментарі
+                stripped = line.split('#')[0].strip()
+                if not stripped:
+                    continue
+                # Перевірити чи рядок починається з def або class (або має відступ перед ними)
+                import re as _re
+                if _re.match(r'^\s*def\s+', stripped):
+                    has_def = True
+                if _re.match(r'^\s*class\s+', stripped):
+                    has_class = True
+            
+            if has_def or has_class:
+                return False, (
+                    "❌ execute_python не дозволено для коду з def/class. "
+                    "Використовуй write_file/edit_file для створення або редагування файлів."
+                )
         
         return True, "OK"
     
@@ -97,7 +123,6 @@ class PythonSandbox:
                 return code
             # Має присвоєння на верхньому рівні? ( = , але не == )
             # Проста евристика: якщо знак = знайдений і не == / != / <= / >= — це присвоєння
-            import re
             if re.search(r'(?<![=!<>])=(?!=)', stripped):
                 return code
             # Спробуємо розпарсити як вираз
@@ -117,8 +142,8 @@ class PythonSandbox:
         # Авто-обгортка однорядкових виразів у print()
         code = self._auto_wrap_print(code)
 
-        # Валідація
-        is_safe, message = self.validate_code(code)
+        # Валідація (з урахуванням script_name для execute_python_file)
+        is_safe, message = self.validate_code(code, script_name or "")
         if not is_safe:
             return {
                 'success': False,
@@ -375,7 +400,7 @@ def list_sandbox_scripts():
             "path": str(script),
         })
 
-    result_text = f"� Скриптів в пісочниці: {len(scripts)}\n\n"
+    result_text = f"📂 Скриптів в пісочниці: {len(scripts)}\n\n"
     for s in scripts_data:
         result_text += f"📄 {s['name']} ({s['size']} байт, {s['modified']})\n"
 
