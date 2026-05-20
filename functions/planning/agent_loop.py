@@ -526,7 +526,7 @@ class AgentLoop:
         self.context_controller = context_controller
 
         # LoopDetector — виявлення зациклення
-        from functions.core_loop_detector import LoopDetector
+        from functions.runtime.core_loop_detector import LoopDetector
         self.loop_detector = LoopDetector(max_repeats=3)
 
         # Блокування повторних ідентичних write_file
@@ -1787,7 +1787,7 @@ class AgentLoop:
         if decision is None:
             return
 
-        from functions.logic_repair_loop import RepairAction
+        from functions.planning.logic_repair_loop import RepairAction
         logger.info("Repair decision: %s — %s", decision.action.value, decision.reason)
         self._gui_msg('update_status', f'🔧 Repair: {decision.action.value} — {decision.reason[:60]}')
 

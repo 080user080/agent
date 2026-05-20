@@ -24,7 +24,7 @@ def open_program(program_name):
     """Відкрити програму через SafetySandbox"""
     try:
         # Отримати sandbox
-        from .core_safety_sandbox import get_sandbox
+        from .runtime.core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         
         # Виконати через sandbox
@@ -49,7 +49,7 @@ def close_program(process_name):
     """Закрити програму через SafetySandbox"""
     try:
         # Отримати sandbox
-        from .core_safety_sandbox import get_sandbox
+        from .runtime.core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         
         # Виконати через sandbox
@@ -74,7 +74,7 @@ def close_program(process_name):
 def add_allowed_program(program_name, program_path):
     """Додати програму в whitelist"""
     try:
-        from .core_safety_sandbox import get_sandbox
+        from .runtime.core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         
         success = sandbox.add_allowed_program(program_name, program_path)
@@ -95,7 +95,7 @@ def add_allowed_program(program_name, program_path):
 def show_sandbox_status():
     """Показати статус sandbox"""
     try:
-        from .core_safety_sandbox import get_sandbox
+        from .runtime.core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         
         sandbox.print_status()
@@ -113,7 +113,7 @@ def show_sandbox_status():
 def enable_auto_confirm():
     """Увімкнути автопідтвердження"""
     try:
-        from .core_safety_sandbox import get_sandbox
+        from .runtime.core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         
         sandbox.enable_auto_confirm()
@@ -131,7 +131,7 @@ def enable_auto_confirm():
 def disable_auto_confirm():
     """Вимкнути автопідтвердження"""
     try:
-        from .core_safety_sandbox import get_sandbox
+        from .runtime.core_safety_sandbox import get_sandbox
         sandbox = get_sandbox()
         
         sandbox.disable_auto_confirm()

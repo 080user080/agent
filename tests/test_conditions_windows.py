@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.conditions_windows import (  # noqa: E402
+from functions.runtime.conditions_windows import (  # noqa: E402
     condition_chat_idle,
     condition_process_finished,
     condition_process_running,

@@ -1,4 +1,4 @@
-"""Тести для functions/logic_watcher.py.
+"""Тести для runtime/logic_watcher.py.
 
 Всі тести запускаємо у blocking-режимі (`start(blocking=True)`) — це дає
 детермінізм без залежності від реального `time.sleep`. `sleep_fn` і
@@ -13,7 +13,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from functions.runtime.core_session_budget import SessionBudget, SessionLimits  # noqa: E402
-from functions.logic_watcher import (  # noqa: E402
+from runtime.logic_watcher import (
     Watcher,
     WatcherConfig,
     WatcherEngine,

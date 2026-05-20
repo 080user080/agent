@@ -226,7 +226,7 @@ class TestAgentLoopRepairIntegration:
 
     def test_repairer_reset_on_run(self):
         """repairer.reset() викликається при loop.run()."""
-        from functions.logic_repair_loop import StepRepairer
+        from functions.planning.logic_repair_loop import StepRepairer
         repairer = StepRepairer(assistant=FakeAssistant(), max_repairs=2)
         repairer._repairs_used = 2
         registry = FakeRegistry()
@@ -241,7 +241,7 @@ class TestAgentLoopRepairIntegration:
 
     def test_repairer_not_called_on_success(self):
         """При успіху repairer не викликається."""
-        from functions.logic_repair_loop import StepRepairer
+        from functions.planning.logic_repair_loop import StepRepairer
         repairer = StepRepairer(assistant=FakeAssistant(), max_repairs=2)
         repairer.repair = MagicMock(return_value=None)
         registry = FakeRegistry(actions={"noop": lambda a: {"ok": True}})
@@ -259,7 +259,7 @@ class TestAgentLoopRepairIntegration:
 
     def test_repairer_stop_ends_loop(self):
         """Repair STOP зупиняє цикл."""
-        from functions.logic_repair_loop import StepRepairer, RepairDecision, RepairAction
+        from functions.planning.logic_repair_loop import StepRepairer, RepairDecision, RepairAction
         repairer = StepRepairer(assistant=FakeAssistant(), max_repairs=2)
         repairer.repair = MagicMock(
             return_value=RepairDecision(action=RepairAction.STOP, reason="fatal")

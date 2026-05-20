@@ -28,7 +28,7 @@ class VoiceAssistant:
         self.memory = MemoryManager()  # довготривала + сесія + задачі
         # Підключаємо LLM-caller для генерації summary
         self.memory.set_llm_caller(self._memory_llm_caller)
-        from .core_executor import TaskExecutor
+        from .runtime.core_executor import TaskExecutor
         # Створюємо виконавець з колбеком для GUI
         self.executor = TaskExecutor(gui_callback=self.gui_log_callback)
         

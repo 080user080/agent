@@ -1,4 +1,4 @@
-# functions/logic_core.py
+# runtime/logic_core.py
 """Ядро асистента - реєстр функцій та VoiceAssistant"""
 import os
 import sys
@@ -7,7 +7,7 @@ import inspect
 from pathlib import Path
 import time
 from colorama import Fore, Back, Style
-from .runtime.core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result, get_audit_log
+from functions.runtime.core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result, get_audit_log
 
 # Глобальне посилання на реєстр, щоб aaa_architect міг його оновити
 global_registry = None
@@ -41,7 +41,7 @@ class FunctionRegistry:
 
     def load_all_modules(self):
         """Автоматично завантажити всі модулі з папки functions"""
-        functions_dir = Path(__file__).parent
+        functions_dir = Path(__file__).parent.parent / "functions"
         
         if not functions_dir.exists():
             print(f"{Fore.YELLOW}⚠️  Папка functions не знайдена")
@@ -149,7 +149,7 @@ class FunctionRegistry:
     
     def get_system_prompt(self, mode: str = None):
         """Згенерувати system prompt залежно від режиму ('voice' або 'coding')."""
-        from .config import AGENT_MODE
+        from functions.config import AGENT_MODE
         active_mode = mode or AGENT_MODE
         if active_mode == "coding":
             return self.get_coding_system_prompt()
@@ -160,7 +160,7 @@ class FunctionRegistry:
 
         Цикл: аналіз задачі -> пошук у коді -> читання -> редагування -> верифікація.
         """
-        from .config import ASSISTANT_NAME
+        from functions.config import ASSISTANT_NAME
 
         prompt = f"""ТИ: Агент-розробник {ASSISTANT_NAME} для роботи з кодом.
 
@@ -249,7 +249,7 @@ class FunctionRegistry:
 
     def _get_voice_system_prompt(self):
         """Звичайний Voice-First system prompt."""
-        from .config import ASSISTANT_NAME, ASSISTANT_MODES, ACTIVE_MODE
+        from functions.config import ASSISTANT_NAME, ASSISTANT_MODES, ACTIVE_MODE
 
         mode = ASSISTANT_MODES[ACTIVE_MODE]
 

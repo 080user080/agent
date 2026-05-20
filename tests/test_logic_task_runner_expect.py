@@ -7,7 +7,7 @@ from functions.logic_execution_report import (
     STATUS_PRECHECK_FAILED,
 )
 from functions.planning.logic_expectations import ExpectSpec
-from functions.logic_permission_gate import Decision, PermissionGate
+from runtime.logic_permission_gate import Decision, PermissionGate
 from functions.planning.logic_task_runner import Plan, Task, TaskRunner
 
 

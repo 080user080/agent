@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.core_macro import (  # noqa: E402
+from functions.runtime.core_macro import (  # noqa: E402
     Macro,
     MacroRecorder,
     MacroStep,

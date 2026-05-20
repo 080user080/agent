@@ -21,7 +21,7 @@ class SelfLearning:
             data_dir: Директорія для зберігання логів та skills (default: runtime/self_learning)
         """
         if data_dir is None:
-            # runtime/self_learning в корені проекту (functions/self_learning.py → agent/)
+            # runtime/self_learning в корені проекту (runtime/self_learning.py → agent/)
             project_root = Path(__file__).parent.parent
             self.data_dir = project_root / "runtime" / "self_learning"
         else:

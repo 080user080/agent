@@ -29,7 +29,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from .runtime.core_session_budget import SessionBudget
+from functions.runtime.core_session_budget import SessionBudget
 
 
 # ---------------------------------------------------------------------------

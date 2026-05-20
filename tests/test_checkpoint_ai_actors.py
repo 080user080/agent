@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from functions.planning.ai_actors import ActorRegistry, ActorResult, AIActor, Provider
-from functions.core_checkpoint import CheckpointData, CheckpointManager
+from functions.runtime.core_checkpoint import CheckpointData, CheckpointManager
 
 
 # ─── Tests ────────────────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 """Tests for LoopDetector — виявлення зациклення агента."""
 import pytest
 
-from functions.core_loop_detector import LoopDetector, LoopEvent, _action_fingerprint
+from functions.runtime.core_loop_detector import LoopDetector, LoopEvent, _action_fingerprint
 
 
 # ─── Fingerprint tests ────────────────────────────────────────────────────────

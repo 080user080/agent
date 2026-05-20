@@ -14,7 +14,7 @@ from functions.logic_execution_report import (
     STATUS_SKIPPED,
     ExecutionReport,
 )
-from functions.logic_permission_gate import (
+from runtime.logic_permission_gate import (
     Decision,
     PermissionGate,
     PermissionPolicy,
@@ -265,7 +265,7 @@ class TestRunCommand:
 
 class TestFileHandlers:
     def test_write_file_in_project_root(self, tmp_path):
-        policy = PermissionPolicy(project_root=str(tmp_path))
+        policy = PermissionPolicy(restricted_root=str(tmp_path))
         gate = PermissionGate(policy=policy, ask_fn=always_deny())
         runner = _make_runner(gate=gate)
         target = tmp_path / "out.txt"
@@ -284,7 +284,7 @@ class TestFileHandlers:
         assert target.read_text(encoding="utf-8") == "hello"
 
     def test_write_file_denied_outside_project(self, tmp_path):
-        policy = PermissionPolicy(project_root=str(tmp_path / "project"))
+        policy = PermissionPolicy(restricted_root=str(tmp_path / "project"))
         gate = PermissionGate(policy=policy, ask_fn=always_deny())
         runner = _make_runner(gate=gate)
         outside = tmp_path / "other.txt"
@@ -575,7 +575,7 @@ class TestCustomHandler:
 
 class TestIntegrationSmoke:
     def test_end_to_end_report(self, tmp_path):
-        policy = PermissionPolicy(project_root=str(tmp_path))
+        policy = PermissionPolicy(restricted_root=str(tmp_path))
         gate = PermissionGate(policy=policy, ask_fn=always_deny())
         runner = TaskRunner(
             gate=gate,

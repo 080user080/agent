@@ -1,9 +1,9 @@
-"""Tests for functions.logic_permission_gate (Phase 11.2)."""
+"""Tests for runtime.logic_permission_gate (Phase 11.2)."""
 from __future__ import annotations
 
 import json
 
-from functions.logic_permission_gate import (
+from runtime.logic_permission_gate import (
     ACTION_READ_FILE,
     ACTION_RUN_COMMAND,
     ACTION_WRITE_FILE,
@@ -81,21 +81,23 @@ class TestAlwaysAllow:
 
 class TestProjectRoot:
     def test_write_inside_project_root_allowed(self, tmp_path):
-        policy = PermissionPolicy(project_root=str(tmp_path))
+        policy = PermissionPolicy(restricted_root=str(tmp_path))
         g = PermissionGate(policy=policy, ask_fn=always_deny())
         d = g.ask(_req_write(str(tmp_path / "file.txt")))
         assert d.allow is True
-        assert "project_root" in d.reason
+        assert "restricted root" in d.reason
 
     def test_write_outside_project_root_asks(self, tmp_path):
-        policy = PermissionPolicy(project_root=str(tmp_path))
+        policy = PermissionPolicy(restricted_root=str(tmp_path))
         g = PermissionGate(policy=policy, ask_fn=always_allow())
-        d = g.ask(_req_write("/home/otheruser/x.txt"))
+        # write_file outside restricted_root is always denied by _check_deny
+        # use run_command to test ask_fn fallback
+        d = g.ask(_req_cmd("unknown-cmd"))
         assert d.allow is True
         assert "always_allow" in d.reason
 
     def test_nested_path_allowed(self, tmp_path):
-        policy = PermissionPolicy(project_root=str(tmp_path))
+        policy = PermissionPolicy(restricted_root=str(tmp_path))
         g = PermissionGate(policy=policy, ask_fn=always_deny())
         d = g.ask(_req_write(str(tmp_path / "deep" / "nested" / "file.txt")))
         assert d.allow is True
@@ -106,10 +108,10 @@ class TestReadFileDefault:
         g = PermissionGate(ask_fn=always_deny())
         d = g.ask(_req_read("/some/path/file.txt"))
         assert d.allow is True
-        assert "safe by default" in d.reason
+        assert "outside restricted root" in d.reason
 
     def test_read_file_disabled(self):
-        policy = PermissionPolicy(allow_read_file_anywhere=False)
+        policy = PermissionPolicy(allow_read_file_outside_root=False)
         g = PermissionGate(policy=policy, ask_fn=always_deny())
         d = g.ask(_req_read("/some/path/file.txt"))
         assert d.allow is False

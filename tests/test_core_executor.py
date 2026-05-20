@@ -10,7 +10,7 @@ import threading
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from functions.core_executor import TaskExecutor
+from functions.runtime.core_executor import TaskExecutor
 
 
 class TestTaskExecutorInit:

@@ -43,7 +43,7 @@ import torch
 import requests
 
 # Імпорт модулів
-from functions.logic_core import FunctionRegistry
+from runtime.logic_core import FunctionRegistry
 from functions.logic_commands import VoiceAssistant
 from functions.planning.core_planner import Planner  #GPT
 from functions.logic_audio import (
@@ -836,7 +836,7 @@ class AssistantCore:
         # Ініціалізація Self-learning module
         print(f"\n{Fore.CYAN}🧠 Ініціалізація модуля самонавчання...")
         try:
-            from functions.self_learning import get_self_learning
+            from runtime.self_learning import get_self_learning
             self.self_learning = get_self_learning()
             stats = self.self_learning.get_stats()
             print(f"{Fore.GREEN}✅ Self-learning module готовий")
@@ -967,7 +967,7 @@ class AssistantCore:
 
         # --- WindsurfWatcherExecutor init (Phase 12.5: Windsurf Watch GUI) ---
         try:
-            from functions.windsurf_watcher_executor import WindsurfWatcherExecutor
+            from runtime.windsurf_watcher_executor import WindsurfWatcherExecutor
             self.windsurf_watcher = WindsurfWatcherExecutor(
                 gui_callback=lambda msg_type, data: self.log_to_gui(msg_type, data),
             )
@@ -1023,7 +1023,7 @@ class AssistantCore:
             # Repair Loop (адаптивне відновлення при провалах)
             repairer = None
             try:
-                from functions.logic_repair_loop import StepRepairer
+                from functions.planning.logic_repair_loop import StepRepairer
                 repairer = StepRepairer(assistant=self.assistant, max_repairs=3)
             except Exception as repair_err:
                 print(f"{Fore.YELLOW}⚠️  StepRepairer недоступний: {repair_err}")

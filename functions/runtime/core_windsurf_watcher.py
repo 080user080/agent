@@ -27,9 +27,9 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 from .conditions_windows import condition_chat_idle
-from .runtime.core_session_budget import SessionBudget, SessionLimits
-from .logic_watcher import ActionFn, ConditionFn, Watcher, WatcherConfig
-from .tools.tools_windsurf import (
+from .core_session_budget import SessionBudget, SessionLimits
+from runtime.logic_watcher import ActionFn, ConditionFn, Watcher, WatcherConfig
+from ..tools.tools_windsurf import (
     SnapshotFn,
     WindowFinder,
     WindsurfState,

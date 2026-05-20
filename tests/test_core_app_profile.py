@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.core_app_profile import (  # noqa: E402
+from functions.runtime.core_app_profile import (  # noqa: E402
     AppProfile,
     AppProfileRegistry,
     UIElement,
