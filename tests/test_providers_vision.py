@@ -3,7 +3,7 @@ import base64
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 
-from functions.providers_vision import (
+from functions.llm.providers_vision import (
     VisionQuery,
     VisionResponse,
     VisionLMProvider,
@@ -68,7 +68,7 @@ class TestVisionLMProvider:
         assert provider.assistant == assistant
         assert provider._available == False
 
-    @patch("functions.providers_vision.get_setting")
+    @patch("functions.llm.providers_vision.get_setting")
     def test_init_vision_none_provider(self, mock_get_setting):
         """Ініціалізація з provider=none."""
         mock_get_setting.side_effect = lambda key, default: {
@@ -81,7 +81,7 @@ class TestVisionLMProvider:
         provider = VisionLMProvider(assistant)
         assert provider._available == False
 
-    @patch("functions.providers_vision.get_setting")
+    @patch("functions.llm.providers_vision.get_setting")
     def test_init_vision_openai_no_api_key(self, mock_get_setting):
         """Ініціалізація з OpenAI але без API ключа."""
         mock_get_setting.side_effect = lambda key, default: {
@@ -94,7 +94,7 @@ class TestVisionLMProvider:
         provider = VisionLMProvider(assistant)
         assert provider._available == False
 
-    @patch("functions.providers_vision.get_setting")
+    @patch("functions.llm.providers_vision.get_setting")
     def test_init_vision_openai_with_api_key(self, mock_get_setting):
         """Ініціалізація з OpenAI та API ключем."""
         mock_get_setting.side_effect = lambda key, default: {
@@ -111,7 +111,7 @@ class TestVisionLMProvider:
         assert provider.api_key == "test-key"
         assert provider.model == "gpt-4-vision-preview"
 
-    @patch("functions.providers_vision.get_setting")
+    @patch("functions.llm.providers_vision.get_setting")
     def test_init_vision_claude(self, mock_get_setting):
         """Ініціалізація з Claude."""
         mock_get_setting.side_effect = lambda key, default: {
@@ -126,7 +126,7 @@ class TestVisionLMProvider:
         assert provider.endpoint == "https://api.anthropic.com/v1/messages"
         assert provider.provider_type == "claude"
 
-    @patch("functions.providers_vision.get_setting")
+    @patch("functions.llm.providers_vision.get_setting")
     def test_init_vision_gemini(self, mock_get_setting):
         """Ініціалізація з Gemini."""
         mock_get_setting.side_effect = lambda key, default: {
@@ -158,9 +158,9 @@ class TestVisionLMProvider:
         assert response.text == "Vision-LM недоступний"
         assert response.confidence == 0.0
 
-    @patch("functions.providers_vision.get_setting")
+    @patch("functions.llm.providers_vision.get_setting")
     @patch("builtins.open", create=True)
-    @patch("functions.providers_vision.requests.post")
+    @patch("functions.llm.providers_vision.requests.post")
     def test_analyze_image_openai_success(self, mock_post, mock_open, mock_get_setting):
         """Успішний аналіз через OpenAI."""
         mock_get_setting.side_effect = lambda key, default: {
@@ -189,9 +189,9 @@ class TestVisionLMProvider:
         assert response.text == "Це кнопка Submit"
         assert response.confidence == 0.8
 
-    @patch("functions.providers_vision.get_setting")
+    @patch("functions.llm.providers_vision.get_setting")
     @patch("builtins.open", create=True)
-    @patch("functions.providers_vision.requests.post")
+    @patch("functions.llm.providers_vision.requests.post")
     def test_analyze_image_openai_error(self, mock_post, mock_open, mock_get_setting):
         """Помилка при аналізі через OpenAI."""
         mock_get_setting.side_effect = lambda key, default: {
@@ -217,7 +217,7 @@ class TestVisionLMProvider:
         assert "Помилка" in response.text
         assert response.confidence == 0.0
 
-    @patch("functions.providers_vision.get_setting")
+    @patch("functions.llm.providers_vision.get_setting")
     def test_detect_ui_elements_not_available(self, mock_get_setting):
         """Детекція UI коли провайдер недоступний."""
         mock_get_setting.side_effect = lambda key, default: {
@@ -230,7 +230,7 @@ class TestVisionLMProvider:
         elements = provider.detect_ui_elements("/tmp/test.png")
         assert elements == []
 
-    @patch("functions.providers_vision.get_setting")
+    @patch("functions.llm.providers_vision.get_setting")
     def test_suggest_actions_not_available(self, mock_get_setting):
         """Пропозиція дій коли провайдер недоступний."""
         mock_get_setting.side_effect = lambda key, default: {

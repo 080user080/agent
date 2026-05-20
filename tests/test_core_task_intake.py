@@ -24,12 +24,12 @@ from functions.planning.core_task_intake import (
     parse_intake_response,
     save_task_spec,
 )
-from functions.logic_ai_adapter import (
+from functions.llm.logic_ai_adapter import (
     CallableProvider,
     ChatRequest,
     ChatResponse,
 )
-from functions.logic_provider_registry import ProviderRegistry
+from functions.llm.logic_provider_registry import ProviderRegistry
 
 
 class TestBudgetHints:

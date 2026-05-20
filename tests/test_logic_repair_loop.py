@@ -11,7 +11,7 @@ from functions.planning.logic_repair_loop import (
 )
 from functions.planning.logic_expectations import ExpectationResult, ExpectSpec
 from functions.planning.logic_task_runner import Task
-from functions.logic_execution_report import ExecutionReport
+from functions.planning.logic_execution_report import ExecutionReport
 
 
 class TestRepairAction:

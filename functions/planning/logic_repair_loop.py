@@ -18,9 +18,9 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from functions.logic_execution_report import ExecutionReport, StepReport
+from functions.planning.logic_execution_report import ExecutionReport, StepReport
 from functions.planning.logic_expectations import ExpectationResult, failures, all_ok
-from functions.logic_llm_tools import ask_llm_with_tools
+from functions.llm.logic_llm_tools import ask_llm_with_tools
 
 if TYPE_CHECKING:
     from functions.planning.logic_task_runner import Task

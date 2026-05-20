@@ -18,15 +18,15 @@ class TestUINavigator:
 
     def test_init(self):
         """Тест ініціалізації UINavigator."""
-        from functions.logic_ui_navigator import UINavigator
+        from functions.gui.logic_ui_navigator import UINavigator
 
         navigator = UINavigator()
         assert navigator is not None
 
-    @patch('functions.logic_ui_navigator.find_clickable_elements')
+    @patch('functions.gui.logic_ui_navigator.find_clickable_elements')
     def test_navigate_to_element(self, mock_find):
         """Тест навігації до елемента."""
-        from functions.logic_ui_navigator import UINavigator
+        from functions.gui.logic_ui_navigator import UINavigator
 
         mock_find.return_value = [{"x": 100, "y": 200, "confidence": 0.9}]
 
@@ -35,10 +35,10 @@ class TestUINavigator:
 
         assert result is not None
 
-    @patch('functions.logic_ui_navigator.find_clickable_elements')
+    @patch('functions.gui.logic_ui_navigator.find_clickable_elements')
     def test_find_element_by_text(self, mock_find):
         """Тест пошуку елемента за текстом."""
-        from functions.logic_ui_navigator import UINavigator
+        from functions.gui.logic_ui_navigator import UINavigator
 
         mock_find.return_value = [{"x": 100, "y": 200, "text": "Save"}]
 
@@ -47,10 +47,10 @@ class TestUINavigator:
 
         assert result is not None
 
-    @patch('functions.logic_ui_navigator.mouse_click')
+    @patch('functions.gui.logic_ui_navigator.click_element')
     def test_click_element(self, mock_click):
         """Тест кліку на елемент."""
-        from functions.logic_ui_navigator import UINavigator
+        from functions.gui.logic_ui_navigator import UINavigator
 
         navigator = UINavigator()
         element = {"x": 100, "y": 200}
@@ -64,14 +64,14 @@ class TestNavigationPath:
 
     def test_init(self):
         """Тест ініціалізації NavigationPath."""
-        from functions.logic_ui_navigator import NavigationPath
+        from functions.gui.logic_ui_navigator import NavigationPath
 
         path = NavigationPath()
         assert path is not None
 
     def test_add_step(self):
         """Тест додавання кроку."""
-        from functions.logic_ui_navigator import NavigationPath
+        from functions.gui.logic_ui_navigator import NavigationPath
 
         path = NavigationPath()
         path.add_step("click", {"x": 100, "y": 200})
@@ -80,12 +80,12 @@ class TestNavigationPath:
 
     def test_execute_path(self):
         """Тест виконання шляху."""
-        from functions.logic_ui_navigator import NavigationPath
+        from functions.gui.logic_ui_navigator import NavigationPath
 
         path = NavigationPath()
         path.add_step("click", {"x": 100, "y": 200})
 
-        with patch('functions.logic_ui_navigator.mouse_click'):
+        with patch('functions.gui.logic_ui_navigator.click_element'):
             result = path.execute()
             assert result is not None
 

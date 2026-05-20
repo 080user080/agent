@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from functions.providers_vision import VisionLMProvider, VisionQuery, VisionResponse
+from functions.llm.providers_vision import VisionLMProvider, VisionQuery, VisionResponse
 from functions.tools.tools_ui_accessibility import UIAWrapper, UIElement
 
 

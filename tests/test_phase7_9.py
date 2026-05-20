@@ -14,8 +14,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 # Anthropic / Google providers
 # ---------------------------------------------------------------------------
 
-from functions.providers_anthropic import AnthropicAdapter  # noqa: E402
-from functions.providers_google import GoogleAdapter  # noqa: E402
+from functions.llm.providers_anthropic import AnthropicAdapter  # noqa: E402
+from functions.llm.providers_google import GoogleAdapter  # noqa: E402
 
 
 def test_anthropic_adapter_init():
@@ -45,7 +45,7 @@ def test_google_adapter_no_key():
 # ---------------------------------------------------------------------------
 
 from functions.planning.logic_orchestrator import Orchestrator, SubTask, OrchestrationResult  # noqa: E402
-from functions.logic_provider_registry import ProviderRegistry, SelectionCriteria  # noqa: E402
+from functions.llm.logic_provider_registry import ProviderRegistry, SelectionCriteria  # noqa: E402
 
 
 def test_orchestrator_decompose_single():

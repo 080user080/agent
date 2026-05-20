@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.logic_ai_adapter import (  # noqa: E402
+from functions.llm.logic_ai_adapter import (  # noqa: E402
     ROLE_ASSISTANT,
     ROLE_USER,
     AIProvider,

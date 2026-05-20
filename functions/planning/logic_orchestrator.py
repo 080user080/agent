@@ -12,8 +12,8 @@ import concurrent.futures
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from functions.logic_ai_adapter import ChatRequest, ChatResponse
-from functions.logic_provider_registry import ProviderRegistry, SelectionCriteria
+from functions.llm.logic_ai_adapter import ChatRequest, ChatResponse
+from functions.llm.logic_provider_registry import ProviderRegistry, SelectionCriteria
 
 
 @dataclass

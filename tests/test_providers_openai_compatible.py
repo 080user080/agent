@@ -10,12 +10,12 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.logic_ai_adapter import (  # noqa: E402
+from functions.llm.logic_ai_adapter import (  # noqa: E402
     ChatMessage,
     ChatRequest,
     ToolSpec,
 )
-from functions.providers_openai_compatible import (  # noqa: E402
+from functions.llm.providers_openai_compatible import (  # noqa: E402
     DEFAULT_RETRIES,
     HTTPResponse,
     OpenAICompatibleProvider,
@@ -496,7 +496,7 @@ class TestPresets:
         assert resp.provider == "lmstudio"
 
     def test_presets_registrable(self):
-        from functions.logic_provider_registry import ProviderRegistry
+        from functions.llm.logic_provider_registry import ProviderRegistry
 
         reg = ProviderRegistry()
         reg.register(lmstudio_provider())
@@ -511,8 +511,8 @@ class TestPresets:
 
 class TestRegistryFallback:
     def test_primary_falls_to_secondary(self):
-        from functions.logic_ai_adapter import EchoProvider
-        from functions.logic_provider_registry import ProviderRegistry
+        from functions.llm.logic_ai_adapter import EchoProvider
+        from functions.llm.logic_provider_registry import ProviderRegistry
 
         broken = OpenAICompatibleProvider(
             base_url="http://down/v1",

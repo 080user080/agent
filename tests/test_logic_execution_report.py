@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from functions.logic_execution_report import (
+from functions.planning.logic_execution_report import (
     STATUS_DENIED,
     STATUS_ERROR,
     STATUS_OK,

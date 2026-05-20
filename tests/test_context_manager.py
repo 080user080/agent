@@ -2,7 +2,7 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
-from functions.context_manager import (
+from functions.planning.context_controller import (
     summarize_progress,
     format_actions_for_summary,
     should_summarize,

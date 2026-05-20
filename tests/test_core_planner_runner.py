@@ -23,7 +23,7 @@ from functions.planning.logic_plan_critic import (
     VERDICT_APPROVE,
     VERDICT_REDO,
 )
-from functions.logic_provider_registry import ProviderRegistry
+from functions.llm.logic_provider_registry import ProviderRegistry
 from functions.planning.logic_task_runner import (
     STATUS_ERROR,
     STATUS_OK,
@@ -116,7 +116,7 @@ class StubFunctionRegistry:
 
 class TestMakeLegacyActionHandler:
     def _ctx(self, runner: TaskRunner, task: Task) -> TaskContext:
-        from functions.logic_execution_report import ExecutionReport
+        from functions.planning.logic_execution_report import ExecutionReport
 
         return TaskContext(
             task=task,

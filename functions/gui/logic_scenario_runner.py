@@ -19,11 +19,11 @@ from .logic_ui_navigator import (
     fill_form, submit_form, open_menu, click_menu_item,
     handle_dialog, dismiss_all_dialogs
 )
-from .tools.tools_window_manager import (
+from ..tools.tools_window_manager import (
     find_window_by_title, activate_window, get_active_window
 )
-from .tools.tools_mouse_keyboard import keyboard_hotkey
-from .tools.tools_app_recognizer import detect_active_application, is_application_ready
+from ..tools.tools_mouse_keyboard import keyboard_hotkey
+from ..tools.tools_app_recognizer import detect_active_application, is_application_ready
 
 
 class ScenarioStepType(Enum):
@@ -592,7 +592,7 @@ class ScenarioRunner:
 
     def _verify_text(self, text: str) -> bool:
         """Перевірити наявність тексту на екрані."""
-        from .tools.tools_ocr import find_text_on_screen
+        from ..tools.tools_ocr import find_text_on_screen
         result = find_text_on_screen(text, case_sensitive=False)
         return result.get("found", False)
 

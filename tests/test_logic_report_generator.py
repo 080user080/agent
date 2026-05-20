@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from functions.logic_execution_report import (
+from functions.planning.logic_execution_report import (
     STATUS_DENIED,
     STATUS_ERROR,
     STATUS_EXPECT_FAILED,
@@ -16,13 +16,12 @@ from functions.logic_execution_report import (
     STATUS_SKIPPED,
     STATUS_TIMEOUT,
     ExecutionReport,
+    ReportFooter,
     StepReport,
-)
-from functions.logic_report_generator import (
     ReportSummary,
     build_report_summary,
-    generate_report,
     render_summary_markdown,
+    generate_report,
 )
 
 

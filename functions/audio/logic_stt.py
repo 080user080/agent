@@ -5,7 +5,7 @@ import torch  # Імпорт torch тут
 import threading
 from queue import Queue
 from colorama import Fore
-from .config import (
+from functions.config import (
     STT_MODEL_TYPE, STT_MODEL_ID, STT_DEVICE, STT_LANGUAGE,
     STT_PARALLEL_ENABLED, STT_CONFIDENCE_THRESHOLD,
     WHISPER_COMPUTE_TYPE, WHISPER_BATCH_SIZE,

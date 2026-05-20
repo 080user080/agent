@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from functions.logic_execution_report import (
+from functions.planning.logic_execution_report import (
     STATUS_DENIED,
     STATUS_ERROR,
     STATUS_OK,
@@ -483,7 +483,7 @@ class TestCallProvider:
         assert "registry" in result.report.steps[0].error
 
     def test_with_fake_registry(self):
-        from functions.logic_ai_adapter import ChatRequest, ChatResponse, UsageInfo
+        from functions.llm.logic_ai_adapter import ChatRequest, ChatResponse, UsageInfo
 
         class _FakeRegistry:
             def chat(self, req: ChatRequest) -> ChatResponse:

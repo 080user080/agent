@@ -1,9 +1,9 @@
-# functions/logic_audio.py
+# functions/audio/logic_audio.py
 """Робота з аудіо"""
 import re
 import numpy as np
 from colorama import Fore
-from .config import (
+from ..config import (
     VOLUME_THRESHOLD, MIN_COMMAND_LENGTH, IGNORE_PHRASES, 
     WHISPER_CORRECTIONS, ACTIVATION_WORD, ACTIVATION_SIMILARITY_THRESHOLD
 )

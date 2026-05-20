@@ -18,7 +18,7 @@ class TTSEngine:
     
     def __init__(self, config=None, listener=None):
         """Ініціалізація TTS двигуна"""
-        from .config import (
+        from functions.config import (
             TTS_ENABLED, TTS_DEVICE, TTS_CACHE_DIR, TTS_VOICES_DIR,
             TTS_DEFAULT_VOICE, TTS_SPEECH_RATE, TTS_VOLUME
         )

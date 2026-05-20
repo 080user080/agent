@@ -19,7 +19,7 @@ from functions.planning.core_planner_critic import (
     review_and_replan_legacy,
     review_legacy_plan,
 )
-from functions.logic_ai_adapter import (
+from functions.llm.logic_ai_adapter import (
     CallableProvider,
     ChatRequest,
     ChatResponse,
@@ -35,7 +35,7 @@ from functions.planning.logic_plan_critic import (
     VERDICT_CONCERNS,
     VERDICT_REDO,
 )
-from functions.logic_provider_registry import ProviderRegistry
+from functions.llm.logic_provider_registry import ProviderRegistry
 
 
 # ---------------------------------------------------------------------------

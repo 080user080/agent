@@ -18,8 +18,8 @@ import sounddevice as sd
 from typing import Callable, Optional, Dict, Any
 from colorama import Fore
 
-from .logic_stt import get_stt_engine, STTEngine
-from .config import (
+from functions.audio.logic_stt import get_stt_engine, STTEngine
+from functions.config import (
     SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, SILENCE_DURATION,
     MIN_SILENCE_DURATION, MAX_SILENCE_DURATION, STT_LOGGING_ENABLED,
     MICROPHONE_DEVICE_ID, STT_ENABLED, STT_LANGUAGE
@@ -67,7 +67,7 @@ class STTListener:
         try:
             # Перевіряємо актуальне user-налаштування (не тільки config.py константу)
             try:
-                from .runtime.core_settings import get_setting
+                from ...runtime.core_settings import get_setting
                 stt_on = get_setting("STT_ENABLED", STT_ENABLED)
             except Exception:
                 stt_on = STT_ENABLED
@@ -196,7 +196,7 @@ class STTListener:
             print(f"[STT DEBUG] stt_engine ініціалізовано успішно")
 
         try:
-            from .runtime.core_settings import get_setting
+            from ...runtime.core_settings import get_setting
             min_silence = get_setting("MIN_SILENCE_DURATION", MIN_SILENCE_DURATION)
             max_silence = get_setting("MAX_SILENCE_DURATION", MAX_SILENCE_DURATION)
             stt_logging = get_setting("STT_LOGGING_ENABLED", STT_LOGGING_ENABLED)
@@ -231,7 +231,7 @@ class STTListener:
         self.is_listening = True
 
         # Налаштування файлового логування (один раз для сесії)
-        log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+        log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "logs")
         os.makedirs(log_dir, exist_ok=True)
         log_file = os.path.join(log_dir, "stt_debug.log")
         
@@ -591,7 +591,7 @@ class STTGuiController:
         # 🔥 Оновити іконку в трей якщо callback встановлено
         if self.tray_status_callback:
             try:
-                from .gui.voice_tray_icon import VoiceStatus
+                from ...gui.voice_tray_icon import VoiceStatus
                 if status == "listening":
                     self.tray_status_callback(VoiceStatus.RECORDING, "Слухаю...")
                 elif status == "processing":

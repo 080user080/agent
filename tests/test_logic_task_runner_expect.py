@@ -1,7 +1,7 @@
 """Integration tests: TaskRunner + Step-Check (Phase 12.1)."""
 from __future__ import annotations
 
-from functions.logic_execution_report import (
+from functions.planning.logic_execution_report import (
     STATUS_EXPECT_FAILED,
     STATUS_OK,
     STATUS_PRECHECK_FAILED,

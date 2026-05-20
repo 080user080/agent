@@ -29,7 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from functions.logic_execution_report import (
+from functions.planning.logic_execution_report import (
     STATUS_DENIED,
     STATUS_ERROR,
     STATUS_EXPECT_FAILED,
@@ -650,7 +650,7 @@ def _handler_call_provider(ctx: TaskContext) -> Dict[str, Any]:
     if not prompt:
         return {"status": STATUS_ERROR, "error": "missing 'prompt'"}
     try:
-        from functions.logic_ai_adapter import (
+        from functions.llm.logic_ai_adapter import (
             ROLE_SYSTEM,
             ROLE_USER,
             ChatMessage,

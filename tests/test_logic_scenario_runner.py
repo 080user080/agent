@@ -5,7 +5,7 @@ GUI Automation Phase 5 — Сценарії виконання.
 """
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import sys
 import os
 
@@ -18,42 +18,21 @@ class TestScenario:
 
     def test_init(self):
         """Тест ініціалізації Scenario."""
-        from functions.logic_scenario_runner import Scenario
+        from functions.gui.logic_scenario_runner import Scenario
 
-        scenario = Scenario("test_scenario")
+        scenario = Scenario(name="test", description="desc", steps=[])
         assert scenario is not None
-        assert scenario.name == "test_scenario"
+        assert scenario.name == "test"
 
     def test_add_step(self):
-        """Тест додавання кроку."""
-        from functions.logic_scenario_runner import Scenario
+        """Тест структури сценарію."""
+        from functions.gui.logic_scenario_runner import Scenario, ScenarioStep
 
-        scenario = Scenario("test_scenario")
-        scenario.add_step("click", {"x": 100, "y": 200})
+        step = ScenarioStep("click", "desc", {"description": "test_button"})
+        scenario = Scenario(name="test", description="desc", steps=[step])
 
         assert len(scenario.steps) == 1
-
-    def test_add_multiple_steps(self):
-        """Тест додавання кількох кроків."""
-        from functions.logic_scenario_runner import Scenario
-
-        scenario = Scenario("test_scenario")
-        scenario.add_step("click", {"x": 100, "y": 200})
-        scenario.add_step("type", {"text": "hello"})
-        scenario.add_step("click", {"x": 300, "y": 400})
-
-        assert len(scenario.steps) == 3
-
-    def test_execute(self):
-        """Тест виконання сценарію."""
-        from functions.logic_scenario_runner import Scenario
-
-        scenario = Scenario("test_scenario")
-        scenario.add_step("click", {"x": 100, "y": 200})
-
-        with patch('functions.logic_scenario_runner.mouse_click'):
-            result = scenario.execute()
-            assert result is not None
+        assert scenario.steps[0].step_type == "click"
 
 
 class TestScenarioRunner:
@@ -61,47 +40,32 @@ class TestScenarioRunner:
 
     def test_init(self):
         """Тест ініціалізації ScenarioRunner."""
-        from functions.logic_scenario_runner import ScenarioRunner
+        from functions.gui.logic_scenario_runner import ScenarioRunner
 
         runner = ScenarioRunner()
         assert runner is not None
 
-    def test_register_scenario(self):
-        """Тест реєстрації сценарію."""
-        from functions.logic_scenario_runner import ScenarioRunner, Scenario
-
-        runner = ScenarioRunner()
-        scenario = Scenario("test_scenario")
-        scenario.add_step("click", {"x": 100, "y": 200})
-
-        runner.register_scenario(scenario)
-        assert "test_scenario" in runner.scenarios
-
     def test_run_scenario(self):
         """Тест виконання сценарію."""
-        from functions.logic_scenario_runner import ScenarioRunner, Scenario
+        from functions.gui.logic_scenario_runner import ScenarioRunner, Scenario, ScenarioStep
 
         runner = ScenarioRunner()
-        scenario = Scenario("test_scenario")
-        scenario.add_step("click", {"x": 100, "y": 200})
-        runner.register_scenario(scenario)
+        step = ScenarioStep("click", "desc", {"description": "test_button"})
+        scenario = Scenario(name="test_scenario", description="desc", steps=[step])
 
-        with patch('functions.logic_scenario_runner.mouse_click'):
-            result = runner.run_scenario("test_scenario")
-            assert result is not None
+        with patch('functions.gui.logic_scenario_runner.click_element') as mock_click:
+            mock_click.return_value = {"success": True}
+            result = runner.run_scenario(scenario)
+            assert result.success is True
 
     def test_list_scenarios(self):
         """Тест списку сценаріїв."""
-        from functions.logic_scenario_runner import ScenarioRunner, Scenario
+        from functions.gui.logic_scenario_runner import ScenarioRunner
 
         runner = ScenarioRunner()
-        scenario1 = Scenario("scenario1")
-        scenario2 = Scenario("scenario2")
-        runner.register_scenario(scenario1)
-        runner.register_scenario(scenario2)
-
-        result = runner.list_scenarios()
-        assert len(result) == 2
+        # Сценарії в runner тепер управляються через файлову систему
+        scenarios = runner.list_scenarios()
+        assert isinstance(scenarios, list)
 
 
 class TestScenarioStorage:
@@ -109,22 +73,22 @@ class TestScenarioStorage:
 
     def test_save_scenario(self):
         """Тест збереження сценарію."""
-        from functions.logic_scenario_runner import Scenario, ScenarioStorage
+        from functions.gui.logic_scenario_runner import Scenario, ScenarioRunner, ScenarioStep
 
-        scenario = Scenario("test_scenario")
-        scenario.add_step("click", {"x": 100, "y": 200})
+        step = ScenarioStep("click", "desc", {"x": 100, "y": 200})
+        scenario = Scenario(name="test_scenario", description="description", steps=[step])
 
-        storage = ScenarioStorage()
-        with patch('functions.logic_scenario_runner.Path'):
-            storage.save(scenario)
+        runner = ScenarioRunner()
+        with patch('functions.gui.logic_scenario_runner.Path'):
+            runner.save_scenario(scenario)
 
     def test_load_scenario(self):
         """Тест завантаження сценарію."""
-        from functions.logic_scenario_runner import ScenarioStorage
+        from functions.gui.logic_scenario_runner import ScenarioRunner
 
-        storage = ScenarioStorage()
-        with patch('functions.logic_scenario_runner.Path'):
-            result = storage.load("test_scenario")
+        runner = ScenarioRunner()
+        with patch('functions.gui.logic_scenario_runner.Path'):
+            result = runner.load_scenario("test_scenario")
             assert result is not None
 
 

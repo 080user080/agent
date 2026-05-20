@@ -648,7 +648,7 @@ class AgentLoop:
             # 6. Vision-LM (якщо ввімкнено і доступно)
             if self.config.enable_vision and obs.screenshot_path:
                 try:
-                    from functions.providers_vision import get_vision_provider
+                    from functions.llm.providers_vision import get_vision_provider
                     vision = get_vision_provider(self.assistant)
                     if vision and vision.is_available():
                         # Текстовий опис екрану
@@ -2080,7 +2080,7 @@ def build_default_decider(
     імпортуються (середовище без LLM endpoint, тести без мережі тощо).
     """
     try:
-        from functions.logic_llm_tools import ask_llm_with_tools
+        from functions.llm.logic_llm_tools import ask_llm_with_tools
         from functions.planning.logic_agent_tools_schema import (
             get_tools_for_capabilities,
             TOOL_NAME_ALIASES,

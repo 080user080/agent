@@ -44,16 +44,16 @@ import requests
 
 # Імпорт модулів
 from runtime.logic_core import FunctionRegistry
-from functions.logic_commands import VoiceAssistant
+from functions.gui.logic_commands import VoiceAssistant
 from functions.planning.core_planner import Planner  #GPT
-from functions.logic_audio import (
+from functions.audio.logic_audio import (
     should_ignore_command, correct_whisper_text, 
     check_volume, check_activation_word, remove_activation_word,
     text_similarity
 )
-from functions.logic_audio_filtering import get_audio_filter
-from functions.logic_continuous_listener import create_continuous_listener
-from functions.logic_tts import TTSEngine
+from functions.audio.logic_audio_filtering import get_audio_filter
+from functions.audio.logic_continuous_listener import create_continuous_listener
+from functions.audio.logic_tts import TTSEngine
 from functions.config import (
     SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD,
     ACTIVATION_WORD, ACTIVATION_LISTEN_DURATION, COMMAND_LISTEN_DURATION, 
@@ -64,7 +64,7 @@ from functions.config import (
     TTS_DEFAULT_VOICE, TTS_SPEECH_RATE, TTS_VOLUME, TTS_SPEAK_PREFIXES
 )
 
-from functions.logic_stt import get_stt_engine
+from functions.audio.logic_stt import get_stt_engine
 
 
 def print_audio_diagnostics():
@@ -914,7 +914,7 @@ class AssistantCore:
 
     def initialize_without_listener(self):
         """Ініціалізація асистента БЕЗ безперервного прослуховування (текстовий режим)"""
-        from functions.logic_audio_filtering import get_audio_filter
+        from functions.audio.logic_audio_filtering import get_audio_filter
         from functions.config import SAMPLE_RATE
 
         print(f"\n{Back.BLUE} {ASSISTANT_EMOJI} {ASSISTANT_NAME} - Текстовий режим {Style.RESET_ALL}\n")
@@ -981,7 +981,7 @@ class AssistantCore:
         stt_enabled = get_setting("STT_ENABLED", False)
         if stt_enabled and self.gui_queue is not None:
             try:
-                from functions.core_stt_listener import get_stt_controller
+                from functions.audio.core_stt_listener import get_stt_controller
                 
                 # 🔥 Callback для оновлення іконки в трей коли GUI кнопка активна
                 def tray_status_callback(status, text=""):
@@ -1141,7 +1141,7 @@ class AssistantCore:
         self.gui.set_assistant(self)
 
         # --- Ініціалізація STT контролера для голосових команд ---
-        from functions.core_stt_listener import get_stt_controller
+        from functions.audio.core_stt_listener import get_stt_controller
         from functions.config import STT_ENABLED
 
         if STT_ENABLED:

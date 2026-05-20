@@ -30,7 +30,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional
 
-from functions.logic_ai_adapter import (
+from functions.llm.logic_ai_adapter import (
     ROLE_SYSTEM,
     ROLE_USER,
     ChatMessage,
@@ -38,7 +38,7 @@ from functions.logic_ai_adapter import (
     ChatResponse,
     UsageInfo,
 )
-from functions.logic_provider_registry import ProviderRegistry, SelectionCriteria
+from functions.llm.logic_provider_registry import ProviderRegistry, SelectionCriteria
 from functions.planning.logic_task_runner import Plan, Task
 
 # ---------------------------------------------------------------------------

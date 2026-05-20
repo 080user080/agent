@@ -25,7 +25,7 @@ from functions.planning.logic_agent_tools_schema import (
     VISION_TOOLS,
     get_tools_for_capabilities,
 )
-from functions.logic_llm_tools import ChatToolsResponse, ToolCall
+from functions.llm.logic_llm_tools import ChatToolsResponse, ToolCall
 
 
 # --------------------------------------------------------------------------- #

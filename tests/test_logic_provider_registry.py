@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from functions.logic_ai_adapter import (  # noqa: E402
+from functions.llm.logic_ai_adapter import (  # noqa: E402
     CallableProvider,
     ChatMessage,
     ChatRequest,
@@ -15,7 +15,7 @@ from functions.logic_ai_adapter import (  # noqa: E402
     ProviderCapabilities,
     ScriptedProvider,
 )
-from functions.logic_provider_registry import (  # noqa: E402
+from functions.llm.logic_provider_registry import (  # noqa: E402
     ChatAttempt,
     ProviderRegistry,
     SelectionCriteria,

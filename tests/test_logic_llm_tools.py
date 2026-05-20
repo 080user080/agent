@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 import requests
 
-from functions.logic_llm_tools import (
+from functions.llm.logic_llm_tools import (
     ChatToolsResponse,
     ToolCall,
     ToolExecutionResult,
@@ -538,7 +538,7 @@ class TestAskLlmWithTools:
             return _make_http_response(200, _ok_body(content="ok"))
 
         monkeypatch.setattr(
-            "functions.logic_llm_tools.get_primary_endpoint",
+            "functions.llm.logic_llm_tools.get_primary_endpoint",
             lambda: {
                 "url": "http://from-default/v1/chat/completions",
                 "model": "m",

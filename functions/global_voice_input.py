@@ -17,9 +17,9 @@ import numpy as np
 import pyperclip
 import sounddevice as sd
 
-from .core_stt_listener import STTListener
-from .config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, SILENCE_DURATION, MICROPHONE_DEVICE_ID
-from .gui.voice_tray_icon import get_voice_tray_icon, VoiceStatus
+from functions.audio.core_stt_listener import STTListener
+from functions.config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, SILENCE_DURATION, MICROPHONE_DEVICE_ID
+from functions.gui.voice_tray_icon import get_voice_tray_icon, VoiceStatus
 
 
 # Windows API для hooks
@@ -875,7 +875,7 @@ class GlobalVoiceInput:
             # він не може знайти вікно через кракозябри в заголовку і скидає фокус.
             # Фокус вже відновлено через SetForegroundWindow + клік в _on_text_recognized.
             if "chrome" not in title.lower():
-                from functions.aaa_voice_input import activate_window_by_title
+                from functions.tools.tools_mouse_keyboard import activate_window_by_title
                 result = activate_window_by_title(title)
                 print(f"[GVI] Актывацыя вакна: {result}")
                 time.sleep(0.25)

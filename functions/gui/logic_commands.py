@@ -3,8 +3,8 @@
 import threading
 import time
 from colorama import Fore, Back, Style
-from .config import LM_STUDIO_URL, TTS_ENABLED, TTS_SPEAK_PREFIXES
-from .logic_audio import correct_whisper_text, check_activation_word, remove_activation_word
+from functions.config import LM_STUDIO_URL, TTS_ENABLED, TTS_SPEAK_PREFIXES
+from functions.audio.logic_audio import correct_whisper_text, check_activation_word, remove_activation_word
 class VoiceAssistant:
     # ... (ініціалізація)
     def __init__(self, stt_engine, registry, system_prompt, listener=None, gui_log_callback=None, context_controller=None):
@@ -24,11 +24,11 @@ class VoiceAssistant:
         self.context_controller = context_controller
         
         self.planner = None  #GPT
-        from .runtime.core_memory import MemoryManager
+        from ..runtime.core_memory import MemoryManager
         self.memory = MemoryManager()  # довготривала + сесія + задачі
         # Підключаємо LLM-caller для генерації summary
         self.memory.set_llm_caller(self._memory_llm_caller)
-        from .runtime.core_executor import TaskExecutor
+        from ..runtime.core_executor import TaskExecutor
         # Створюємо виконавець з колбеком для GUI
         self.executor = TaskExecutor(gui_callback=self.gui_log_callback)
         
@@ -51,7 +51,7 @@ class VoiceAssistant:
             self.cache_manager = cache_module.CacheManager(registry)
             # Статус кешу читається з налаштувань при кожному запиті
             try:
-                from .runtime.core_settings import get_setting
+                from ..runtime.core_settings import get_setting
                 cache_on = bool(get_setting("CACHE_ENABLED", False))
             except Exception:
                 cache_on = False
@@ -71,7 +71,7 @@ class VoiceAssistant:
             return
         if self.gui_log_callback:
             if sender == "assistant":
-                from .config import TTS_SPEAK_PREFIXES, ASSISTANT_DISPLAY_NAME
+                from ..config import TTS_SPEAK_PREFIXES, ASSISTANT_DISPLAY_NAME
                 # Видаляємо будь-які префікси, якщо вони вже є
                 for prefix in TTS_SPEAK_PREFIXES:
                     if message.strip().startswith(prefix):
@@ -104,7 +104,7 @@ class VoiceAssistant:
             minimal: Якщо True (для Planner), не включає великий system_prompt 
                      та conversation_history — щоб не переповнювати контекст.
         """
-        from .llm import ask_llm
+        from ..llm import ask_llm
         if minimal:
             # Мінімальний system prompt для планера (без списку функцій — він у prompt)
             minimal_system = "Ти — планувальник. Відповідай тільки JSON без пояснень."
@@ -116,7 +116,7 @@ class VoiceAssistant:
         if not self.cache_manager:
             return False
         try:
-            from .runtime.core_settings import get_setting
+            from ..runtime.core_settings import get_setting
             return bool(get_setting("CACHE_ENABLED", False))
         except Exception:
             return False
@@ -217,7 +217,7 @@ class VoiceAssistant:
             # process_command тут — тільки для STT-вводу (голосовий режим).
             # Якщо команда потребує виконання — main.py:process_text_command
             # спрямує її в AgentLoop.
-            from .config import ASSISTANT_DISPLAY_NAME
+            from ..config import ASSISTANT_DISPLAY_NAME
             
             print(f"{Fore.CYAN}[DEBUG logic_commands] BEFORE remove_activation_word: command_text='{command_text}', from_gui={from_gui}")
             
@@ -337,8 +337,8 @@ class VoiceAssistant:
                     return
             
             # LLM маршрут
-            from .llm import ask_llm, process_llm_response
-            from .core_streaming import StreamingHandler
+            from ..llm import ask_llm, process_llm_response
+            from ..core_streaming import StreamingHandler
 
             # command_text вже додано in conversation_history на початку process_command
             # Підготовка повідомлень для LLM (conversation_history вже містить поточну команду)
@@ -407,7 +407,7 @@ class VoiceAssistant:
                     llm_time = time.time() - start_llm
                     
                     if self.gui_log_callback:
-                        from .llm import get_primary_endpoint
+                        from ..llm import get_primary_endpoint
                         ep = get_primary_endpoint()
                         llm_name = ep.get("name", "LLM")
                         status_msg = f"✅ {llm_name} ({llm_time:.1f}с)"
@@ -430,7 +430,7 @@ class VoiceAssistant:
                 full_response = answer
                 llm_time = time.time() - start_llm
                 if self.gui_log_callback:
-                    from .llm import get_primary_endpoint
+                    from ..llm import get_primary_endpoint
                     ep = get_primary_endpoint()
                     llm_name = ep.get("name", "LLM")
                     self.gui_log_callback("update_status", f"✅ {llm_name} ({llm_time:.1f}с)")
@@ -477,7 +477,7 @@ class VoiceAssistant:
     def _memory_llm_caller(self, prompt: str) -> str:
         """Callable для MemoryManager - безпечний виклик LLM без історії діалогу."""
         try:
-            from .llm import ask_llm
+            from ..llm import ask_llm
             # Передаємо порожню історію, щоб LLM не плутав контексти
             return ask_llm(prompt, [], "Ти - асистент для підсумків. Відповідай коротко і по суті.")
         except Exception as e:
