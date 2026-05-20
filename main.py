@@ -11,6 +11,10 @@ from colorama import Fore, Back, Style, init
 # Ініціалізувати colorama
 init(autoreset=True)
 
+# Зміна робочої директорії на корінь проєкту
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 # Для правильного показу українських символів в консолі Windows
 if os.name == 'nt':
     sys.stdout.reconfigure(encoding='utf-8', line_buffering=True, write_through=True)
@@ -43,7 +47,7 @@ import torch
 import requests
 
 # Імпорт модулів
-from runtime.logic_core import FunctionRegistry
+from functions.runtime.logic_core import FunctionRegistry
 from functions.gui.logic_commands import VoiceAssistant
 from functions.planning.core_planner import Planner  #GPT
 from functions.audio.logic_audio import (
@@ -335,149 +339,8 @@ class AssistantCore:
     
     def check_lm_studio(self):
         """Перевірити primary endpoint. Для локального LM Studio — автозавантаження моделі."""
-        import subprocess
-        import os
-
-        LMS_PATH = os.path.expanduser(r"~\.lmstudio\bin\lms.exe")
-        BASE_URL = "http://localhost:1234"
-
-        # Отримати primary endpoint з налаштувань
-        def get_primary_endpoint():
-            try:
-                from functions.runtime.core_settings import get_setting
-                endpoints = get_setting("LLM_ENDPOINTS", [])
-                # Шукаємо endpoint з role="1" або "primary"
-                for ep in endpoints:
-                    role = ep.get("role")
-                    if role == "1" or role == "primary":
-                        if (ep.get("enabled") and ep.get("model") and ep.get("url")):
-                            return ep
-                # Якщо не знайдено role="1" або "primary", шукаємо endpoint з найменшим цифровим role
-                enabled_endpoints = [ep for ep in endpoints if ep.get("enabled") and ep.get("model") and ep.get("url")]
-                if enabled_endpoints:
-                    # Сортуємо за цифровим role
-                    def get_role_order(ep):
-                        try:
-                            return int(ep.get("role", 999)) if ep.get("role") else 999
-                        except (ValueError, TypeError):
-                            role_map = {"primary": 1, "secondary": 2, "fallback": 3, "alternative": 4}
-                            return role_map.get(ep.get("role"), 999)
-                    enabled_endpoints.sort(key=get_role_order)
-                    return enabled_endpoints[0]
-            except:
-                pass
-            return None
-
-        print(f"{Fore.CYAN}🔌 Перевірка primary LLM endpoint...")
-
-        primary_ep = get_primary_endpoint()
-
-        if not primary_ep:
-            print(f"{Fore.YELLOW}⚠️  Primary модель не налаштована")
-            print(f"{Fore.YELLOW}💡 Налаштуйте модель в GUI: Налаштування → LLM Моделі")
-            return False
-
-        DESIRED_MODEL = primary_ep.get("model")
-        PRIMARY_URL = primary_ep.get("url", "")
-        
-        print(f"{Fore.CYAN}   Primary модель: {DESIRED_MODEL}")
-        print(f"{Fore.CYAN}   URL: {PRIMARY_URL}")
-
-        # Якщо URL НЕ локальний LM Studio — пропускаємо автозавантаження
-        if "localhost" not in PRIMARY_URL and "127.0.0.1" not in PRIMARY_URL:
-            print(f"{Fore.GREEN}✅ Віддалений API (Gemini/OpenAI/etc) — LM Studio не потрібен")
-            return True
-
-        # Допоміжна функція: перевірити чи модель РЕАЛЬНО відповідає на запит
-        def is_model_ready():
-            try:
-                # Спробуємо зробити тестовий запит — це перевірить чи модель в пам'яті
-                test_response = requests.post(
-                    f"{BASE_URL}/v1/chat/completions",
-                    json={
-                        "model": DESIRED_MODEL,
-                        "messages": [{"role": "user", "content": "Hi"}],
-                        "max_tokens": 5,
-                        "temperature": 0
-                    },
-                    timeout=5
-                )
-                if test_response.status_code == 200:
-                    return True
-                # Якщо помилка "model not found" або "no model loaded" — модель не готова
-                error_text = test_response.text.lower()
-                if "no model loaded" in error_text or "model not found" in error_text:
-                    return False
-                # Інші помилки — можливо модель завантажена але є інші проблеми
-                return test_response.status_code == 200
-            except Exception:
-                return False
-
-        # Перевірити чи модель вже завантажена (список + реальна перевірка)
-        try:
-            response = requests.get(f"{BASE_URL}/v1/models", timeout=2)
-            if response.status_code == 200:
-                data = response.json()
-                models = [m['id'] for m in data.get('data', [])]
-                if DESIRED_MODEL in models:
-                    # Модель є в списку, але перевіримо чи вона реально відповідає
-                    print(f"{Fore.CYAN}   Модель є в списку, перевіряю чи готова до роботи...")
-                    if is_model_ready():
-                        print(f"{Fore.GREEN}✅ Модель завантажена і готова: {DESIRED_MODEL}")
-                        return True
-                    else:
-                        print(f"{Fore.YELLOW}⚠️  Модель є в списку, але не завантажена в пам'ять")
-        except Exception as e:
-            print(f"{Fore.YELLOW}   Не вдалося перевірити список моделей: {e}")
-
-        print(f"{Fore.CYAN}🤖 Завантаження {DESIRED_MODEL}...")
-
-        try:
-            # Завантажити модель через lms.exe
-            process = subprocess.Popen(
-                [LMS_PATH, "load", DESIRED_MODEL],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding='utf-8'
-            )
-
-            print(f"{Fore.CYAN}⏳ Очікування завантаження (до 30с)...")
-
-            # Перевіряти чи модель РЕАЛЬНО завантажена через тестовий запит
-            for i in range(30):
-                time.sleep(1)
-
-                # Спершу перевіримо чи модель в списку
-                try:
-                    response = requests.get(f"{BASE_URL}/v1/models", timeout=1)
-                    if response.status_code == 200:
-                        data = response.json()
-                        models = [m['id'] for m in data.get('data', [])]
-                        if DESIRED_MODEL in models:
-                            # Модель в списку — тепер перевіримо чи вона відповідає
-                            if is_model_ready():
-                                print(f"{Fore.GREEN}✅ Модель завантажена і готова за {i+1}с!")
-                                return True
-                except:
-                    pass
-
-                if i % 5 == 0 and i > 0:
-                    print(f"{Fore.LIGHTBLACK_EX}   {i}с... очікую завантаження в пам'ять")
-
-            # Фінальна перевірка
-            if is_model_ready():
-                print(f"{Fore.GREEN}✅ Модель завантажена і готова!")
-                return True
-            else:
-                print(f"{Fore.YELLOW}⚠️  Модель завантажена в список, але не відповідає на запити")
-                print(f"{Fore.YELLOW}   Можливо, завантаження ще триває або потрібно перезавантажити LM Studio")
-                return False
-
-        except Exception as e:
-            print(f"{Fore.RED}❌ Помилка автозавантаження: {e}")
-            print(f"{Fore.YELLOW}💡 Завантажте модель вручну в LM Studio")
-            return False
+        from functions.runtime.core_initializer_checks import check_lm_studio_readiness
+        return check_lm_studio_readiness()
     
     def process_text_command(self, text):
         """Обробити текстову команду з GUI.
@@ -836,7 +699,7 @@ class AssistantCore:
         # Ініціалізація Self-learning module
         print(f"\n{Fore.CYAN}🧠 Ініціалізація модуля самонавчання...")
         try:
-            from runtime.self_learning import get_self_learning
+            from functions.runtime.self_learning import get_self_learning
             self.self_learning = get_self_learning()
             stats = self.self_learning.get_stats()
             print(f"{Fore.GREEN}✅ Self-learning module готовий")
@@ -967,7 +830,7 @@ class AssistantCore:
 
         # --- WindsurfWatcherExecutor init (Phase 12.5: Windsurf Watch GUI) ---
         try:
-            from runtime.windsurf_watcher_executor import WindsurfWatcherExecutor
+            from functions.runtime.windsurf_watcher_executor import WindsurfWatcherExecutor
             self.windsurf_watcher = WindsurfWatcherExecutor(
                 gui_callback=lambda msg_type, data: self.log_to_gui(msg_type, data),
             )

@@ -14,7 +14,7 @@ from functions.planning.logic_execution_report import (
     STATUS_SKIPPED,
     ExecutionReport,
 )
-from runtime.logic_permission_gate import (
+from functions.runtime.logic_permission_gate import (
     Decision,
     PermissionGate,
     PermissionPolicy,

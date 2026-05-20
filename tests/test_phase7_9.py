@@ -127,7 +127,7 @@ def test_adaptive_click_image():
 # Web conditions
 # ---------------------------------------------------------------------------
 
-from runtime.conditions_web import (  # noqa: E402
+from functions.runtime.conditions_web import (  # noqa: E402
     condition_url_response_contains,
     condition_url_status_ok,
     condition_chat_idle,
@@ -135,12 +135,12 @@ from runtime.conditions_web import (  # noqa: E402
 
 
 def test_condition_url_response_contains_no_requests(monkeypatch):
-    monkeypatch.setattr("runtime.conditions_web.requests", None)
+    monkeypatch.setattr("functions.runtime.conditions_web.requests", None)
     assert condition_url_response_contains("http://example.com", "test") is False
 
 
 def test_condition_url_status_ok_no_requests(monkeypatch):
-    monkeypatch.setattr("runtime.conditions_web.requests", None)
+    monkeypatch.setattr("functions.runtime.conditions_web.requests", None)
     assert condition_url_status_ok("http://example.com") is False
 
 

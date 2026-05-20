@@ -71,6 +71,36 @@
 
 ---
 
+## audio/ — Audio Modules
+
+Модулі для обробки аудіо (STT/TTS, фільтрація).
+
+### `audio/core_stt_listener.py`
+**Призначення**: STT слухач для прийому голосового вводу.
+**Залежності**: `config`, `logic_stt`, `runtime.core_settings`
+
+### `audio/logic_audio.py`
+**Призначення**: Аудіо логіка обробки.
+**Залежності**: внутрішні модулі audio/
+
+### `audio/logic_audio_filtering.py`
+**Призначення**: Фільтрація аудіо сигналів.
+**Залежності**: внутрішні модулі audio/
+
+### `audio/logic_continuous_listener.py`
+**Призначення**: Неперервний слухач для голосових команд.
+**Залежності**: внутрішні модулі audio/
+
+### `audio/logic_stt.py`
+**Призначення**: Speech-to-Text конвертація (Whisper, w2v-bert-uk).
+**Залежності**: внутрішні модулі audio/
+
+### `audio/logic_tts.py`
+**Призначення**: Text-to-Speech озвучування (edge-tts).
+**Залежності**: внутрішні модулі audio/
+
+---
+
 ## core_* — Core Modules
 
 Основні модулі, що забезпечують функціональність ядра.
@@ -80,7 +110,7 @@
 **Методи**:
 - `create_plan(task: str) -> CompiledPlan`: Створення плану
 - `refine_plan(plan: CompiledPlan, feedback: str) -> CompiledPlan`: Уточнення плану
-**Залежності**: `llm/`, `logic_core.py`
+**Залежності**: `llm/`, `planning.logic_core`
 
 ### `core_executor.py`
 **Призначення**: Виконання планів.
@@ -109,16 +139,6 @@
 - `set_setting(key: str, value: Any) -> None`: Збереження налаштування
 **Залежності**: `json`, `SETTINGS_SCHEMA`
 
-**GUI налаштування**:
-- `GUI_BACKEND` — GUI бекенд (pyqt6)
-- `GLOBAL_VOICE_HOTKEY` — Гаряча клавіша для глобального голосового введення (наприклад: ctrl+f9)
-- `GLOBAL_VOICE_ENABLED` — Увімкнути глобальне голосове введення
-
-**Геометрія вікна** (реалізовано частково):
-- `WINDOW_GEOMETRY` — Збереження/відновлення геометрії вікна (формат WxH+X+Y)
-- Зберігається при закритті, відновлюється при старті
-- Динамічне збільшення поля вводу: мінімум 60px, максимум 160px
-
 ### Інші core_* модулі
 - `core_action_recorder.py` — Запис дій в лог
 - `core_app_profile.py` — Профілювання додатку
@@ -132,13 +152,11 @@
 - `core_planner_runner.py` — Запуск планів
 - `core_session_budget.py` — Бюджет сесії
 - `core_streaming.py` — Стрімінг відповідей
-- `core_stt_listener.py` — STT слухач
 - `core_task_intake.py` — Прийом задач
 - `core_tool_runtime.py` — Runtime для інструментів
 - `core_undo_manager.py` — Скасування дій
 - `core_windsurf_watcher.py` — Спостереження за Windsurf
 
----
 
 ## logic_* — Logic Modules
 
@@ -204,6 +222,119 @@
 **Залежності**: `provider_chain.py`
 
 ---
+
+## runtime/ — Runtime Modules
+
+Модулі для оркестрації та виконання задач.
+
+### `runtime/core_app_profile.py`
+**Призначення**: Профілювання додатку, моніторинг продуктивності.
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/core_checkpoint.py`
+**Призначення**: Чекпоінти для відновлення виконання після збоїв.
+**Методи**:
+- `save_checkpoint()`: Збереження стану сесії
+- `load_checkpoint(path: str) -> bool`: Відновлення з чекпоїнту
+**Залежності**: `json`, внутрішні модулі runtime/
+
+### `runtime/core_dispatcher.py`
+**Призначення**: Диспетчер команд між GUI, planner та інструментами.
+**Методи**:
+- `dispatch(command: dict) -> Response`: Обробка команди
+- `route_to_handler(cmd_type: str) -> Handler`: Маршрутизація до обробника
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/core_executor.py`
+**Призначення**: Виконавець планів (асинхронне виконання кроків).
+**Методи**:
+- `execute_step(step: Step) -> StepResult`: Виконання кроку
+- `stop()`: Зупинення виконання
+**Залежності**: `FunctionRegistry`, внутрішні модулі runtime/
+
+### `runtime/core_loop_detector.py`
+**Призначення**: Захист від зациклення агента (LoopDetector).
+**Методи**:
+- `detect_loop() -> bool`: Перевірка на зациклення
+- `report_stuck()`: Повідомлення про зависання
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/core_macro.py`
+**Призначення**: Макроси (збереження та виконання послідовних дій).
+**Методи**:
+- `record_macro(name: str) -> MacroRecorder`: Початок запису макроса
+- `play_macro(name: str) -> bool`: Виконання макроса
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/core_memory.py`
+**Призначення**: Пам'ять сесій (історія, задачі, summaries).
+**Методи**:
+- `get_session() -> Session`: Отримання поточної сесії
+- `add_message(role: str, content: str)`: Додавання повідомлення
+**Залежності**: `json`, внутрішні модулі runtime/
+
+### `runtime/core_safety_sandbox.py`
+**Призначення**: Сендбокс для ізоляції небезпечних операцій.
+**Методи**:
+- `execute_safe(code: str) -> Result`: Безпечне виконання коду
+- `check_permission(action: str) -> bool`: Перевірка дозволу
+**Залежності**: `subprocess`, `tempfile`
+
+### `runtime/core_session_budget.py`
+**Призначення**: Управління бюджетом сесії (ліміти запитів, час).
+**Методи**:
+- `get_remaining() -> Budget`: Залишок бюджету
+- `consume(amount: str) -> bool`: Використання частини бюджету
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/core_tool_runtime.py`
+**Призначення**: Runtime для реєстрації та виконання інструментів.
+**Методи**:
+- `register_tool(name: str, tool: Tool) -> None`: Реєстрація інструменту
+- `execute_tool(name: str, args: dict) -> Result`: Виконання інструменту
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/core_windsurf_watcher.py`
+**Призначення**: Спостереження за Windsurf IDE (інтеграція).
+**Методи**:
+- `watch_file(path: str) -> Watcher`: Початок спостереження файлу
+- `get_open_files() -> list[str]`: Отримання відкритих файлів
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/logic_core.py`
+**Призначення**: FunctionRegistry — реєстр функцій для динамічного виклику.
+**Методи**:
+- `register(name: str, func: Callable) -> None`: Реєстрація функції
+- `call(name: str, **kwargs) -> Any`: Виклик функції
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/logic_permission_gate.py`
+**Призначення**: Шлюз дозволів для перевірки прав на дію.
+**Методи**:
+- `has_permission(action: str, user: User) -> bool`: Перевірка дозволу
+- `grant_permission(user: User, action: str) -> None`: Надання дозволу
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/logic_watcher.py`
+**Призначення**: Watcher для моніторингу умов виконання.
+**Методи**:
+- `watch(condition: Condition, callback: Callable) -> WatchHandle`: Початок спостереження
+- `stop_watch(handle: WatchHandle)`: Припинення спостереження
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/self_learning.py`
+**Призначення**: Модуль самонавчення (аналіз помилок, генерація правил).
+**Методи**:
+- `analyze_error(error: str) -> Rule`: Генерація правила з помилки
+- `get_skills() -> list[Skill]`: Отримання навичок системи
+**Залежності**: внутрішні модулі runtime/
+
+### `runtime/windsurf_watcher_executor.py`
+**Призначення**: Executor для Windsurf Watch GUI.
+**Методи**:
+- `execute_watch_action(action: str) -> Result`: Виконання дії спостереження
+**Залежності**: внутрішні модулі runtime/
+
 
 ## gui_tabs/ — GUI Tabs
 

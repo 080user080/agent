@@ -49,7 +49,7 @@ from functions.planning.logic_expectations import (
     parse_expect_list,
 )
 from functions.planning.logic_repair_loop import RepairLoop, RepairProposer
-from runtime.logic_permission_gate import (
+from functions.runtime.logic_permission_gate import (
     ACTION_READ_FILE,
     ACTION_RUN_COMMAND,
     ACTION_WRITE_FILE,

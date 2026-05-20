@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 from functions.runtime.core_tool_runtime import make_tool_result
-from functions.common_decorators import llm_function
+from functions.tools.common_decorators import llm_function
 
 try:
     from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext

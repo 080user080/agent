@@ -19,7 +19,7 @@ from __future__ import annotations
 import time
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from runtime.logic_watcher import ConditionFn
+from functions.runtime.logic_watcher import ConditionFn
 
 
 # ---------------------------------------------------------------------------

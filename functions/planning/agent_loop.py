@@ -942,7 +942,7 @@ class AgentLoop:
             return
 
         try:
-            from functions.core_checkpoint import CheckpointData, get_checkpoint_manager
+            from functions.runtime.core_checkpoint import CheckpointData, get_checkpoint_manager
 
             manager = get_checkpoint_manager()
             checkpoint = CheckpointData(
@@ -968,7 +968,7 @@ class AgentLoop:
             return None
 
         try:
-            from functions.core_checkpoint import get_checkpoint_manager
+            from functions.runtime.core_checkpoint import get_checkpoint_manager
 
             manager = get_checkpoint_manager()
             checkpoint = manager.load(self.task_id)
@@ -1822,7 +1822,7 @@ class AgentLoop:
             return
         
         try:
-            from functions.core_checkpoint import get_checkpoint_manager
+            from functions.runtime.core_checkpoint import get_checkpoint_manager
             manager = get_checkpoint_manager()
             manager.delete(self.task_id)
             logger.info("Checkpoint deleted after completion")

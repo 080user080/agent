@@ -160,7 +160,7 @@ class Planner:
         if not text:
             return None
 
-        from .llm import safe_json_loads
+        from functions.llm.response_parser import safe_json_loads
 
         # 1. Прибираємо LLM-токени типу <|channel|>, <|message|>, constrain, ...
         cleaned = re.sub(r'<\|[^|]*\|>', '', text)

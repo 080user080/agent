@@ -1,6 +1,6 @@
 """Файлові операції для AgentLoop."""
 from pathlib import Path
-from functions.common_decorators import llm_function
+from functions.tools.common_decorators import llm_function
 from functions.runtime.core_tool_runtime import validate_path_inside_work_dir
 
 

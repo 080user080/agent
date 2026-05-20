@@ -371,8 +371,12 @@ class TestCodePipelineCompile:
         )
         plan = CodePipeline().compile(spec)
         mkdir_cmd = plan.tasks[0].params["cmd"]
-        # shlex.quote will wrap in single quotes
-        assert "'/tmp/path with spaces'" in mkdir_cmd
+        # On Windows it is now wrapped in double quotes
+        if os.name == "nt":
+            assert '"/tmp/path with spaces"' in mkdir_cmd
+        else:
+            # shlex.quote will wrap in single quotes
+            assert "'/tmp/path with spaces'" in mkdir_cmd
 
 
 class TestCodePipelineRequiredTools:
@@ -455,7 +459,7 @@ class TestCodePipelineEndToEnd:
         `write_file`, без expect-перевірок (щоб тест не залежав від
         pytest/ruff у PATH). Перевіряємо що файл дійсно створено.
         """
-        from functions.logic_permission_gate import PermissionGate, always_allow
+        from functions.runtime.logic_permission_gate import PermissionGate, PermissionPolicy, always_allow
         from functions.planning.logic_task_runner import TaskRunner
 
         out = tmp_path / "s7_out"
@@ -466,9 +470,16 @@ class TestCodePipelineEndToEnd:
             output_dir=str(out),
         )
         plan = CodePipeline().compile(spec)
-        gate = PermissionGate(ask_fn=always_allow())
+        # Allow tmp_path in policy
+        policy = PermissionPolicy(restricted_root=str(tmp_path))
+        gate = PermissionGate(policy=policy, ask_fn=always_allow())
         runner = TaskRunner(gate=gate)
         result = runner.run(plan)
+        # Debugging t1_mkdir failure
+        if not result.all_ok:
+            for s in result.report.steps:
+                if s.status == 'error':
+                    print(f"TASK ERROR: {s.task_id} - {s.summary} | {s.error} | stdout_tail: {s.stdout_tail}")
         # mkdir + scaffold повинні пройти
         assert result.all_ok, (
             f"run failed: stop={result.stop_reason} steps="

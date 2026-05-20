@@ -74,7 +74,7 @@ class WindsurfWatcherExecutor:
             return False
 
         try:
-            from functions.runtime.core_windsurf_watcher import (
+            from runtime.core_windsurf_watcher import (
                 WindsurfWatcherConfig,
                 WindsurfWatcherRunner,
                 make_default_snapshot_fn,

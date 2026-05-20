@@ -188,7 +188,7 @@ class PlanExecutor:
 
         # SessionBudget
         try:
-            from functions.runtime.core_session_budget import SessionBudget, SessionLimits
+            from .runtime.core_session_budget import SessionBudget, SessionLimits
             self._budget = SessionBudget(
                 limits=SessionLimits(
                     max_steps=self.config.max_steps,

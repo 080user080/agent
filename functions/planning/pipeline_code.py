@@ -26,6 +26,7 @@ handler-ів `TaskRunner` (`run_command` / `write_file`). Без LLM-викли�
 """
 from __future__ import annotations
 
+import os
 import re
 import shlex
 from dataclasses import dataclass
@@ -165,6 +166,9 @@ def _resolve_output_dir(spec: TaskSpec) -> str:
 
 def _quote(s: str) -> str:
     """Shell-quote (UNIX-style)."""
+    if os.name == "nt":
+        # Windows cmd doesn't like single quotes from shlex.quote
+        return f'"{s}"'
     return shlex.quote(s)
 
 
@@ -205,13 +209,16 @@ class CodePipeline:
         tasks: List[Task] = []
 
         # 1) mkdir output dir
+        cmd = f"mkdir -p {_quote(output_dir)}"
+        if os.name == "nt":
+            cmd = f"if not exist {_quote(output_dir)} mkdir {_quote(output_dir)}"
         tasks.append(
             Task(
                 id="t1_mkdir",
                 kind="run_command",
                 name=f"Ensure output dir exists: {output_dir}",
                 params={
-                    "cmd": f"mkdir -p {_quote(output_dir)}",
+                    "cmd": cmd,
                     "shell": True,
                     "reason": "pipeline_code: scaffold output dir",
                     "timeout": 10.0,

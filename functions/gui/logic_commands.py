@@ -338,7 +338,7 @@ class VoiceAssistant:
             
             # LLM маршрут
             from ..llm import ask_llm, process_llm_response
-            from ..core_streaming import StreamingHandler
+            # from ..core_streaming import StreamingHandler  # видалено, модуль більше не існує
 
             # command_text вже додано in conversation_history на початку process_command
             # Підготовка повідомлень для LLM (conversation_history вже містить поточну команду)

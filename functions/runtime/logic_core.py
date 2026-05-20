@@ -41,7 +41,9 @@ class FunctionRegistry:
 
     def load_all_modules(self):
         """Автоматично завантажити всі модулі з папки functions"""
-        functions_dir = Path(__file__).parent.parent / "functions"
+        # Визначаємо корінь проєкту (папка, де лежить main.py)
+        project_root = Path(__file__).resolve().parent.parent.parent
+        functions_dir = project_root / 'functions'
         
         if not functions_dir.exists():
             print(f"{Fore.YELLOW}⚠️  Папка functions не знайдена")

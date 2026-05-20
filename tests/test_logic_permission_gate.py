@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 
-from runtime.logic_permission_gate import (
+from functions.runtime.logic_permission_gate import (
     ACTION_READ_FILE,
     ACTION_RUN_COMMAND,
     ACTION_WRITE_FILE,

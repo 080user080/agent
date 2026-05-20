@@ -110,11 +110,16 @@ class ScannerWorker(QObject):
 
             if current_files:
                 file_paths.extend([Path(root) / f for f in current_files])
-                dir_structure[str(rel_root)] = {
-                    "dirs": dirs,
-                    "files": current_files
-                }
 
+            # Завжди зберігаємо інформацію про теку, навіть якщо файлів немає,
+            # щоб можна було відобразити всі підпапки в дереві.
+            # ВАЖЛИВО: використовуємо as_posix() для сумісності з побудовою дерева на всіх ОС
+            dir_structure[rel_root.as_posix()] = {
+                "dirs": dirs,
+                "files": current_files
+            }
+
+        # Видаляємо лише ті теки, які не містять ані файлів, ані підпапок
         dir_structure = {k: v for k, v in dir_structure.items() if v["files"] or v["dirs"]}
         self.finished.emit([str(p) for p in sorted(file_paths)], dir_structure)
 
@@ -348,6 +353,12 @@ class MainWindow(QMainWindow):
         search_layout.addWidget(self.search_edit)
         tree_layout.addLayout(search_layout)
 
+        # Чекбокс для згортання/розгортання дерева
+        self.expand_check = QCheckBox("Розгорнути все")
+        self.expand_check.setChecked(True)
+        self.expand_check.toggled.connect(self.on_expand_toggled)
+        tree_layout.addWidget(self.expand_check)
+
         self.tree_view = QTreeView()
         self.tree_view.setHeaderHidden(True)
         self.tree_view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -486,10 +497,20 @@ class MainWindow(QMainWindow):
         self.proxy_model.setSourceModel(model)
         self.proxy_model.setRecursiveFilteringEnabled(True)
         self.tree_view.setModel(self.proxy_model)
-        self.tree_view.expandAll()
+
+        # Розгортаємо все, якщо чекбокс активний
+        if self.expand_check.isChecked():
+            self.tree_view.expandAll()
 
         self.file_tree_model = model
         model.itemChanged.connect(self.on_item_changed)
+
+    def on_expand_toggled(self, checked: bool):
+        """Згортає або розгортає дерево файлів."""
+        if checked:
+            self.tree_view.expandAll()
+        else:
+            self.tree_view.collapseAll()
 
     def on_item_changed(self, item: QStandardItem):
         if not item.isCheckable():
@@ -680,13 +701,18 @@ class MainWindow(QMainWindow):
     def _collect_checked(self, item: QStandardItem, result: List[str]):
         for row in range(item.rowCount()):
             child = item.child(row)
-            if child.isCheckable() and child.checkState() == Qt.CheckState.Checked:
-                if child.rowCount() == 0:
-                    rel_path = child.data(Qt.ItemDataRole.UserRole)
-                    if rel_path:
-                        full = (self.project_root / rel_path).as_posix()
-                        result.append(full)
-            self._collect_checked(child, result)
+            # Якщо елемент має чекбокс і не позначений — пропускаємо всю гілку
+            if child.isCheckable() and child.checkState() != Qt.CheckState.Checked:
+                continue
+            if child.rowCount() == 0:
+                # Це файл
+                rel_path = child.data(Qt.ItemDataRole.UserRole)
+                if rel_path:
+                    full = (self.project_root / rel_path).as_posix()
+                    result.append(full)
+            else:
+                # Це папка — рекурсивно обробляємо лише якщо вона Checked
+                self._collect_checked(child, result)
 
     def copy_to_clipboard(self):
         if self.full_report:

@@ -8,7 +8,7 @@ import os
 import sys
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
-from functions.common_decorators import llm_function
+from functions.tools.common_decorators import llm_function
 
 
 @dataclass
