@@ -474,8 +474,10 @@
     "logs/checkpoints",
     "logs/screenshots",
     "logs/snapshots",
+    "profiles",
     "scaner",
     "scaner/scaner.py",
+    "scenarios",
     "tests",
     "tests/__init__.py",
     "tests/conftest.py",
@@ -553,6 +555,9 @@
     "voices/default",
     "voices/voice_split.py",
     "можливі майбутні розробки",
-    "можливі майбутні розробки/test_multi_tab_gui.py"
+    "можливі майбутні розробки/test_multi_tab_gui.py",
+    "check_null_bytes.py",
+    "remove_null_bytes.py",
+    "remove_secrets.py"
   ]
 }
