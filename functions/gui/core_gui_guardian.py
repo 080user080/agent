@@ -264,6 +264,18 @@ class GUIGuardian:
                     "risk": assessment
                 }
 
+            # Перевірка координат відносно дозволеної зони
+            if self.allowed_region:
+                x = params.get("x", 0)
+                y = params.get("y", 0)
+                if not (self.allowed_region.x <= x <= self.allowed_region.x + self.allowed_region.width and
+                        self.allowed_region.y <= y <= self.allowed_region.y + self.allowed_region.height):
+                    return {
+                        "allowed": False,
+                        "reason": f"Sandbox: координати ({x},{y}) за межами дозволеної зони ({self.allowed_region.x},{self.allowed_region.y},{self.allowed_region.width},{self.allowed_region.height})",
+                        "risk": assessment
+                    }
+
         # Rate limiting
         current_time = time.time()
         if current_time - self._last_action_time < 1.0:  # Мінімум 1 сек між діями
@@ -516,14 +528,22 @@ def guarded(action_name: str, require_confirmation_for: List[str] = None):
                 }
 
             # Перевіряємо рівень ризику
-            risk = check.get("risk", {})
-            level = risk.get("level", "low")
+            risk = check.get("risk")
+            if hasattr(risk, 'level'):
+                level = risk.level.value
+            elif isinstance(risk, dict):
+                level = risk.get("level", "low")
+            else:
+                level = "low"
 
             if level in require_confirmation_for:
                 # Тут можна додати GUI підтвердження
                 # Поки що просто логуємо
                 print(f"[GUARDIAN] HIGH RISK ACTION: {action_name}")
-                print(f"  Reasons: {risk.get('reasons', [])}")
+                if hasattr(risk, 'reasons'):
+                    print(f"  Reasons: {risk.reasons}")
+                elif isinstance(risk, dict):
+                    print(f"  Reasons: {risk.get('reasons', [])}")
 
             # Виконуємо
             return func(*args, **kwargs)

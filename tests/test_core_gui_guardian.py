@@ -22,140 +22,207 @@ class TestGUIGuardian:
 
         guardian = GUIGuardian()
         assert guardian is not None
+        assert guardian.sandbox_mode == False
 
-    def test_check_action_safety(self):
-        """Тест перевірки безпеки дії."""
+    def test_is_action_allowed_safe(self):
+        """Тест дозволеної безпечної дії."""
         from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
-        result = guardian.check_action_safety("mouse_click", {"x": 100, "y": 200})
+        result = guardian.is_action_allowed("mouse_click", {"x": 100, "y": 200})
+        assert result["allowed"] == True
+        assert "risk" in result
 
-        assert result is not None
-
-    def test_check_dangerous_action(self):
-        """Тест перевірки небезпечної дії."""
+    def test_is_action_allowed_dangerous_text(self):
+        """Тест блокування небезпечної дії з критичним текстом."""
         from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
-        result = guardian.check_action_safety("delete_file", {"path": "important.txt"})
+        # Багато небезпечних патернів дадуть CRITICAL
+        result = guardian.is_action_allowed("delete_file", {"path": "important.txt"}, target_text="delete remove format wipe")
+        assert result["allowed"] == False
+        assert result["risk"].level.value in ("critical", "high")
 
-        assert result is not None
-
-    def test_add_dangerous_pattern(self):
-        """Тест додавання небезпечного патерна."""
+    def test_assess_risk_low(self):
+        """Тест низького ризику."""
         from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
-        guardian.add_dangerous_pattern("delete")
+        assessment = guardian.assess_risk("mouse_click", {"x": 100, "y": 200})
+        assert assessment.level.value == "low"
+        assert assessment.score < 0.2
 
-        assert "delete" in guardian.dangerous_patterns
-
-    def test_remove_dangerous_pattern(self):
-        """Тест видалення небезпечного патерна."""
+    def test_assess_risk_dangerous(self):
+        """Тест підвищеного ризику при небезпечному тексті."""
         from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
-        guardian.add_dangerous_pattern("delete")
-        guardian.remove_dangerous_pattern("delete")
+        assessment = guardian.assess_risk("click", {"x": 100, "y": 200}, target_text="delete all files")
+        assert assessment.score >= 0.3
+        assert len(assessment.reasons) > 0
 
-        assert "delete" not in guardian.dangerous_patterns
-
-    def test_whitelist_action(self):
-        """Тест білого списку дій."""
+    def test_sandbox_mode_enable_disable(self):
+        """Тест увімкнення/вимкнення sandbox режиму."""
         from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
-        guardian.whitelist_action("mouse_click")
+        guardian.enable_sandbox_mode()
+        assert guardian.sandbox_mode == True
 
-        assert "mouse_click" in guardian.whitelist
+        guardian.disable_sandbox_mode()
+        assert guardian.sandbox_mode == False
 
-    def test_is_whitelisted(self):
-        """Тест перевірки білого списку."""
+    def test_sandbox_blocks_outside_region(self):
+        """Тест блокування дій за межами дозволеної зони."""
         from functions.gui.core_gui_guardian import GUIGuardian
 
         guardian = GUIGuardian()
-        guardian.whitelist_action("mouse_click")
+        guardian.enable_sandbox_mode(allowed_region=(0, 0, 100, 100))
 
-        result = guardian.is_whitelisted("mouse_click")
-        assert result is True
+        # Дія всередині зони
+        result = guardian.is_action_allowed("mouse_click", {"x": 50, "y": 50})
+        assert result["allowed"] == True
+
+        # Дія за межами зони
+        result = guardian.is_action_allowed("mouse_click", {"x": 500, "y": 500})
+        assert result["allowed"] == False
+
+    def test_set_allowed_applications(self):
+        """Тест встановлення дозволених програм."""
+        from functions.gui.core_gui_guardian import GUIGuardian
+
+        guardian = GUIGuardian()
+        guardian.set_allowed_applications(["notepad", "explorer"])
+
+        assert "notepad" in guardian.allowed_applications
+        assert "explorer" in guardian.allowed_applications
+
+    def test_add_blocked_application(self):
+        """Тест додавання програми в чорний список."""
+        from functions.gui.core_gui_guardian import GUIGuardian
+
+        guardian = GUIGuardian()
+        guardian.add_blocked_application("cmd.exe")
+
+        assert "cmd.exe" in guardian.blocked_applications
+
+    def test_preview_action(self):
+        """Тест створення preview дії."""
+        from functions.gui.core_gui_guardian import GUIGuardian
+
+        guardian = GUIGuardian()
+        preview = guardian.preview_action("mouse_click", {"x": 100, "y": 200})
+
+        assert "Клік миші" in preview or "100" in preview
+
+    def test_simulate_action(self):
+        """Тест симуляції дії."""
+        from functions.gui.core_gui_guardian import GUIGuardian
+
+        guardian = GUIGuardian()
+        result = guardian.simulate_action("mouse_click", {"x": 100, "y": 200})
+
+        assert "would_succeed" in result
+        assert "preview" in result
+        assert "risk" in result
+
+    def test_get_safety_report(self):
+        """Тест генерації звіту безпеки."""
+        from functions.gui.core_gui_guardian import GUIGuardian
+
+        guardian = GUIGuardian()
+        report = guardian.get_safety_report()
+
+        assert "Guardian Safety Report" in report
+        assert "Sandbox mode" in report
+
+    def test_set_allowed_region(self):
+        """Тест встановлення дозволеної зони."""
+        from functions.gui.core_gui_guardian import GUIGuardian
+
+        guardian = GUIGuardian()
+        guardian.set_allowed_region(0, 0, 1920, 1080)
+
+        assert guardian.allowed_region is not None
+        assert guardian.allowed_region.width == 1920
+        assert guardian.allowed_region.height == 1080
+
+    def test_api_functions(self):
+        """Тест публічних API функцій."""
+        from functions.gui.core_gui_guardian import (
+            get_guardian, is_action_allowed, assess_risk,
+            enable_sandbox_mode, disable_sandbox_mode,
+            preview_action, get_safety_report
+        )
+
+        guardian = get_guardian()
+        assert guardian is not None
+
+        # Тест is_action_allowed
+        result = is_action_allowed("mouse_click", {"x": 100, "y": 200})
+        assert "allowed" in result
+
+        # Тест assess_risk
+        risk = assess_risk("mouse_click", {"x": 100, "y": 200})
+        assert "level" in risk
+        assert "score" in risk
+
+        # Тест preview_action
+        preview = preview_action("mouse_click", {"x": 100, "y": 200})
+        assert isinstance(preview, str)
+
+        # Тест get_safety_report
+        report = get_safety_report()
+        assert isinstance(report, str)
 
 
-class TestActionValidator:
-    """Тести для класу ActionValidator."""
+class TestRiskAssessment:
+    """Тести для класу RiskAssessment."""
 
-    def test_init(self):
-        """Тест ініціалізації ActionValidator."""
-        from functions.gui.core_gui_guardian import ActionValidator
+    def test_create_risk_assessment(self):
+        """Тест створення оцінки ризику."""
+        from functions.gui.core_gui_guardian import RiskAssessment, GUIRiskLevel
 
-        validator = ActionValidator()
-        assert validator is not None
+        assessment = RiskAssessment(
+            level=GUIRiskLevel.MEDIUM,
+            score=0.5,
+            reasons=["test reason"],
+            suggestions=["test suggestion"]
+        )
 
-    def test_validate_mouse_coordinates(self):
-        """Тест валідації координат миші."""
-        from functions.gui.core_gui_guardian import ActionValidator
-
-        validator = ActionValidator()
-        result = validator.validate_mouse_coordinates(100, 200)
-
-        assert result is not None
-
-    def test_validate_text_input(self):
-        """Тест валідації текстового вводу."""
-        from functions.gui.core_gui_guardian import ActionValidator
-
-        validator = ActionValidator()
-        result = validator.validate_text_input("hello world")
-
-        assert result is not None
-
-    def test_validate_file_path(self):
-        """Тест валідації шляху до файлу."""
-        from functions.gui.core_gui_guardian import ActionValidator
-
-        validator = ActionValidator()
-        result = validator.validate_file_path("test.txt")
-
-        assert result is not None
+        assert assessment.level == GUIRiskLevel.MEDIUM
+        assert assessment.score == 0.5
+        assert "test reason" in assessment.reasons
 
 
-class TestSafetyPolicy:
-    """Тести для класу SafetyPolicy."""
+class TestSafetyZone:
+    """Тести для класу SafetyZone."""
 
-    def test_init(self):
-        """Тест ініціалізації SafetyPolicy."""
-        from functions.gui.core_gui_guardian import SafetyPolicy
+    def test_create_safety_zone(self):
+        """Тест створення безпечної зони."""
+        from functions.gui.core_gui_guardian import SafetyZone
 
-        policy = SafetyPolicy()
-        assert policy is not None
+        zone = SafetyZone(x=0, y=0, width=100, height=100, allowed_apps=["notepad"])
+        assert zone.x == 0
+        assert zone.y == 0
+        assert zone.width == 100
+        assert zone.height == 100
 
-    def test_add_rule(self):
-        """Тест додавання правила."""
-        from functions.gui.core_gui_guardian import SafetyPolicy
 
-        policy = SafetyPolicy()
-        policy.add_rule("no_delete", lambda action: action != "delete_file")
+class TestGuardedDecorator:
+    """Тести для декоратора guarded."""
 
-        assert "no_delete" in policy.rules
+    def test_guarded_decorator_blocks_critical(self):
+        """Тест блокування критичної дії декоратором."""
+        from functions.gui.core_gui_guardian import guarded
 
-    def test_check_policy(self):
-        """Тест перевірки політики."""
-        from functions.gui.core_gui_guardian import SafetyPolicy
+        @guarded("delete_file")
+        def dangerous_action():
+            return {"success": True}
 
-        policy = SafetyPolicy()
-        policy.add_rule("no_delete", lambda action: action != "delete_file")
-
-        result = policy.check("mouse_click")
-        assert result is not None
-
-    def test_remove_rule(self):
-        """Тест видалення правила."""
-        from functions.gui.core_gui_guardian import SafetyPolicy
-
-        policy = SafetyPolicy()
-        policy.add_rule("no_delete", lambda action: action != "delete_file")
-        policy.remove_rule("no_delete")
-
-        assert "no_delete" not in policy.rules
+        result = dangerous_action()
+        # Має бути заблоковано через високий ризик
+        assert result.get("blocked", False) == True or result.get("success", False) == False
 
 
 if __name__ == "__main__":

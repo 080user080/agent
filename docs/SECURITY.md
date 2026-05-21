@@ -3,33 +3,33 @@
 ## ⚠️ Ризики
 
 ### Виконання коду
-- **`aaa_execute_python.py`** та **`execute_python`** працюють в ізольованому сендбоксі (`core_safety_sandbox.py`)
+- **`aaa_execute_python.py`** та **`execute_python`** працюють в ізольованому сендбоксі (`functions/runtime/core_safety_sandbox.py`)
 - Тим не менш, виконання довільного коду завжди несе ризики
 - Рекомендується використовувати віртуальне середовище (venv)
 
 ### Файлові операції
-- Створення/видалення файлів вимагає підтвердження (див. `core_confirmation.py`)
+- Створення/видалення файлів вимагає підтвердження (див. `functions/gui/core_gui_guardian.py`)
 - 30-секундний таймер для скасування небезпечних дій
 - Логування всіх файлових операцій в `logs/gui_actions.jsonl`
 
 ### Голосовий ввід
-- Глобальний хук на Windows (`global_voice_input.py`) може конфліктувати з іншими програмами
+- Глобальний хук на Windows (`functions/global_voice_input.py`) може конфліктувати з іншими програмами
 - Hotkey за замовчуванням: `Ctrl+Shift+V` (можна змінити в налаштуваннях)
 - Розпізнаний текст вставляється в активне поле через clipboard
 
 ### GUI автоматизація
-- Керування мишею/клавіатурою (`pyautogui`) може виконувати дії без явного підтвердження
+- Керування мишею/клавіатурою (`functions/tools/tools_mouse_keyboard.py`) може виконувати дії без явного підтвердження
 - UIA (Windows UI Automation) має доступ до елементів інтерфейсу
 
 ## ✅ Заходи безпеки
 
 | Захід | Реалізація | Модуль |
 |-------|------------|--------|
-| Підтвердження дій | 30-секундний зворотний відлік | `core_confirmation.py` |
-| Сендбокс для коду | Обмежений доступ до файлів/мережі | `core_safety_sandbox.py` |
-| Кеш тільки для idempotent операцій | Не кешуємо створення/видалення | `core_cache.py` |
-| Логування дій | Запис у `logs/gui_actions.jsonl` | `core_action_recorder.py` |
-| Tool policies | Обмеження на виконання певних інструментів | `core_tool_runtime.py` |
+| Підтвердження дій | 30-секундний зворотний відлік | `functions/gui/core_gui_guardian.py` |
+| Сендбокс для коду | Обмежений доступ до файлів/мережі | `functions/runtime/core_safety_sandbox.py` |
+| Кеш тільки для idempotent операцій | Не кешуємо створення/видалення | `functions/core_cache.py` |
+| Логування дій | Запис у `logs/gui_actions.jsonl` | `functions/core_action_recorder.py` |
+| Tool policies | Обмеження на виконання певних інструментів | `functions/runtime/core_tool_runtime.py` |
 
 ## 🛡️ Рекомендації користувачам
 

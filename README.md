@@ -9,7 +9,7 @@
 
 ## ⚠️ Критичні компоненти (НЕ ЗМІНЮВАТИ БЕЗ УЗГОДЖЕННЯ)
 
-### Глобальне голосове введення (`functions/planning/global_voice_input.py`)
+### Глобальне голосове введення (`functions/global_voice_input.py`)
 - **Критичні методи:** `_insert_segment`, `_send_input_unicode`
 - **Опис:** Логіка вставки тексту оптимізована для Windows 10/11 з підтримкою кирилиці та емодзі
 - **Ризики змін:** Дублювання тексту, відсутність вставки, спотворення символів
@@ -95,6 +95,7 @@ coverage report
 - **Auto-repair** — до 3 спроб виправлення помилок
 - **JSON output** — структуровані плани з retry-механізмом
 - **AgentLoop** — observe → plan → act → check цикл для автономного виконання
+- **Code generation pipeline** — автоматична генерація коду через AI actors
 
 ### 💻 Робота з кодом
 - Читання, створення, редагування файлів
@@ -102,19 +103,20 @@ coverage report
 - Виконання Python (`execute_python`)
 - **Open Interpreter fallback** — автоматичне встановлення відсутніх модулів через локальний LM Studio
 - Git інтеграція (status, diff, commit)
-- **Code generation pipeline** — автоматична генерація коду через AI actors
 
 ### 🤖 Оркестрація ШІ
 - **RequestRouter** — класифікація запитів за типом (CODE/DEBUG/GUI/WEB/GENERAL/QUICK)
 - **ProviderChain** — fallback ланцюг з кількома моделями
 - **Multi-LLM support** — GPT-OSS 20B, Gemini, DeepSeek, Groq
 - **Quota tracking** — управління лімітами запитів
+- **Vision-LM** — аналіз зображень через OpenAI/Claude/Gemini
 
 ### 🛡️ Безпека
 - **Підтвердження дій** — зворотний відлік 30с для небезпечних операцій
 - **Кеш тільки idempotent** — не кешуємо створення/видалення файлів
 - **Tool policies** — маркування ризиків для кожної функції
 - **Safety sandbox** — ізольоване виконання Python коду
+- **GUIGuardian** — перевірка ризиків GUI-дій
 
 ### 🎙️ Голосовий ввід
 - **STT (Speech-to-Text)** — голосові команди (Whisper, w2v-bert-uk)
@@ -128,11 +130,6 @@ coverage report
 - Деталі кожного кроку
 - Кнопки "Виконати" і "Стоп" для запуску планів
 
-### 🎯 Самонавчання
-- **Self-learning module** — аналіз помилок і генерація правил
-- **Skills база** — накопичення успішних паттернів
-- **Execution logs** — JSONL логи виконань задач
-
 ### 🖥️ GUI
 - **PyQt6 GUI** — сучасний багатовкладковий інтерфейс (run.py --qt)
 - **Thread-safe messages** — потікобезпечна черга повідомлень
@@ -141,12 +138,24 @@ coverage report
 - **LLM endpoints editor** — налаштування кількох LLM провайдерів
 - **Plan panel** — прогрес виконання плану з кнопками управління
 
-### ⚙️ Налаштування
-- GUI редактор налаштувань (вкладка "Налаштування")
-- Пошук по налаштуваннях
-- Спойлери для груп
-- Збереження в `user_settings.json`
-- **LLM endpoints editor** — налаштування кількох LLM провайдерів
+### 🎯 Самонавчання
+- **Self-learning module** — аналіз помилок і генерація правил
+- **Skills база** — накопичення успішних паттернів
+- **Execution logs** — JSONL логи виконань задач
+
+### 🖥️ Desktop Automation (Phase 1-11)
+- **Mouse/keyboard** — керування мишею та клавіатурою через pyautogui
+- **Window manager** — керування вікнами (win32gui/pygetwindow)
+- **Screen capture** — скріншоти з mss + PIL + OpenCV
+- **OCR** — розпізнавання тексту (pytesseract/easyocr)
+- **UI detection** — пошук кнопок, полів, чекбоксів через OpenCV + OCR
+- **App recognition** — визначення активного додатку та діалогів
+- **Visual diff** — порівняння скріншотів (baseline)
+- **UI Accessibility** — Windows UIA API (uiautomation + pywinauto)
+- **Browser CDP** — браузерна автоматизація (Playwright)
+- **Scenario Runner** — виконання сценаріїв тестування GUI
+- **TaskRunner** — повна фаза виконання з PermissionGate, Expectations, SessionBudget, PlanCritic
+- **Watcher** — моніторинг умов виконання
 
 ---
 
@@ -154,107 +163,104 @@ coverage report
 
 ```
 agent/
-├── run.py                      # Універсальна точка входу (PyQt6)
-├── run_assistant_qt.py         # Точка входу з GUI (PyQt6)
-├── main.py                     # Консольна точка входу (AssistantCore)
-├── functions/                  # Основна логіка (~100 модулів)
-│   ├── audio/                    # Аудіо-обробка (STT/TTS, фільтрація)
-│   │   ├── core_stt_listener.py  # STT слухач для голосового вводу
-│   │   ├── logic_audio.py        # Аудіо логіка обробки
-│   │   ├── logic_audio_filtering.py # Фільтрація аудіо сигналів
-│   │   ├── logic_continuous_listener.py # Неперервний слухач голосових команд
-│   │   ├── logic_stt.py          # Speech-to-Text конвертація (Whisper, w2v-bert-uk)
-│   │   └── logic_tts.py          # Text-to-Speech озвучування (edge-tts)
-│   ├── llm/                      # LLM-шар
-│   │   ├── router.py                 # RequestRouter для класифікації запитів
-│   │   ├── provider_chain.py        # ProviderChain з fallback ланцюгом
-│   │   ├── endpoint_client.py        # OpenAI-compatible endpoint client
-│   │   ├── groq_client.py            # Groq API client
-│   │   └── response_parser.py        # Парсер відповідей LLM
-│   ├── planning/                 # Планинг-шар (task intake, context analysis)
-│   │   ├── agent_loop.py              # AgentLoop (observe → plan → act → check)
-│   │   ├── core_task_intake.py        # Прийом задач
-│   │   ├── logic_context_analyzer.py  # Аналіз контексту
-│   │   ├── pipeline_code.py           # Code generation pipeline
+├── run.py                          # Універсальна точка входу (PyQt6)
+├── run_assistant_qt.py             # Точка входу з GUI (PyQt6)
+├── main.py                         # Консольна точка входу (AssistantCore)
+├── pyproject.toml                  # Налаштування проєкту + CI
+├── requirements.txt                # Рантайм-залежності
+├── requirements-dev.txt            # Dev-залежності
+│
+├── functions/                      # Основна логіка
+│   ├── __init__.py
+│   ├── config.py                   # Глобальна конфігурація
+│   ├── global_voice_input.py       # Глобальний голосовий ввід (Windows hook)
+│   ├── logic_execution_report.py   # Звіт виконання
+│   │
+│   ├── audio/                      # Аудіо-обробка (STT/TTS)
+│   │   ├── core_stt_listener.py    # STT слухач
+│   │   ├── logic_audio.py          # Аудіо логіка
+│   │   ├── logic_audio_filtering.py# Фільтрація аудіо
+│   │   ├── logic_continuous_listener.py# Неперервний слухач
+│   │   ├── logic_stt.py            # Speech-to-Text (Whisper, w2v-bert-uk)
+│   │   └── logic_tts.py            # Text-to-Speech (edge-tts)
+│   │
+│   ├── llm/                        # LLM-шар
+│   │   ├── __init__.py             # Експорт LLM модулів
+│   │   ├── helpers.py              # Допоміжні функції для LLM
+│   │   ├── logic_llm_tools.py      # OpenAI-compatible tool-calling
+│   │   ├── providers_vision.py     # Vision-LM (OpenAI/Claude/Gemini)
+│   │   └── ... (інші LLM модулі)
+│   │
+│   ├── planning/                   # Планинг-шар
+│   │   ├── agent_loop.py               # AgentLoop (observe → plan → act → check)
+│   │   ├── core_planner.py             # Планер з retry
+│   │   ├── core_task_intake.py          # Прийом задач
+│   │   ├── logic_context_analyzer.py    # Аналіз контексту
+│   │   ├── logic_task_runner.py         # TaskRunner з handler-реєстром
+│   │   ├── pipeline_code.py            # Code generation pipeline
 │   │   └── ... (інші planning модулі)
-│   ├── runtime/                  # Runtime-оркестрація
-│   │   ├── core_app_profile.py        # Профілювання додатку
-│   │   ├── core_checkpoint.py         # Чекпоінти для відновлення
-│   │   ├── core_dispatcher.py         # Диспетчер команд між GUI/planner/інструментами
-│   │   ├── core_executor.py           # Виконавець планів (асинхронне виконання)
-│   │   ├── core_loop_detector.py      # LoopDetector — захист від зациклення
-│   │   ├── core_macro.py              # Макроси (збереження/виконання послідовних дій)
-│   │   ├── core_memory.py             # Пам'ять сесій (історія, задачі, summaries)
-│   │   ├── core_safety_sandbox.py     # Сендбокс для ізоляції небезпечних операцій
-│   │   ├── core_session_budget.py     # Бюджет сесії (ліміти запитів, час)
-│   │   ├── core_tool_runtime.py       # Runtime для реєстрації та виконання інструментів
-│   │   ├── core_windsurf_watcher.py   # Спостереження за Windsurf IDE
+│   │
+│   ├── runtime/                    # Runtime-оркестрація
+│   │   ├── __init__.py             # Експорт runtime модулів
+│   │   ├── conditions_windows.py   # Умови виконання для Windows
+│   │   ├── core_initializer_checks.py # Перевірки ініціалізації
+│   │   ├── core_windsurf_watcher.py   # Windsurf Watcher
+│   │   ├── logic_core.py             # FunctionRegistry
+│   │   ├── logic_permission_gate.py   # 4-рівнева policy stack
+│   │   ├── logic_watcher.py           # Watcher engine
 │   │   └── ... (інші runtime модулі)
-│   ├── tools/                    # Desktop/browser/media інструменти
-│   │   ├── mouse_keyboard.py    # Mouse/keyboard automation
-│   │   ├── window_manager.py    # Window manager
-│   │   ├── screen_capture.py    # Screen capture
-│   │   ├── ocr.py               # OCR (pytesseract/easyocr)
-│   │   ├── ui_detector.py       # UI detection
-│   │   ├── app_recognizer.py    # App recognizer
-│   │   ├── visual_diff.py       # Visual diff
-│   │   ├── ui_accessibility.py  # UI Automation (uiautomation/pywinauto)
-│   │   └── browser_cdp.py       # Browser automation (Playwright CDP)
-│   ├── core_*.py                  # Core модулі (~15)
-│   │   ├── planner.py            # Планер з retry
-│   │   ├── executor.py           # Виконавець планів
-│   │   ├── cache.py              # Безпечний кеш (idempotent операції)
-│   │   ├── settings.py           # Менеджер налаштувань
-│   │   └── ... (інші core модулі)
-│   ├── logic_*.py                 # Логіка (~15)
-│   │   ├── commands.py          # Обробка команд
-│   │   ├── llm_tools.py         # OpenAI-compatible tool-calling
-│   │   ├── tts.py / stt.py      # TTS/STT конвертація
-│   │   ├── context_analyzer.py  # Аналіз контексту
-│   │   ├── ui_navigator.py      # UI навігація
-│   │   ├── scenario_runner.py   # Scenario runner
-│   │   ├── repair_loop.py       # Repair loop для відновлення
-│   │   └── watcher.py           # Watcher для умов
-│   ├── aaa_*.py                   # LLM-tool обгортки (~15)
-│   ├── agent_loop.py              # AgentLoop (observe → plan → act → check)
-│   ├── task_spec.py               # TaskSpecCompiler (структурована декомпозиція)
-│   ├── ai_actors.py               # AI Actors (Codex/Windsurf/Cursor)
-│   ├── global_voice_input.py      # Global voice input (Windows hook)
-│   ├── self_learning.py           # Self-learning module
-│   └── ... (інші модулі)
-├── core_gui_pyqt6/             # GUI компоненти (PyQt6)
-│   ├── main_window.py             # Головне вікно (PyQt6)
-│   ├── settings_tab_qt.py         # Вкладка налаштувань (PyQt6)
-│   ├── chat_panel_qt.py           # Панель чату (PyQt6)
-│   ├── plan_panel_qt.py           # Панель плану (PyQt6)
-│   ├── confirmation_qt.py         # Діалог підтверджень (PyQt6)
-│   └── llm_endpoints_editor_qt.py # Редактор LLM ендпойнтів (PyQt6)
-├── backup/                     # Застарілі компоненти
-│   ├── tkinter_legacy/            # Tkinter GUI (застаріло)
-│   └── gui_tabs/                  # Старі multi-tab вкладки (застаріло)
-├── docs/                       # Документація
-│   ├── ARCHITECTURE.md           # Архітектура проєкту
-│   ├── MODULES.md                # Опис модулів
-│   ├── API.md                    # API для інтеграції
-│   ├── CONTRIBUTING.md           # Гайд для контриб'юторів
-│   ├── tests.md                  # Тестові сценарії
-│   ├── PLAN_COMPUTER_USE.md      # План використання комп'ютера
-│   ├── CHANGELOG.md              # Історія змін
-│   ├── SECURITY.md               # Безпека та ризики
-│   ├── FAQ.md                    # Часті питання
-│   └── LLM_to_LM_Studio.md       # LLM інтеграція
-├── tests/                      # Тести (pytest, 64 файли)
-├── TEST_GUI/                   # GUI діагностичні тести (10 файлів)
-├── debug_logs/                 # Логи відладки
-├── requirements.txt            # Рантайм-залежності
-├── status.md                   # Статус розробки + дорожня карта
-├── TASKS.md                    # Поточні задачі
-├── TASKS_Done.md               # Виконані задачі
-└── README.md                   # Цей файл
+│   │
+│   ├── gui/                        # GUI-логіка
+│   │   ├── core_gui_guardian.py    # GUIGuardian Risk Assessment
+│   │   └── logic_commands.py       # VoiceAssistant — обробка команд
+│   │
+│   ├── tools/                      # Desktop/browser/media інструменти
+│   │   ├── aaa_file_operations.py     # Файлові операції
+│   │   ├── aaa_open_interpreter.py    # Open Interpreter fallback
+│   │   ├── tools_app_recognizer.py    # App recognizer
+│   │   ├── tools_browser_cdp.py       # Browser CDP automation
+│   │   ├── tools_mouse_keyboard.py    # Mouse/keyboard automation
+│   │   ├── tools_ocr.py               # OCR (pytesseract/easyocr)
+│   │   ├── tools_playwright.py        # Playwright integration
+│   │   ├── tools_screen_capture.py    # Screen capture
+│   │   ├── tools_ui_accessibility.py  # Windows UIA API
+│   │   ├── tools_ui_detector.py       # UI detection (OpenCV+OCR)
+│   │   ├── tools_visual_diff.py       # Visual diff
+│   │   └── tools_window_manager.py    # Window manager
+│   │
+│   └── ... (інші core/logic модулі)
+│
+├── core_gui_pyqt6/                 # GUI компоненти (PyQt6)
+│   ├── __init__.py
+│   ├── main_window.py              # Головне вікно
+│   ├── settings_tab_qt.py          # Вкладка налаштувань
+│   ├── chat_panel_qt.py            # Панель чату
+│   ├── plan_panel_qt.py            # Панель плану
+│   ├── confirmation_qt.py          # Діалог підтверджень
+│   └── llm_endpoints_editor_qt.py  # Редактор LLM ендпойнтів
+│
+├── docs/                           # Документація
+│   ├── API.md                      # API для інтеграції
+│   ├── ARCHITECTURE.md             # Архітектура проєкту
+│   ├── DEBUG_LOOP.md               # Універсальний алгоритм відладки
+│   ├── LLM_to_LM_Studio.md         # Налаштування LM Studio
+│   ├── MODULES.md                  # Опис модулів
+│   ├── PLAN_COMPUTER_USE.md        # План Computer Use агента
+│   ├── SECURITY.md                 # Безпека та ризики
+│   └── tests.md                    # Тестові сценарії
+│
+├── tests/                          # Тести (pytest, 60+ файлів)
+├── TEST_GUI/                       # GUI діагностичні тести (10 файлів)
+├── scenarios/                      # JSON сценарії тестування
+├── runtime/                        # Рантайм-дані
+├── debug_logs/                     # Логи відладки
+├── scaner/                         # Сканер файлів
+│
+├── status.md                       # Статус розробки + дорожня карта
+├── TASKS.md                        # Поточні задачі
+├── TASKS_Done.md                   # Виконані задачі
+└── TASKS1.md                       # Додаткові задачі
 ```
-
----
-
 
 ---
 
@@ -278,27 +284,40 @@ agent/
               Відповідь GUI
 ```
 
+### AgentLoop (новий orchestration стек)
+
+```
+AgentLoop.run(goal):
+    while not done:
+        1. OBSERVE → ScreenObserver (screenshot + OCR + UIA)
+        2. DECIDE  → ActionDecider (LLM tool-calling або JSON Schema)
+        3. ACT     → TaskRunner (PermissionGate → handler → Expectation)
+        4. CHECK   → PlanCritic meta-оцінка
+```
+
 ### Core модулі
 
-| Модуль | Призначення |
-|--------|-------------|
-| `core_planner` | Генерація планів з retry-механізмом |
-| `core_executor` | Асинхронне виконання кроків плану |
-| `core_memory` | Зберігання історії, задач, summaries |
-| `core_cache` | Безпечне кешування idempotent операцій |
-| `core_settings` | Управління налаштуваннями |
-| `core_tool_runtime` | Реєстр та виконання інструментів + аудит |
-| `core_dispatcher` | Диспетчер команд між GUI / planner / інструментами |
-| `core_streaming` | Стрімінг відповідей LLM до GUI |
-| `core_stt_listener` | Прийом голосового вводу |
-| `core_safety_sandbox` | Сендбокс для `execute_python` та файлових дій |
-| `core_action_recorder` | Запис GUI-дій + скріншотів в `logs/gui_actions.jsonl` |
-| `core_undo_manager` | Undo для GUI-дій (введення тексту, переміщення файлів) |
-| `core_gui_guardian` | Перевірка ризиків та підтвердження небезпечних GUI-дій |
+| Модуль | Призначення | Розташування |
+|--------|-------------|---------------|
+| `core_planner` | Генерація планів з retry-механізмом | `functions/planning/` |
+| `core_executor` | Асинхронне виконання кроків плану | `functions/runtime/` |
+| `core_memory` | Пам'ять сесій | `functions/runtime/` |
+| `core_cache` | Безпечне кешування idempotent операцій | `functions/` |
+| `core_settings` | Управління налаштуваннями | `functions/` |
+| `core_tool_runtime` | Реєстр та виконання інструментів + аудит | `functions/runtime/` |
+| `core_dispatcher` | Диспетчер команд між GUI / planner / інструментами | `functions/runtime/` |
+| `core_streaming` | Стрімінг відповідей LLM до GUI | `functions/` |
+| `core_stt_listener` | Прийом голосового вводу | `functions/audio/` |
+| `core_safety_sandbox` | Сендбокс для `execute_python` та файлових дій | `functions/runtime/` |
+| `core_action_recorder` | Запис GUI-дій + скріншотів | `functions/` |
+| `core_undo_manager` | Undo для GUI-дій | `functions/` |
+| `core_gui_guardian` | Перевірка ризиків та підтвердження небезпечних GUI-дій | `functions/gui/` |
+| `core_windsurf_watcher` | Спостереження за Windsurf IDE | `functions/runtime/` |
+| `core_loop_detector` | Захист від зациклення агента | `functions/runtime/` |
 
 ### Open Interpreter інтеграція
 
-**`functions/tools_open_interpreter.py`** — модуль для self-healing виконання коду
+**`functions/tools/aaa_open_interpreter.py`** — модуль для self-healing виконання коду
 
 - **`is_available()`** — перевіряє чи Open Interpreter доступний і увімкнений (`OI_ENABLED` setting)
 - **`get_executor(lm_studio_url)`** — повертає singleton Open Interpreter executor з налаштуванням LM Studio
@@ -314,12 +333,6 @@ agent/
 - `OI_ENABLED` (bool, default `False`) — увімкнення Open Interpreter fallback
 - `LM_STUDIO_URL` (string, default `"http://localhost:1234/v1/chat/completions"`) — URL локального LM Studio сервера
 
-### Logic та Tools (скорочено)
-
-- **`logic_*`** — `logic_core` (FunctionRegistry), `logic_commands`, `logic_llm_tools`, `logic_tts`/`logic_stt`/`logic_audio*`, `logic_continuous_listener`, а також модулі Phase 5–11: `logic_context_analyzer`, `logic_ui_navigator`, `logic_scenario_runner`, `logic_task_runner`, `logic_repair_loop`, `logic_watcher`, `logic_permission_gate`, `logic_plan_critic`, `logic_execution_report`.
-- **`tools_*`** — GUI-інструменти Phase 1–4: `tools_mouse_keyboard`, `tools_window_manager`, `tools_screen_capture`, `tools_ocr`, `tools_ui_detector`, `tools_app_recognizer`, `tools_visual_diff`.
-- **`aaa_*`** — LLM-обгортки (tool wrappers), які викликаються з планів: `aaa_create_file`, `aaa_edit_file`, `aaa_execute_python`, `aaa_open_browser`, `aaa_programs`, `aaa_system`, тощо.
-
 ---
 
 ## 🔧 Налаштування
@@ -327,7 +340,7 @@ agent/
 ### Конфігураційні файли
 
 - `user_settings.json` — користувацькі налаштування
-- `cache_data.json` — кеш (автоматично)
+- `runtime/cache_data.json` — кеш (автоматично)
 - `session_memory.json` — пам'ять сесій (автоматично)
 
 ### Ключові налаштування
@@ -385,16 +398,13 @@ agent/
 
 ### Технічна документація (docs/)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — архітектура проєкту
-- [docs/MODULES.md](docs/MODULES.md) — опис модулів (aaa_*, core_*, logic_*)
+- [docs/MODULES.md](docs/MODULES.md) — опис модулів
 - [docs/API.md](docs/API.md) — API для інтеграції
-- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — як внести внесок в проєкт
+- [docs/DEBUG_LOOP.md](docs/DEBUG_LOOP.md) — універсальний алгоритм відладки
+- [docs/LLM_to_LM_Studio.md](docs/LLM_to_LM_Studio.md) — налаштування LM Studio
 - [docs/tests.md](docs/tests.md) — тестові сценарії та чеклісти
-- [docs/PLAN_COMPUTER_USE.md](docs/PLAN_COMPUTER_USE.md) — план використання комп'ютера
-
-### Додаткова документація
-- [docs/CHANGELOG.md](docs/CHANGELOG.md) — історія змін
+- [docs/PLAN_COMPUTER_USE.md](docs/PLAN_COMPUTER_USE.md) — план Computer Use агента
 - [docs/SECURITY.md](docs/SECURITY.md) — безпека та ризики
-- [docs/FAQ.md](docs/FAQ.md) — часті питання
 
 ---
 

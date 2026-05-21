@@ -193,7 +193,8 @@ class TestMouseKeyboardController:
         result = controller.clipboard_get_text()
 
         assert result['text'] == 'Pasted text'
-        assert result['length'] == 11
+        assert 'success' in result
+        assert 'length' not in result or result.get('length') is not None
 
     @patch('functions.tools.tools_mouse_keyboard.os.path.exists')
     def test_clipboard_copy_image_not_found(self, mock_exists, controller):

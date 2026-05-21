@@ -202,6 +202,10 @@ cython_debug/
 # Learn more at https://abstra.io/docs
 .abstra/
 
+# Phase 10 archived tools
+unused_tools_phase10.zip
+update_archive.py
+
 # Visual Studio Code
 #  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore

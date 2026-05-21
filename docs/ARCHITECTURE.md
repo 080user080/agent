@@ -38,33 +38,49 @@ cd /d D:\Python\agent
 ### Основні підсистеми
 
 - `core_gui_pyqt6/` — PyQt6 GUI (основний і єдиний GUI бекенд).
-- `backup/tkinter_legacy/` — Tkinter GUI (застаріло, переміщено в backup).
-- `backup/gui_tabs/` — старі multi-tab вкладки (застаріло, переміщено в backup).
-- `functions/audio/` — audio processing (STT/TTS, filtering, continuous listener). ✅
-- `functions/planning/` — planning layer (task intake, context analysis, pipeline compilation).
-- `functions/runtime/` — runtime orchestration (watcher, conditions, executor). ✅
-- `functions/core_*` — core modules (planner, executor, memory, cache, settings, safety, checkpoint).
-- `functions/logic_*` — logic modules (orchestration, task running, scenarios, expectations, repair, watchers).
-- `functions/tools/` — desktop/browser/media tools.
-- `functions/llm/` — LLM/provider layer.
-  - `functions/llm/router.py` — RequestRouter для класифікації запитів (CODE/DEBUG/GUI/WEB/GENERAL/QUICK)
-  - `functions/llm/provider_chain.py` — ProviderChain з fallback ланцюгом і quota tracking
-- `functions/tools/aaa_*.py` — legacy / wrapper-oriented tool layer.
-- `functions/agent_loop.py` — AgentLoop (observe → plan → act → check).
-- `functions/core_loop_detector.py` — LoopDetector (захист від зациклення агента).
-- `functions/task_spec.py` — TaskSpecCompiler (структурована декомпозиція).
+- `functions/__init__.py` — експорт кореневих модулів.
+- `functions/config.py` — глобальна конфігурація.
 - `functions/global_voice_input.py` — Global voice input (Windows hook).
-- `functions/self_learning/` — Self-learning module.
-- `core/context_controller.py` — ContextController (єдине управління пам'яттю між AgentLoop та VoiceAssistant).
-- `utils/screen_helper.py` — DPI корекція координат для Windows масштабування.
-- `tests/` — unit і integration-style тести.
+- `functions/logic_execution_report.py` — Execution Report.
+- `functions/audio/` — audio processing (STT/TTS, filtering, continuous listener). ✅
+- `functions/llm/` — LLM/provider layer.
+  - `__init__.py` — експорт LLM модулів
+  - `helpers.py` — допоміжні функції
+  - `logic_llm_tools.py` — OpenAI-compatible tool-calling
+  - `providers_vision.py` — Vision-LM (OpenAI/Claude/Gemini)
+- `functions/planning/` — planning layer (task intake, context analysis, pipeline compilation, agent loop).
+- `functions/runtime/` — runtime orchestration (watcher, conditions, executor, FunctionRegistry). ✅
+- `functions/gui/` — GUI-логіка:
+  - `core_gui_guardian.py` — GUIGuardian risk assessment ✅
+  - `logic_commands.py` — VoiceAssistant / обробка команд
+- `functions/tools/` — desktop/browser/media tools:
+  - `tools_mouse_keyboard.py` — mouse/keyboard automation ✅
+  - `tools_window_manager.py` — window manager ✅
+  - `tools_screen_capture.py` — screen capture ✅
+  - `tools_ocr.py` — OCR ✅
+  - `tools_ui_detector.py` — UI detection ✅
+  - `tools_app_recognizer.py` — app recognizer ✅
+  - `tools_visual_diff.py` — visual diff ✅
+  - `tools_ui_accessibility.py` — Windows UIA API ✅
+  - `tools_browser_cdp.py` — browser CDP automation ✅
+  - `tools_playwright.py` — Playwright integration ✅
+  - `aaa_file_operations.py` — legacy file operations wrapper
+  - `aaa_open_interpreter.py` — Open Interpreter fallback
+- `runtime/` — runtime data (cache, self-learning).
+- `scenarios/` — JSON тестові сценарії.
+- `scaner/` — файловий сканер.
+- `tests/` — unit і integration-style тести (60+ файлів).
+- `TEST_GUI/` — GUI діагностичні тести.
 
 ### Спостереження
 
 - Проєкт уже не малий: у `functions/` 100+ файлів.
-- З'явився новий LLM-пакет `functions/llm/` з router.py, provider_chain.py для оркестрації ШІ.
+- LLM-пакет `functions/llm/` містить logic_llm_tools.py та providers_vision.py.
+- `gui/` — новий пакет, виділений з кореня `functions/`.
+- `tools/` — новий пакет, куди зібрано всі Phase 1-11 GUI-інструменти.
+- `planning/` — містить AgentLoop, TaskRunner, ContextAnalyzer, PipelineCode.
+- `runtime/` — містить FunctionRegistry, PermissionGate, Watcher, WindsurfWatcher.
 - Стара термінологія ще лишилася в документації й частині модулів.
-- Новий orchestration-стек існує поруч із legacy-шарами.
 
 ---
 
@@ -72,7 +88,7 @@ cd /d D:\Python\agent
 
 ### 3.1. Плоска структура і перевантажені модулі
 
-Найважчі файли зараз: main.py, core_gui_pyqt6/main_window.py, logic_commands.py, core_planner.py, logic_task_runner.py, core_tool_runtime.py, agent_loop.py. Проблема не лише в розмірі — ці модулі одночасно тримають state, знають про GUI, tool runtime, LLM/planning/execution transitions. Це підвищує вартість будь-якої зміни.
+Найважчі файли зараз: main.py, core_gui_pyqt6/main_window.py, logic_commands.py, core_planner.py, logic_task_runner.py, agent_loop.py. Проблема не лише в розмірі — ці модулі одночасно тримають state, знають про GUI, tool runtime, LLM/planning/execution transitions. Це підвищує вартість будь-якої зміни.
 
 ### 3.2. Нестабільні контракти
 
@@ -99,7 +115,6 @@ Stateful дані мають жити або в `runtime/`, або в `logs/`. �
 - Полагодити `pytest` collection і вирівняти API `logic_task_runner`.
 - Оновити документацію під реальний LLM-шар (`functions/llm/`).
 - Позбутися суперечностей між статусом, README і кодом.
-- **Context Summarizer:** ✅ ВИРІШЕНО — реалізовано `core/context_controller.py` з tiktoken.
 
 ### P1
 

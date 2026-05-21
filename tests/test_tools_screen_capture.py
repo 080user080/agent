@@ -1,100 +1,88 @@
-"""
-Тести для модуля tools_screen_capture.py
-
-GUI Automation Phase 2 — Скріншоти + аудит дій.
-"""
-
+"""Тести для tools_screen_capture (Phase 1)."""
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, PropertyMock
 import sys
 import os
 
-# Додаємо батьківську папку в шлях
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 
 class TestScreenCapture:
-    """Тести для функцій скріншотів."""
+    """Тести для ScreenCapture."""
 
-    @patch('functions.tools.tools_screen_capture.mss')
-    def test_capture_screen_basic(self, mock_mss):
-        """Тест базового захоплення екрану."""
-        from functions.tools.tools_screen_capture import capture_screen
-
-        # Mock mss screenshot
+    @patch("functions.tools.tools_screen_capture.MSS_AVAILABLE", True)
+    @patch("functions.tools.tools_screen_capture.mss.mss")
+    def test_capture_screen_basic(self, mock_mss_class):
+        """Базовий тест захоплення екрану."""
         mock_sct = MagicMock()
-        mock_sct.shot.return_value = MagicMock(rgb=b'fake_image_data')
-        mock_mss.mss.return_value = mock_sct
+        mock_sct.monitors = [{"left": 0, "top": 0, "width": 1920, "height": 1080}]
+        mock_sct.grab.return_value = MagicMock()
+        mock_sct.grab.return_value.rgb = b"test_data"
+        mock_sct.grab.return_value.size = (1920, 1080)
+        mock_mss_class.return_value.__enter__.return_value = mock_sct
 
-        result = capture_screen()
+        from functions.tools.tools_screen_capture import ScreenCapture
+        capture = ScreenCapture()
+        img = capture.capture_screen()
+        assert img is not None
 
-        assert result is not None
-        mock_sct.shot.assert_called_once()
-
-    @patch('functions.tools.tools_screen_capture.mss')
-    def test_capture_region(self, mock_mss):
-        """Тест захоплення регіону екрану."""
-        from functions.tools.tools_screen_capture import capture_region
-
-        # Mock mss screenshot
+    @patch("functions.tools.tools_screen_capture.MSS_AVAILABLE", True)
+    @patch("functions.tools.tools_screen_capture.mss.mss")
+    def test_capture_region(self, mock_mss_class):
+        """Тест захоплення регіону."""
         mock_sct = MagicMock()
-        mock_sct.shot.return_value = MagicMock(rgb=b'fake_image_data')
-        mock_mss.mss.return_value = mock_sct
+        mock_sct.grab.return_value = MagicMock()
+        mock_sct.grab.return_value.rgb = b"test_data"
+        mock_sct.grab.return_value.size = (100, 100)
+        mock_mss_class.return_value.__enter__.return_value = mock_sct
 
-        result = capture_region(100, 100, 200, 200)
+        from functions.tools.tools_screen_capture import ScreenCapture
+        capture = ScreenCapture()
+        img = capture.capture_screen(region=(0, 0, 100, 100))
+        assert img is not None
 
-        assert result is not None
-        mock_sct.shot.assert_called_once()
+    @patch("functions.tools.tools_screen_capture.MSS_AVAILABLE", False)
+    def test_capture_screen_fallback(self):
+        """Тест fallback захоплення."""
+        from functions.tools.tools_screen_capture import ScreenCapture
+        capture = ScreenCapture()
+        img = capture.capture_screen()
+        # Може бути None або зображення
+        assert img is not None
 
-    @patch('functions.tools.tools_screen_capture.mss')
-    def test_capture_screen_fallback(self, mock_mss):
-        """Тест fallback на PIL коли mss недоступний."""
-        from functions.tools.tools_screen_capture import capture_screen
-
-        # Mock mss недоступний
-        mock_mss.mss.side_effect = ImportError()
-
-        with patch('functions.tools.tools_screen_capture.ImageGrab'):
-            result = capture_screen()
-            # Повинно використати fallback або повернути None
-
-    def test_save_screenshot(self):
+    @patch("functions.tools.tools_screen_capture.MSS_AVAILABLE", True)
+    @patch("functions.tools.tools_screen_capture.mss.mss")
+    def test_save_screenshot(self, mock_mss_class):
         """Тест збереження скріншоту."""
-        from functions.tools.tools_screen_capture import save_screenshot
-        from PIL import Image
+        mock_sct = MagicMock()
+        mock_sct.grab.return_value = MagicMock()
+        mock_sct.grab.return_value.rgb = b"test"
+        mock_sct.grab.return_value.size = (10, 10)
+        mock_mss_class.return_value.__enter__.return_value = mock_sct
 
-        # Створити фейкове зображення
-        fake_image = Image.new('RGB', (100, 100), color='red')
-
-        with patch('functions.tools.tools_screen_capture.Path') as mock_path:
-            mock_path.return_value.exists.return_value = False
-            mock_file = MagicMock()
-            mock_path.return_value.__truediv__.return_value = mock_file
-
-            save_screenshot(fake_image, "test.png")
-            mock_file.save.assert_called_once()
+        from functions.tools.tools_screen_capture import ScreenCapture, save_screenshot
+        capture = ScreenCapture()
+        result = capture.save_screenshot("test_screenshot.png")
+        assert result is not None
 
 
 class TestScreenCaptureIntegration:
-    """Інтеграційні тести для скріншотів."""
+    """Інтеграційні тести."""
 
-    @patch('functions.tools.tools_screen_capture.capture_screen')
-    def test_screenshot_workflow(self, mock_capture):
-        """Тест повного workflow скріншоту."""
-        from functions.tools.tools_screen_capture import capture_screen, save_screenshot
+    @patch("functions.tools.tools_screen_capture.MSS_AVAILABLE", True)
+    @patch("functions.tools.tools_screen_capture.mss.mss")
+    def test_screenshot_workflow(self, mock_mss_class):
+        """Повний workflow."""
+        mock_sct = MagicMock()
+        mock_sct.grab.return_value = MagicMock()
+        mock_sct.grab.return_value.rgb = b"test"
+        mock_sct.grab.return_value.size = (10, 10)
+        mock_mss_class.return_value.__enter__.return_value = mock_sct
 
-        # Mock capture
-        from PIL import Image
-        fake_image = Image.new('RGB', (100, 100), color='blue')
-        mock_capture.return_value = fake_image
-
-        # Виконати workflow
-        screenshot = capture_screen()
-        assert screenshot is not None
-
-        # Зберегти
-        with patch('functions.tools.tools_screen_capture.Path'):
-            save_screenshot(screenshot, "workflow_test.png")
+        from functions.tools.tools_screen_capture import ScreenCapture
+        capture = ScreenCapture()
+        img = capture.capture_screen()
+        assert img is not None
 
 
 if __name__ == "__main__":

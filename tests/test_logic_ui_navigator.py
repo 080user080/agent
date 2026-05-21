@@ -9,7 +9,6 @@ from unittest.mock import patch, MagicMock
 import sys
 import os
 
-# Додаємо батьківську папку в шлях
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 
@@ -23,71 +22,56 @@ class TestUINavigator:
         navigator = UINavigator()
         assert navigator is not None
 
-    @patch('functions.gui.logic_ui_navigator.find_clickable_elements')
-    def test_navigate_to_element(self, mock_find):
-        """Тест навігації до елемента."""
-        from functions.gui.logic_ui_navigator import UINavigator
-
-        mock_find.return_value = [{"x": 100, "y": 200, "confidence": 0.9}]
-
-        navigator = UINavigator()
-        result = navigator.navigate_to_element("button", "Save")
-
-        assert result is not None
-
-    @patch('functions.gui.logic_ui_navigator.find_clickable_elements')
-    def test_find_element_by_text(self, mock_find):
-        """Тест пошуку елемента за текстом."""
-        from functions.gui.logic_ui_navigator import UINavigator
-
-        mock_find.return_value = [{"x": 100, "y": 200, "text": "Save"}]
-
-        navigator = UINavigator()
-        result = navigator.find_element_by_text("Save")
-
-        assert result is not None
-
-    @patch('functions.gui.logic_ui_navigator.click_element')
-    def test_click_element(self, mock_click):
-        """Тест кліку на елемент."""
+    def test_click_element(self):
+        """Тест кліку на елемент (повертає словник з success)."""
         from functions.gui.logic_ui_navigator import UINavigator
 
         navigator = UINavigator()
-        element = {"x": 100, "y": 200}
-        result = navigator.click_element(element)
+        result = navigator.click_element("button", "Save")
 
+        assert isinstance(result, dict)
+        assert "success" in result
+        assert "message" in result
+
+    def test_type_in_field(self):
+        """Тест введення тексту в поле."""
+        from functions.gui.logic_ui_navigator import UINavigator
+
+        navigator = UINavigator()
+        result = navigator.type_in_field("Search", "hello")
+
+        assert isinstance(result, dict)
+        assert "success" in result
+
+    def test_select_option(self):
+        """Тест вибору опції."""
+        from functions.gui.logic_ui_navigator import UINavigator
+
+        navigator = UINavigator()
+        result = navigator.select_option("dropdown", "option")
+
+        assert isinstance(result, dict)
+        assert "success" in result
+
+    def test_check_checkbox(self):
+        """Тест чекбоксу."""
+        from functions.gui.logic_ui_navigator import UINavigator
+
+        navigator = UINavigator()
+        result = navigator.check_checkbox("label", True)
+
+        assert isinstance(result, dict)
+
+    def test_simulate_action(self):
+        """Тест execute_action."""
+        from functions.gui.logic_ui_navigator import UINavigator, UIAction, UIActionType, UIElement
+
+        navigator = UINavigator()
+        element = UIElement(element_type="button", description="OK")
+        action = UIAction(action_type=UIActionType.CLICK, element=element)
+
+        result = navigator.execute_action(action)
         assert result is not None
-
-
-class TestNavigationPath:
-    """Тести для планування шляху навігації."""
-
-    def test_init(self):
-        """Тест ініціалізації NavigationPath."""
-        from functions.gui.logic_ui_navigator import NavigationPath
-
-        path = NavigationPath()
-        assert path is not None
-
-    def test_add_step(self):
-        """Тест додавання кроку."""
-        from functions.gui.logic_ui_navigator import NavigationPath
-
-        path = NavigationPath()
-        path.add_step("click", {"x": 100, "y": 200})
-
-        assert len(path.steps) == 1
-
-    def test_execute_path(self):
-        """Тест виконання шляху."""
-        from functions.gui.logic_ui_navigator import NavigationPath
-
-        path = NavigationPath()
-        path.add_step("click", {"x": 100, "y": 200})
-
-        with patch('functions.gui.logic_ui_navigator.click_element'):
-            result = path.execute()
-            assert result is not None
 
 
 if __name__ == "__main__":
