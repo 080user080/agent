@@ -474,7 +474,6 @@
     "logs/checkpoints",
     "logs/screenshots",
     "logs/snapshots",
-    "profiles",
     "scaner",
     "scaner/scaner.py",
     "scenarios",
@@ -535,9 +534,6 @@
     "tests/test_task_spec.py",
     "tests/test_tools_app_recognizer.py",
     "tests/test_tools_browser_cdp.py",
-    "tests/test_tools_comfyui.py",
-    "tests/test_tools_excel.py",
-    "tests/test_tools_ffmpeg.py",
     "tests/test_tools_mouse_keyboard.py",
     "tests/test_tools_ocr.py",
     "tests/test_tools_screen_capture.py",
@@ -545,8 +541,6 @@
     "tests/test_tools_ui_detector.py",
     "tests/test_tools_visual_diff.py",
     "tests/test_tools_window_manager.py",
-    "tests/test_tools_windsurf.py",
-    "tests/test_tools_word.py",
     "tests/test_ui_accessibility.py",
     "tests/test_voice_tray_icon.py",
     "tts_cache",
@@ -555,9 +549,6 @@
     "voices/default",
     "voices/voice_split.py",
     "можливі майбутні розробки",
-    "можливі майбутні розробки/test_multi_tab_gui.py",
-    "check_null_bytes.py",
-    "remove_null_bytes.py",
-    "remove_secrets.py"
+    "можливі майбутні розробки/test_multi_tab_gui.py"
   ]
 }

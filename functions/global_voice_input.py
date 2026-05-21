@@ -983,7 +983,7 @@ class GlobalVoiceInput:
             # 10. Fallback на UIA для Chrome (пряма вставка в елемент)
             if not paste_ok:
                 try:
-                    from .tools_ui_accessibility import UIAWrapper, uia_get_focused_element
+                    from functions.tools.tools_ui_accessibility import UIAWrapper, uia_get_focused_element
                     uia = UIAWrapper()
                     if uia.is_available():
                         # Отримати сфокусований елемент

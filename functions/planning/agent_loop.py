@@ -21,9 +21,9 @@ logger = logging.getLogger("agent_loop")
 
 # Кешування імпортів для продуктивності
 try:
-    from functions.gui.tools_screen_capture import take_screenshot
-    from functions.gui.tools_ocr import ocr_image
-    from functions.gui.tools_ui_accessibility import get_uia_wrapper
+    from functions.tools.tools_screen_capture import take_screenshot
+    from functions.tools.tools_ocr import ocr_image
+    from functions.tools.tools_ui_accessibility import get_uia_wrapper
     _SCREEN_CAPTURE_AVAILABLE = True
 except ImportError:
     _SCREEN_CAPTURE_AVAILABLE = False
@@ -707,7 +707,7 @@ class AgentLoop:
         elements: List[Dict[str, Any]] = []
         # Спроба через tools_ui_detector
         try:
-            from functions.gui.tools_ui_detector import find_button_by_text, find_input_field
+            from functions.tools.tools_ui_detector import find_button_by_text, find_input_field
             buttons = find_button_by_text(text="*")
             if isinstance(buttons, dict) and buttons.get("ok"):
                 for b in buttons.get("matches", []) or []:

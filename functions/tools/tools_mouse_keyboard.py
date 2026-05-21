@@ -33,7 +33,7 @@ def _get_dpi_scaling_cached() -> float:
     Returns:
         DPI scaling factor (наприклад, 1.0 для 100% DPI, 1.5 для 150%)
     """
-    from functions.gui.screen_helper import get_windows_scale_factor
+    from functions.tools.screen_helper import get_windows_scale_factor
     return get_windows_scale_factor()
 
 

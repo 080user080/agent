@@ -48,7 +48,7 @@ except ImportError:
     CV2_AVAILABLE = False
 
 # Імпортуємо screen capture для скріншотів
-from functions.gui.tools_screen_capture import ScreenCapture
+from functions.tools.tools_screen_capture import ScreenCapture
 
 
 class OCREngine:

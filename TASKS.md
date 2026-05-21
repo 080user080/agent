@@ -35,6 +35,111 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 ---
 
+# План очищення проєкту МАРК
+
+## 1. Видалення зайвих .py файлів з runtime/
+
+- [ ] Перевірити вміст `d:\Python\agent\runtime\`
+```
+dir D:\Python\agent\runtime\
+```
+- [ ] Видалити `d:\Python\agent\runtime\__init__.py`
+- [ ] Видалити `d:\Python\agent\runtime\sync_settings_copy.py`
+- [ ] Запустити `pytest tests/ -q --tb=short` — переконатись що нічого не зламалось
+
+---
+
+## 2. Очищення JSON з functions/runtime/
+
+- [ ] Знайти всі JSON в `functions/runtime/`
+```
+dir D:\Python\agent\functions\runtime\*.json
+```
+- [ ] Для кожного знайденого JSON — видалити (вони не потрібні, пам'ять якою агент не користується)
+- [ ] Знайти в коді хардкодені шляхи що пишуть JSON в `functions/runtime/`
+```
+grep -rn "functions/runtime/" D:\Python\agent --include="*.py" | grep -i "json"
+```
+- [ ] Виправити знайдені шляхи на `runtime/`
+- [ ] Запустити `pytest tests/ -q --tb=short`
+
+---
+
+## 3. Видалення дубліката logic_execution_report.py
+
+- [ ] Перевірити хто імпортує коріневу версію
+```
+grep -rn "from functions.logic_execution_report" D:\Python\agent --include="*.py"
+grep -rn "from functions import.*execution_report" D:\Python\agent --include="*.py"
+```
+- [ ] Перемкнути знайдені імпорти на `functions.planning.logic_execution_report`
+- [ ] Видалити `d:\Python\agent\functions\logic_execution_report.py`
+- [ ] Запустити `pytest tests/ -q --tb=short`
+
+---
+
+## 4. Видалення дубліката sync_settings_copy.py
+
+- [ ] Перевірити хто імпортує
+```
+grep -rn "sync_settings_copy" D:\Python\agent --include="*.py"
+```
+- [ ] Залишити тільки `functions/runtime/sync_settings_copy.py`
+- [ ] Видалити `d:\Python\agent\runtime\sync_settings_copy.py` (якщо є імпорти — перемкнути спочатку)
+- [ ] Запустити `pytest tests/ -q --tb=short`
+
+---
+
+## 5. Перевірка заглушки functions/llm/core_settings.py
+
+- [ ] Перевірити хто імпортує
+```
+grep -rn "from functions.llm.core_settings" D:\Python\agent --include="*.py"
+grep -rn "from llm.core_settings" D:\Python\agent --include="*.py"
+```
+- [ ] Якщо 0 результатів — видалити `functions/llm/core_settings.py`
+- [ ] Якщо є імпорти — перемкнути на `functions.runtime.core_settings` і потім видалити
+- [ ] Запустити `pytest tests/ -q --tb=short`
+
+---
+
+## 6. Перевірка plan_executor.py (незакритий крок 3.1.10 з TASKS1.md)
+
+- [ ] Перевірити чи файл існує в обох місцях
+```
+dir D:\Python\agent\functions\planning\plan_executor.py
+dir D:\Python\agent\functions\plan_executor.py
+```
+- [ ] Перевірити імпорти
+```
+grep -rn "plan_executor" D:\Python\agent --include="*.py"
+```
+- [ ] Якщо файл тільки в `planning/` і імпорти вказують туди — все гаразд, позначити крок 3.1.10 як виконаний в `TASKS1.md`
+- [ ] Якщо є дублікат — видалити старий, перемкнути імпорти
+- [ ] Запустити `pytest tests/ -q --tb=short`
+
+---
+
+## 7. Фінальна перевірка
+
+- [ ] Переконатись що в `functions/runtime/` немає `.json` файлів
+```
+dir D:\Python\agent\functions\runtime\*.json
+```
+- [ ] Переконатись що в `runtime/` немає зайвих `.py` файлів (крім `__init__.py` якщо потрібен)
+```
+dir D:\Python\agent\runtime\*.py
+```
+- [ ] Запустити повний pytest
+```
+cd /d D:\Python\TEXT\LLM_model
+call venv\Scripts\activate.bat
+cd /d D:\Python\agent
+pytest tests/ -q --tb=short
+```
+- [ ] Зафіксувати кількість passed/failed до і після — вона не повинна збільшитись
+
+
 ## Завдання для агента кодування
 
 ### Контекст
