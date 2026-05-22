@@ -39,106 +39,106 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 ## 1. Видалення зайвих .py файлів з runtime/
 
-- [ ] Перевірити вміст `d:\Python\agent\runtime\`
+- [x] Перевірити вміст `d:\Python\agent\runtime\`
 ```
 dir D:\Python\agent\runtime\
 ```
-- [ ] Видалити `d:\Python\agent\runtime\__init__.py`
-- [ ] Видалити `d:\Python\agent\runtime\sync_settings_copy.py`
-- [ ] Запустити `pytest tests/ -q --tb=short` — переконатись що нічого не зламалось
+- [x] Видалити `d:\Python\agent\runtime\__init__.py`
+- [x] Видалити `d:\Python\agent\runtime\sync_settings_copy.py`
+- [x] Запустити `pytest tests/ -q --tb=short` — переконатись що нічого не зламалось
 
 ---
 
 ## 2. Очищення JSON з functions/runtime/
 
-- [ ] Знайти всі JSON в `functions/runtime/`
+- [x] Знайти всі JSON в `functions/runtime/`
 ```
 dir D:\Python\agent\functions\runtime\*.json
 ```
-- [ ] Для кожного знайденого JSON — видалити (вони не потрібні, пам'ять якою агент не користується)
-- [ ] Знайти в коді хардкодені шляхи що пишуть JSON в `functions/runtime/`
+- [x] Для кожного знайденого JSON — видалити (вони не потрібні, пам'ять якою агент не користується)
+- [x] Знайти в коді хардкодені шляхи що пишуть JSON в `functions/runtime/`
 ```
 grep -rn "functions/runtime/" D:\Python\agent --include="*.py" | grep -i "json"
 ```
-- [ ] Виправити знайдені шляхи на `runtime/`
-- [ ] Запустити `pytest tests/ -q --tb=short`
+- [x] Виправити знайдені шляхи на `runtime/`
+- [x] Запустити `pytest tests/ -q --tb=short`
 
 ---
 
 ## 3. Видалення дубліката logic_execution_report.py
 
-- [ ] Перевірити хто імпортує коріневу версію
+- [x] Перевірити хто імпортує коріневу версію
 ```
 grep -rn "from functions.logic_execution_report" D:\Python\agent --include="*.py"
 grep -rn "from functions import.*execution_report" D:\Python\agent --include="*.py"
 ```
-- [ ] Перемкнути знайдені імпорти на `functions.planning.logic_execution_report`
-- [ ] Видалити `d:\Python\agent\functions\logic_execution_report.py`
-- [ ] Запустити `pytest tests/ -q --tb=short`
+- [x] Перемкнути знайдені імпорти на `functions.planning.logic_execution_report`
+- [x] Видалити `d:\Python\agent\functions\logic_execution_report.py`
+- [x] Запустити `pytest tests/ -q --tb=short`
 
 ---
 
 ## 4. Видалення дубліката sync_settings_copy.py
 
-- [ ] Перевірити хто імпортує
+- [x] Перевірити хто імпортує
 ```
 grep -rn "sync_settings_copy" D:\Python\agent --include="*.py"
 ```
-- [ ] Залишити тільки `functions/runtime/sync_settings_copy.py`
-- [ ] Видалити `d:\Python\agent\runtime\sync_settings_copy.py` (якщо є імпорти — перемкнути спочатку)
-- [ ] Запустити `pytest tests/ -q --tb=short`
-
+- [x] Залишити тільки `functions/runtime/sync_settings_copy.py`
+- [x] Видалити `d:\Python\agent\runtime\sync_settings_copy.py` (якщо є імпорти — перемкнути спочатку)
+- [x] Запустити `pytest tests/ -q --tb=short`
+- [x] відмітити в TASKS.md виконано
 ---
 
 ## 5. Перевірка заглушки functions/llm/core_settings.py
 
-- [ ] Перевірити хто імпортує
+- [x] Перевірити хто імпортує
 ```
 grep -rn "from functions.llm.core_settings" D:\Python\agent --include="*.py"
 grep -rn "from llm.core_settings" D:\Python\agent --include="*.py"
 ```
-- [ ] Якщо 0 результатів — видалити `functions/llm/core_settings.py`
-- [ ] Якщо є імпорти — перемкнути на `functions.runtime.core_settings` і потім видалити
-- [ ] Запустити `pytest tests/ -q --tb=short`
-
+- [x] Якщо 0 результатів — видалити `functions/llm/core_settings.py`
+- [x] Якщо є імпорти — перемкнути на `functions.runtime.core_settings` і потім видалити
+- [x] Запустити `pytest tests/ -q --tb=short`
+- [x] відмітити в TASKS.md виконано
 ---
 
 ## 6. Перевірка plan_executor.py (незакритий крок 3.1.10 з TASKS1.md)
 
-- [ ] Перевірити чи файл існує в обох місцях
+- [x] Перевірити чи файл існує в обох місцях
 ```
 dir D:\Python\agent\functions\planning\plan_executor.py
 dir D:\Python\agent\functions\plan_executor.py
 ```
-- [ ] Перевірити імпорти
+- [x] Перевірити імпорти
 ```
 grep -rn "plan_executor" D:\Python\agent --include="*.py"
 ```
-- [ ] Якщо файл тільки в `planning/` і імпорти вказують туди — все гаразд, позначити крок 3.1.10 як виконаний в `TASKS1.md`
-- [ ] Якщо є дублікат — видалити старий, перемкнути імпорти
-- [ ] Запустити `pytest tests/ -q --tb=short`
-
+- [x] Якщо файл тільки в `planning/` і імпорти вказують туди — все гаразд, позначити крок 3.1.10 як виконаний в `TASKS1.md`
+- [x] Якщо є дублікат — видалити старий, перемкнути імпорти
+- [x] Запустити `pytest tests/ -q --tb=short`
+- [x] відмітити в TASKS.md виконано
 ---
 
 ## 7. Фінальна перевірка
 
-- [ ] Переконатись що в `functions/runtime/` немає `.json` файлів
+- [x] Переконатись що в `functions/runtime/` немає `.json` файлів
 ```
 dir D:\Python\agent\functions\runtime\*.json
 ```
-- [ ] Переконатись що в `runtime/` немає зайвих `.py` файлів (крім `__init__.py` якщо потрібен)
+- [x] Переконатись що в `runtime/` немає зайвих `.py` файлів (крім `__init__.py` якщо потрібен)
 ```
 dir D:\Python\agent\runtime\*.py
 ```
-- [ ] Запустити повний pytest
+- [x] Запустити повний pytest
 ```
 cd /d D:\Python\TEXT\LLM_model
 call venv\Scripts\activate.bat
 cd /d D:\Python\agent
 pytest tests/ -q --tb=short
 ```
-- [ ] Зафіксувати кількість passed/failed до і після — вона не повинна збільшитись
-
+- [x] Зафіксувати кількість passed/failed до і після — вона не повинна збільшитись
+- [x] відмітити в TASKS.md виконано
 
 ## Завдання для агента кодування
 
@@ -168,7 +168,7 @@ grep -r "ask_llm" D:\Python\agent\functions --include="*.py" -n
 - `functions/planning/logic_repair_loop.py`
 - `functions/planning/logic_plan_critic.py`
 - `main.py`
-
+- [ ] відмітити в TASKS.md виконано
 ---
 
 ### Крок 2 — Розібрати поточний `logic_commands.py`
@@ -178,7 +178,7 @@ grep -r "ask_llm" D:\Python\agent\functions --include="*.py" -n
 - Де саме викликається `ask_llm` і з якими аргументами (сигнатура: `ask_llm(prompt, system_prompt=None)` чи інша)
 - Де викликається `process_llm_response` — вона вже є в `response_parser.py`, імпорт треба виправити
 - Яка логіка навколо цих викликів (обробка помилок, стрімінг, history)
-
+- [ ] відмітити в TASKS.md виконано
 ---
 
 ### Крок 3 — Створити helper-функцію `ask_llm`
@@ -202,7 +202,7 @@ if history:
     messages.extend(history)
 messages.append({"role": "user", "content": prompt})
 ```
-
+- [ ] відмітити в TASKS.md виконано
 ---
 
 ### Крок 4 — Оновити `functions/llm/__init__.py`
@@ -214,7 +214,7 @@ from functions.llm.helpers import ask_llm
 from functions.llm.response_parser import process_llm_response
 from functions.llm.endpoint_client import get_primary_endpoint, call_endpoint
 ```
-
+- [ ] відмітити в TASKS.md виконано
 ---
 
 ### Крок 5 — Виправити імпорти в `logic_commands.py`
@@ -232,7 +232,7 @@ from ..llm import ask_llm, process_llm_response
 Після виправлення `__init__.py` цей рядок повинен працювати без змін. Але якщо є ще прямі імпорти типу `from functions.llm.logic_llm import ...` — їх теж виправити.
 
 Перевірити чи є в `logic_commands.py` інші зламані імпорти (наприклад `from ..llm import stream_llm` чи подібні).
-
+- [ ] відмітити в TASKS.md виконано
 ---
 
 ### Крок 6 — Перевірити `functions/planning/core_planner.py`
@@ -241,13 +241,13 @@ from ..llm import ask_llm, process_llm_response
 
 - Чи є в `Planner.__init__` посилання на `assistant` і чи є у `assistant` метод `ask_llm`
 - Якщо `assistant.ask_llm` теж зламаний — пропатчити аналогічно через новий helper
-
+- [ ] відмітити в TASKS.md виконано
 ---
 
 ### Крок 7 — Перевірити `context_controller.py`
 
 `ContextController.__init__` приймає `ask_llm_fn: Optional[Callable]`. Знайти всі місця де створюється `ContextController` і переконатись що передається валідний callable (новий `ask_llm` з `helpers.py`).
-
+- [ ] відмітити в TASKS.md виконано
 ---
 
 ### Крок 8 — Smoke test
@@ -259,7 +259,7 @@ from ..llm import ask_llm, process_llm_response
 - Відповідь повертається в чат
 
 Якщо з'являться нові `ImportError` в інших файлах — фіксувати їх за тією ж схемою.
-
+- [ ] відмітити в TASKS.md виконано
 ---
 
 ### Обмеження та застереження
