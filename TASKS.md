@@ -168,7 +168,7 @@ grep -r "ask_llm" D:\Python\agent\functions --include="*.py" -n
 - `functions/planning/logic_repair_loop.py`
 - `functions/planning/logic_plan_critic.py`
 - `main.py`
-- [ ] відмітити в TASKS.md виконано
+- [x] відмітити в TASKS.md виконано
 ---
 
 ### Крок 2 — Розібрати поточний `logic_commands.py`
@@ -178,7 +178,7 @@ grep -r "ask_llm" D:\Python\agent\functions --include="*.py" -n
 - Де саме викликається `ask_llm` і з якими аргументами (сигнатура: `ask_llm(prompt, system_prompt=None)` чи інша)
 - Де викликається `process_llm_response` — вона вже є в `response_parser.py`, імпорт треба виправити
 - Яка логіка навколо цих викликів (обробка помилок, стрімінг, history)
-- [ ] відмітити в TASKS.md виконано
+- [x] відмітити в TASKS.md виконано
 ---
 
 ### Крок 3 — Створити helper-функцію `ask_llm`
@@ -202,7 +202,7 @@ if history:
     messages.extend(history)
 messages.append({"role": "user", "content": prompt})
 ```
-- [ ] відмітити в TASKS.md виконано
+- [x] відмітити в TASKS.md виконано
 ---
 
 ### Крок 4 — Оновити `functions/llm/__init__.py`
