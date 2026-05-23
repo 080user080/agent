@@ -93,8 +93,8 @@ class TestAgentLoopCheck:
         registry = FakeRegistry()
         loop = AgentLoop(assistant, registry)
 
-        # Встановлюємо попередній хеш
-        loop._prev_screen_hash = "old_hash"
+        # Встановлюємо попередній хеш через CheckState
+        loop._check_state.prev_screen_hash = "old_hash"
 
         obs = Observation(screen_hash="new_hash")
         result = loop.check("open_program", obs)
@@ -108,7 +108,7 @@ class TestAgentLoopCheck:
         registry = FakeRegistry()
         loop = AgentLoop(assistant, registry)
 
-        loop._prev_screen_hash = "same_hash"
+        loop._check_state.prev_screen_hash = "same_hash"
         obs = Observation(screen_hash="same_hash")
         result = loop.check("open_program", obs)
 

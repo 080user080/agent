@@ -6,15 +6,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from functions.planning.agent_loop import (
-    ActionDecider,
-    AgentAction,
-    AgentLoop,
-    AgentLoopConfig,
-    AgentState,
-    Observation,
-    build_default_decider,
-)
+from functions.agent.plan import ActionDecider, AgentAction, build_default_decider
+from functions.planning.agent_loop import AgentLoop, AgentLoopConfig, AgentState, Observation
 from functions.planning.logic_agent_tools_schema import (
     AGENT_TOOLS,
     ALL_AGENT_TOOLS,

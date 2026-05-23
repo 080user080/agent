@@ -345,67 +345,26 @@ class VoiceAssistant:
             messages = [{"role": "system", "content": self.system_prompt}]
             messages.extend(self.conversation_history)
             
-            # Використовуємо стрімінг, якщо доступний
+            # Використовуємо стрімінг, якщо доступний (виділено в commands_streaming)
             full_response = ""
             used_streaming = False
+            llm_time = 0.0
             if self.streaming_handler:
                 try:
                     print(f"{Fore.MAGENTA}🤔 [Думаю (стрімінг)...]")
-                    if self.gui_log_callback:
-                        self.gui_log_callback("update_status", "🤔 Думаю...")
                     start_llm = time.time()
                     used_streaming = True
 
-                    # Не викликаємо stream_start - всі відповіді додаватимуться через log_to_gui
-                    # без дублювання префікса "⚡ МАРК:"
+                    from .commands_streaming import stream_llm_response
 
-                    # Буфер для накопичення тексту перед виведенням
-                    buffer_data = {"text": "", "displayed": "", "count": 0}
-                    MIN_BUFFER = 180  # ~2-3 речення перед виведенням
-                    SENTENCE_END = ('. ', '! ', '? ', '\n')  # Кінці речень (з пробілом)
+                    full_response = stream_llm_response(
+                        streaming_handler=self.streaming_handler,
+                        messages=messages,
+                        gui_log_callback=self.gui_log_callback,
+                    )
 
-                    def flush_buffer():
-                        """Не виводимо в streaming - всі відповіді додаватимуться через log_to_gui"""
-                        pass
-
-                    def on_chunk(chunk_text: str):
-                        nonlocal full_response
-                        full_response += chunk_text
-                        buffer_data["text"] += chunk_text
-                        buffer_data["count"] += 1
-
-                        # Перевіряємо чи це JSON - якщо так, не показуємо в streaming
-                        temp_text = buffer_data["text"].strip()
-                        if temp_text.startswith('{'):
-                            # Це JSON - не показуємо в streaming взагалі
-                            return
-
-                        # Перевіряємо чи треба flush (кінець речення або накопичено достатньо)
-                        should_flush = (
-                            buffer_data["text"].rstrip().endswith(SENTENCE_END) or
-                            len(buffer_data["text"]) - len(buffer_data["displayed"]) >= MIN_BUFFER
-                        )
-
-                        if should_flush and self.gui_log_callback:
-                            flush_buffer()
-
-                        # Оновлюємо статус-бар (кожні 10 токенів)
-                        if self.gui_log_callback and buffer_data["count"] % 10 == 0:
-                            self.gui_log_callback(
-                                "update_status",
-                                f"🤔 Думаю... ({buffer_data['count']} токенів)",
-                            )
-
-                    self.streaming_handler.stream_response_with_callback(messages, on_chunk)
-
-                    # Фінальний flush залишку
-                    if buffer_data["text"] and len(buffer_data["text"]) > len(buffer_data["displayed"]):
-                        flush_buffer()
-
-                    # Не викликаємо stream_end - всі відповіді додаватимуться через log_to_gui
-                    
                     llm_time = time.time() - start_llm
-                    
+
                     if self.gui_log_callback:
                         from ..llm import get_primary_endpoint
                         ep = get_primary_endpoint()

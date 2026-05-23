@@ -6,14 +6,8 @@ from typing import Any, Dict, List, Optional
 
 sys.path.insert(0, r"d:\Python\agent")
 
-from functions.planning.agent_loop import (
-    ActionDecider,
-    AgentAction,
-    AgentLoop,
-    AgentLoopConfig,
-    AgentState,
-    Observation,
-)
+from functions.agent.plan import ActionDecider, AgentAction
+from functions.planning.agent_loop import AgentLoop, AgentLoopConfig, AgentState, Observation
 
 
 @dataclass

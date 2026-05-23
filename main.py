@@ -55,9 +55,7 @@ from functions.audio.logic_audio import (
     check_volume, check_activation_word, remove_activation_word,
     text_similarity
 )
-from functions.audio.logic_audio_filtering import get_audio_filter
-from functions.audio.logic_continuous_listener import create_continuous_listener
-from functions.audio.logic_tts import TTSEngine
+from functions.audio.initializer import AudioInitializer
 from functions.config import (
     SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD,
     ACTIVATION_WORD, ACTIVATION_LISTEN_DURATION, COMMAND_LISTEN_DURATION, 
@@ -68,61 +66,7 @@ from functions.config import (
     TTS_DEFAULT_VOICE, TTS_SPEECH_RATE, TTS_VOLUME, TTS_SPEAK_PREFIXES
 )
 
-from functions.audio.logic_stt import get_stt_engine
 
-
-def print_audio_diagnostics():
-    """Вивести інформацію про мікрофон тільки коли потрібен голосовий режим."""
-    try:
-        print("\n" + "=" * 60)
-        print("🎤 ДОСТУПНІ МІКРОФОНИ:")
-        print("=" * 60)
-        print(sd.query_devices())
-        print("=" * 60 + "\n")
-
-        if MICROPHONE_DEVICE_ID is not None:
-            print(f"{Fore.YELLOW}🎤 Вибрано мікрофон #{MICROPHONE_DEVICE_ID}")
-            device_info = sd.query_devices(MICROPHONE_DEVICE_ID)
-            print(f"   Назва: {device_info['name']}")
-            print(f"   Канали: {device_info['max_input_channels']}")
-        else:
-            print(f"{Fore.YELLOW}🎤 Використовується системний мікрофон за замовчуванням")
-            default_input = sd.query_devices(kind='input')
-            print(f"   Назва: {default_input['name']}")
-        print()
-    except Exception as e:
-        print(f"{Fore.YELLOW}⚠️  Діагностику мікрофона пропущено: {e}")
-
-
-def run_audio_smoke_test():
-    """Короткий тест запису лише для голосового режиму."""
-    try:
-        print("🧪 Тестовий запис 2 секунди...")
-        test_audio = sd.rec(
-            int(2 * SAMPLE_RATE),
-            samplerate=SAMPLE_RATE,
-            channels=1,
-            dtype=np.float32,
-            device=MICROPHONE_DEVICE_ID,
-            blocking=True
-        )
-        volume = np.abs(test_audio).mean()
-        print(f"   Середня гучність: {volume:.6f}")
-        print(f"   Поріг: {VOLUME_THRESHOLD}")
-
-        if volume < 0.01:
-            print(f"{Fore.RED}   ⚠️  ДУЖЕ ТИХО! Гучність {volume:.6f} < 0.01")
-            print(f"{Fore.YELLOW}   💡 Підвищіть гучність мікрофона:")
-            print(f"{Fore.YELLOW}      1. Правий клік на звук → Налаштування")
-            print(f"{Fore.YELLOW}      2. Введення → Властивості")
-            print(f"{Fore.YELLOW}      3. Рівні → Мікрофон 100% + Підсилення +20dB")
-        elif volume > VOLUME_THRESHOLD:
-            print("   ✅ Мікрофон працює!")
-        else:
-            print("   ❌ Занадто тихо")
-        print()
-    except Exception as e:
-        print(f"{Fore.YELLOW}⚠️  Тест аудіо пропущено: {e}")
 
 class AssistantCore:
     """Ядро асистента з інтеграцією GUI"""
@@ -197,92 +141,6 @@ class AssistantCore:
         self.gui_queue.put(('update_status', status_msg))
         if chat_msg:
             self.gui_queue.put(('add_message', ('assistant', chat_msg)))
-    
-    def load_stt_model(self):
-        """Завантажити STT двигун"""
-        try:
-            stt_engine = get_stt_engine()
-            available_models = stt_engine.get_available_models()
-            
-            if not available_models:
-                print(f"{Fore.RED}   ❌ Немає доступних моделей STT")
-                raise Exception("Не вдалося завантажити жодну модель STT")
-            
-            print(f"   ✅ Моделі завантажені: {', '.join(available_models)}")
-            print(f"   🎯 Пристрій: {stt_engine.device}")
-            
-            return stt_engine
-            
-        except Exception as e:
-            print(f"   ❌ Помилка завантаження моделей STT: {e}")
-            raise
-    
-    def _init_stt_engine(self):
-        """Ініціалізувати STT двигун (спільний метод для initialize та initialize_without_listener)."""
-        from functions.runtime.core_settings import get_setting
-        stt_enabled = get_setting("STT_ENABLED", False)
-
-        if not stt_enabled:
-            print(f"\n{Fore.YELLOW}⏭️  STT вимкнено в налаштуваннях")
-            self.stt_engine = None
-            return True
-
-        self._gui_notify('🔊 Завантаження STT моделей...', '🔊 Завантаження STT моделей... зачекайте')
-        print(f"\n{Fore.CYAN}🔊 Завантаження STT моделей...")
-        start_time = time.time()
-
-        try:
-            self.stt_engine = self.load_stt_model()
-            stt_time = time.time() - start_time
-            self.stt_load_time = stt_time
-            print(f"{Fore.LIGHTBLACK_EX}⏱️  {stt_time:.2f}с")
-            self._gui_notify(f'✅ STT готовий ({stt_time:.1f}с)', f'✅ STT готовий! ({stt_time:.1f}с)')
-            return True
-        except Exception as e:
-            print(f"{Fore.RED}❌ Не вдалося завантажити модель розпізнавання мови")
-            print(f"{Fore.RED}   Деталі: {e}")
-            self._gui_notify('❌ Помилка STT', f'❌ Помилка завантаження STT: {e}')
-            self.stt_engine = None
-            return False
-    
-    def _init_tts_engine(self):
-        """Ініціалізувати TTS двигун (спільний метод для initialize та initialize_without_listener)."""
-        from functions.config import TTS_ENABLED
-        self.tts_engine = None
-
-        if not TTS_ENABLED:
-            print(f"\n{Fore.YELLOW}⚠️  TTS вимкнено в налаштуваннях")
-            return True
-
-        self._gui_notify('🔊 Ініціалізація TTS двигуна...', '🔊 Ініціалізація TTS двигуна... зачекайте')
-        print(f"\n{Fore.CYAN}🔊 Ініціалізація TTS двигуна...")
-        start_time = time.time()
-
-        try:
-            self.tts_engine = TTSEngine()
-            tts_time = time.time() - start_time
-            self.tts_load_time = tts_time
-            if self.tts_engine.is_ready:
-                print(f"{Fore.GREEN}✅ TTS двигун готовий")
-                print(f"{Fore.CYAN}   Голоси: {', '.join(self.tts_engine.get_voices())}")
-                print(f"{Fore.CYAN}   Швидкість: {self.tts_engine.speech_rate}")
-                print(f"{Fore.CYAN}   Гучність: {self.tts_engine.volume}")
-                print(f"{Fore.CYAN}   Пристрій: {self.tts_engine.device}")
-                print(f"{Fore.LIGHTBLACK_EX}⏱️  {tts_time:.2f}с")
-                self._gui_notify(f'✅ TTS готовий ({tts_time:.1f}с)', f'✅ TTS готовий! ({tts_time:.1f}с)')
-                return True
-            else:
-                print(f"{Fore.RED}❌ TTS двигун не готовий")
-                self.tts_engine = None
-                self._gui_notify('❌ TTS не готовий', '❌ TTS не готовий')
-                return False
-        except Exception as e:
-            print(f"{Fore.RED}❌ Помилка ініціалізації TTS: {e}")
-            import traceback
-            traceback.print_exc()
-            self.tts_engine = None
-            self._gui_notify('❌ Помилка TTS', f'❌ Помилка ініціалізації TTS: {e}')
-            return False
     
     def transcribe_audio(self, audio, stt_engine, audio_filter):
         """Транскрибувати аудіо через STT двигун"""
@@ -578,9 +436,9 @@ class AssistantCore:
         return ""
 
     def run_agent_loop(self, task: str):
-        """Запустити AgentLoop для задачі (основний шлях виконання).
+        """Запустити AgentLoop для задачі через AgentCoordinator.
 
-        Пріоритет: TaskSpecCompiler → AgentLoop → PlanExecutor (legacy)
+        Пріоритет: AgentCoordinator → AgentLoop → assistant.process_command (legacy)
         """
         print(f"[DEBUG] run_agent_loop called with task: {task[:50]}...")
         if not task:
@@ -592,44 +450,75 @@ class AssistantCore:
         if self.gui_queue:
             self.gui_queue.put(('update_status', '🤖 AgentLoop: observe → plan → act → check'))
 
-        # AgentLoop — основний шлях
-        agent_loop = getattr(self, 'agent_loop', None)
-        print(f"[DEBUG] agent_loop exists: {agent_loop is not None}")
-        if agent_loop:
-            print(f"[DEBUG] AgentLoop calling run() in thread with task: {task[:50]}...")
-            # Виконуємо в окремому потоці щоб не блокувати GUI
-            def _run_agent():
-                try:
-                    result = self.agent_loop.run(task)
-                    if self.gui_queue:
-                        ok = result.get("ok")
-                        msg = (
-                            f'📊 Agent loop: {result.get("steps", 0)} кроків за {result.get("duration", 0):.1f}с ✅'
-                            if ok else f'❌ Помилка: {result.get("summary", "")}'
-                        )
-                        self.gui_queue.put(('add_message', ('assistant', msg)))
-                except Exception as e:
-                    import traceback
-                    traceback.print_exc()
-                    if self.gui_queue:
-                        self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка AgentLoop: {e}')))
+        # AgentCoordinator — основний шлях
+        coordinator = getattr(self, 'agent_coordinator', None)
+        print(f"[DEBUG] agent_coordinator exists: {coordinator is not None}")
+        if coordinator and coordinator.agent_loop:
+            print(f"[DEBUG] AgentCoordinator calling run() with task: {task[:50]}...")
 
-            thread = threading.Thread(target=_run_agent, daemon=False)
+            def _on_result(result: dict) -> None:
+                """Callback після завершення AgentLoop."""
+                if not self.gui_queue:
+                    return
+                ok = result.get("ok")
+                msg = (
+                    f'📊 Agent loop: {result.get("steps", 0)} кроків за {result.get("duration", 0):.1f}с ✅'
+                    if ok else f'❌ Помилка: {result.get("summary", "")}'
+                )
+                self.gui_queue.put(('add_message', ('assistant', msg)))
+
+            from functions.planning.agent_coordinator import run_agent_loop_safe
+            thread = threading.Thread(
+                target=lambda: run_agent_loop_safe(
+                    coordinator=coordinator,
+                    task=task,
+                    on_result=_on_result,
+                    timeout=45.0,
+                ),
+                daemon=False,
+            )
             thread.start()
-            thread.join(timeout=45)
+            thread.join(timeout=50)
             return
         else:
-            print(f"[DEBUG] AgentLoop not available, falling back to assistant.process_command")
-            if self.assistant:
-                self.assistant.process_command(task, from_gui=True)
+            # Fallback на пряме використання agent_loop (якщо координатор не створено)
+            agent_loop = getattr(self, 'agent_loop', None)
+            if agent_loop:
+                print(f"[DEBUG] Fallback: calling agent_loop.run() directly")
+                def _run_agent():
+                    try:
+                        result = self.agent_loop.run(task)
+                        if self.gui_queue:
+                            ok = result.get("ok")
+                            msg = (
+                                f'📊 Agent loop: {result.get("steps", 0)} кроків за {result.get("duration", 0):.1f}с ✅'
+                                if ok else f'❌ Помилка: {result.get("summary", "")}'
+                            )
+                            self.gui_queue.put(('add_message', ('assistant', msg)))
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
+                        if self.gui_queue:
+                            self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка AgentLoop: {e}')))
+
+                thread = threading.Thread(target=_run_agent, daemon=False)
+                thread.start()
+                thread.join(timeout=45)
+                return
             else:
-                if self.gui_queue:
-                    self.gui_queue.put(('add_message', ('assistant', '❌ AgentLoop та Assistant недоступні')))
+                print(f"[DEBUG] AgentLoop not available, falling back to assistant.process_command")
+                if self.assistant:
+                    self.assistant.process_command(task, from_gui=True)
+                else:
+                    if self.gui_queue:
+                        self.gui_queue.put(('add_message', ('assistant', '❌ AgentLoop та Assistant недоступні')))
 
     def stop_plan_execution(self):
         """Зупинити виконання плану (з GUI кнопки 'Стоп план')."""
         if getattr(self, 'agent_loop', None):
             self.agent_loop.request_stop()
+        if getattr(self, 'agent_coordinator', None):
+            self.agent_coordinator.request_stop()
         if getattr(self, 'plan_executor', None):
             self.plan_executor.request_stop()
         # Також зупинити основний executor
@@ -671,7 +560,7 @@ class AssistantCore:
             print(f"{Fore.YELLOW}▶️  Запис відновлено")
     
     def initialize(self):
-        """Ініціалізація асистента"""
+        """Ініціалізація асистента (з безперервним прослуховуванням)"""
         print(f"{Back.BLUE}{Fore.WHITE}{'='*60}")
         print(f"{Back.BLUE}{Fore.WHITE}{ASSISTANT_EMOJI} {ASSISTANT_NAME} - Голосовий Асистент {Style.RESET_ALL}")
         print(f"{Back.BLUE}{Fore.WHITE}{'='*60}{Style.RESET_ALL}")
@@ -682,21 +571,21 @@ class AssistantCore:
         load_time = time.time() - start_time
         print(f"{Fore.LIGHTBLACK_EX}⏱️  {load_time:.2f}с")
 
-        print_audio_diagnostics()
-        run_audio_smoke_test()
+        # Аудіо-ініціалізація через AudioInitializer (один виклик)
+        audio = AudioInitializer(gui_queue=self.gui_queue)
+        audio_result = audio.init_all(with_listener=CONTINUOUS_LISTENING_ENABLED)
 
-        # Ініціалізація STT двигуна
-        if not self._init_stt_engine():
+        self.stt_engine = audio_result["stt_engine"]
+        self.stt_load_time = audio_result["stt_load_time"]
+        self.audio_filter = audio_result["audio_filter"]
+        self.tts_engine = audio_result["tts_engine"]
+        self.tts_load_time = audio_result["tts_load_time"]
+        self.listener = audio_result["listener"]
+
+        if not self.stt_engine:
             return False
-        
-        # Ініціалізація аудіо фільтра
-        print(f"\n{Fore.CYAN}🎛️  Ініціалізація аудіо фільтрів...")
-        start_time = time.time()
-        self.audio_filter = get_audio_filter(SAMPLE_RATE)
-        filter_time = time.time() - start_time
-        print(f"{Fore.LIGHTBLACK_EX}⏱️  {filter_time:.2f}с")
 
-        # Ініціалізація Self-learning module
+        # Self-learning module
         print(f"\n{Fore.CYAN}🧠 Ініціалізація модуля самонавчання...")
         try:
             from functions.runtime.self_learning import get_self_learning
@@ -710,46 +599,35 @@ class AssistantCore:
         except Exception as e:
             print(f"{Fore.YELLOW}⚠️  Не вдалося ініціалізувати self-learning: {e}")
             self.self_learning = None
-        
-        # Ініціалізація TTS двигуна
-        if not self._init_tts_engine():
-            return False
-        
+
         print(f"\n{Fore.CYAN}🔌 Підключення до LM Studio...")
         if not self.check_lm_studio():
             return False
-        
+
         print(f"\n{Fore.YELLOW}{'='*60}")
         print(f"{Fore.YELLOW}📦 Функцій: {Fore.WHITE}{len(self.registry.functions)}")
         for func_name in self.registry.functions.keys():
             print(f"{Fore.CYAN}   • {func_name}")
         print(f"{Fore.YELLOW}{'='*60}{Style.RESET_ALL}")
-        
+
         system_prompt = self.registry.get_system_prompt()
-        
-        # Створити listener лише якщо увімкнено безперервне прослуховування
+
+        # Безперервний слухач — вже створено в init_all(with_listener=True)
         if CONTINUOUS_LISTENING_ENABLED:
-            print(f"\n{Fore.CYAN}🎧 Створення безперервного слухача...")
-            self.listener = create_continuous_listener(
-                SAMPLE_RATE, 
-                self.audio_filter, 
-                MICROPHONE_DEVICE_ID,
-                CONTINUOUS_MODE
-            )
             if not self.listener:
                 print(f"{Fore.RED}❌ Не вдалося створити слухача")
                 return False
         else:
             self.listener = None
             return False
-        
+
         # Спільна ініціалізація VoiceAssistant + Planner + TTS
         self._init_assistant_common(system_prompt)
-        
+
         # Передати listener в TTS
         if self.tts_engine and self.listener:
             self.tts_engine.listener = self.listener
-        
+
         print(f"{Fore.GREEN}✅ Асистент готовий")
         return True
 
@@ -777,9 +655,6 @@ class AssistantCore:
 
     def initialize_without_listener(self):
         """Ініціалізація асистента БЕЗ безперервного прослуховування (текстовий режим)"""
-        from functions.audio.logic_audio_filtering import get_audio_filter
-        from functions.config import SAMPLE_RATE
-
         print(f"\n{Back.BLUE} {ASSISTANT_EMOJI} {ASSISTANT_NAME} - Текстовий режим {Style.RESET_ALL}\n")
 
         # Загальний таймер ініціалізації
@@ -789,17 +664,16 @@ class AssistantCore:
         print(f"{Fore.CYAN}🔧 Завантаження функцій...")
         self.registry = FunctionRegistry()
 
-        # Ініціалізація STT двигуна
-        if not self._init_stt_engine():
-            return False
+        # Аудіо-ініціалізація через AudioInitializer (один виклик, без слухача)
+        audio = AudioInitializer(gui_queue=self.gui_queue)
+        audio_result = audio.init_all(with_listener=False)
 
-        # Аудіо фільтр
-        self.audio_filter = get_audio_filter(SAMPLE_RATE)
+        self.stt_engine = audio_result["stt_engine"]
+        self.stt_load_time = audio_result["stt_load_time"]
+        self.audio_filter = audio_result["audio_filter"]
+        self.tts_engine = audio_result["tts_engine"]
+        self.tts_load_time = audio_result["tts_load_time"]
 
-        # Ініціалізація TTS двигуна
-        if not self._init_tts_engine():
-            return False
-        
         if self.gui_queue and self.tts_engine:
             self.gui_queue.put(('add_message', ('assistant', '✅ Готовий до роботи! Введіть команду.')))
 
@@ -871,46 +745,22 @@ class AssistantCore:
                 import traceback
                 traceback.print_exc()
 
-        # --- AgentLoop init (Phase 12.1+: observe → plan → act → check + LLM tool-calling + Repair Loop) ---
+        # --- AgentLoop init через AgentCoordinator (Phase 12.1+: observe → plan → act → check) ---
         try:
-            from functions.planning.agent_loop import AgentLoop, AgentLoopConfig, build_default_decider
+            from functions.planning.agent_coordinator import build_agent_coordinator
 
-            decider = build_default_decider(
-                enable_vision=False,
-                enable_uia=False,
-                enable_browser=False,
-                history_max=10,
-            )
-            decider_status = "з LLM tool-calling" if (decider and decider.is_available) else "без LLM (fallback на CompiledPlan)"
-
-            # Repair Loop (адаптивне відновлення при провалах)
-            repairer = None
-            try:
-                from functions.planning.logic_repair_loop import StepRepairer
-                repairer = StepRepairer(assistant=self.assistant, max_repairs=3)
-            except Exception as repair_err:
-                print(f"{Fore.YELLOW}⚠️  StepRepairer недоступний: {repair_err}")
-
-            self.agent_loop = AgentLoop(
+            self.agent_coordinator = build_agent_coordinator(
                 assistant=self.assistant,
                 registry=self.registry,
-                config=AgentLoopConfig(
-                    max_steps=50,
-                    max_duration_seconds=3600.0,
-                    enable_ocr=False,  # Вимкнено для тестування
-                    enable_vision=False,  # Вимкнено щоб уникнути нескінченного циклу LLM
-                    enable_llm_decider=True,
-                    enable_ui_elements=False,  # Вимкнено для тестування
-                    enable_repair=True,
-                    repair_after_failures=2,
-                    enable_checkpoint=False,  # Вимкнено checkpointing для тестування
-                ),
-                decider=decider,
-                repairer=repairer,
+                gui_queue=self.gui_queue,
+                gui_log_callback=lambda sender, msg: self.log_to_gui(sender, msg),
             )
-            self.agent_loop.gui_cb = lambda msg_type, data: self.gui_queue.put((msg_type, data)) if self.gui_queue else None
-            repair_status = "+ repair" if repairer else ""
-            print(f"{Fore.GREEN}✅ AgentLoop готовий ({decider_status}{repair_status})")
+            if self.agent_coordinator and self.agent_coordinator.agent_loop:
+                self.agent_loop = self.agent_coordinator.agent_loop
+                print(f"{Fore.GREEN}✅ AgentLoop готовий (через AgentCoordinator)")
+            else:
+                self.agent_loop = None
+                print(f"{Fore.YELLOW}⚠️  AgentLoop недоступний (через AgentCoordinator)")
 
             # Виконати чергу задач, якщо є
             if hasattr(self, '_pending_tasks') and self._pending_tasks:
@@ -919,8 +769,11 @@ class AssistantCore:
                     self.run_agent_loop(task)
                 self._pending_tasks = []
         except Exception as e:
+            self.agent_coordinator = None
             self.agent_loop = None
             print(f"{Fore.YELLOW}⚠️  AgentLoop недоступний: {e}")
+            import traceback
+            traceback.print_exc()
 
         # --- TaskSpecCompiler init (S3: TaskSpec → compile() MVP) ---
         try:
