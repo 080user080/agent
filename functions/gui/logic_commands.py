@@ -1,13 +1,42 @@
-﻿# functions/logic_commands.py
-"""Обробка команд та VoiceAssistant"""
+﻿# functions/gui/logic_commands.py
+"""Маршрутизатор подій GUI — легкий диспетчер, який перенаправляє вхідні події
+інтерфейсу до відповідних модулів (commands_streaming, commands_audio, commands_planner).
+
+Не містить бізнес-логіки. Всі складні операції делегуються в спеціалізовані модулі.
+"""
+from __future__ import annotations
+
 import threading
 import time
-from colorama import Fore, Back, Style
-from functions.config import LM_STUDIO_URL, TTS_ENABLED, TTS_SPEAK_PREFIXES
-from functions.audio.logic_audio import correct_whisper_text, check_activation_word, remove_activation_word
+from typing import Any, Optional
+from colorama import Fore
+
+from functions.config import LM_STUDIO_URL, TTS_ENABLED, ASSISTANT_DISPLAY_NAME
+
+# Делегація в спеціалізовані модулі
+from .commands_streaming import stream_llm_response
+from .commands_audio import (
+    set_tts_engine as _set_tts_engine,
+    should_speak_response as _should_speak_response,
+    extract_speakable_text as _extract_speakable_text,
+    filter_code_for_tts as _filter_code_for_tts,
+    speak_response as _speak_response,
+    speak_if_possible as _speak_if_possible,
+)
+from .commands_planner import run_agent_loop_for_voice
+from functions.audio.logic_audio import check_activation_word, remove_activation_word
+
+
 class VoiceAssistant:
-    # ... (ініціалізація)
-    def __init__(self, stt_engine, registry, system_prompt, listener=None, gui_log_callback=None, context_controller=None):
+    """Голосовий асистент — маршрутизатор подій GUI.
+
+    Публічний API для chat_panel_qt.py та інших UI-компонентів.
+    Усі методи зберігають зворотну сумісність.
+    Бізнес-логіка делегується в commands_streaming, commands_audio, commands_planner.
+    """
+
+    def __init__(self, stt_engine, registry, system_prompt, listener=None,
+                 gui_log_callback=None, context_controller=None):
         self.stt_engine = stt_engine
         self.registry = registry
         self.system_prompt = system_prompt
@@ -16,40 +45,35 @@ class VoiceAssistant:
         self.last_command_time = 0
         self.command_cooldown = 2
         self.listener = listener
-        
-        # GUI логування
         self.gui_log_callback = gui_log_callback
-        
-        # ContextController для спільної пам'яті з AgentLoop
         self.context_controller = context_controller
-        
-        self.planner = None  #GPT
+        self.planner = None  # GPT
+
         from ..runtime.core_memory import MemoryManager
-        self.memory = MemoryManager()  # довготривала + сесія + задачі
-        # Підключаємо LLM-caller для генерації summary
+        self.memory = MemoryManager()
         self.memory.set_llm_caller(self._memory_llm_caller)
+
         from ..runtime.core_executor import TaskExecutor
-        # Створюємо виконавець з колбеком для GUI
         self.executor = TaskExecutor(gui_callback=self.gui_log_callback)
-        
-        # TTS двигун
+
+        # TTS
         self.tts_engine = None
         self.tts_enabled = TTS_ENABLED
-        
-        # Отримати core модулі
+
+        # Core модулі
         self.dispatcher = None
         self.cache_manager = None
         self.streaming_handler = None
-        
+        self.streaming_handler_enabled = False
+
         dispatcher_module = registry.get_core_module('dispatcher')
         if dispatcher_module:
             self.dispatcher = dispatcher_module.Dispatcher(registry)
             print(f"{Fore.MAGENTA}⚡ Диспетчер активовано")
-        # ... решта __init__
+
         cache_module = registry.get_core_module('cache')
         if cache_module:
             self.cache_manager = cache_module.CacheManager(registry)
-            # Статус кешу читається з налаштувань при кожному запиті
             try:
                 from ..runtime.core_settings import get_setting
                 cache_on = bool(get_setting("CACHE_ENABLED", False))
@@ -57,56 +81,52 @@ class VoiceAssistant:
                 cache_on = False
             status = "УВІМКНЕНО" if cache_on else "ВИМКНЕНО"
             print(f"{Fore.MAGENTA}💾 Кеш: {status} (можна змінити в Налаштуваннях)")
-        
+
         streaming_module = registry.get_core_module('streaming')
         if streaming_module:
             self.streaming_handler = streaming_module.StreamingHandler(LM_STUDIO_URL)
             self.streaming_handler_enabled = True
             print(f"{Fore.MAGENTA}⚡ Стрімінг активовано")
+
         print(f"{Fore.CYAN}🔊 TTS статус: {'УВІМКНЕНО' if self.tts_enabled else 'ВИМКНЕНО'}")
-    
-    def log_to_gui(self, sender, message):
-        """Відправити повідомлення в GUI"""
+
+    # ──────────────────────────────────────────────
+    # Публічний API — методи для UI-компонентів
+    # ──────────────────────────────────────────────
+
+    def log_to_gui(self, sender: str, message: str) -> None:
+        """Відправити повідомлення в GUI."""
         if not message or (isinstance(message, str) and not message.strip()):
             return
         if self.gui_log_callback:
             if sender == "assistant":
-                from ..config import TTS_SPEAK_PREFIXES, ASSISTANT_DISPLAY_NAME
-                # Видаляємо будь-які префікси, якщо вони вже є
+                from ..config import TTS_SPEAK_PREFIXES
                 for prefix in TTS_SPEAK_PREFIXES:
                     if message.strip().startswith(prefix):
                         message = message.strip()[len(prefix):].strip()
                         break
-                # Додаємо стандартний префікс
                 message = f"{ASSISTANT_DISPLAY_NAME}: {message}"
-            
             self.gui_log_callback(sender, message)
         else:
-            # Fallback до консолі
             if sender == "user":
                 print(f"{Fore.CYAN}👑 ВИ: {Fore.WHITE}{message}")
             else:
                 print(f"{Fore.GREEN}{ASSISTANT_DISPLAY_NAME}: {Fore.WHITE}{message}")
-    
-    def set_tts_engine(self, tts_engine):
-        """Встановити TTS двигун"""
-        self.tts_engine = tts_engine
-        if tts_engine and self.tts_enabled:
-            print(f"{Fore.GREEN}✅ TTS двигун встановлено")
-        else:
-            print(f"{Fore.YELLOW}⚠️  TTS двигун не встановлено або вимкнено")
+
+    def set_tts_engine(self, tts_engine) -> None:
+        """Встановити TTS двигун — делегує в commands_audio."""
+        _set_tts_engine(self, tts_engine)
 
     def ask_llm(self, prompt: str, minimal: bool = True) -> str:
         """Обгортка для виклику LLM.
-        
+
         Args:
-            prompt: Промпт для LLM
-            minimal: Якщо True (для Planner), не включає великий system_prompt 
-                     та conversation_history — щоб не переповнювати контекст.
+            prompt: Промпт для LLM.
+            minimal: Якщо True (для Planner), не включає великий system_prompt
+                     та conversation_history.
         """
         from ..llm import ask_llm
         if minimal:
-            # Мінімальний system prompt для планера (без списку функцій — він у prompt)
             minimal_system = "Ти — планувальник. Відповідай тільки JSON без пояснень."
             return ask_llm(prompt, [], minimal_system)
         return ask_llm(prompt, self.conversation_history, self.system_prompt)
@@ -121,324 +141,284 @@ class VoiceAssistant:
         except Exception:
             return False
 
-    def execute_function(self, action: str, params: dict):
+    def execute_function(self, action: str, params: dict) -> Any:
         """Виконати функцію через реєстр (для Planner)."""
         return self.registry.execute_function(action, params)
-    
-    def set_planner(self, planner):
-        """Встановити планувальник"""
-        self.planner = planner  #GPT
-    
-    def should_speak_response(self, response_text):
-        """Перевірити, чи потрібно озвучувати відповідь"""
-        if not self.tts_enabled or not self.tts_engine or not self.tts_engine.is_ready:
-            return False
-        
-        if not response_text or len(response_text.strip()) == 0:
-            return False
-            
-        return True
-    
-    def extract_speakable_text(self, response_text):
-        """Витягнути текст для озвучення (без префіксів)"""
-        clean_text = response_text.strip()
-        for prefix in TTS_SPEAK_PREFIXES:
-            if clean_text.startswith(prefix):
-                clean_text = clean_text[len(prefix):].strip()
-        return clean_text
+
+    def set_planner(self, planner) -> None:
+        """Встановити планувальник."""
+        self.planner = planner  # GPT
+
+    def should_speak_response(self, response_text: str) -> bool:
+        """Перевірити, чи потрібно озвучувати відповідь — делегує в commands_audio."""
+        return _should_speak_response(self.tts_enabled, self.tts_engine)
+
+    def extract_speakable_text(self, response_text: str) -> str:
+        """Витягнути текст для озвучення — делегує в commands_audio."""
+        return _extract_speakable_text(response_text)
 
     def filter_code_for_tts(self, text: str) -> str:
-        """Видалити код і спец символи для кращого озвучування."""
-        import re
+        """Видалити код і спец символи для кращого озвучування — делегує в commands_audio."""
+        return _filter_code_for_tts(text)
 
-        # Видалити кодові блоки (```...```)
-        text = re.sub(r'```[\s\S]*?```', '', text)
+    def speak_response(self, text: str) -> None:
+        """Озвучити відповідь — делегує в commands_audio."""
+        _speak_response(self.tts_engine, text)
 
-        # Видалити inline code (`...`)
-        text = re.sub(r'`[^`]+`', '', text)
+    # ──────────────────────────────────────────────
+    # Основний маршрутизатор подій
+    # ──────────────────────────────────────────────
 
-        # Видалити JSON та інші структуровані дані
-        text = re.sub(r'\{[\s\S]*?\}', '', text)
-        text = re.sub(r'\[[\s\S]*?\]', '', text)
+    def process_command(self, command_text: str, from_gui: bool = False) -> None:
+        """Обробити команду — маршрутизатор подій GUI.
 
-        # Видалити спец символи для коду
-        text = re.sub(r'[{}[\]()<>]', '', text)
-
-        # Замінити технічні терміни на прості фрази
-        text = text.replace('✅', 'завдання виконано')
-        text = text.replace('❌', 'завдання не виконано')
-        text = text.replace('⚠️', 'увага')
-        text = text.replace('❓', 'питання')
-
-        # Видалити зайві пробіли та переноси рядків
-        text = re.sub(r'\s+', ' ', text).strip()
-
-        return text
-    
-    def speak_response(self, text):
-        """Озвучити відповідь (викликається в окремому потоці)"""
-        if not self.tts_enabled or not self.tts_engine:
-            return
-
-        if self.tts_engine.is_playing:
-            print(f"{Fore.YELLOW}⚠️  TTS вже відтворює аудіо, пропускаю")
-            return
-
-        # Фільтруємо код і спец символи для кращого озвучування
-        text_to_speak = self.filter_code_for_tts(text)
-
+        Перенаправляє:
+        - voice_input → commands_planner (AgentLoop)
+        - Привітання/прості питання → локальні відповіді
+        - LLM-запити → commands_streaming + commands_audio
+        """
         try:
-            success = self.tts_engine.speak(text_to_speak, wait=True)
-            if not success:
-                print(f"{Fore.RED}❌ Не вдалося озвучити відповідь")
-        except Exception as e:
-            print(f"{Fore.RED}❌ Помилка озвучення: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    def process_command(self, command_text, from_gui=False):
-        """Обробити команду"""
-        try:
-            # Лічильник команд у сесії
+            # Лічильник команд
             self.memory.session.track_command()
 
-            # ✨ Спочатку обрізаємо стару історію, щоб планер/LLM не отримали overflow
+            # ✨ Адаптивне управління історією
             self._manage_conversation_history()
 
-            # ✨ ЗАВЖДИ додаємо команду в історію ДО будь-якої гілки (planner/LLM/кеш).
-            # Це дає planner-у контекст попередніх повідомлень.
+            # ✨ Додаємо команду в історію
             self._history_already_added = False
-            if not self.conversation_history or self.conversation_history[-1].get("content") != command_text:
+            if not self.conversation_history or \
+               self.conversation_history[-1].get("content") != command_text:
                 self.conversation_history.append({"role": "user", "content": command_text})
                 self._history_already_added = True
 
-            # Після A0: process_command більше не класифікує task vs chat.
-            # Це робиться в main.py:process_text_command → AgentLoop.
-            # process_command тут — тільки для STT-вводу (голосовий режим).
-            # Якщо команда потребує виконання — main.py:process_text_command
-            # спрямує її в AgentLoop.
-            from ..config import ASSISTANT_DISPLAY_NAME
-            
-            print(f"{Fore.CYAN}[DEBUG logic_commands] BEFORE remove_activation_word: command_text='{command_text}', from_gui={from_gui}")
-            
-            # --- Voice input branch --- (перевіряємо ДО remove_activation_word)
+            # ── 1. Гілка voice_input ────────────────────────
             if command_text.strip().lower().startswith("voice_input"):
-                print(f"{Fore.CYAN}🎤 [DEBUG] voice_input команда виявлена, використовуємо AgentLoop")
+                print(f"{Fore.CYAN}🎤 [DEBUG] voice_input команда → AgentLoop")
                 if hasattr(self, 'agent_loop') and self.agent_loop:
-                    # Використовувати AgentLoop для voice_input
-                    print(f"{Fore.CYAN}🎤 [DEBUG] Виклик run_agent_loop для voice_input")
-                    result = self.run_agent_loop(command_text)
+                    run_agent_loop_for_voice(
+                        command_text,
+                        agent_loop=self.agent_loop,
+                        gui_log_callback=self.gui_log_callback,
+                    )
                     if self.gui_log_callback:
                         self.gui_log_callback("update_status", '✅ Готовий до роботи')
                     return
                 else:
                     print(f"{Fore.YELLOW}⚠️ AgentLoop недоступний для voice_input")
-            
-            # Для GUI команди - пропускаємо перевірку активаційного слова
+
+            # ── 2. Аудіо-гілка: активаційне слово (тільки для голосу) ──
             if not from_gui:
-                # 1. ПЕРЕВІРКА АКТИВАЦІЙНОГО СЛОВА (ТІЛЬКИ ДЛЯ АУДІО)
                 if not check_activation_word(command_text):
                     print(f"{Fore.LIGHTBLACK_EX}zzz Ігнорую (немає звертання): '{command_text}'")
                     return
-                
-                # 2. ВИДАЛЕННЯ АКТИВАЦІЙНОГО СЛОВА (ТІЛЬКИ ДЛЯ АУДІО)
                 clean_command = remove_activation_word(command_text)
-                
                 if not clean_command or len(clean_command.strip()) < 3:
-                    print(f"{Fore.YELLOW}⚠️  Звертання є, але команди немає: '{command_text}'")
+                    print(f"{Fore.YELLOW}⚠️ Звертання є, але команди немає: '{command_text}'")
                     return
-                
                 command_text = clean_command
-            
-            print(f"[DEBUG logic_commands] AFTER remove_activation_word: command_text='{command_text}'")
 
-            # Фільтр для простих привітань та питань (не відправляти в LLM)
-            greetings = ("привіт", "вітаю", "добрий день", "доброго дня", "вечір добрий", "доброго вечора", "ранок добрий", "доброго ранку", "hello", "hi", "hey")
-            simple_questions = (
-                "як тебе звати", "як ти називаєшся", "як твоє ім'я", "хто ти", "хто ти такий",
-                "what's your name", "what is your name", "who are you"
-            )
-            command_lower = command_text.strip().lower()
-            if command_lower in greetings:
-                response = "Привіт! Я готовий допомогти. Що ви хочете зробити?"
-                self.log_to_gui("assistant", response)
-                if self.should_speak_response(response):
-                    speakable_text = self.extract_speakable_text(response)
-                    if speakable_text:
-                        threading.Thread(
-                            target=self.speak_response,
-                            args=(speakable_text,),
-                            daemon=True
-                        ).start()
-                return
-            elif command_lower in simple_questions:
-                response = "Я — голосовий асистент МАРК. Я можу виконувати команди, управляти вікнами, вводити текст, запускати програми та інші дії."
-                self.log_to_gui("assistant", response)
-                if self.should_speak_response(response):
-                    speakable_text = self.extract_speakable_text(response)
-                    if speakable_text:
-                        threading.Thread(
-                            target=self.speak_response,
-                            args=(speakable_text,),
-                            daemon=True
-                        ).start()
-                return
+            # ── 3. Привітання та прості питання ─────────────
+            # 🔥 Всі команди йдуть до LLM (навіть привітання)
+            # LLM сам вирішить, як відповісти, спираючись на system prompt
+            # if self._try_simple_response(command_text):
+            #     return
 
-            # 3. Логуємо команду в GUI (для всіх типів)
+            # ── 4. Логуємо команду в GUI ────────────────────
             self.log_to_gui("user", command_text)
-            
             print(f"{Fore.CYAN}🎯 {'[GUI] ' if from_gui else '[Аудіо] '}Команда: '{command_text}'")
-            
+
             start_total = time.time()
 
-            # Кеш вимикається для planner-команд (інакше повторна задача підхоплює стару відповідь)
-            skip_cache = hasattr(self, "planner") and self.planner and self.planner.should_plan(command_text)
+            # ── 5. Кеш ──────────────────────────────────────
+            skip_cache = hasattr(self, "planner") and self.planner and \
+                         self.planner.should_plan(command_text)
 
-            # Перевірка кешу (тільки якщо увімкнено в налаштуваннях)
             if self._is_cache_enabled() and not skip_cache:
                 cached_response, is_cached = self.cache_manager.get(command_text)
                 if is_cached and cached_response:
                     print(f"{Fore.CYAN}💾 [Кеш] Використано кешовану відповідь")
                     self.log_to_gui("assistant", cached_response)
-
-                    if self.should_speak_response(cached_response):
-                        speakable_text = self.extract_speakable_text(cached_response)
-                        if speakable_text:
-                            threading.Thread(
-                                target=self.speak_response,
-                                args=(speakable_text,),
-                                daemon=True
-                            ).start()
-                    
+                    self._speak_if_needed(cached_response)
                     print(f"{Fore.LIGHTBLACK_EX}⏱️  0.00с")
                     return
-            
-            # Швидкий маршрут
+
+            # ── 6. Швидкий маршрут (диспетчер) ──────────────
             if self.dispatcher:
                 quick_result = self.dispatcher.try_quick_route(command_text)
                 if quick_result:
                     elapsed = time.time() - start_total
                     print(f"{Fore.YELLOW}⚡ [Швидкий маршрут]")
                     self.log_to_gui("assistant", quick_result)
-                    
-                    if self.should_speak_response(quick_result):
-                        speakable_text = self.extract_speakable_text(quick_result)
-                        if speakable_text:
-                            threading.Thread(
-                                target=self.speak_response,
-                                args=(speakable_text,),
-                                daemon=True
-                            ).start()
-                    
+                    self._speak_if_needed(quick_result)
                     print(f"{Fore.LIGHTBLACK_EX}⏱️  {elapsed:.2f}с")
-                    
                     if self._is_cache_enabled():
-                        self.cache_manager.set(command_text, quick_result)  # Кешує тільки idempotent
+                        self.cache_manager.set(command_text, quick_result)
                     return
-            
-            # LLM маршрут
-            from ..llm import ask_llm, process_llm_response
-            # from ..core_streaming import StreamingHandler  # видалено, модуль більше не існує
 
-            # command_text вже додано in conversation_history на початку process_command
-            # Підготовка повідомлень для LLM (conversation_history вже містить поточну команду)
-            messages = [{"role": "system", "content": self.system_prompt}]
-            messages.extend(self.conversation_history)
-            
-            # Використовуємо стрімінг, якщо доступний (виділено в commands_streaming)
-            full_response = ""
-            used_streaming = False
-            llm_time = 0.0
-            if self.streaming_handler:
-                try:
-                    print(f"{Fore.MAGENTA}🤔 [Думаю (стрімінг)...]")
-                    start_llm = time.time()
-                    used_streaming = True
-
-                    from .commands_streaming import stream_llm_response
-
-                    full_response = stream_llm_response(
-                        streaming_handler=self.streaming_handler,
-                        messages=messages,
-                        gui_log_callback=self.gui_log_callback,
-                    )
-
-                    llm_time = time.time() - start_llm
-
-                    if self.gui_log_callback:
-                        from ..llm import get_primary_endpoint
-                        ep = get_primary_endpoint()
-                        llm_name = ep.get("name", "LLM")
-                        status_msg = f"✅ {llm_name} ({llm_time:.1f}с)"
-                        print(f"[DEBUG] Updating status: {status_msg}")
-                        self.gui_log_callback("update_status", status_msg)
-                except Exception as e:
-                    print(f"{Fore.YELLOW}⚠️ Стрімінг не вдався: {e}, використовую звичайний запит")
-                    # Fallback на звичайний запит (без вивантаження сирого у чат)
-                    start_llm = time.time()  # Встановлюємо start_llm для fallback
-                    answer = ask_llm(command_text, self.conversation_history, self.system_prompt)
-                    full_response = answer
-                    llm_time = time.time() - start_llm
-            else:
-                # Звичайний запит без стрімінгу
-                print(f"{Fore.MAGENTA}🤔 [Думаю...]")
-                if self.gui_log_callback:
-                    self.gui_log_callback("update_status", "🤔 Думаю...")
-                start_llm = time.time()
-                answer = ask_llm(command_text, self.conversation_history, self.system_prompt)
-                full_response = answer
-                llm_time = time.time() - start_llm
-                if self.gui_log_callback:
-                    from ..llm import get_primary_endpoint
-                    ep = get_primary_endpoint()
-                    llm_name = ep.get("name", "LLM")
-                    self.gui_log_callback("update_status", f"✅ {llm_name} ({llm_time:.1f}с)")
-
-            # Обробка відповіді та виконання функцій
-            final_answer = process_llm_response(full_response, self.registry, command_text)
-
-            # Виводимо результат виконання дій в чат
-            if final_answer:
-                self.log_to_gui("assistant", final_answer)
-                
-            # Додаємо відповідь до історії
-            self.conversation_history.append({"role": "assistant", "content": full_response})
-            
-            # Озвучення
-            if self.should_speak_response(final_answer):
-                speakable_text = self.extract_speakable_text(final_answer)
-                if speakable_text:
-                    threading.Thread(
-                        target=self.speak_response,
-                        args=(speakable_text,),
-                        daemon=True
-                    ).start()
-            
-            # Зберегти в кеш (крім planner-команд, і тільки idempotent)
-            if self._is_cache_enabled() and not skip_cache:
-                cached = self.cache_manager.set(command_text, final_answer)
-                if not cached:
-                    print(f"{Fore.LIGHTBLACK_EX}💾 [Кеш] Пропущено (не idempotent)")
-            
-            elapsed = time.time() - start_total
-            print(f"{Fore.LIGHTBLACK_EX}⏱️  {elapsed:.2f}с (LLM: {llm_time:.2f}с)")
-
-            # Адаптивне управління історією діалогу
-            self._manage_conversation_history()
+            # ── 7. LLM-маршрут (стрімінг + обробка) ────────
+            self._execute_llm_and_process(command_text, start_total, skip_cache)
 
         except Exception as e:
             error_msg = f"❌ Помилка: {e}"
             self.log_to_gui("assistant", error_msg)
+            if self.gui_log_callback:
+                self.gui_log_callback("update_status", error_msg)
             print(f"{Fore.RED}{error_msg}")
             import traceback
             traceback.print_exc()
 
+    # ──────────────────────────────────────────────
+    # Внутрішні допоміжні методи (роутинг)
+    # ──────────────────────────────────────────────
+
+    def _try_simple_response(self, command_text: str) -> bool:
+        """Перевірити, чи команда є простим привітанням/питанням.
+
+        Якщо так — відповісти локально без LLM і повернути True.
+        Інакше — повернути False.
+        """
+        greetings = (
+            "привіт", "вітаю", "добрий день", "доброго дня",
+            "вечір добрий", "доброго вечора", "ранок добрий", "доброго ранку",
+            "hello", "hi", "hey",
+        )
+        simple_questions = (
+            "як тебе звати", "як ти називаєшся", "як твоє ім'я", "хто ти", "хто ти такий",
+            "what's your name", "what is your name", "who are you",
+        )
+        command_lower = command_text.strip().lower()
+
+        if command_lower in greetings:
+            response = "Привіт! Я готовий допомогти. Що ви хочете зробити?"
+        elif command_lower in simple_questions:
+            response = (
+                "Я — голосовий асистент МАРК. Я можу виконувати команди, "
+                "управляти вікнами, вводити текст, запускати програми та інші дії."
+            )
+        else:
+            return False
+
+        self.log_to_gui("assistant", response)
+        self._speak_if_needed(response)
+        return True
+
+    def _execute_llm_and_process(
+        self,
+        command_text: str,
+        start_total: float,
+        skip_cache: bool,
+    ) -> None:
+        """Виконати LLM-запит (стрімінг або звичайний) і обробити результат.
+
+        Виділено з process_command для чистоти маршрутизатора.
+        """
+        from ..llm import ask_llm, process_llm_response
+
+        messages = [{"role": "system", "content": self.system_prompt}]
+        messages.extend(self.conversation_history)
+
+        full_response = ""
+        used_streaming = False
+        llm_time = 0.0
+
+        # ── Спроба стрімінгу ───────────────────────────────
+        if self.streaming_handler:
+            try:
+                print(f"{Fore.MAGENTA}🤔 [Думаю (стрімінг)...]")
+                if self.gui_log_callback:
+                    self.gui_log_callback("update_status", "🤔 Думаю...")
+                start_llm = time.time()
+                used_streaming = True
+
+                full_response = stream_llm_response(
+                    streaming_handler=self.streaming_handler,
+                    messages=messages,
+                    gui_log_callback=self.gui_log_callback,
+                )
+                llm_time = time.time() - start_llm
+                self._update_status_after_llm(llm_time)
+            except Exception as e:
+                print(f"{Fore.YELLOW}⚠️ Стрімінг не вдався: {e}, використовую звичайний запит")
+                full_response = self._fallback_llm(command_text)
+
+        # ── Звичайний запит ────────────────────────────────
+        if not used_streaming:
+            print(f"{Fore.MAGENTA}🤔 [Думаю...]")
+            if self.gui_log_callback:
+                self.gui_log_callback("update_status", "🤔 Думаю...")
+            start_llm = time.time()
+            answer = ask_llm(command_text, self.conversation_history, self.system_prompt)
+            full_response = answer
+            llm_time = time.time() - start_llm
+            self._update_status_after_llm(llm_time)
+
+        # ── Обробка відповіді та виконання функцій ──────────
+        final_answer = process_llm_response(full_response, self.registry, command_text)
+
+        if final_answer:
+            self.log_to_gui("assistant", final_answer)
+
+        # Додаємо відповідь до історії
+        self.conversation_history.append({"role": "assistant", "content": full_response})
+
+        # Озвучення
+        self._speak_if_needed(final_answer)
+
+        # Кешування (крім planner-команд і не-idempotent)
+        if self._is_cache_enabled() and not skip_cache:
+            cached = self.cache_manager.set(command_text, final_answer)
+            if not cached:
+                print(f"{Fore.LIGHTBLACK_EX}💾 [Кеш] Пропущено (не idempotent)")
+
+        elapsed = time.time() - start_total
+        print(f"{Fore.LIGHTBLACK_EX}⏱️  {elapsed:.2f}с (LLM: {llm_time:.2f}с)")
+
+        # Адаптивне управління історією
+        self._manage_conversation_history()
+
+    def _fallback_llm(self, command_text: str) -> str:
+        """Fallback на звичайний запит LLM (без стрімінгу)."""
+        from ..llm import ask_llm
+        start_llm = time.time()
+        answer = ask_llm(command_text, self.conversation_history, self.system_prompt)
+        llm_time = time.time() - start_llm
+        self._update_status_after_llm(llm_time)
+        return answer
+
+    def _update_status_after_llm(self, llm_time: float) -> None:
+        """Оновити статус-бар після відповіді LLM."""
+        if not self.gui_log_callback:
+            return
+        try:
+            from ..llm import get_primary_endpoint
+            ep = get_primary_endpoint()
+            llm_name = ep.get("name", "LLM")
+            self.gui_log_callback("update_status", f"✅ {llm_name} ({llm_time:.1f}с)")
+        except Exception:
+            self.gui_log_callback("update_status", f"✅ LLM ({llm_time:.1f}с)")
+
+    def _speak_if_needed(self, text: str) -> None:
+        """Озвучити текст, якщо TTS увімкнено — делегує в commands_audio.
+
+        Об'єднує should_speak_response + extract_speakable_text + speak_response
+        в один виклик через speak_if_possible.
+        """
+        if not text:
+            return
+        _speak_if_possible(self.tts_enabled, self.tts_engine, text)
+
+    # ──────────────────────────────────────────────
+    # Інші методи (залишаються без змін)
+    # ──────────────────────────────────────────────
+
     def _memory_llm_caller(self, prompt: str) -> str:
-        """Callable для MemoryManager - безпечний виклик LLM без історії діалогу."""
+        """Callable для MemoryManager — безпечний виклик LLM без історії."""
         try:
             from ..llm import ask_llm
-            # Передаємо порожню історію, щоб LLM не плутав контексти
-            return ask_llm(prompt, [], "Ти - асистент для підсумків. Відповідай коротко і по суті.")
+            return ask_llm(
+                prompt, [],
+                "Ти — асистент для підсумків. Відповідай коротко і по суті.",
+            )
         except Exception as e:
             print(f"⚠️ _memory_llm_caller помилка: {e}")
             return ""
@@ -451,48 +431,36 @@ class VoiceAssistant:
             total_chars += len(str(content))
         return total_chars // 4
 
-    def _manage_conversation_history(self, max_messages: int = 2, max_tokens: int = 2000, summarize_threshold: int = 6):
-        """Адаптивне управління історією діалогу з підсумовуванням (Sliding Window):
-        - обмеження за к-стю повідомлень (max_messages)
-        - обмеження за к-стю токенів (max_tokens, gpt-oss має 4000 context)
-        - LLM-summary старих повідомлень при великій кількості
-        """
-        # Перевірка за к-стю повідомлень АБО токенів
+    def _manage_conversation_history(
+        self,
+        max_messages: int = 2,
+        max_tokens: int = 2000,
+        summarize_threshold: int = 6,
+    ) -> None:
+        """Адаптивне управління історією діалогу з підсумовуванням (Sliding Window)."""
         token_count = self._estimate_tokens(self.conversation_history)
-        print(f"{Fore.LIGHTBLACK_EX}[DEBUG] Conversation history: {len(self.conversation_history)} messages, ~{token_count} tokens (limit: {max_messages} msgs, {max_tokens} tokens)")
+        print(
+            f"{Fore.LIGHTBLACK_EX}[DEBUG] Conversation history: "
+            f"{len(self.conversation_history)} messages, "
+            f"~{token_count} tokens (limit: {max_messages} msgs, {max_tokens} tokens)"
+        )
         if len(self.conversation_history) <= max_messages and token_count <= max_tokens:
             return
 
-        # Ковзне вікно з підсумовуванням
         if len(self.conversation_history) > summarize_threshold:
-            # Беремо старі повідомлення для підсумовування (крім останніх 2)
             to_summarize = self.conversation_history[:-2]
             try:
-                # Формуємо текст діалогу для підсумовування
-                dialog_text = "\n".join([
-                    f"{msg.get('role', 'unknown')}: {msg.get('content', '')}"
-                    for msg in to_summarize
-                ])
-                
-                # Використовуємо існуючий механізм підсумовування через memory
                 summary_text = self.memory.summarize_conversation(to_summarize, max_messages=3)
-                
-                # Обмежуємо довжину summary
                 if len(summary_text) > 500:
                     summary_text = summary_text[:500] + "..."
-                
-                # Очищуємо і залишаємо факти + 2 останніх повідомлення
                 self.conversation_history = [
-                    {"role": "system", "content": f"Контекст попередньої розмови: {summary_text}"}
+                    {"role": "system", "content": f"Контекст попередньої розмови: {summary_text}"},
                 ] + self.conversation_history[-2:]
-                
                 print(f"{Fore.LIGHTBLACK_EX}[DEBUG] Conversation summarized, keeping 2 recent messages")
             except Exception as e:
                 print(f"{Fore.YELLOW}[WARNING] Failed to summarize conversation: {e}")
-                # Fallback: просте обрізання
                 self.conversation_history = self.conversation_history[-max_messages:]
 
-        # Обрізаємо до max_messages (якщо ще перевищує)
         if len(self.conversation_history) > max_messages:
             if self.conversation_history and self.conversation_history[0].get("role") == "system":
                 self.conversation_history = (
@@ -501,9 +469,8 @@ class VoiceAssistant:
             else:
                 self.conversation_history = self.conversation_history[-max_messages:]
 
-        # Якщо все ще перевищуємо токен-ліміт — агресивно обрізаємо хвіст
-        while self._estimate_tokens(self.conversation_history) > max_tokens and len(self.conversation_history) > 2:
-            # Видаляємо найстаріше не-system повідомлення
+        while self._estimate_tokens(self.conversation_history) > max_tokens and \
+              len(self.conversation_history) > 2:
             removed = False
             for i, msg in enumerate(self.conversation_history):
                 if msg.get("role") != "system":

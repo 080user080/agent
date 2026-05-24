@@ -555,6 +555,19 @@
    - Рекомендація: без змін.
    - Пріоритет змін: Низький
 
+   [logic_permission_gate.py]
+   - Статус: Критично
+   - Проблеми:
+     * 397 рядків — великий файл, містить `PermissionGate`, `PermissionRequest`, `Decision`, `PermissionPolicy` + конvenience-функції `always_allow()`, `always_deny()`, `console_ask()`.
+     * 4-рівнева policy stack: Always-deny (regex), Always-allow (whitelist), Session-cache, ask_fn callback.
+     * Persistent storage через JSON файл для `PermissionGate`.
+     * Дублювання з `logic_expectations.py` — `PermissionGate` і `Expectations` обидва для task-level, `PermissionGate` для action-level.
+   - Рекомендація:
+     1. Чітко розмежувати: `PermissionGate` — action-level, `Expectations` — task-level.
+     2. Винести `PermissionPolicy` в окремий файл, якщо планується розширення.
+     3. Додати документацію для `console_ask()` та `always_allow()` — для CI/CD.
+   - Пріоритет змін: Високий
+
 
 --- utils/ ---
 

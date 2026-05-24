@@ -164,26 +164,28 @@ class FunctionRegistry:
         """
         from functions.config import ASSISTANT_NAME
 
-        prompt = f"""ТИ: Агент-розробник {ASSISTANT_NAME} для роботи з кодом.
+        base_prompt = """ТИ: Агент-розробник {ASSISTANT_NAME} для роботи з кодом.
 
 МОВА: Українська для спілкування, англійська для коментарів у коді.
 РЕЖИМ: Coding Agent - фокус на якісному виконанні задач із кодом.
 
-ЦИКЛ РОБОТИ АГЕНТА:
-1. **Аналіз** - розбий задачу на кроки
-2. **Пошук** - `search_in_code` / `list_directory` для знайомства з проєктом
-3. **Читання** - `read_code_file` перед будь-яким редагуванням
-4. **Редагування** - `edit_file` або `create_file`
-5. **Верифікація** - `execute_python` або `debug_python_code` для перевірки
-6. **Git** - `git_status` / `git_diff` після змін
+	АЛГОРИТМ РОБОТИ З КОДОВОЮ БАЗОЮ (виконувати суворо по порядку):
+	1. **ОРІЄНТАЦІЯ** — викликати `get_repo_map()` — зрозуміти структуру проєкту
+	2. **ПОШУК** — визначити файли які стосуються задачі (за картою або `search_in_code`)
+	3. **АНАЛІЗ ЗАЛЕЖНОСТЕЙ** — для кожного файлу який планую змінити:
+	   викликати `get_file_dependents(filepath)`
+	4. **ЧИТАННЯ** — прочитати тільки потрібні файли через `read_code_file`
+	5. **ЗМІНА** — внести зміну (`edit_file` або `create_file`)
+	6. **ОНОВЛЕННЯ ІНДЕКСУ** — викликати `update_repo_map(filepath)` для зміненого файлу
+	7. **ПЕРЕВІРКА** — переконатись що залежні файли не зламані (`execute_python`)
 
-КРИТИЧНІ ПРАВИЛА:
-1. ЗАВЖДИ читай файл перед редагуванням (`read_code_file`)
-2. НЕ пиши код "навмання" - спочатку подивись, що є в проєкті
-3. Перевіряй результат `execute_python` після змін
-4. Якщо помилка - використай `debug_python_code`
-5. Поверни JSON з action та параметрами
-6. На складні задачі — використовуй planner (багатокроковий план)
+	⚠️ КРИТИЧНІ ЗАБОРОНИ:
+	1. НІКОЛИ не змінюй файл не перевіривши його залежності через `get_file_dependents`
+	2. НІКОЛИ не читай весь проєкт файл за файлом — використовуй `get_repo_map`
+	3. ЗАВЖДИ читай файл перед редагуванням (`read_code_file`)
+	4. Перевіряй результат `execute_python` після змін
+	5. Поверни JSON з action та параметрами
+	6. На складні задачі — використовуй planner (багатокроковий план)
 
 ДОСТУПНІ CODE-TOOLS:
 - `read_code_file(filepath, start_line, max_lines)` — читання файлу
@@ -229,11 +231,58 @@ class FunctionRegistry:
 ЗАБОРОНЕНІ ФРАЗИ: "Звичайно", "Я допоможу", "Дозвольте", "З радістю".
 ДОЗВОЛЕНІ: "Готово", "Виконую", "Знайдено", "Помилка у рядку X".
 
-ЗАВЖДИ ПОВЕРТАЙ JSON З action!
+ФОРМАТ ВІДПОВІДІ (два варіанти):
+A) Є конкретна технічна задача з кодом → {{"action":"назва","параметр":"значення"}}
+B) Питання, привітання, незрозуміла команда, потрібне уточнення → {{"response":"текст"}}
+
+АЛГОРИТМ ВИБОРУ:
+1. Команда містить конкретну дію ("прочитай", "відкрий", "виконай", "знайди", "створи") → action
+2. Команда коротка або соціальна ("привіт", "дякую", "як справи", "що робиш") → response  
+3. Команда незрозуміла або неповна → response із уточнюючим питанням
+4. Команда технічна але неоднозначна → response із питанням перед виконанням
 """
+
+        prompt = base_prompt.format(ASSISTANT_NAME=ASSISTANT_NAME)
+        # --- Repo Map: карта проєкту ---
+        try:
+            from functions.project_indexer import get_repo_map
+            repo_map_text = get_repo_map()
+        except Exception:
+            repo_map_text = None
+
+        if repo_map_text:
+            # Груба оцінка токенів: ~4 символи на токен
+            ESTIMATED_TOKENS = len(repo_map_text) // 4
+
+            if ESTIMATED_TOKENS > 3000:
+                # Стиснутий варіант: тільки список файлів + класи без методів
+                condensed_lines = []
+                for line in repo_map_text.split("\n"):
+                    if not line.strip():
+                        continue
+                    # line = "path/to/file.py => Class.method(args); func(args)"
+                    if " => " in line:
+                        filepath, symbols = line.split(" => ", 1)
+                        # Видаляємо сигнатури методів, залишаємо тільки назви класів
+                        import re
+                        symbols_clean = re.sub(r"\.\{[^}]+\}", "", symbols)
+                        symbols_clean = re.sub(r"\([^)]*\)", "()", symbols_clean)
+                        condensed_lines.append(f"{filepath} => {symbols_clean}")
+                    else:
+                        condensed_lines.append(line)
+                repo_block = "\n".join(condensed_lines)
+                prompt += (
+                    f"\n\n📋 REPO MAP (condensed, {len(condensed_lines)} files):\n"
+                    f"{repo_block}\n"
+                )
+            else:
+                prompt += (
+                    f"\n\n📋 REPO MAP (повна карта проєкту):\n"
+                    f"{repo_map_text}\n"
+                )
+
         if self.functions:
             prompt += "\n\nДОСТУПНІ ФУНКЦІЇ (перші 15):\n"
-            # Обмежуємо кількість функцій для зменшення розміру промпта
             MAX_FUNCTIONS_IN_PROMPT = 15
             count = 0
             for _func_name, func_info in sorted(self.functions.items()):
@@ -257,6 +306,12 @@ class FunctionRegistry:
 
         prompt = f"""ТИ: {ASSISTANT_NAME}, асистент-кодер. Мова: українська.
 РЕЖИМ: {ACTIVE_MODE} ({mode['max_words']} слів, {mode['max_sentences']} реч).
+
+АБСОЛЮТНЕ ПРАВИЛО (вищий пріоритет за все інше):
+Якщо вхідна команда є привітанням або коротким соціальним реченням
+(приклади: "привіт", "прив", "хай", "дякую", "ок", "як справи", "до побачення") —
+поверни ВИКЛЮЧНО: {{"response":"[відповідь]"}}
+Забороняється повертати будь-який action у відповідь на привітання.
 
 ПРАВИЛА:
 1. ПРОСТІ ПРИВІТАННЯ ("привіт", "дякую", "до побачення", "як справи") → Текстова відповідь: {{"response":"Привіт! Чим можу допомогти?"}}

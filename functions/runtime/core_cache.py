@@ -30,7 +30,8 @@ class CacheManager:
     })
 
     def __init__(self, registry, cache_duration_hours: int = 24):
-        self.cache_file = Path(__file__).parent / "cache_data.json"
+        from functions.runtime.core_settings import get_cache_dir
+        self.cache_file = Path(get_cache_dir()) / "cache_data.json"
         self.cache_duration = timedelta(hours=cache_duration_hours)
         self.registry = registry
         self.cache: Dict[str, Any] = self._load_cache()

@@ -88,7 +88,10 @@ class MacroRunResult:
 class MacroStore:
     """JSON-сховище макросів (один файл = один макрос)."""
 
-    def __init__(self, macros_dir: str | Path = "macros"):
+    def __init__(self, macros_dir: str | Path | None = None):
+        if macros_dir is None:
+            from functions.runtime.core_settings import get_macros_dir
+            macros_dir = get_macros_dir()
         self.macros_dir = Path(macros_dir)
         self.macros_dir.mkdir(parents=True, exist_ok=True)
 

@@ -81,7 +81,7 @@ class AssistantAppQt:
         if not self.core:
             return
         
-        # Mapping дій до обробників
+        # Mapping дій до обробників (делегує важкі операції в commands_planner)
         action_handlers = {
             'pause_listening': lambda: self.core.pause_listening(),
             'resume_listening': lambda: self.core.resume_listening(),

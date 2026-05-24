@@ -297,6 +297,29 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
         required=["filepath", "content"],
     ),
     _tool(
+        name="get_repo_map",
+        description=(
+            "Отримати компактну карту проєкту (Repo Map) — всі класи, методи, функції "
+            "з сигнатурами, згруповані по файлах. Використовуй на початку кодування, "
+            "щоб зрозуміти структуру проєкту без читання десятків файлів."
+        ),
+        properties={},
+    ),
+    _tool(
+        name="update_repo_map",
+        description=(
+            "Оновити Repo Map для конкретного файлу після змін. "
+            "Викликай після кожного write_file/edit_file щоб карта була актуальною."
+        ),
+        properties={
+            "filepath": {
+                "type": "string",
+                "description": "Шлях до зміненого файлу (відносно кореня проєкту).",
+            },
+        },
+        required=["filepath"],
+    ),
+    _tool(
         name="execute_python",
         description="Виконати Python код в безпечній пісочниці. При ModuleNotFoundError автоматично спробує встановити відсутні модулі через Open Interpreter.",
         properties={

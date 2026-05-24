@@ -18,7 +18,74 @@ from functions import config as base_config
 
 # Шлях до user-налаштувань
 _HERE = os.path.dirname(os.path.abspath(__file__))
-USER_SETTINGS_PATH = os.path.join(os.path.dirname(os.path.dirname(_HERE)), "runtime", "user_settings.json")
+_PROJECT_ROOT = os.path.dirname(os.path.dirname(_HERE))
+
+# Базова директорія runtime/
+RUNTIME_DIR = os.path.join(_PROJECT_ROOT, "runtime")
+
+# =============================================================================
+# Централізовані шляхи для runtime/ — всі модулі мають використовувати їх
+# =============================================================================
+
+USER_SETTINGS_PATH = os.path.join(RUNTIME_DIR, "settings", "user_settings.json")
+
+def get_runtime_dir() -> str:
+    """Повертає базову директорію runtime/."""
+    return RUNTIME_DIR
+
+def get_settings_dir() -> str:
+    """runtime/settings/ — user_settings.json та інші налаштування."""
+    p = os.path.join(RUNTIME_DIR, "settings")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+def get_memory_dir() -> str:
+    """runtime/memory/ — довготривала пам'ять та task-пам'ять."""
+    p = os.path.join(RUNTIME_DIR, "memory")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+def get_checkpoints_dir() -> str:
+    """runtime/checkpoints/ — чекпоїнти агента."""
+    p = os.path.join(RUNTIME_DIR, "checkpoints")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+def get_cache_dir() -> str:
+    """runtime/cache/ — кеш даних."""
+    p = os.path.join(RUNTIME_DIR, "cache")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+def get_macros_dir() -> str:
+    """runtime/macros/ — макроси."""
+    p = os.path.join(RUNTIME_DIR, "macros")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+def get_profiles_dir() -> str:
+    """runtime/profiles/ — профілі програм."""
+    p = os.path.join(RUNTIME_DIR, "profiles")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+def get_self_learning_dir() -> str:
+    """runtime/self_learning/ — логи самонавчання, skills, rules."""
+    p = os.path.join(RUNTIME_DIR, "self_learning")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+def get_logs_dir() -> str:
+    """runtime/logs/ — логи дій, audit."""
+    p = os.path.join(RUNTIME_DIR, "logs")
+    os.makedirs(p, exist_ok=True)
+    return p
+
+def get_snapshots_dir() -> str:
+    """runtime/snapshots/ — snapshots стану для undo."""
+    p = os.path.join(RUNTIME_DIR, "snapshots")
+    os.makedirs(p, exist_ok=True)
+    return p
 
 # Схема налаштувань для UI (тип, label, опис, варіанти)
 # Тип: bool | int | float | str | choice | readonly

@@ -68,11 +68,14 @@ class UndoManager:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, snapshots_dir: str = "logs/snapshots"):
+    def __init__(self, snapshots_dir: str | None = None):
         if self._initialized:
             return
 
         self._initialized = True
+        if snapshots_dir is None:
+            from functions.runtime.core_settings import get_snapshots_dir
+            snapshots_dir = get_snapshots_dir()
         self.snapshots_dir = Path(snapshots_dir)
         self.snapshots_dir.mkdir(parents=True, exist_ok=True)
 

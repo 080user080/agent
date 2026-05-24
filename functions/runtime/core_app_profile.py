@@ -205,7 +205,10 @@ class AppProfileRegistry:
       `logic_task_learner` (поки тільки лог у `notes`).
     """
 
-    def __init__(self, profiles_dir: str | Path = "profiles"):
+    def __init__(self, profiles_dir: str | Path | None = None):
+        if profiles_dir is None:
+            from functions.runtime.core_settings import get_profiles_dir
+            profiles_dir = get_profiles_dir()
         self.profiles_dir = Path(profiles_dir)
         self.profiles_dir.mkdir(parents=True, exist_ok=True)
         self._profiles: Dict[str, AppProfile] = {}

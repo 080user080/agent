@@ -60,7 +60,10 @@ class CheckpointManager:
     """Менеджер чекпоїнтів для збереження/відновлення стану."""
 
     def __init__(self, checkpoint_dir: Optional[Path] = None):
-        self.checkpoint_dir = checkpoint_dir or Path("logs/checkpoints")
+        if checkpoint_dir is None:
+            from functions.runtime.core_settings import get_checkpoints_dir
+            checkpoint_dir = Path(get_checkpoints_dir())
+        self.checkpoint_dir = checkpoint_dir
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
     def _get_checkpoint_path(self, task_id: str) -> Path:

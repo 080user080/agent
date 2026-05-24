@@ -96,7 +96,8 @@ class MemoryManager:
 
     def __init__(self, storage_path: Optional[Path] = None, llm_caller=None):
         if storage_path is None:
-            storage_path = Path(__file__).parent / "agent_memory.json"
+            from functions.runtime.core_settings import get_memory_dir
+            storage_path = Path(get_memory_dir()) / "long_term_memory.json"
         self.storage_path = storage_path
         self.memory: Dict[str, Any] = self._load()
 

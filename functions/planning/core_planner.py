@@ -1,20 +1,99 @@
-"""Планувальник багатокрокових задач для асистента."""
+"""Планувальник багатокрокових задач для асистента (Фасад)."""
+from __future__ import annotations
 
 import json
 import os
 import re
 import time
+import logging
 from typing import Any, Dict, List, Optional, Tuple, Set
 
 from colorama import Fore
 from ..runtime.core_tool_runtime import check_dangerous_content, check_ambiguous_content
+from .planner_prompt_builder import PlannerPromptBuilder
+from .planner_validator import PlannerValidator, ValidationResult
+from .planner_repair import StepRepairer, RepairLoop
+
+logger = logging.getLogger("core_planner")
 
 
 class Planner:
-    """Планує, перевіряє, виконує та переплановує багатокрокові задачі."""
+    """Фасад планування: агрегує PromptBuilder, Validator та Repairer.
 
-    def __init__(self, assistant):
+    Конструктор приймає зовнішній об'єкт Assistant та опційні екземпляри
+    компонентів. Якщо компоненти не передано — створюються всередині
+    з безпечною ініціалізацією. Усі методи — лінійна диспетчеризація
+    до агрегованих інструментів.
+    """
+
+    # Делегування констант до PlannerPromptBuilder для зворотної сумісності
+    _PLACEHOLDER_PATTERNS: Set[str] = PlannerPromptBuilder.PLACEHOLDER_PATTERNS
+
+    def __init__(
+        self,
+        assistant,
+        prompt_builder: Optional[PlannerPromptBuilder] = None,
+        validator: Optional[PlannerValidator] = None,
+        repairer: Optional[StepRepairer] = None,
+        repair_loop: Optional[RepairLoop] = None,
+    ):
+        """Ініціалізація фасаду планувальника.
+
+        Args:
+            assistant: Екземпляр AssistantCore / VoiceAssistant.
+            prompt_builder: Опційний PlannerPromptBuilder.
+            validator: Опційний PlannerValidator.
+            repairer: Опційний StepRepairer.
+            repair_loop: Опційний RepairLoop (якщо не задано — створюється з repairer).
+        """
         self.assistant = assistant
+        self._prompt_builder: PlannerPromptBuilder
+        self._validator: PlannerValidator
+        self._repair_loop: RepairLoop
+
+        # Безпечне зв'язування компонентів
+        try:
+            self._prompt_builder = prompt_builder or PlannerPromptBuilder()
+            self._validator = validator or PlannerValidator()
+
+            if repair_loop is not None:
+                self._repair_loop = repair_loop
+            elif repairer is not None:
+                self._repair_loop = RepairLoop(
+                    repairer=repairer,
+                    ask_llm_fn=self._ask_llm,
+                    available_actions_fn=self._available_actions_description,
+                )
+            else:
+                _repairer = StepRepairer(
+                    ask_llm_fn=self._ask_llm,
+                    available_actions_fn=self._available_actions_description,
+                )
+                self._repair_loop = RepairLoop(
+                    repairer=_repairer,
+                    ask_llm_fn=self._ask_llm,
+                    available_actions_fn=self._available_actions_description,
+                )
+
+            logger.info(f"{Fore.GREEN}✅ Planner: компоненти ініціалізовано{Fore.RESET}")
+        except Exception as exc:
+            logger.error(f"{Fore.RED}❌ Planner: помилка ініціалізації компонентів: {exc}{Fore.RESET}")
+            raise
+
+    @property
+    def validator(self) -> PlannerValidator:
+        """Доступ до валідатора (зворотна сумісність)."""
+        return self._validator
+
+    @property
+    def repair_loop(self) -> RepairLoop:
+        """Доступ до repair-циклу (зворотна сумісність)."""
+        return self._repair_loop
+
+    @property
+    def prompt_builder(self) -> PlannerPromptBuilder:
+        """Доступ до prompt builder (зворотна сумісність)."""
+        return self._prompt_builder
 
     def _ask_llm(self, prompt: str) -> str:
         """Спрощений доступ до LLM через асистента."""
@@ -32,122 +111,26 @@ class Planner:
         Returns:
             True якщо це помилка (помилка вже залогована)
         """
-        response_lower = response.lower()
-
-        # Помилка: модель не завантажена
-        if "модель не завантажена" in response_lower or "no models loaded" in response_lower:
-            print(f"{Fore.RED}❌ Планер: Модель LM Studio не завантажена{Fore.RESET}")
-            print(f"{Fore.YELLOW}⚠️  Перейдіть у вкладку 'Налаштування' → 'LLM Ендпоінти' для налаштування{Fore.RESET}")
-            return True
-
-        # Помилка: не вдається підключитися
-        if "не відповідає" in response_lower or "не вдається підключитися" in response_lower:
-            print(f"{Fore.RED}❌ Планер: Немає з'єднання з LM Studio{Fore.RESET}")
-            return True
-
-        # Інші API помилки (починаються з "❌" або "Помилка:")
-        if response.startswith("❌") or response.startswith("Помилка:"):
-            print(f"{Fore.RED}❌ Планер: Помилка LLM API — виконую без планування{Fore.RESET}")
-            return True
-
-        return False
+        # Делегуємо до PlannerValidator (зворотна сумісність)
+        return PlannerValidator.detect_llm_error(response, task)
 
     def should_plan(self, task: str) -> bool:
         """Чи схожа задача на багатокрокову."""
-        normalized = task.lower().strip()
-        
         # 🔥 Спеціальна обробка voice_input (Qt модифікує текст "voice_input 5" -> "_ 5")
+        normalized = task.lower().strip()
         if normalized.startswith("_") and re.match(r'^_\s*\d+$', normalized):
             print(f"{Fore.CYAN}🎤 [Planner should_plan] Виявлено модифіковану voice_input команду: '{task}'")
             return True
-        
-        markers = (
-            "план",
-            "потім",
-            "після цього",
-            "спочатку",
-            "далі",
-            "зроби файл",
-            "створи файл",
-            "відкрий",
-            "виконай",
-            "виправ",
-            # Маркери кодових задач
-            "знайди",
-            "прочитай",
-            "відредагуй",
-            "зміни код",
-            "перевір код",
-            "проаналізуй",
-            "аналізуй",
-            "аналіз",
-            "git",
-            "refactor",
-            "рефактор",
-            # Маркери контролю/моніторингу
-            "контролювати",
-            "моніторинг",
-            "слідкуй",
-            "спостерігай",
-            "дивитися",
-            "відповіді",
-            "задавати питання",
-            "рефакторинг",
-        )
-        # Зменшуємо поріг слів для команд з шляхами файлів (наприклад "проаналізуй код d:\path")
-        if any(c in normalized for c in [":", "\\", "/"]):
-            return any(marker in normalized for marker in markers)
-        return len(normalized.split()) >= 5 and any(marker in normalized for marker in markers)
+        return PlannerPromptBuilder.should_plan_check(task)
 
     def _is_coding_task(self, task: str) -> bool:
         """Чи є задача кодовою (передбачає роботу з файлами/кодом)."""
-        normalized = task.lower()
-        coding_markers = (
-            "код", "файл", "функцію", "функції", "клас", "модуль", "скрипт",
-            "git", "refactor", "рефактор", "баг", "bug", "помилк", "test",
-            "pytest", "import", ".py", ".js", ".ts", ".json", "readme",
-            "знайди в", "пошук по", "прочитай файл", "відредагуй файл",
-        )
-        return any(m in normalized for m in coding_markers)
+        return PlannerPromptBuilder.is_coding_task(task)
 
     def _available_actions_description(self) -> str:
         """Зібрати доступні функції з реєстру (скорочений список для планера)."""
-        if not hasattr(self.assistant, "registry") or not self.assistant.registry:
-            return ""
-
-        # Priority функції для планера (тільки найважливіші)
-        priority_funcs = [
-            'execute_python', 'debug_python_code', 'create_file', 'read_file', 'edit',
-            'list_directory', 'search_in_code', 'list_sandbox_scripts',
-            'open_program', 'close_program', 'mouse_click', 'keyboard_type', 'keyboard_press',
-            'take_screenshot', 'ocr_screen', 'click_text', 'find_text_on_screen',
-            'analyze_current_context', 'click_element', 'fill_form',
-            'create_skill', 'list_windows', 'get_active_window',
-            'activate_window', 'activate_window_by_title',
-            'ask_user', 'voice_input', 'record_action', 'undo_last',
-            'wait_for_response',
-        ]
-
-        lines = []
-        added = set()
-
-        # Спочатку priority функції
-        for name in priority_funcs:
-            if name in self.assistant.registry.functions:
-                func_info = self.assistant.registry.functions[name]
-                description = func_info.get("description", "")[:50]  # Обрізаємо опис
-                lines.append(f"- {name}: {description}")
-                added.add(name)
-
-        # Додаємо ще трохи функцій якщо є місце (до 35 загальом)
-        MAX_PLANNER_FUNCTIONS = 35
-        for name, func_info in sorted(self.assistant.registry.functions.items()):
-            if name not in added and len(added) < MAX_PLANNER_FUNCTIONS:
-                description = func_info.get("description", "")[:40]
-                lines.append(f"- {name}: {description}")
-                added.add(name)
-
-        return "\n".join(lines)
+        registry = getattr(self.assistant, "registry", None)
+        return PlannerPromptBuilder.available_actions_description(registry)
 
     def _extract_json(self, text: str) -> Optional[Any]:
         """Витягнути JSON-масив або об'єкт з відповіді LLM.
@@ -156,93 +139,23 @@ class Planner:
         - Прибирання токенів `<|channel|>`, `<|message|>` тощо.
         - Код у блоках ```json ... ```.
         - Список об'єктів без зовнішніх `[]`: `{...}, {...}` → `[{...}, {...}]`.
+
+        Делегує до ``PlannerValidator.extract_json`` (зворотна сумісність).
         """
-        if not text:
-            return None
-
-        from functions.llm.response_parser import safe_json_loads
-
-        # 1. Прибираємо LLM-токени типу <|channel|>, <|message|>, constrain, ...
-        cleaned = re.sub(r'<\|[^|]*\|>', '', text)
-        cleaned = re.sub(r'\b(channel|constrain|message|final)\b\s*:?', '', cleaned, flags=re.IGNORECASE).strip()
-
-        # 2. Витягаємо з ```json ... ``` блоку, якщо є
-        code_block = re.search(r'```(?:json)?\s*(.*?)\s*```', cleaned, re.DOTALL | re.IGNORECASE)
-        if code_block:
-            cleaned = code_block.group(1).strip()
-
-        candidates: List[str] = []
-
-        # 3. Повний масив [...] з найдальшими дужками
-        arr_start = cleaned.find('[')
-        arr_end = cleaned.rfind(']')
-        if arr_start != -1 and arr_end > arr_start:
-            candidates.append(cleaned[arr_start : arr_end + 1])
-
-        # 4. Об'єкт {...} з найдальшими дужками
-        obj_start = cleaned.find('{')
-        obj_end = cleaned.rfind('}')
-        if obj_start != -1 and obj_end > obj_start:
-            obj_block = cleaned[obj_start : obj_end + 1]
-            candidates.append(obj_block)
-            # 5. Fallback: обгортаємо в [...] якщо там багато об'єктів через кому
-            #    (LLM іноді забуває зовнішні дужки)
-            if '},' in obj_block or '} ,' in obj_block or '}\n' in obj_block:
-                candidates.append('[' + obj_block + ']')
-
-        for candidate in candidates:
-            try:
-                return safe_json_loads(candidate)
-            except Exception:
-                continue
-        return None
+        result = PlannerValidator.extract_json(text)
+        return result.data
 
     def normalize_plan(self, raw_plan: Any) -> List[Dict[str, Any]]:
-        """Нормалізувати план до списку кроків."""
-        if not isinstance(raw_plan, list):
-            return []
+        """Нормалізувати план до списку кроків.
 
-        normalized: List[Dict[str, Any]] = []
-        for step in raw_plan:
-            if not isinstance(step, dict):
-                continue
-
-            action = str(step.get("action", "")).strip()
-            args = step.get("args", {})
-            if not action or not isinstance(args, dict):
-                continue
-
-            normalized.append(
-                {
-                    "action": action,
-                    "args": args,
-                    "goal": str(step.get("goal", "")).strip(),
-                    "validation": str(step.get("validation", "")).strip(),
-                }
-            )
-        return normalized
+        Делегує до ``PlannerValidator.normalize_plan`` (зворотна сумісність).
+        """
+        return PlannerValidator.normalize_plan(raw_plan)
 
     def _recent_history_section(self, limit: int = 3) -> str:
         """Взяти останні N повідомлень з діалогу для контексту planner-а."""
         history = getattr(self.assistant, "conversation_history", None) or []
-        # Виключаємо останнє повідомлення (це і є поточна задача)
-        recent = history[-(limit + 1):-1] if len(history) > 1 else []
-        if not recent:
-            return ""
-        lines = []
-        for msg in recent:
-            role = msg.get("role", "user")
-            content = str(msg.get("content", "")).strip()
-            if not content:
-                continue
-            # Обрізаємо довгі повідомлення
-            if len(content) > 300:
-                content = content[:300] + "..."
-            label = "Користувач" if role == "user" else "Асистент"
-            lines.append(f"{label}: {content}")
-        if not lines:
-            return ""
-        return "\nНЕЩОДАВНІЙ ДІАЛОГ (для контексту, поточна задача — останнє повідомлення користувача):\n" + "\n".join(lines) + "\n"
+        return PlannerPromptBuilder.recent_history_section(history, limit)
 
     def create_plan(self, task: str, context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Побудувати план для задачі з врахуванням контексту."""
@@ -256,99 +169,20 @@ class Planner:
             duration_match = re.search(r'\d+', task)
             duration = int(duration_match.group()) if duration_match else 10
             return [{"action": "voice_input", "args": {"duration": duration}}]
-        
+
         available_actions = self._available_actions_description()
         is_coding = self._is_coding_task(task)
-
-        # Контекст з попередніх повідомлень (щоб фраза "виконай його" мала сенс)
         history_section = self._recent_history_section()
 
-        # Додаємо контекст якщо є
-        context_section = ""
-        if context and context.get("artifacts_summary"):
-            context_section = f"""
-ДОСТУПНІ АРТЕФАКТИ ВІД ПОПЕРЕДНІХ КРОКІВ:
-{context['artifacts_summary']}
+        # Промпт через PlannerPromptBuilder
+        prompt = PlannerPromptBuilder.build_initial_plan_prompt(
+            task=task,
+            available_actions=available_actions,
+            history_section=history_section,
+            context=context,
+            is_coding=is_coding,
+        )
 
-Використовуй ці placeholder-и для посилання на артефакти:
-- {{previous_file_path}} або {{last_file_path}} — останній створений/змінений файл
-- {{last_script_path}} — останній Python скрипт
-- {{last_url}} — останній відкритий URL
-- {{last_output}} — вивід останнього скрипта
-- {{last_program}} — остання відкрита програма
-"""
-
-        # Додаємо coding-agent цикл для кодових задач
-        coding_section = ""
-        if is_coding:
-            coding_section = """
-ЦЕ КОДОВА ЗАДАЧА. ДОТРИМУЙСЯ ЦИКЛУ:
-1. **Пошук** - `search_in_code` або `list_directory` щоб знайти релевантні файли
-2. **Читання** - `read_code_file` перед будь-яким редагуванням
-3. **Редагування** - `edit_file` (з бекапом) або `create_file`
-4. **Верифікація** - `execute_python` або `debug_python_code` щоб перевірити результат
-5. **Git** - `git_status` або `git_diff` після змін (опціонально)
-
-ВАЖЛИВО: завжди читай файл (`read_code_file`) перед тим як його редагувати.
-"""
-
-        # Заборона небезпечних патернів
-        forbidden_section = """
-ЗАБОРОНЕНІ ПАТЕРНИ:
-- ЗАБОРОНЕНО використовувати `execute_python` з `time.sleep()` для очікування
-- ЗАБОРОНЕНО використовувати `execute_python` з `import time` для затримок
-- Для взаємодії з вікнами (Windsurf, браузер тощо) використовуй тільки keyboard_type, keyboard_press, mouse_click
-- Не додавай зайві кроки очікування - виконуй тільки необхідні дії
-"""
-
-        prompt = f"""ТИ — PLANNER (планувальник). Твоя задача: розбити запит користувача на послідовність дій.
-
-ВАЖЛИВО: відповідай ТІЛЬКИ JSON-масивом. БЕЗ пояснень, БЕЗ вступів, БЕЗ привітань.
-
-ДОСТУПНІ ФУНКЦІЇ:
-{available_actions}
-{history_section}{context_section}{coding_section}{forbidden_section}
-ФОРМАТ ВІДПОВІДІ (строго JSON-масив):
-[
-  {{"action":"назва_функції","args":{{...}},"goal":"що має статись","validation":"як зрозуміти що успіх"}},
-  {{"action":"назва_функції","args":{{...}},"goal":"...","validation":"..."}}
-]
-
-ПРИКЛАДИ:
-1. "Створи файл test.txt з текстом 'hello'"
-   [{{"action":"create_file","args":{{"filename":"test.txt","content":"hello"}},"goal":"створити файл","validation":"файл існує"}}]
-
-2. "Проаналізуй код в директорії d:\\Python\\agent\\"
-   [{{"action":"list_directory","args":{{"directory":"d:\\Python\\agent\\"}},"goal":"переглянути вміст директорії","validation":"список файлів отримано"}}]
-
-3. "Напиши питання у вікно" / "Задай питання у вікні X"
-   [
-     {{"action":"activate_window_by_title","args":{{"title":"<назва_вікна>"}},"goal":"активувати вікно","validation":"вікно активне"}},
-     {{"action":"keyboard_type","args":{{"text":"<питання>"}},"goal":"ввести текст","validation":"текст введено"}},
-     {{"action":"keyboard_press","args":{{"key":"enter"}},"goal":"надіслати","validation":"повідомлення відправлено"}},
-     {{"action":"wait_for_response","args":{{"duration":300,"check_interval":25,"check_for_response":true,"use_uia":true}},"goal":"зачекати відповіді","validation":"очікування завершено"}}
-   ]
-
-3. "Контролювати/моніторити вікно і задавати питання"
-   [
-     {{"action":"activate_window_by_title","args":{{"title":"<назва_вікна>"}},"goal":"активувати вікно","validation":"вікно активне"}},
-     {{"action":"keyboard_type","args":{{"text":"<питання>"}},"goal":"задати питання","validation":"текст введено"}},
-     {{"action":"keyboard_press","args":{{"key":"enter"}},"goal":"надіслати","validation":"відправлено"}},
-     {{"action":"wait_for_response","args":{{"duration":300,"check_interval":25,"check_for_response":true,"use_uia":true}},"goal":"зачекати відповіді","validation":"очікування завершено"}}
-   ]
-   ПРИМІТКА: для постійного моніторингу відповідей використовуй start_windsurf_watch якщо доступна.
-
-ВАЖЛИВО: Після кожного відправлення питання (keyboard_type + keyboard_press enter) ОБОВ'ЯЗКОВО додавай wait_for_response щоб зачекати відповіді (1-10 хв).
-- duration: час очікування в секундах (рекомендовано 300 для 5 хв, 600 для 10 хв)
-- check_interval: інтервал перевірки в секундах (рекомендовано 25 = перевірка кожні 25с)
-- check_for_response: true (перевіряє наявність нової відповіді через UIA або OCR)
-- check_for_confirmation: true (перевіряє наявність запиту на підтвердження через OCR)
-- use_uia: true (використовує UI Automation для перевірки - швидше і надійніше за OCR, з fallback на OCR)
-- Це універсальна функція для будь-якої програми/вікна, не тільки для Windsurf
-
-Задача користувача: {task}
-
-Відповідай тільки JSON, без жодного іншого тексту:"""
         # Спроба 1: звичайний промпт
         response = self._ask_llm(prompt)
         print(f"{Fore.YELLOW}📋 [Planner{'/coding' if is_coding else ''}] Відповідь LLM:\n{response[:200]}...{Fore.RESET}")
@@ -364,17 +198,10 @@ class Planner:
         # Спроба 2: якщо не вдалося — ще раз з жорсткішим промптом
         if not plan:
             print(f"{Fore.YELLOW}⚠️ Планер: перша спроба не вдалася, повторюю...{Fore.RESET}")
-            retry_prompt = f"""ТИ — PLANNER. Розбий задачу на кроки.
-
-ПОПЕРЕДЖЕННЯ: Попередня відповідь була неправильною. Відповідай ТІЛЬКИ JSON.
-
-ФУНКЦІЇ: {available_actions}
-
-ФОРМАТ: [{{"action":"...","args":{{...}},"goal":"..."}}]
-
-Задача: {task}
-
-JSON:"""
+            retry_prompt = PlannerPromptBuilder.build_retry_plan_prompt(
+                task=task,
+                available_actions=available_actions,
+            )
             response2 = self._ask_llm(retry_prompt)
             print(f"{Fore.YELLOW}📋 [Planner retry] Відповідь:\n{response2[:200]}...{Fore.RESET}")
             parsed2 = self._extract_json(response2)
@@ -451,48 +278,9 @@ JSON:"""
             return path
         return None
 
-    # Placeholder-и які підтримуються для підстановки з контексту
-    _PLACEHOLDER_PATTERNS: Set[str] = {
-        "{{previous_file_path}}", "{previous_file_path}",
-        "{{last_file_path}}", "{last_file_path}",
-        "{{last_script_path}}", "{last_script_path}",
-        "{{last_url}}", "{last_url}",
-        "{{last_output}}", "{last_output}",
-        "{{last_program}}", "{last_program}",
-    }
-
     def _resolve_placeholders(self, value: Any, context: Dict[str, Any]) -> Any:
         """Замінити placeholder-и в значенні на реальні дані з контексту."""
-        if not isinstance(value, str):
-            return value
-
-        value = value.strip()
-
-        # Мапінг placeholder -> ключ в контексті
-        placeholder_map = {
-            "{{previous_file_path}}": "last_file_path",
-            "{previous_file_path}": "last_file_path",
-            "{{last_file_path}}": "last_file_path",
-            "{last_file_path}": "last_file_path",
-            "{{last_script_path}}": "last_script_path",
-            "{last_script_path}": "last_script_path",
-            "{{last_url}}": "last_url",
-            "{last_url}": "last_url",
-            "{{last_output}}": "last_output",
-            "{last_output}": "last_output",
-            "{{last_program}}": "last_program",
-            "{last_program}": "last_program",
-            "{{last_voice_text}}": "last_voice_text",
-            "{last_voice_text}": "last_voice_text",
-        }
-
-        for placeholder, context_key in placeholder_map.items():
-            if placeholder in value:
-                context_value = context.get(context_key)
-                if context_value:
-                    value = value.replace(placeholder, str(context_value))
-
-        return value
+        return PlannerPromptBuilder.resolve_placeholders(value, context)
 
     def prepare_step(self, step: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
         """Підготувати крок до виконання з урахуванням контексту та артефактів."""
@@ -678,22 +466,7 @@ JSON:"""
 
     def _build_artifacts_summary(self, context: Dict[str, Any]) -> str:
         """Побудувати текстове summary артефактів для передачі в LLM."""
-        parts = []
-
-        if context.get("last_file_path"):
-            parts.append(f"Останній файл: {context['last_file_path']}")
-        if context.get("last_program"):
-            parts.append(f"Остання програма: {context['last_program']}")
-        if context.get("last_url"):
-            parts.append(f"Останній URL: {context['last_url']}")
-        if context.get("last_output"):
-            output = context["last_output"]
-            preview = output[:200] + "..." if len(output) > 200 else output
-            parts.append(f"Останній вивід: {preview}")
-        if context.get("created_files"):
-            parts.append(f"Створені файли: {', '.join(context['created_files'])}")
-
-        return "\n".join(parts) if parts else "Немає артефактів"
+        return PlannerPromptBuilder.build_artifacts_summary(context)
 
     def propose_repair_step(
         self,
@@ -702,49 +475,11 @@ JSON:"""
         result: str,
         context: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
-        """Спробувати отримати один repair-крок після невдалого виконання."""
-        available_actions = self._available_actions_description()
-        artifacts = context.get("artifacts_summary", "Немає артефактів")
+        """Спробувати отримати один repair-крок після невдалого виконання.
 
-        prompt = f"""
-Ти repair-planner. Поточна задача: {task}
-
-Провалився крок:
-{json.dumps(failed_step, ensure_ascii=False, indent=2)}
-
-Результат/помилка:
-{result}
-
-ДОСТУПНІ АРТЕФАКТИ (використовуй placeholder-и типу {{{{last_file_path}}}}):
-{artifacts}
-
-Доступні функції:
-{available_actions}
-
-Поверни ТІЛЬКИ JSON-об'єкт одного альтернативного кроку у форматі:
-{{"action":"назва_функції","args":{{...}},"goal":"...","validation":"..."}}
-
-Якщо безпечного repair-кроку немає, поверни:
-{{"action":"abort","args":{{}},"goal":"stop","validation":"stop"}}
-"""
-        response = self._ask_llm(prompt)
-        parsed = self._extract_json(response)
-        if not isinstance(parsed, dict):
-            return None
-
-        action = str(parsed.get("action", "")).strip()
-        args = parsed.get("args", {})
-        if not action or not isinstance(args, dict):
-            return None
-        if action == "abort":
-            return None
-        return {
-            "action": action,
-            "args": args,
-            "goal": str(parsed.get("goal", "")).strip(),
-            "validation": str(parsed.get("validation", "")).strip(),
-            "is_repair": True,
-        }
+        Делегує до ``planner_repair.StepRepairer`` (зворотна сумісність).
+        """
+        return self.repair_loop.repairer.repair(task, failed_step, result, context)
 
     def propose_replan(
         self,
@@ -754,44 +489,11 @@ JSON:"""
         context: Dict[str, Any],
         remaining_steps: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
-        """Перебудувати решту плану після проваленого repair-кроку."""
-        available_actions = self._available_actions_description()
-        artifacts = context.get("artifacts_summary", "Немає артефактів")
+        """Перебудувати решту плану після проваленого repair-кроку.
 
-        prompt = f"""
-Ти replanner локального асистента.
-
-Початкова задача:
-{task}
-
-Невдалий крок:
-{json.dumps(failed_step, ensure_ascii=False, indent=2)}
-
-Результат невдачі:
-{result}
-
-ДОСТУПНІ АРТЕФАКТИ (використовуй placeholder-и типу {{{{last_file_path}}}}):
-{artifacts}
-
-Кількість виконаних кроків: {context.get('completed_steps', 0)}
-Кількість спроб repair: {context.get('repair_attempts', 0)}
-Кількість replan: {context.get('replan_attempts', 0)}
-
-Поточний хвіст плану (якщо є):
-{json.dumps(remaining_steps, ensure_ascii=False, indent=2)}
-
-Доступні функції:
-{available_actions}
-
-ПРАВИЛА:
-- Поверни ТІЛЬКИ JSON-масив нового хвоста плану.
-- Використовуй лише доступні функції та placeholder-и для артефактів.
-- Не повторюй безглуздо крок, який щойно провалився, якщо немає нових аргументів.
-- Якщо задачу безпечно продовжити неможливо, поверни [].
-"""
-        response = self._ask_llm(prompt)
-        parsed = self._extract_json(response)
-        return self.normalize_plan(parsed)
+        Делегує до ``planner_repair.RepairLoop.try_replan`` (зворотна сумісність).
+        """
+        return self.repair_loop.try_replan(task, failed_step, result, context, remaining_steps)
 
     def build_execution_context(self, task: str, plan: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Створити початковий контекст виконання з усіма необхідними полями."""

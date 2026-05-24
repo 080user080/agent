@@ -15,15 +15,14 @@ from typing import Any, Dict, List, Optional
 class SelfLearning:
     """Модуль самонавчання — аналіз помилок та накопичення skills."""
 
-    def __init__(self, data_dir: str = None):
+    def __init__(self, data_dir: str | None = None):
         """
         Args:
             data_dir: Директорія для зберігання логів та skills (default: runtime/self_learning)
         """
         if data_dir is None:
-            # runtime/self_learning в корені проекту (runtime/self_learning.py → agent/)
-            project_root = Path(__file__).parent.parent
-            self.data_dir = project_root / "runtime" / "self_learning"
+            from functions.runtime.core_settings import get_self_learning_dir
+            self.data_dir = Path(get_self_learning_dir())
         else:
             self.data_dir = Path(data_dir)
 

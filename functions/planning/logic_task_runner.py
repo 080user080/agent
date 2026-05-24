@@ -22,12 +22,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import subprocess
 import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
+
+from pydantic import ValidationError
 
 from functions.planning.logic_execution_report import (
     STATUS_DENIED,
@@ -49,6 +52,10 @@ from functions.planning.logic_expectations import (
     parse_expect_list,
 )
 from functions.planning.logic_repair_loop import RepairLoop, RepairProposer
+from functions.planning.plan_models import (
+    PlanPydantic,
+    TaskPydantic,
+)
 from functions.runtime.logic_permission_gate import (
     ACTION_READ_FILE,
     ACTION_RUN_COMMAND,
@@ -57,6 +64,11 @@ from functions.runtime.logic_permission_gate import (
     PermissionGate,
     PermissionRequest,
 )
+
+logger = logging.getLogger("logic_task_runner")
+
+logger = logging.getLogger("logic_task_runner")
+
 
 ON_ERROR_STOP = "stop"
 ON_ERROR_SKIP = "skip"
@@ -92,34 +104,43 @@ class Plan:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Plan":
-        tasks_raw = data.get("tasks") or []
-        tasks: List[Task] = []
-        for idx, entry in enumerate(tasks_raw):
-            if not isinstance(entry, dict):
-                raise ValueError(f"task #{idx} is not a dict: {entry!r}")
-            tid = entry.get("id") or f"t{idx + 1}"
-            kind = entry.get("kind")
-            if not kind:
-                raise ValueError(f"task #{idx} missing 'kind'")
-            tasks.append(
-                Task(
-                    id=str(tid),
-                    kind=str(kind),
-                    name=entry.get("name", ""),
-                    params=dict(entry.get("params") or {}),
-                    on_error=entry.get("on_error", ON_ERROR_STOP),
-                    max_retries=int(entry.get("max_retries", 2)),
-                    retry_delay_s=float(entry.get("retry_delay_s", 1.0)),
-                    depends_on=list(entry.get("depends_on") or []),
-                    precheck=parse_expect_list(entry.get("precheck")),
-                    expect=parse_expect_list(entry.get("expect")),
-                )
+        """Парсити dict в Plan з Pydantic-валідацією.
+
+        Спочатку валідує через TaskPydantic/PlanPydantic, потім
+        конструює звичайний Plan. При помилці валідації — логує і
+        повертає fallback-план.
+        """
+        # Спроба Pydantic-валідації
+        try:
+            pydantic_plan = PlanPydantic(
+                name=data.get("name", "(unnamed plan)"),
+                tasks=[_task_to_pydantic(entry) for entry in data.get("tasks", [])],
+                metadata=data.get("metadata", {}),
             )
-        return cls(
-            name=str(data.get("name") or "(unnamed plan)"),
-            tasks=tasks,
-            metadata=dict(data.get("metadata") or {}),
-        )
+
+            # Конвертуємо TaskPydantic -> Task
+            tasks = []
+            for tp in pydantic_plan.tasks:
+                tasks.append(Task(
+                    id=tp.id, kind=tp.kind, name=tp.name,
+                    params=tp.params, max_retries=tp.max_retries,
+                    retry_delay_s=tp.retry_delay_s,
+                    on_error=tp.on_error, depends_on=tp.depends_on,
+                    precheck=tp.precheck, expect=tp.expect,
+                ))
+
+            return cls(
+                name=pydantic_plan.name,
+                tasks=tasks,
+                metadata=pydantic_plan.metadata,
+            )
+        except ValidationError as e:
+            logger.error(f"Pydantic validation failed for Plan: {e}")
+            # Fallback: звичайний парсинг без Pydantic
+            return _fallback_plan_parse(data)
+        except Exception as e:
+            logger.error(f"Unexpected error in Plan.from_dict: {e}")
+            return _fallback_plan_parse(data)
 
     @classmethod
     def from_json(cls, payload: str) -> "Plan":
@@ -129,6 +150,69 @@ class Plan:
     def from_file(cls, path: str) -> "Plan":
         return cls.from_json(Path(path).read_text(encoding="utf-8"))
 
+    def to_pydantic(self) -> PlanPydantic:
+        """Конвертує Plan -> PlanPydantic."""
+        return PlanPydantic(
+            name=self.name,
+            tasks=[_task_from_pydantic(t) for t in self.tasks],
+            metadata=self.metadata,
+        )
+
+
+def _task_to_pydantic(data: Dict[str, Any]) -> TaskPydantic:
+    """Конвертує dict -> TaskPydantic."""
+    tid = data.get("id") or "t1"
+    return TaskPydantic(
+        id=str(tid),
+        kind=str(data.get("kind", "")),
+        name=data.get("name", ""),
+        params=dict(data.get("params") or {}),
+        on_error=data.get("on_error", "stop"),
+        max_retries=int(data.get("max_retries", 2)),
+        retry_delay_s=float(data.get("retry_delay_s", 1.0)),
+        depends_on=list(data.get("depends_on") or []),
+        precheck=data.get("precheck") or [],
+        expect=data.get("expect") or [],
+    )
+
+
+def _task_from_pydantic(tp: TaskPydantic) -> Task:
+    """Конвертує TaskPydantic -> Task."""
+    return Task(
+        id=tp.id, kind=tp.kind, name=tp.name,
+        params=tp.params, on_error=tp.on_error,
+        max_retries=tp.max_retries, retry_delay_s=tp.retry_delay_s,
+        depends_on=tp.depends_on, precheck=tp.precheck, expect=tp.expect,
+    )
+
+
+def _fallback_plan_parse(data: Dict[str, Any]) -> "Plan":
+    """Fallback парсинг без Pydantic (звичайна логіка)."""
+    tasks_raw = data.get("tasks") or []
+    tasks: List[Task] = []
+    for idx, entry in enumerate(tasks_raw):
+        if not isinstance(entry, dict):
+            raise ValueError(f"task #{idx} is not a dict: {entry!r}")
+        tid = entry.get("id") or f"t{idx + 1}"
+        kind = entry.get("kind")
+        if not kind:
+            raise ValueError(f"task #{idx} missing 'kind'")
+        tasks.append(
+            Task(
+                id=str(tid), kind=str(kind), name=entry.get("name", ""),
+                params=dict(entry.get("params") or {}),
+                on_error=entry.get("on_error", ON_ERROR_STOP),
+                max_retries=int(entry.get("max_retries", 2)),
+                retry_delay_s=float(entry.get("retry_delay_s", 1.0)),
+                depends_on=list(entry.get("depends_on") or []),
+                precheck=parse_expect_list(entry.get("precheck")),
+                expect=parse_expect_list(entry.get("expect")),
+            )
+        )
+    return cls(
+        name=str(data.get("name") or "(unnamed plan)"),
+        tasks=tasks, metadata=dict(data.get("metadata") or {}),
+    )
 
 HandlerFn = Callable[["TaskContext"], Dict[str, Any]]
 

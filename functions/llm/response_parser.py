@@ -536,6 +536,24 @@ def process_llm_response(response_text, registry, original_command=None):
         registry: Реєстр функцій
         original_command: Оригінальна команда користувача (для fallback логіки)
     """
+    # --- Блок захисту від виконання дій на привітання ---
+    import re as _re
+    _GREETING_RE = _re.compile(
+        r'^(привіт|прив|хай|hello|hi|дякую|ок|добре|зрозумів|до побачення|бувай|як справи|як ти)[\W]*$',
+        _re.IGNORECASE | _re.UNICODE
+    )
+    if original_command and _GREETING_RE.match(original_command.strip()):
+        try:
+            import json as _json
+            _parsed = _json.loads(response_text.strip())
+            if 'response' in _parsed:
+                return _parsed['response']
+            if 'action' in _parsed:
+                return "Привіт! Чим можу допомогти?"
+        except Exception:
+            pass
+    # --- Кінець блоку захисту ---
+
     clean_text = clean_llm_tokens(response_text).strip()
 
     # Логування для відладки

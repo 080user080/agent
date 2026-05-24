@@ -50,11 +50,14 @@ class ActionRecorder:
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, logs_dir: str = "logs"):
+    def __init__(self, logs_dir: str | None = None):
         if self._initialized:
             return
 
         self._initialized = True
+        if logs_dir is None:
+            from functions.runtime.core_settings import get_logs_dir
+            logs_dir = get_logs_dir()
         self.logs_dir = Path(logs_dir)
         self.logs_dir.mkdir(exist_ok=True)
 
