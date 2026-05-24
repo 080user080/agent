@@ -69,13 +69,14 @@ def call_groq_sdk(endpoint: Dict[str, Any], messages: List[Dict[str, str]]) -> T
         return False, str(e)
 
 
-def stream_groq_sdk(endpoint: Dict[str, Any], messages: List[Dict[str, str]], callback) -> bool:
+def stream_groq_sdk(endpoint: Dict[str, Any], messages: List[Dict[str, str]], callback, usage_callback=None) -> bool:
     """Стрімінг відповіді від Groq через офіційний SDK.
     
     Args:
         endpoint: Endpoint конфігурація
         messages: Список повідомлень
         callback: Функція callback(chunk_text) для кожного фрагмента
+        usage_callback: Опціональний callback(usage_dict) для отримання реального usage після стріму
         
     Returns:
         True якщо успішно, False інакше
@@ -110,6 +111,35 @@ def stream_groq_sdk(endpoint: Dict[str, Any], messages: List[Dict[str, str]], ca
         for chunk in completion:
             if chunk.choices[0].delta.content:
                 callback(chunk.choices[0].delta.content)
+        
+        # Після стріму — отримуємо реальне usage з останнього chunk (якщо є)
+        # Groq SDK v1.2.0+: ChatCompletionChunk має поля 'usage' та 'x_groq'
+        # usage заповнюється тільки в останньому chunk після завершення стріму
+        try:
+            usage_info = None
+            
+            # Пробуємо отримати usage з останнього chunk
+            # Groq SDK повертає usage в останньому chunk (після всіх content chunks)
+            if chunk.usage is not None:
+                # chunk.usage це CompletionUsage об'єкт з prompt_tokens, completion_tokens, total_tokens
+                usage_info = {
+                    "prompt_tokens": chunk.usage.prompt_tokens or 0,
+                    "completion_tokens": chunk.usage.completion_tokens or 0,
+                    "total_tokens": chunk.usage.total_tokens or 0,
+                }
+            elif chunk.x_groq is not None and hasattr(chunk.x_groq, 'usage'):
+                # Groq-specific: usage може бути в x_groq.usage
+                usage_info = {
+                    "prompt_tokens": chunk.x_groq.usage.prompt_tokens or 0,
+                    "completion_tokens": chunk.x_groq.usage.completion_tokens or 0,
+                    "total_tokens": chunk.x_groq.usage.total_tokens or 0,
+                }
+            
+            if usage_info and usage_callback:
+                usage_callback(usage_info)
+        except Exception:
+            # Не критично — usage може бути недоступний
+            pass
         
         return True
         

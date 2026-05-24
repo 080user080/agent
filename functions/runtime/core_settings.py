@@ -314,6 +314,23 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "desc": "Придушення шуму нейромережею.",
     },
 
+    "HIDDEN_TABS": {
+        "type": "multi_choice", "group": "GUI", "label": "Приховані вкладки",
+        "choices": ["💬 Чат", "📋 План", "📜 Логи", "📊 Статистика", "🔧 Інструменти", "⚙️ Налаштування"],
+        "desc": "Виберіть вкладки, які потрібно приховати. Зміни застосовуються після перезапуску GUI.",
+        "default": [], "user_only": True,
+    },
+    "ACTIVE_TAB_INDEX": {
+        "type": "int", "group": "GUI", "label": "Активна вкладка",
+        "desc": "Індекс останньої активної вкладки. Зберігається автоматично.",
+        "user_only": True, "default": 0, "hidden": True,
+    },
+    "SETTINGS_SPLITTER_SIZES": {
+        "type": "str", "group": "GUI", "label": "Розмір splitter налаштувань",
+        "desc": "Розміри лівої/правої панелі вкладки налаштувань. Зберігається автоматично.",
+        "user_only": True, "default": "160,600", "hidden": True,
+    },
+
     # --- GUI ---
     "WINDOW_GEOMETRY": {
         "type": "str", "group": "GUI", "label": "Розмір і позиція вікна",
@@ -459,6 +476,33 @@ class SettingsManager:
     def disable_auto_approve_all(self) -> None:
         self.set("auto_approve_all", False, persist=False)
         self._runtime.pop("_auto_approve_expires_at", None)
+
+    # ---------- active model + контекстний ліміт ----------
+
+    def set_active_model(self, model_name: str, context_limit: int) -> None:
+        """Зберігає назву активної моделі та її ліміт контексту в runtime.
+
+        Args:
+            model_name: Назва моделі (наприклад, "gpt-4o", "gemini-3.1-flash-lite-preview")
+            context_limit: Максимальна кількість токенів контексту
+        """
+        with self._lock:
+            self._runtime["active_model"] = model_name
+            self._runtime["active_model_context_limit"] = context_limit
+
+    def get_active_model(self) -> Optional[str]:
+        """Повертає назву активної моделі або None."""
+        with self._lock:
+            return self._runtime.get("active_model")
+
+    def get_active_model_context_limit(self) -> int:
+        """Повертає ліміт контексту активної моделі.
+
+        Returns:
+            int: Ліміт контексту (токенів). Якщо модель не встановлена — 4096.
+        """
+        with self._lock:
+            return self._runtime.get("active_model_context_limit", 4096)
 
 
 # --- Singleton ---

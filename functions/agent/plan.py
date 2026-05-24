@@ -135,12 +135,15 @@ class ActionDecider:
         tool_aliases: Optional[Dict[str, str]] = None,
         system_prompt: Optional[str] = None,
         history_max: int = 10,
+        max_json_failures: int = 5,
     ):
         self._ask_llm_with_tools = ask_llm_with_tools_fn
         self._tools = list(tools_schema or [])
         self._aliases = dict(tool_aliases or {})
         self._system_prompt = system_prompt or self.SYSTEM_PROMPT
         self._history_max = max(1, int(history_max))
+        self._max_json_failures = max(1, int(max_json_failures))
+        self._consecutive_json_failures: int = 0
 
     @property
     def is_available(self) -> bool:
@@ -305,9 +308,32 @@ class ActionDecider:
         stuck_warning: str = "",
         extra_instructions: str = "",
     ) -> AgentAction:
-        """Один крок рішення через LLM (JSON parsing fallback)."""
+        """Один крок рішення через LLM (JSON parsing fallback).
+
+        Покращений механізм:
+        1. Спочатку пробує JSON-parsing (без function-calling) — для моделей
+           без підтримки tool_calls (LM Studio, локальні).
+        2. Якщо JSON не парситься — пробує з function-calling (tool_choice="auto").
+        3. Якщо і це невдало — fallback на take_screenshot (або done якщо
+           перевищено ліміт спроб).
+        4. Трекінг consecutive JSON failures — після N невдач force `done`.
+        5. Жодних Exception назовні — завжди повертає AgentAction.
+        """
         if not self.is_available:
             return AgentAction(name="noop", reasoning="LLM decider unavailable")
+
+        # Force done якщо забагато послідовних JSON помилок
+        if self._consecutive_json_failures >= self._max_json_failures:
+            logger.warning(
+                "ActionDecider: Too many consecutive JSON failures (%d≥%d), force done",
+                self._consecutive_json_failures, self._max_json_failures,
+            )
+            self._consecutive_json_failures = 0
+            return AgentAction(
+                name="done",
+                arguments={"summary": "Force done: too many JSON parsing failures", "success": False},
+                reasoning="Force done after max consecutive JSON failures",
+            )
 
         messages = self.build_messages(
             goal, observation, history, last_result,
@@ -317,61 +343,197 @@ class ActionDecider:
             stuck_warning=stuck_warning,
             extra_instructions=extra_instructions,
         )
+
+        # --- Спроба 1: Без tool_calls (JSON parsing) ---
         try:
-            # Спочатку спробуємо без tools (JSON parsing fallback)
-            # LM Studio може не підтримувати function-calling або конфліктувати з ним
             response = self._ask_llm_with_tools(
                 messages=messages,
-                tools=[],  # Порожній список — без function-calling
+                tools=[],
                 tool_choice=None,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning("ActionDecider LLM call failed: %s", exc)
-            return AgentAction(name="noop", reasoning=f"LLM error: {exc}")
+            logger.warning("ActionDecider: LLM call (JSON mode) failed: %s", exc)
+            # Пробуємо function-calling як fallback
+            return self._try_with_tools(messages)
 
         if getattr(response, "error", None):
-            error_msg = str(response.error)
-            logger.warning("ActionDecider LLM error: %s", error_msg)
-            return AgentAction(name="noop", reasoning=f"LLM error: {error_msg}")
+            logger.warning("ActionDecider: LLM error (JSON mode): %s", response.error)
+            return self._try_with_tools(messages)
 
-        # 1) Спробувати tool_calls (OpenAI-compatible)
+        # Перевіряємо tool_calls у відповіді
         tool_calls = getattr(response, "tool_calls", None) or []
         if tool_calls:
-            tc = tool_calls[0]
+            return self._parse_tool_calls(response, tool_calls)
+
+        # Парсимо JSON з content
+        action = self._parse_json_from_content(response)
+        if action is not None:
+            # Успіх — скидаємо лічильник помилок
+            self._consecutive_json_failures = 0
+            return action
+
+        # JSON не розпарсився — інкрементуємо лічильник
+        self._consecutive_json_failures += 1
+        logger.warning(
+            "ActionDecider: JSON parsing attempt %d/%d failed",
+            self._consecutive_json_failures, self._max_json_failures,
+        )
+
+        # --- Спроба 2: З tool_calls (function-calling режим) ---
+        return self._try_with_tools(messages)
+
+    def _parse_tool_calls(
+        self, response: Any, tool_calls: List[Any],
+    ) -> AgentAction:
+        """Розпарсити tool_calls у AgentAction."""
+        tc = tool_calls[0]
+        return AgentAction(
+            name=str(tc.name),
+            arguments=dict(tc.arguments or {}),
+            reasoning=str(getattr(response, "content", "") or ""),
+            tool_call_id=str(getattr(tc, "id", "") or "") or None,
+        )
+
+    def _try_with_tools(self, messages: List[Dict[str, str]]) -> AgentAction:
+        """Fallback: спроба LLM виклику з function-calling (tool_choice='auto')."""
+        try:
+            response = self._ask_llm_with_tools(
+                messages=messages,
+                tools=self._tools,
+                tool_choice="auto",
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ActionDecider: LLM call (tool mode) failed: %s", exc)
+            self._consecutive_json_failures += 1
+            return self._json_failure_fallback()
+
+        if getattr(response, "error", None):
+            logger.warning(
+                "ActionDecider: LLM error (tool mode): %s", response.error,
+            )
+            self._consecutive_json_failures += 1
+            return self._json_failure_fallback()
+
+        tool_calls = getattr(response, "tool_calls", None) or []
+        if tool_calls:
+            self._consecutive_json_failures = 0
+            return self._parse_tool_calls(response, tool_calls)
+
+        # Tool-режим теж не повернув tool_calls — спробуємо JSON з content
+        action = self._parse_json_from_content(response)
+        if action is not None:
+            self._consecutive_json_failures = 0
+            return action
+
+        self._consecutive_json_failures += 1
+        return self._json_failure_fallback()
+
+    def _json_failure_fallback(self) -> AgentAction:
+        """Повернути fallback дію при невдалому парсингу JSON.
+
+        Якщо перевищено ліміт — force done.
+        Інакше — take_screenshot для отримання свіжого спостереження.
+        """
+        if self._consecutive_json_failures >= self._max_json_failures:
+            logger.warning(
+                "ActionDecider: Max JSON failures (%d) reached, force done",
+                self._max_json_failures,
+            )
+            self._consecutive_json_failures = 0
             return AgentAction(
-                name=str(tc.name),
-                arguments=dict(tc.arguments or {}),
-                reasoning=str(getattr(response, "content", "") or ""),
-                tool_call_id=str(getattr(tc, "id", "") or "") or None,
+                name="done",
+                arguments={
+                    "summary": "Force done after max JSON parsing failures",
+                    "success": False,
+                },
+                reasoning="Force done after max consecutive JSON failures",
             )
 
-        # 2) Fallback — парсити JSON з content
+        logger.warning("ActionDecider: JSON parsing failed, fallback to take_screenshot")
+        return AgentAction(
+            name="take_screenshot",
+            arguments={},
+            reasoning="JSON parsing failed, taking screenshot as fallback",
+        )
+
+    def _parse_json_from_content(
+        self, response: Any,
+    ) -> Optional[AgentAction]:
+        """Спробувати розпарсити JSON з content відповіді.
+
+        Повертає AgentAction або None, якщо парсинг не вдався.
+        """
         content = str(getattr(response, "content", "") or "").strip()
-        logger.info("ActionDecider: LLM content (full)=%s", content)
+        if not content:
+            return None
 
         # Видалити thinking блоки (для Qwen3 та інших thinking моделей)
-        before_len = len(content)
-        content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
-        content = content.strip()
-        after_len = len(content)
-        if before_len != after_len:
+        content = self._clean_think_blocks(content)
+
+        # Видалити markdown code blocks
+        content = self._extract_from_markdown(content)
+
+        # Виділити JSON через brace matching
+        content = self._extract_json_braces(content)
+
+        if not content.startswith("{"):
+            return None
+
+        try:
+            parsed = json.loads(content)
+            action_name = parsed.get("action", "noop")
+            args = parsed.get("args", {})
+            if not isinstance(args, dict):
+                args = {}
+            reasoning = parsed.get("reasoning", "")
+
+            if not action_name or action_name == "noop":
+                logger.warning(
+                    "ActionDecider: Empty/noop action in parsed JSON: %s",
+                    action_name,
+                )
+                return None
+
+            return AgentAction(
+                name=str(action_name),
+                arguments=args,
+                reasoning=str(reasoning) + "\n[JSON parsed]",
+            )
+        except (json.JSONDecodeError, ValueError, TypeError) as exc:
+            logger.warning(
+                "ActionDecider: JSON parse error: %s for content: %s...",
+                exc, content[:100],
+            )
+            return None
+
+    def _clean_think_blocks(self, content: str) -> str:
+        """Видалити <think>...</think> блоки."""
+        cleaned = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+        cleaned = cleaned.strip()
+        if len(cleaned) != len(content):
             logger.info(
                 "ActionDecider: Removed think blocks (%d→%d chars): %s...",
-                before_len, after_len, content[:200],
+                len(content), len(cleaned), cleaned[:200],
             )
+        return cleaned
 
-        # Видалити markdown code blocks якщо є
-        if content.startswith("```"):
-            lines = content.splitlines()
-            json_lines = []
-            for line in lines[1:]:
-                if line.strip().startswith("```"):
-                    break
-                json_lines.append(line)
-            content = "\n".join(json_lines).strip()
-            logger.info("ActionDecider: Extracted from markdown: %s...", content[:200])
+    def _extract_from_markdown(self, content: str) -> str:
+        """Виділити JSON з markdown code blocks."""
+        if not content.startswith("```"):
+            return content
+        lines = content.splitlines()
+        json_lines = []
+        for line in lines[1:]:
+            if line.strip().startswith("```"):
+                break
+            json_lines.append(line)
+        result = "\n".join(json_lines).strip()
+        if result:
+            logger.info("ActionDecider: Extracted from markdown: %s...", result[:200])
+        return result
 
-        # Спробувати знайти JSON через regex (пост-обробка)
+    def _extract_json_braces(self, content: str) -> str:
+        """Виділити JSON об'єкт через балансування дужок."""
         brace_count = 0
         start_idx = -1
         for i, char in enumerate(content):
@@ -385,57 +547,12 @@ class ActionDecider:
                 if brace_count == 0 and start_idx != -1:
                     candidate = content[start_idx:i + 1]
                     if '"action"' in candidate:
-                        content = candidate
                         logger.info(
                             "ActionDecider: Extracted JSON via brace matching: %s...",
-                            content[:200],
+                            candidate[:200],
                         )
-                        break
-
-        # Спробувати парсити як JSON
-        if content.startswith("{"):
-            try:
-                parsed = json.loads(content)
-                action_name = parsed.get("action", "noop")
-                args = parsed.get("args", {})
-                if not isinstance(args, dict):
-                    args = {}
-                reasoning = parsed.get("reasoning", "")
-
-                # Перевірка на порожній або невалідний план
-                if not action_name or action_name == "noop":
-                    logger.warning("ActionDecider: Empty or noop action in parsed JSON")
-                    raise ValueError(f"LLM returned empty/noop action: {action_name}")
-
-                logger.info("ActionDecider: Parsed JSON action=%s", action_name)
-                return AgentAction(
-                    name=str(action_name),
-                    arguments=args,
-                    reasoning=str(reasoning) + "\n[JSON parsed]",
-                )
-            except json.JSONDecodeError:
-                logger.warning(
-                    "ActionDecider: JSON parse failed for: %s...", content[:100]
-                )
-                raise ValueError(f"JSON parse failed for content: {content[:100]}")
-            except ValueError as e:
-                logger.warning("ActionDecider: Invalid plan: %s", e)
-                raise
-            except Exception as e:
-                logger.warning(
-                    "ActionDecider: Unexpected error parsing JSON: %s", e
-                )
-                raise ValueError(f"Unexpected error parsing JSON: {e}")
-
-        # 3) Fallback → якщо не розпарсилось → take_screenshot
-        logger.warning(
-            "ActionDecider: JSON parsing failed, fallback to take_screenshot"
-        )
-        return AgentAction(
-            name="take_screenshot",
-            arguments={},
-            reasoning="JSON parsing failed, taking screenshot as fallback",
-        )
+                        return candidate
+        return content
 
     def replan(
         self,

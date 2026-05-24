@@ -23,7 +23,10 @@ from .commands_audio import (
     speak_response as _speak_response,
     speak_if_possible as _speak_if_possible,
 )
-from .commands_planner import run_agent_loop_for_voice
+from .commands_planner import (
+    needs_clarification,
+    run_agent_loop_for_voice,
+)
 from functions.audio.logic_audio import check_activation_word, remove_activation_word
 
 
@@ -59,6 +62,10 @@ class VoiceAssistant:
         # TTS
         self.tts_engine = None
         self.tts_enabled = TTS_ENABLED
+
+        # Стан для уточнення неоднозначних команд
+        self._pending_clarification: Optional[str] = None
+        self._skip_clarification: bool = False
 
         # Core модулі
         self.dispatcher = None
@@ -217,19 +224,46 @@ class VoiceAssistant:
                     return
                 command_text = clean_command
 
-            # ── 3. Привітання та прості питання ─────────────
+            # ── 3. Перевірка pending clarification ──────────
+            if self._pending_clarification is not None:
+                # Це відповідь на уточнення — об'єднуємо і виконуємо без перевірки
+                command_text = self._pending_clarification + " " + command_text
+                self._pending_clarification = None
+                self._skip_clarification = True
+                print(f"{Fore.CYAN}🔄 [Уточнення] Об'єднано: '{command_text}'")
+
+            # ── 4. Привітання та прості питання ─────────────
             # 🔥 Всі команди йдуть до LLM (навіть привітання)
             # LLM сам вирішить, як відповісти, спираючись на system prompt
             # if self._try_simple_response(command_text):
             #     return
 
-            # ── 4. Логуємо команду в GUI ────────────────────
-            self.log_to_gui("user", command_text)
+            # ── 5. Перевірка неоднозначності перед LLM ──────
+            # Якщо команда неоднозначна — питаємо уточнення замість LLM
+            # Після об'єднання (крок 3) — завжди виконуємо без перевірки
+            if not self._skip_clarification:
+                needs_q, clarification = needs_clarification(command_text)
+                if needs_q and clarification:
+                    print(f"{Fore.YELLOW}❓ [Уточнення] Команда неоднозначна: '{command_text}'")
+                    # Зберігаємо поточну команду як pending
+                    self._pending_clarification = command_text
+                    # Відправляємо питання в GUI
+                    self.log_to_gui("assistant", clarification)
+                    self._speak_if_needed(clarification)
+                    if self.gui_log_callback:
+                        self.gui_log_callback("update_status", "❓ Уточнення...")
+                    print(f"{Fore.LIGHTBLACK_EX}❓ Питання: {clarification}")
+                    return
+            else:
+                self._skip_clarification = False
+
+            # ── 6. Логуємо команду в GUI ────────────────────
+            # Не дублюємо user-повідомлення — GUI вже додає його через send_text_command
             print(f"{Fore.CYAN}🎯 {'[GUI] ' if from_gui else '[Аудіо] '}Команда: '{command_text}'")
 
             start_total = time.time()
 
-            # ── 5. Кеш ──────────────────────────────────────
+            # ── 7. Кеш ──────────────────────────────────────
             skip_cache = hasattr(self, "planner") and self.planner and \
                          self.planner.should_plan(command_text)
 
@@ -242,7 +276,7 @@ class VoiceAssistant:
                     print(f"{Fore.LIGHTBLACK_EX}⏱️  0.00с")
                     return
 
-            # ── 6. Швидкий маршрут (диспетчер) ──────────────
+            # ── 8. Швидкий маршрут (диспетчер) ──────────────
             if self.dispatcher:
                 quick_result = self.dispatcher.try_quick_route(command_text)
                 if quick_result:
@@ -255,7 +289,7 @@ class VoiceAssistant:
                         self.cache_manager.set(command_text, quick_result)
                     return
 
-            # ── 7. LLM-маршрут (стрімінг + обробка) ────────
+            # ── 9. LLM-маршрут (стрімінг + обробка) ────────
             self._execute_llm_and_process(command_text, start_total, skip_cache)
 
         except Exception as e:

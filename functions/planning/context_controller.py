@@ -124,6 +124,7 @@ class ContextController:
         model_name: str = "gpt-4o",
         max_short_term: int = 5,
         max_content_chars: int = 800,
+        max_context_tokens: int = 128000,
     ):
         """
         Args:
@@ -131,12 +132,15 @@ class ContextController:
             model_name: Назва моделі для токенометрії
             max_short_term: Скільки подій тримати в деталях
             max_content_chars: Максимальна довжина контенту перед стисненням
+            max_context_tokens: Максимальний контекст моделі (ліміт токенів)
         """
         self.ask_llm_fn = ask_llm_fn
         self.global_summary = "Завдання розпочато. Жодних дій ще не виконано."
         self.short_term_memory: List[Dict[str, Any]] = []
         self.max_short_term = max_short_term
         self.max_content_chars = max_content_chars
+        self.model_name = model_name
+        self.max_context_tokens = max_context_tokens
         
         # Ініціалізація токенометра
         if TIKTOKEN_AVAILABLE:
@@ -148,6 +152,16 @@ class ContextController:
                 self.encoding = None
         else:
             self.encoding = None
+    
+    @property
+    def context_tokens_used(self) -> int:
+        """Повертає кількість токенів використаних у поточному контексті.
+        
+        Returns:
+            Кількість токенів у повному контексті (global_summary + short_term_memory)
+        """
+        full_context = self.get_full_context()
+        return self.count_tokens(full_context)
     
     def add_event(self, event_type: str, content: Any) -> Optional[str]:
         """Додає подію в короткочасову пам'ять.

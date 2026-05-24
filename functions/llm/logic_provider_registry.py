@@ -168,8 +168,17 @@ class ProviderRegistry:
         criteria: Optional[SelectionCriteria] = None,
         max_retries: int = 3,
         on_attempt: Optional[Callable[[ChatAttempt], None]] = None,
+        budget: Optional[Any] = None,  # SessionBudget (lazy import)
     ) -> ChatResponse:
-        """Shortcut: вибрати провайдера і одразу зробити chat()."""
+        """Shortcut: вибрати провайдера і одразу зробити chat().
+
+        Args:
+            request: Запит до LLM.
+            criteria: Критерії вибору провайдера.
+            max_retries: Максимум спроб (fallback-ланцюг).
+            on_attempt: Callback після кожної спроби.
+            budget: Опціональний SessionBudget для трекінгу токенів/вартості.
+        """
         providers = self.select_many(criteria)
         if not providers:
             resp = ChatResponse(
@@ -202,6 +211,15 @@ class ProviderRegistry:
             if on_attempt:
                 on_attempt(attempt)
             if resp.ok:
+                # --- Підключення UsageInfo до SessionBudget ---
+                if budget is not None and resp.usage is not None:
+                    try:
+                        if resp.usage.total_tokens > 0:
+                            budget.record_tokens(resp.usage.total_tokens)
+                        if resp.usage.cost_usd > 0:
+                            budget.record_cost(resp.usage.cost_usd)
+                    except Exception:  # noqa: BLE001
+                        pass  # не валимо успішний виклик через помилку бюджету
                 return resp
             # інакше — пробуємо наступного з fallback-ланцюга
         return last_response

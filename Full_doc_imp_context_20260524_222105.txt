@@ -2,12 +2,20 @@
 ============================================================
 D:\Python\agent
 core_gui_pyqt6\__init__.py
+core_gui_pyqt6\base_tab.py
 core_gui_pyqt6\chat_panel_qt.py
 core_gui_pyqt6\confirmation_qt.py
+core_gui_pyqt6\constants.py
 core_gui_pyqt6\llm_endpoints_editor_qt.py
 core_gui_pyqt6\main_window.py
 core_gui_pyqt6\plan_panel_qt.py
 core_gui_pyqt6\settings_tab_qt.py
+core_gui_pyqt6\tab_chat.py
+core_gui_pyqt6\tab_logs.py
+core_gui_pyqt6\tab_plan.py
+core_gui_pyqt6\tab_settings.py
+core_gui_pyqt6\tab_stats.py
+core_gui_pyqt6\tab_tools.py
 docs
 functions\agent\__init__.py
 functions\agent\act.py
@@ -46,6 +54,8 @@ functions\llm\providers_openai_compatible.py
 functions\llm\providers_vision.py
 functions\llm\response_parser.py
 functions\llm\router.py
+functions\llm\streaming_buffer.py
+functions\logs
 functions\planning\__init__.py
 functions\planning\agent_coordinator.py
 functions\planning\agent_loop.py
@@ -97,6 +107,10 @@ functions\runtime\logic_watcher.py
 functions\runtime\self_learning.py
 functions\runtime\sync_settings_copy.py
 functions\runtime\windsurf_watcher_executor.py
+functions\skills\__init__.py
+functions\skills\base.py
+functions\skills\browser_skills.py
+functions\skills\registry.py
 functions\tools\__init__.py
 functions\tools\aaa_architect.py
 functions\tools\aaa_code_tools.py
@@ -126,6 +140,7 @@ functions\tools\tools_ui_accessibility.py
 functions\tools\tools_ui_detector.py
 functions\tools\tools_visual_diff.py
 functions\tools\tools_window_manager.py
+functions\tools\tools_windsurf.py
 functions\__init__.py
 functions\config.py
 functions\global_voice_input.py
@@ -133,11 +148,17 @@ functions\project_indexer.py
 functions\tools_project_indexer.py
 macros
 profiles
+runtime\cache
+runtime\checkpoints
+runtime\logs
+runtime\macros
+runtime\memory
+runtime\profiles
 runtime\self_learning
-check_null_bytes.py
+runtime\settings
+runtime\snapshots
 main.py
-remove_null_bytes.py
-remove_secrets.py
+migrate_runtime.py
 run.py
 run_assistant_qt.py
 
@@ -152,6 +173,32 @@ run_assistant_qt.py
   from main_window import MainWindowPyQt6
 
 (немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\base_tab.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any
+  from PyQt6.QtWidgets import QWidget
+
+Сутності:
+class BaseTab(QWidget):
+    """Базовий клас для вкладки.
+
+Кожна вкладка наслідує BaseTab і реалізує:
+- setup_ui() — створення віджетів
+- refresh() — оновлення даних при перемиканні
+- get_title() — назва вкладки (для QTabWidget)"""
+    def __init__(self, parent: QWidget | None):
+    def set_main_window(self, mw: Any) -> None:
+        """Зберегти посилання на MainWindow для доступу до спільних об'єктів."""
+    def setup_ui(self) -> None:
+        """Створити всі віджети вкладки. Має бути перевизначений."""
+    def refresh(self) -> None:
+        """Оновити дані вкладки при перемиканні. За замовчуванням нічого не робить."""
+    def get_title(self) -> str:
+        """Повернути назву вкладки для QTabWidget."""
 
 ============================================================
 Файл: D:\Python\agent\core_gui_pyqt6\chat_panel_qt.py
@@ -242,6 +289,11 @@ class ConfirmationQtMixin:
         """Приховати діалог підтвердження."""
 
 ============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\constants.py
+============================================================
+(немає класів чи функцій верхнього рівня)
+
+============================================================
 Файл: D:\Python\agent\core_gui_pyqt6\llm_endpoints_editor_qt.py
 ============================================================
 Імпорти:
@@ -289,66 +341,74 @@ API:
   from __future__ import annotations
   import sys
   from typing import Any, Callable, Optional
-  from PyQt6.QtCore import Qt, pyqtSignal, QObject
-  from PyQt6.QtGui import QFont, QTextCursor, QIcon
-  from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QLabel, QSplitter, QListWidget, QListWidgetItem, QMessageBox, QProgressBar, QFrame, QSizePolicy, QTabWidget
-  from settings_tab_qt import SettingsTabQtMixin
-  from chat_panel_qt import ChatPanelQtMixin
-  from plan_panel_qt import PlanPanelQtMixin
-  from confirmation_qt import ConfirmationQtMixin
+  from PyQt6.QtCore import Qt, pyqtSignal
+  from PyQt6.QtGui import QFont, QIcon
+  from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QProgressBar, QFrame, QTabWidget
+  from constants import APP_NAME, APP_VERSION, ASSISTANT_TITLE
+  from functions.llm.streaming_buffer import StreamingBuffer
+  from tab_chat import ChatTab
+  from tab_plan import PlanTab
+  from tab_logs import LogsTab
+  from tab_stats import StatsTab
+  from tab_tools import ToolsTab
+  from tab_settings import SettingsTab
+  from confirmation_qt import ConfirmationDialog
 
 Сутності:
-class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPanelQtMixin, ConfirmationQtMixin):
-    """Головне вікно асистента на PyQt6 (повний еквівалент Tkinter версії)."""
+class MainWindowPyQt6(QMainWindow):
+    """Головне вікно асистента на PyQt6 (модульна версія з вкладками)."""
     def __init__(self, assistant_callback: Optional[Callable]):
     def closeEvent(self, event) -> None:
-        """Зберегти геометрію вікна при закритті."""
+        """Зберегти геометрію вікна та стан інтерфейсу при закритті."""
     def _init_ui(self) -> None:
     def _apply_styles(self) -> None:
-        """QSS — єдина тема кольорів (синій шрифт, чорний фон як в акордеонах)."""
-    def _update_input_height(self) -> None:
-        """Динамічно оновити висоту поля вводу на основі реальної висоти тексту."""
-    def eventFilter(self, obj, event):
+        """QSS — єдина тема кольорів."""
+    def _restore_interface_state(self) -> None:
+        """Відновити інтерфейс: активна вкладка, приховані вкладки."""
+    def _apply_hidden_tabs(self, hidden_tabs: list) -> None:
+        """Приховати вкладки зі списку hidden_tabs."""
+    def _save_interface_state(self) -> None:
+        """Зберегти стан інтерфейсу (активна вкладка)."""
+    def _on_tab_interface_changed(self, index: int) -> None:
+        """Автоматично зберігати активну вкладку при перемиканні."""
+    def _on_tab_changed(self, index: int) -> None:
+        """Оновити активну вкладку при перемиканні."""
+    def _on_command_submitted(self, command: str) -> None:
+        """Отримано команду з поля вводу чату."""
     def send_text_command(self) -> None:
+        """Відправити команду з поля вводу (для зворотної сумісності)."""
     def on_send_clicked(self) -> None:
-        """Обробник натискання кнопки відправки."""
     def on_agent_clicked(self) -> None:
-        """Обробник натискання кнопки агента."""
     def on_stop_clicked(self) -> None:
-        """Обробник натискання кнопки стоп."""
     def on_restart_clicked(self) -> None:
-        """Обробник натискання кнопки перезавантаження."""
     def stop_execution(self) -> None:
     def on_mic_clicked(self) -> None:
-        """Обробник натискання кнопки мікрофона - запускає STT прослуховування."""
-    def _start_mic_listening(self) -> None:
-        """Почати запис з мікрофона."""
-    def _stop_mic_listening(self) -> None:
-        """Зупинити запис (викликається при натисканні кнопки або автоматично після розпізнавання)."""
-    def _mic_listen_worker(self) -> None:
-        """Потік для запису та розпізнавання."""
-    def _on_mic_finished(self, text: str | None) -> None:
-        """Викликається коли розпізнавання завершено."""
-    def _on_run_plan(self) -> None:
-    def _on_stop_plan(self) -> None:
-    def _should_skip_json_message(self, text: str) -> bool:
-        """Перевірити чи повідомлення є JSON/markdown, який слід пропустити."""
     def add_message(self, sender: str, message: Any) -> None:
-    def _scroll_chat_to_end(self) -> None:
+        """Додати повідомлення в чат (делегує ChatTab)."""
     def start_stream_message(self) -> None:
     def append_stream_chunk(self, chunk: str) -> None:
     def end_stream_message(self) -> None:
+    def _on_streaming_status(self, status_text: str) -> None:
+        """Callback для оновлення статус-бару під час стрімінгу."""
+    def _on_streaming_context_update(self, used: int, limit: int, model: str) -> None:
+        """Callback для live-оновлення бару контексту під час стрімінгу."""
+    def update_streaming_context_limits(self, context_limit: int, model: str) -> None:
+        """Оновити ліміти контексту для StreamingBuffer (при старті стрімінгу)."""
+    def focus_input(self) -> None:
+    def _update_context_bar(self, used: int, limit: int, model: str) -> None:
+        """Оновити тонкий QProgressBar контексту LLM з кольором і tooltip."""
+    def _reset_context_bar(self) -> None:
+        """Скинути бар контексту до 0 і сховати."""
     def update_progress(self, progress: int, status_text: str) -> None:
     def show_stop_button(self) -> None:
     def hide_stop_button(self) -> None:
-    def _on_restart_agent(self) -> None:
-        """Перезавантажити агента (без підтвердження)."""
     def show_plan_panel(self, steps: Any) -> None:
     def update_plan_step(self, data: Any) -> None:
     def finish_plan_panel(self, data: Any) -> None:
     def on_plan_execution_started(self) -> None:
     def on_plan_execution_finished(self) -> None:
     def show_confirmation(self, question: str, callback: Callable[[bool], None]) -> None:
+        """Показати діалог підтвердження (без міксину)."""
     def queue_message(self, msg_type: str, data: Any) -> None:
         """Потокобезпечне додавання повідомлення (викликається з фонових потоків)."""
     def _on_message(self, msg_type: str, data: Any) -> None:
@@ -356,9 +416,9 @@ class MainWindowPyQt6(QMainWindow, SettingsTabQtMixin, ChatPanelQtMixin, PlanPan
     def set_assistant(self, assistant: Any) -> None:
     def set_stt_controller(self, stt_controller: Any) -> None:
     def run(self) -> None:
-        """Запустити GUI mainloop. Має бути викликаний у головному потоці."""
+        """Запустити GUI mainloop."""
     def showEvent(self, event):
-        """Викликається коли вікно показується - встановлює фокус на поле вводу."""
+        """Встановити фокус на поле вводу при показі."""
 def create_pyqt6_gui(assistant_callback: Optional[Callable]) -> MainWindowPyQt6:
     """Створити PyQt6 GUI. Створює QApplication якщо ще не існує."""
 
@@ -446,6 +506,253 @@ class SettingsTabQtMixin:
         """Очистити кеш команд."""
     def _restart_agent(self) -> None:
         """Перезавантажити агента (без підтвердження)."""
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_chat.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import datetime
+  import os
+  import re
+  import threading
+  from typing import Any
+  from PyQt6.QtCore import Qt, pyqtSignal, QEvent
+  from PyQt6.QtGui import QFont, QTextCursor, QTextCharFormat, QClipboard
+  from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QLabel, QFrame, QMenu, QApplication
+  from base_tab import BaseTab
+  from constants import APP_NAME, ASSISTANT_TITLE, USER_TITLE, COLOR_USER, COLOR_ASSISTANT, COLOR_SYSTEM, INPUT_MIN_HEIGHT, INPUT_MAX_HEIGHT
+
+Сутності:
+class ChatTab(BaseTab):
+    """Вкладка чату: історія, ввід, кнопки, стрімінг, clipboard, STT."""
+    def __init__(self, parent: QWidget | None):
+    def setup_ui(self) -> None:
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+        """При перемиканні на чат — фокус на ввід."""
+    def eventFilter(self, obj, event) -> bool:
+    def _send_text_command(self) -> None:
+    def _on_send_clicked(self) -> None:
+    def _on_agent_clicked(self) -> None:
+    def _on_stop_clicked(self) -> None:
+    def _on_restart_clicked(self) -> None:
+    def _update_input_height(self) -> None:
+    def _on_mic_clicked(self) -> None:
+    def _start_mic_listening(self) -> None:
+    def _stop_mic_listening(self) -> None:
+    def _mic_listen_worker(self) -> None:
+    def on_mic_finished(self, text: str | None) -> None:
+        """Викликається коли розпізнавання завершено."""
+    def _should_skip_json_message(self, text: str) -> bool:
+        """Перевірити чи повідомлення є JSON/markdown, який слід пропустити."""
+    def add_message(self, sender: str, message: Any) -> None:
+        """Додати повідомлення до чату (чистить ANSI/LLM токени)."""
+    def start_stream_message(self) -> None:
+    def append_stream_chunk(self, chunk: str) -> None:
+    def end_stream_message(self) -> None:
+    def focus_input(self) -> None:
+        """Встановити фокус на поле вводу."""
+    def _setup_clipboard_and_menus(self) -> None:
+    def _show_input_context_menu(self, pos) -> None:
+    def _show_chat_context_menu(self, pos) -> None:
+    def _clipboard_copy(self, widget: QTextEdit | None) -> None:
+    def _clipboard_cut(self) -> None:
+    def _clipboard_paste(self) -> None:
+    def _clipboard_select_all(self, widget: QTextEdit | None) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_logs.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import glob
+  import logging
+  import os
+  from typing import Any
+  from queue import Queue
+  from logging.handlers import QueueHandler
+  from PyQt6.QtCore import Qt, QTimer
+  from PyQt6.QtGui import QColor, QFont
+  from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QLineEdit, QPushButton, QLabel, QFrame
+  from base_tab import BaseTab
+  from constants import COLOR_DEBUG, COLOR_INFO, COLOR_WARNING, COLOR_ERROR
+
+Сутності:
+class LogsTab(BaseTab):
+    """Вкладка логів: таблиця, фільтр, пошук, real-time оновлення."""
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+    def _update_placeholder_visibility(self) -> None:
+        """Показати/сховати плейсхолдер залежно від кількості рядків."""
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+        """При перемиканні на вкладку — нічого не завантажуємо автоматично.
+
+Таблиця залишається порожньою з підказкою натиснути 'Оновити'."""
+    def _read_tail(self, filepath: str, max_lines: int) -> list[str]:
+        """Прочитати останні max_lines рядків з файлу (з кінця)."""
+    def _load_from_files(self) -> None:
+        """Прочитати останні 50 записів з лог-файлів (читає з кінця)."""
+    def _parse_log_line(self, line: str) -> dict | None:
+        """Спроба розпарсити рядок логу."""
+    def _setup_queue_handler(self) -> None:
+        """Підключити QueueHandler до кореневого логера."""
+    def _poll_log_queue(self) -> None:
+        """Прочитати нові логи з черги і додати в таблицю (rolling window)."""
+    def _format_time(self, record: logging.LogRecord) -> str:
+    def add_log_entry(self, level: str, module: str, message: str) -> None:
+        """Додати рядок логу програмно (наприклад, з ядра)."""
+    def _apply_filters(self) -> None:
+        """Застосувати фільтр рівня + пошук."""
+    def _level_to_int(self, level: str) -> int:
+    def _set_row(self, row_idx: int, entry: dict) -> None:
+        """Заповнити рядок таблиці з кольорами."""
+    def _level_color(self, level: str) -> QColor:
+    def _clear_logs(self) -> None:
+        """Очистити таблицю (не файли)."""
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_plan.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any
+  from PyQt6.QtCore import QTimer
+  from PyQt6.QtGui import QColor
+  from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem
+  from base_tab import BaseTab
+
+Сутності:
+class PlanTab(BaseTab):
+    """Вкладка плану: список кроків, кнопки запуску/зупинки."""
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+    def get_title(self) -> str:
+    def show_plan_panel(self, steps_info: list) -> None:
+        """Показати панель плану з переліком кроків."""
+    def update_plan_step(self, data: dict) -> None:
+        """Оновити статус конкретного кроку."""
+    def finish_plan_panel(self, stats: dict | None) -> None:
+        """Закінчити план — показати фінальний статус."""
+    def on_plan_execution_started(self) -> None:
+        """Викликається коли план почав виконуватися."""
+    def on_plan_execution_finished(self) -> None:
+        """Викликається коли план завершив виконання."""
+    def _update_progress_display(self) -> None:
+        """Оновити відображення прогресу."""
+    def _auto_hide_plan_panel(self) -> None:
+        """Автоматично приховати панель після успішного виконання."""
+    def _on_run_plan(self) -> None:
+        """Обробник кнопки 'Виконати план'."""
+    def _on_stop_plan(self) -> None:
+        """Обробник кнопки 'Стоп план'."""
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_settings.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import os
+  from functools import partial
+  from typing import Any
+  from PyQt6.QtCore import Qt, pyqtSignal
+  from PyQt6.QtGui import QFont, QIcon
+  from PyQt6.QtWidgets import QFrame, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QSplitter, QLabel, QLineEdit, QCheckBox, QComboBox, QSpinBox, QDoubleSpinBox, QPushButton, QToolButton, QGroupBox, QTextEdit, QListWidget, QListWidgetItem, QSizePolicy
+  from base_tab import BaseTab
+  from llm_endpoints_editor_qt import LLMEndpointsEditor
+
+Сутності:
+class SettingsTab(BaseTab):
+    """Вкладка налаштувань (SETTINGS_SCHEMA) на PyQt6.
+
+Ліва панель — список категорій.
+Права панель — QScrollArea з полями обраної категорії (lazy build)."""
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+        """Побудувати UI вкладки налаштувань."""
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+        """Оновити статус Watcher-ів при перемиканні."""
+    def _build_settings_tab(self) -> None:
+    def _on_category_changed(self, row: int) -> None:
+        """Обрана нова категорія зліва — будуємо/показуємо її поля справа."""
+    def _clear_right_content(self) -> None:
+        """Видалити всі віджети категорій з правої панелі (крім bottom)."""
+    def _build_category_content(self, cat_name: str) -> QWidget:
+        """Створити контент для однієї категорії (lazy)."""
+    def _create_settings_widget(self, parent: QWidget, key: str, schema: dict, value: Any, row_widgets: list) -> QWidget:
+        """Створити віджет для одного налаштування."""
+    def _apply_settings_filter(self) -> None:
+        """При пошуку — показати результати в правій панелі."""
+    def _auto_save_setting(self, key: str) -> None:
+        """Зберігає одне налаштування за ключем одразу після зміни."""
+    def _update_settings_status(self, text: str, color: str) -> None:
+        """Оновити текст статусу, безпечно обробляючи видалений QLabel."""
+    def _save_all_settings(self) -> None:
+    def _get_widget_value(self, widget: QWidget, wtype: str, schema: dict) -> Any:
+    def _reset_all_settings(self) -> None:
+    def _reload_settings_tab(self) -> None:
+    def _clear_command_cache(self) -> None:
+    def _restart_agent(self) -> None:
+    def update_watcher_status(self, engine: Any) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_stats.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import os
+  from typing import Any
+  from PyQt6.QtCore import Qt
+  from PyQt6.QtGui import QFont
+  from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton, QFrame, QProgressBar, QGroupBox
+  from base_tab import BaseTab
+  from constants import APP_VERSION
+
+Сутності:
+class StatsTab(BaseTab):
+    """Вкладка статистики: метрики використання LLM, планів, контексту."""
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+        """Оновити при перемиканні вкладки."""
+    def update_stats(self, stats: dict) -> None:
+        """Оновити метрики з ядра."""
+    def _refresh_stats(self) -> None:
+        """Спроба отримати реальні дані з SessionBudget або логів."""
+    def _update_display(self) -> None:
+        """Оновити UI з поточними даними."""
+    def _set_label(self, key: str, value: Any) -> None:
+        """Встановити текст label, або прочерк якщо значення None."""
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_tools.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any
+  from PyQt6.QtCore import Qt
+  from PyQt6.QtGui import QFont, QColor
+  from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QLabel, QFrame, QMessageBox
+  from base_tab import BaseTab
+
+Сутності:
+class ToolsTab(BaseTab):
+    """Вкладка інструментів: таблиця, оновлення, виконання (тільки читання)."""
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+        """Оновити список при перемиканні вкладки."""
+    def _load_tools(self) -> None:
+        """Завантажити список інструментів з FunctionRegistry."""
+    def _update_table(self) -> None:
+        """Заповнити таблицю з поточними даними."""
+    def _on_execute_tool(self) -> None:
+        """Показати підказку: виконання через чат."""
 # Невідомий тип: D:\Python\agent\docs
 
 
@@ -777,7 +1084,7 @@ class ActionDecider:
 Якщо LLM-шар недоступний (немає endpoint, немає logic_llm_tools, тощо) —
 `decide()` повертає `AgentAction(name="noop")`, що змусить AgentLoop впасти
 на наступний пріоритет (CompiledPlan / Planner)."""
-    def __init__(self, ask_llm_with_tools_fn: Optional[Callable[..., Any]], tools_schema: Optional[List[Dict[str, Any]]], tool_aliases: Optional[Dict[str, str]], system_prompt: Optional[str], history_max: int):
+    def __init__(self, ask_llm_with_tools_fn: Optional[Callable[..., Any]], tools_schema: Optional[List[Dict[str, Any]]], tool_aliases: Optional[Dict[str, str]], system_prompt: Optional[str], history_max: int, max_json_failures: int):
     def is_available(self) -> bool:
         """Чи доступний LLM-шар для прийняття рішень."""
     def resolve_alias(self, tool_name: str) -> str:
@@ -791,7 +1098,35 @@ class ActionDecider:
     def build_messages(self, goal: str, observation: Any, history: List[Dict[str, Any]], last_result: Optional[Dict[str, Any]], extra_instructions: str, current_step: int, progress_summary: str, context_controller: Optional[Any], stuck_warning: str) -> List[Dict[str, str]]:
         """Побудувати список повідомлень для LLM."""
     def decide(self, goal: str, observation: Any, history: List[Dict[str, Any]], last_result: Optional[Dict[str, Any]], progress_summary: str, context_controller: Optional[Any], stuck_warning: str, extra_instructions: str) -> AgentAction:
-        """Один крок рішення через LLM (JSON parsing fallback)."""
+        """Один крок рішення через LLM (JSON parsing fallback).
+
+Покращений механізм:
+1. Спочатку пробує JSON-parsing (без function-calling) — для моделей
+   без підтримки tool_calls (LM Studio, локальні).
+2. Якщо JSON не парситься — пробує з function-calling (tool_choice="auto").
+3. Якщо і це невдало — fallback на take_screenshot (або done якщо
+   перевищено ліміт спроб).
+4. Трекінг consecutive JSON failures — після N невдач force `done`.
+5. Жодних Exception назовні — завжди повертає AgentAction."""
+    def _parse_tool_calls(self, response: Any, tool_calls: List[Any]) -> AgentAction:
+        """Розпарсити tool_calls у AgentAction."""
+    def _try_with_tools(self, messages: List[Dict[str, str]]) -> AgentAction:
+        """Fallback: спроба LLM виклику з function-calling (tool_choice='auto')."""
+    def _json_failure_fallback(self) -> AgentAction:
+        """Повернути fallback дію при невдалому парсингу JSON.
+
+Якщо перевищено ліміт — force done.
+Інакше — take_screenshot для отримання свіжого спостереження."""
+    def _parse_json_from_content(self, response: Any) -> Optional[AgentAction]:
+        """Спробувати розпарсити JSON з content відповіді.
+
+Повертає AgentAction або None, якщо парсинг не вдався."""
+    def _clean_think_blocks(self, content: str) -> str:
+        """Видалити <think>...</think> блоки."""
+    def _extract_from_markdown(self, content: str) -> str:
+        """Виділити JSON з markdown code blocks."""
+    def _extract_json_braces(self, content: str) -> str:
+        """Виділити JSON об'єкт через балансування дужок."""
     def replan(self, goal: str, observation: Any, history: List[Dict[str, Any]], consecutive_failures: int, progress_summary: str, context_controller: Optional[Any]) -> AgentAction:
         """Переосмислити підхід після кількох невдач підряд."""
 def build_default_decider() -> Optional[ActionDecider]:
@@ -1245,6 +1580,17 @@ Returns:
     CHAT — питання (просто відповідь)
     GUI_ACTION — GUI дії (потрібен екран)
     AGENT — fallback — повний AgentLoop"""
+def needs_clarification(task: str) -> tuple[bool, str]:
+    """Перевірити, чи команда неоднозначна і потребує уточнення.
+
+Args:
+    task: Текст команди користувача.
+
+Returns:
+    (True, "питання для уточнення") — якщо команда неоднозначна
+    (False, "") — якщо команда зрозуміла, виконувати одразу"""
+def _make_clarification(verb: str) -> tuple[bool, str]:
+    """Сформувати питання для уточнення залежно від дієслова."""
 def extract_python_code(task: str) -> str:
     """Витягти Python код з тексту завдання.
 
@@ -1902,6 +2248,7 @@ def get_voice_tray_icon() -> Optional[VoiceTrayIcon]:
   from functions.llm.helpers import ask_llm
   from functions.llm.response_parser import process_llm_response
   from functions.llm.endpoint_client import get_primary_endpoint, call_endpoint
+  from functions.llm.streaming_buffer import StreamingBuffer
 
 (немає класів чи функцій верхнього рівня)
 
@@ -1916,6 +2263,33 @@ def get_voice_tray_icon() -> Optional[VoiceTrayIcon]:
   from config import LM_STUDIO_URL
 
 Сутності:
+def get_model_context_limit(model_name: str) -> int:
+    """Повертає ліміт контексту (max_context_tokens) для заданої моделі.
+
+Стратегія пошуку:
+1. Точний збіг у KNOWN_MODEL_CONTEXT_LIMITS
+2. Частковий збіг (модель містить відомий префікс, наприклад "gpt-4o-*")
+3. Запит до /v1/models (для локальних серверів OpenAI-compatible)
+4. Повернення _DEFAULT_CONTEXT_LIMIT, якщо нічого не знайдено
+
+Args:
+    model_name: Назва моделі (наприклад, "gpt-4o", "claude-3-5-sonnet-20241022")
+
+Returns:
+    int: Максимальна кількість токенів контексту"""
+def fetch_local_model_context_limit(base_url: str, api_key: str, timeout: int) -> Optional[int]:
+    """Спроба отримати ліміт контексту для локальної моделі через /v1/models.
+
+Використовується для LM Studio, Ollama, або будь-якого OpenAI-compatible
+сервера, що підтримує ендпоінт GET /v1/models.
+
+Args:
+    base_url: Базовий URL сервера (наприклад, "http://localhost:1234")
+    api_key: API ключ (якщо потрібен)
+    timeout: Таймаут запиту в секундах
+
+Returns:
+    Optional[int]: Ліміт контексту або None, якщо не вдалося отримати"""
 def _is_groq_endpoint(endpoint: Dict[str, Any]) -> bool:
     """Перевірити чи це Groq endpoint."""
 def _normalize_endpoint(ep: Dict[str, Any]) -> Dict[str, Any]:
@@ -1986,13 +2360,14 @@ Args:
     
 Returns:
     Tuple з (success: bool, result_or_error)"""
-def stream_groq_sdk(endpoint: Dict[str, Any], messages: List[Dict[str, str]], callback) -> bool:
+def stream_groq_sdk(endpoint: Dict[str, Any], messages: List[Dict[str, str]], callback, usage_callback) -> bool:
     """Стрімінг відповіді від Groq через офіційний SDK.
 
 Args:
     endpoint: Endpoint конфігурація
     messages: Список повідомлень
     callback: Функція callback(chunk_text) для кожного фрагмента
+    usage_callback: Опціональний callback(usage_dict) для отримання реального usage після стріму
     
 Returns:
     True якщо успішно, False інакше"""
@@ -2209,7 +2584,14 @@ class ProviderRegistry:
   4) `priority` (нижче = вище пріоритет);
   5) `name` — детермінований tiebreaker."""
     def chat(self, request: ChatRequest) -> ChatResponse:
-        """Shortcut: вибрати провайдера і одразу зробити chat()."""
+        """Shortcut: вибрати провайдера і одразу зробити chat().
+
+Args:
+    request: Запит до LLM.
+    criteria: Критерії вибору провайдера.
+    max_retries: Максимум спроб (fallback-ланцюг).
+    on_attempt: Callback після кожної спроби.
+    budget: Опціональний SessionBudget для трекінгу токенів/вартості."""
 def get_default_registry() -> ProviderRegistry:
     """Лейзі-ініт shared-реєстру на процес.
 
@@ -2555,6 +2937,52 @@ Returns:
     RoutingDecision з вибраним провайдером і fallback ланцюгом."""
 
 ============================================================
+Файл: D:\Python\agent\functions\llm\streaming_buffer.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Callable, Optional
+
+Сутності:
+class StreamingBuffer:
+    """Буфер стрімінгу з live-оцінкою токенів.
+
+Attributes:
+    total_chars: Загальна кількість символів, отриманих під час стрімінгу
+    estimated_tokens: Груба оцінка токенів (total_chars // 4)
+    _on_status: Callback(status_text) для оновлення статус-бару
+    _on_context_update: Callback(used_tokens, limit, model) для оновлення бару контексту
+    _context_limit: Ліміт контексту моделі (береться з endpoint)
+    _model: Назва активної моделі"""
+    def __init__(self, on_status: Optional[Callable[[str], None]], on_context_update: Optional[Callable[[int, int, str], None]], context_limit: int, model: str):
+    def update_context_limits(self, context_limit: int, model: str) -> None:
+        """Оновити ліміт контексту та назву моделі (наприклад, при старті стрімінгу)."""
+    def add_chunk(self, chunk: str) -> int:
+        """Додати чанк тексту, оновити оцінку токенів і викликати callback.
+
+Args:
+    chunk: Фрагмент тексту з стрімінгу
+
+Returns:
+    Поточна оцінка токенів (estimated_tokens)"""
+    def finish(self, real_usage: Optional[dict]) -> int:
+        """Завершити стрімінг, замінити оцінку реальним usage якщо є.
+
+Args:
+    real_usage: Словник з реальними usage даними
+               (наприклад, {"total_tokens": 150, "completion_tokens": 100})
+               Якщо None, залишається груба оцінка.
+
+Returns:
+    Фінальна кількість completion токенів"""
+    def reset(self) -> None:
+        """Скинути буфер."""
+    def current_status(self) -> str:
+        """Поточний статус для відображення."""
+# Невідомий тип: D:\Python\agent\functions\logs
+
+
+============================================================
 Файл: D:\Python\agent\functions\planning\__init__.py
 ============================================================
 Імпорти:
@@ -2769,12 +3197,18 @@ class ContextController:
 - short_term_memory: останні 3-5 детальних подій
 - Використовує LLM для автоматичного підсумовування старих дій
 - Стискає довгі дані (OCR, UIA) перед записом"""
-    def __init__(self, ask_llm_fn: Optional[Callable[[str, Optional[str]], str]], model_name: str, max_short_term: int, max_content_chars: int):
+    def __init__(self, ask_llm_fn: Optional[Callable[[str, Optional[str]], str]], model_name: str, max_short_term: int, max_content_chars: int, max_context_tokens: int):
         """Args:
     ask_llm_fn: Функція для виклику LLM (prompt, system_prompt) -> str
     model_name: Назва моделі для токенометрії
     max_short_term: Скільки подій тримати в деталях
-    max_content_chars: Максимальна довжина контенту перед стисненням"""
+    max_content_chars: Максимальна довжина контенту перед стисненням
+    max_context_tokens: Максимальний контекст моделі (ліміт токенів)"""
+    def context_tokens_used(self) -> int:
+        """Повертає кількість токенів використаних у поточному контексті.
+
+Returns:
+    Кількість токенів у повному контексті (global_summary + short_term_memory)"""
     def add_event(self, event_type: str, content: Any) -> Optional[str]:
         """Додає подію в короткочасову пам'ять.
 
@@ -3675,7 +4109,7 @@ Returns:
   import time
   from dataclasses import dataclass, field
   from pathlib import Path
-  from typing import Any, Dict, List, Optional
+  from typing import Any, Callable, Dict, List, Optional
   from pydantic import ValidationError
   from functions.planning.logic_execution_report import STATUS_DENIED, STATUS_ERROR, STATUS_EXPECT_FAILED, STATUS_OK, STATUS_PRECHECK_FAILED, STATUS_SKIPPED, ExecutionReport, StepReport
   from functions.planning.logic_expectations import ExpectContext, ExpectRegistry, ExpectSpec, ExpectationResult, all_ok, failures, parse_expect_list
@@ -4398,7 +4832,7 @@ class ActionRecorder:
     """Recorder для GUI дій.
 Singleton, автоматично записує всі дії зі скріншотами."""
     def __new__(cls):
-    def __init__(self, logs_dir: str):
+    def __init__(self, logs_dir: str | None):
     def _cleanup_old_records(self):
         """Видалити записи старші за retention_days."""
     def _generate_screenshot_filename(self, action_type: str, before: bool) -> str:
@@ -4514,7 +4948,7 @@ class AppProfileRegistry:
 - `save_profile` пише JSON у `profiles_dir/{name}.json`.
 - `learn_from_interaction` — легка hook-точка для майбутнього
   `logic_task_learner` (поки тільки лог у `notes`)."""
-    def __init__(self, profiles_dir: str | Path):
+    def __init__(self, profiles_dir: str | Path | None):
     def _load_all(self) -> None:
     def get(self, app_name: str) -> Optional[AppProfile]:
     def list_profiles(self) -> List[AppProfile]:
@@ -4795,7 +5229,7 @@ class MacroRunResult:
     """Результат відтворення макросу."""
 class MacroStore:
     """JSON-сховище макросів (один файл = один макрос)."""
-    def __init__(self, macros_dir: str | Path):
+    def __init__(self, macros_dir: str | Path | None):
     def save(self, macro: Macro) -> Path:
     def load(self, name: str) -> Optional[Macro]:
     def list_names(self) -> List[str]:
@@ -5017,6 +5451,26 @@ class SessionBudget:
   from functions import config
 
 Сутності:
+def get_runtime_dir() -> str:
+    """Повертає базову директорію runtime/."""
+def get_settings_dir() -> str:
+    """runtime/settings/ — user_settings.json та інші налаштування."""
+def get_memory_dir() -> str:
+    """runtime/memory/ — довготривала пам'ять та task-пам'ять."""
+def get_checkpoints_dir() -> str:
+    """runtime/checkpoints/ — чекпоїнти агента."""
+def get_cache_dir() -> str:
+    """runtime/cache/ — кеш даних."""
+def get_macros_dir() -> str:
+    """runtime/macros/ — макроси."""
+def get_profiles_dir() -> str:
+    """runtime/profiles/ — профілі програм."""
+def get_self_learning_dir() -> str:
+    """runtime/self_learning/ — логи самонавчання, skills, rules."""
+def get_logs_dir() -> str:
+    """runtime/logs/ — логи дій, audit."""
+def get_snapshots_dir() -> str:
+    """runtime/snapshots/ — snapshots стану для undo."""
 class SettingsManager:
     """Зчитує/оновлює налаштування поверх `config.py`."""
     def __init__(self):
@@ -5042,6 +5496,19 @@ class SettingsManager:
     def enable_auto_approve_all(self, duration_seconds: Optional[int]) -> None:
         """Увімкнути автопідтвердження. duration_seconds: 0 або None = до вимкнення."""
     def disable_auto_approve_all(self) -> None:
+    def set_active_model(self, model_name: str, context_limit: int) -> None:
+        """Зберігає назву активної моделі та її ліміт контексту в runtime.
+
+Args:
+    model_name: Назва моделі (наприклад, "gpt-4o", "gemini-3.1-flash-lite-preview")
+    context_limit: Максимальна кількість токенів контексту"""
+    def get_active_model(self) -> Optional[str]:
+        """Повертає назву активної моделі або None."""
+    def get_active_model_context_limit(self) -> int:
+        """Повертає ліміт контексту активної моделі.
+
+Returns:
+    int: Ліміт контексту (токенів). Якщо модель не встановлена — 4096."""
 def get_settings() -> SettingsManager:
 def get_setting(key: str, default: Any) -> Any:
     """Зручний шорткат."""
@@ -5124,7 +5591,7 @@ class UndoManager:
     """Менеджер відкату дій.
 Зберігає snapshots та виконує undo операції."""
     def __new__(cls):
-    def __init__(self, snapshots_dir: str):
+    def __init__(self, snapshots_dir: str | None):
     def save_snapshot(self, label: str) -> Dict[str, Any]:
         """Зберегти поточний стан.
 
@@ -5500,7 +5967,7 @@ def _safe_repr(value: Any, limit: int) -> str:
 Сутності:
 class SelfLearning:
     """Модуль самонавчання — аналіз помилок та накопичення skills."""
-    def __init__(self, data_dir: str):
+    def __init__(self, data_dir: str | None):
         """Args:
     data_dir: Директорія для зберігання логів та skills (default: runtime/self_learning)"""
     def _load_json(self, file_path: Path, default: Any) -> Any:
@@ -5592,6 +6059,154 @@ class WindsurfWatcherExecutor:
         """Отримати поточний стан."""
     def _monitor_loop(self):
         """Моніторинг тред для оновлення стану."""
+
+============================================================
+Файл: D:\Python\agent\functions\skills\__init__.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from base import BaseSkill, SkillResult, SkillError
+  from registry import SkillRegistry
+  from browser_skills import OpenBrowser, SearchGoogle, FillForm
+
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\skills\base.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  from dataclasses import dataclass, field
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class SkillResult:
+    """Результат виконання skill-у.
+
+Attributes:
+    success: True якщо виконання успішне.
+    data: Корисні дані результату (напр. текст, знайдені елементи).
+    error: Текст помилки (якщо success=False).
+    metadata: Додаткова інформація (час виконання, проміжні кроки)."""
+class SkillError(Exception):
+    """Виняток для помилок виконання skill-у.
+
+Містить код помилки (error_code) для програмної обробки."""
+    def __init__(self, message: str, error_code: str):
+class BaseSkill:
+    """Абстрактний базовий клас для всіх skill-ів.
+
+Використання:
+    class MySkill(BaseSkill):
+        name = "my_skill"
+        description = "Опис мого скілу"
+
+        async def execute(self, ctx, **kwargs) -> SkillResult:
+            # реалізація
+            return SkillResult(success=True, data="done")"""
+    def __init__(self) -> None:
+    def __repr__(self) -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\skills\browser_skills.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import asyncio
+  import logging
+  import subprocess
+  import time
+  from typing import Any, Dict, List, Optional
+  from urllib.parse import quote_plus
+  from base import BaseSkill, SkillError, SkillResult
+
+Сутності:
+class OpenBrowser(BaseSkill):
+    """Відкрити браузер на вказаному URL.
+
+Parameters:
+    url: URL для відкриття.
+    browser: "chrome" (default) або "edge".
+    headless: True для headless режиму (default: False).
+    wait_seconds: Скільки секунд чекати після відкриття (default: 2).
+
+Returns:
+    SkillResult з даними:
+    - url: відкритий URL
+    - method: який метод використано (playwright / cdp / subprocess)"""
+    def _has_playwright(self) -> bool:
+    def _has_cdp(self) -> bool:
+    def _open_with_cdp(self, url: str, browser: str) -> SkillResult:
+    def _open_with_subprocess(self, url: str, browser: str) -> None:
+        """Відкрити URL через subprocess (найнадійніший спосіб)."""
+class SearchGoogle(BaseSkill):
+    """Виконати пошук в Google і повернути результати.
+
+Parameters:
+    query: Пошуковий запит.
+    num_results: Максимальна кількість результатів (default: 5).
+
+Returns:
+    SkillResult з даними:
+    - query: пошуковий запит.
+    - results: список словників {title, url, snippet}."""
+    def _has_playwright(self) -> bool:
+    def _search_with_requests(self, url: str) -> List[Dict[str, str]]:
+class FillForm(BaseSkill):
+    """Заповнити форму на веб-сторінці.
+
+Parameters:
+    url: URL сторінки з формою (опційно, якщо сторінка вже відкрита).
+    fields: Словник {selector: value} для заповнення полів.
+    submit_selector: CSS-селектор кнопки submit (опційно).
+    wait_after: Секунд чекати після заповнення (default: 1).
+
+Returns:
+    SkillResult з даними:
+    - filled_fields: кількість заповнених полів.
+    - submitted: чи була натиснута кнопка submit."""
+
+============================================================
+Файл: D:\Python\agent\functions\skills\registry.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  from typing import Any, Dict, List, Optional, Type
+  from base import BaseSkill, SkillResult
+
+Сутності:
+class SkillRegistry:
+    """Реєстр skills. Thread-safe для одночасного доступу.
+
+Приклад:
+    registry = SkillRegistry()
+    registry.register(OpenBrowser())
+    skill = registry.get("open_browser")
+    result = await skill.execute(ctx, url="https://example.com")"""
+    def __init__(self) -> None:
+    def register(self, skill: BaseSkill) -> None:
+        """Зареєструвати skill.
+
+Args:
+    skill: Екземпляр класу, що наслідує BaseSkill.
+
+Raises:
+    ValueError: Якщо skill з таким ім'ям вже зареєстровано."""
+    def unregister(self, name: str) -> bool:
+        """Видалити skill за іменем.
+
+Returns:
+    True якщо skill був знайдений і видалений."""
+    def get(self, name: str) -> Optional[BaseSkill]:
+        """Отримати skill за іменем."""
+    def list_skills(self) -> List[Dict[str, Any]]:
+        """Повернути список всіх зареєстрованих skills з метаданими."""
+    def count(self) -> int:
+        """Кількість зареєстрованих skills."""
+    def has(self, name: str) -> bool:
+        """Перевірити чи зареєстровано skill з таким ім'ям."""
 
 ============================================================
 Файл: D:\Python\agent\functions\tools\__init__.py
@@ -7470,6 +8085,40 @@ def bring_all_to_top(process_name: str) -> Dict[str, Any]:
     """Підняти всі вікна процесу."""
 
 ============================================================
+Файл: D:\Python\agent\functions\tools\tools_windsurf.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import time
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Optional, Tuple
+
+Сутності:
+class SnapshotDiff:
+    """Результат diff-у двох snapshot-ів."""
+def diff_snapshots(old: str, new: str) -> SnapshotDiff:
+    """Порівнює два snapshot-и тексту.
+
+Якщо текст змінився — повертає SnapshotDiff(changed=True, new_text=new).
+Якщо не змінився — SnapshotDiff(changed=False, new_text="")."""
+class WindsurfState:
+    """Стан спостереження за Windsurf."""
+    def register_response(self, at: float, diff: SnapshotDiff, max_keep: int) -> Dict[str, Any]:
+        """Реєструє нову відповідь, обрізає історію до max_keep."""
+class WindsurfWindow:
+    """Опис вікна Windsurf IDE."""
+    def find(self) -> Optional[Dict[str, Any]]:
+        """Намагається знайти вікно Windsurf.
+
+Повертає window dict або None. Базова імплементація —
+заглушка (шукає вікно за заголовком через win32gui)."""
+    def _as_dict(self, hwnd: int) -> Dict[str, Any]:
+def make_default_window_finder() -> WindowFinder:
+    """Створює WindowFinder за замовчуванням."""
+def make_default_snapshot_fn() -> SnapshotFn:
+    """Створює SnapshotFn за замовчуванням (OCR через win32gui + Tesseract)."""
+
+============================================================
 Файл: D:\Python\agent\functions\__init__.py
 ============================================================
 (немає класів чи функцій верхнього рівня)
@@ -7683,34 +8332,36 @@ Returns:
 
 # Невідомий тип: D:\Python\agent\profiles
 
+# Невідомий тип: D:\Python\agent\runtime\cache
+
+# Невідомий тип: D:\Python\agent\runtime\checkpoints
+
+# Невідомий тип: D:\Python\agent\runtime\logs
+
+# Невідомий тип: D:\Python\agent\runtime\macros
+
+# Невідомий тип: D:\Python\agent\runtime\memory
+
+# Невідомий тип: D:\Python\agent\runtime\profiles
+
 # Невідомий тип: D:\Python\agent\runtime\self_learning
 
+# Невідомий тип: D:\Python\agent\runtime\settings
 
-============================================================
-Файл: D:\Python\agent\check_null_bytes.py
-============================================================
-Імпорти:
-  import sys
+# Невідомий тип: D:\Python\agent\runtime\snapshots
 
-(немає класів чи функцій верхнього рівня)
 # [Помилка синтаксису] D:\Python\agent\main.py
 
 
 ============================================================
-Файл: D:\Python\agent\remove_null_bytes.py
+Файл: D:\Python\agent\migrate_runtime.py
 ============================================================
 Імпорти:
+  import json
+  import os
+  import shutil
   import sys
-
-(немає класів чи функцій верхнього рівня)
-
-============================================================
-Файл: D:\Python\agent\remove_secrets.py
-============================================================
-Імпорти:
-  import re
-  import sys
-  import subprocess
+  from pathlib import Path
 
 (немає класів чи функцій верхнього рівня)
 

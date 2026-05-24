@@ -6,6 +6,214 @@ from typing import Dict, Any, List, Optional, Tuple
 from colorama import Fore
 from ..config import LM_STUDIO_URL
 
+# =============================================================================
+# Словник відомих моделей → max_context_tokens
+# =============================================================================
+# Джерела: офіційна документація OpenAI, Anthropic, Google, Groq, Meta, Mistral
+KNOWN_MODEL_CONTEXT_LIMITS: Dict[str, int] = {
+    # --- OpenAI ---
+    "gpt-4o": 128000,
+    "gpt-4o-mini": 128000,
+    "gpt-4-turbo": 128000,
+    "gpt-4": 8192,
+    "gpt-4-32k": 32768,
+    "gpt-3.5-turbo": 16385,
+    "gpt-3.5-turbo-16k": 16385,
+    "o1": 200000,
+    "o1-mini": 128000,
+    "o3-mini": 200000,
+
+    # --- Anthropic Claude ---
+    "claude-3-5-sonnet": 200000,
+    "claude-3-5-haiku": 200000,
+    "claude-3-opus": 200000,
+    "claude-3-sonnet": 200000,
+    "claude-3-haiku": 200000,
+    "claude-4-5-sonnet": 200000,
+    "claude-4-5-haiku": 200000,
+    "claude-sonnet-4-6": 200000,
+    "claude-opus-4-5": 200000,
+
+    # --- Google Gemini ---
+    "gemini-2.0-flash": 1048576,
+    "gemini-2.0-flash-lite": 1048576,
+    "gemini-1.5-pro": 1048576,
+    "gemini-1.5-flash": 1048576,
+    "gemini-1.5-flash-8b": 1048576,
+    "gemini-3.1-flash-lite-preview": 1048576,
+
+    # --- Groq ---
+    "llama-3.3-70b": 131072,
+    "llama-3.2-90b": 131072,
+    "llama-3.2-11b": 131072,
+    "llama-3.1-70b": 131072,
+    "llama-3.1-8b": 131072,
+    "mixtral-8x7b": 32768,
+    "gemma2-9b": 8192,
+
+    # --- Meta Llama (загальні) ---
+    "llama-3.1-405b": 131072,
+    "llama-3.1-70b": 131072,
+    "llama-3.1-8b": 131072,
+    "llama-3.2-90b": 131072,
+    "llama-3.2-11b": 131072,
+    "llama-3.2-3b": 131072,
+    "llama-3.2-1b": 131072,
+    "llama-3.3-70b": 131072,
+
+    # --- Mistral ---
+    "mistral-large": 128000,
+    "mistral-small": 128000,
+    "mistral-7b": 32768,
+    "codestral": 256000,
+    "ministral-3b": 32768,
+    "ministral-8b": 32768,
+
+    # --- DeepSeek ---
+    "deepseek-chat": 128000,
+    "deepseek-coder": 128000,
+    "deepseek-r1": 128000,
+    "deepseek-v3": 128000,
+
+    # --- Qwen ---
+    "qwen-2.5-72b": 131072,
+    "qwen-2.5-32b": 131072,
+    "qwen-2.5-14b": 32768,
+    "qwen-2.5-7b": 32768,
+    "qwen-2-72b": 32768,
+
+    # --- Інші популярні локальні моделі ---
+    "phi-4": 16384,
+    "phi-3-medium": 128000,
+    "phi-3-mini": 128000,
+    "nous-hermes-2-mixtral": 32768,
+    "dolphin-2.9-llama3": 8192,
+    "solar-10.7b": 4096,
+
+    # --- Дефолт для невідомих моделей ---
+    "local-model": 4096,  # LM Studio default
+}
+
+# Ліміт за замовчуванням, якщо модель не знайдено в словнику
+_DEFAULT_CONTEXT_LIMIT = 4096
+
+
+def get_model_context_limit(model_name: str) -> int:
+    """Повертає ліміт контексту (max_context_tokens) для заданої моделі.
+
+    Стратегія пошуку:
+    1. Точний збіг у KNOWN_MODEL_CONTEXT_LIMITS
+    2. Частковий збіг (модель містить відомий префікс, наприклад "gpt-4o-*")
+    3. Запит до /v1/models (для локальних серверів OpenAI-compatible)
+    4. Повернення _DEFAULT_CONTEXT_LIMIT, якщо нічого не знайдено
+
+    Args:
+        model_name: Назва моделі (наприклад, "gpt-4o", "claude-3-5-sonnet-20241022")
+
+    Returns:
+        int: Максимальна кількість токенів контексту
+    """
+    if not model_name:
+        return _DEFAULT_CONTEXT_LIMIT
+
+    # 1. Точний збіг
+    exact = KNOWN_MODEL_CONTEXT_LIMITS.get(model_name)
+    if exact is not None:
+        return exact
+
+    # 2. Частковий збіг: шукаємо за префіксом (наприклад, "gpt-4o" підходить для "gpt-4o-2024-08-06")
+    # Сортуємо за довжиною (найдовші префікси першими) для найточнішого збігу
+    model_lower = model_name.lower()
+    known_names = sorted(KNOWN_MODEL_CONTEXT_LIMITS.keys(), key=len, reverse=True)
+    for known in known_names:
+        known_lower = known.lower()
+        if model_lower.startswith(known_lower):
+            return KNOWN_MODEL_CONTEXT_LIMITS[known]
+        # Також перевіряємо чи містить модель відому назву (наприклад, "llama-3.1-70b" в "meta/llama-3.1-70b")
+        if known_lower in model_lower:
+            return KNOWN_MODEL_CONTEXT_LIMITS[known]
+
+    # 3. Для невідомих моделей повертаємо дефолт
+    return _DEFAULT_CONTEXT_LIMIT
+
+
+def fetch_local_model_context_limit(
+    base_url: str,
+    api_key: str = "",
+    timeout: int = 10,
+) -> Optional[int]:
+    """Спроба отримати ліміт контексту для локальної моделі через /v1/models.
+
+    Використовується для LM Studio, Ollama, або будь-якого OpenAI-compatible
+    сервера, що підтримує ендпоінт GET /v1/models.
+
+    Args:
+        base_url: Базовий URL сервера (наприклад, "http://localhost:1234")
+        api_key: API ключ (якщо потрібен)
+        timeout: Таймаут запиту в секундах
+
+    Returns:
+        Optional[int]: Ліміт контексту або None, якщо не вдалося отримати
+    """
+    try:
+        # Формуємо URL для /v1/models
+        models_url = base_url.rstrip("/")
+        if models_url.endswith("/chat/completions"):
+            models_url = models_url.replace("/chat/completions", "/models")
+        elif models_url.endswith("/chat"):
+            models_url = models_url.replace("/chat", "/models")
+        else:
+            models_url = models_url + "/models"
+
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
+        response = requests.get(
+            models_url,
+            headers=headers,
+            timeout=timeout,
+        )
+
+        if response.status_code != 200:
+            return None
+
+        data = response.json()
+
+        # OpenAI-compatible формат: {"data": [{"id": "...", "max_context_length": N}]}
+        models = data.get("data", [])
+        for model_info in models:
+            # Пробуємо різні поля, які можуть містити ліміт контексту
+            for field in ("max_context_length", "context_length", "max_context_tokens",
+                          "max_total_tokens", "context_window", "max_model_len"):
+                val = model_info.get(field)
+                if val is not None:
+                    try:
+                        return int(val)
+                    except (ValueError, TypeError):
+                        pass
+
+        # Ollama формат: {"models": [{"name": "...", "details": {"parameter_size": "...", ...}}]}
+        # В Ollama ліміт не повертається через API, тому повертаємо None
+        models = data.get("models", [])
+        for model_info in models:
+            for field in ("max_context_length", "context_length"):
+                val = model_info.get(field)
+                if val is not None:
+                    try:
+                        return int(val)
+                    except (ValueError, TypeError):
+                        pass
+
+        return None
+    except Exception:
+        return None
+
+
+# =============================================================================
+# Решта функцій (без змін)
+# =============================================================================
+
 
 def _is_groq_endpoint(endpoint: Dict[str, Any]) -> bool:
     """Перевірити чи це Groq endpoint."""

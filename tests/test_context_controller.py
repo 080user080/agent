@@ -137,6 +137,32 @@ class TestContextController(unittest.TestCase):
         self.assertLess(len(result), 1000)
         self.assertIn("[SCALED]", result)
 
+    def test_context_tokens_used_property(self):
+        """Property context_tokens_used повертає int після додавання події."""
+        controller = ContextController(ask_llm_fn=None)
+        # Початковий стан — контекст порожній, але global_summary не пустий
+        tokens_before = controller.context_tokens_used
+        self.assertIsInstance(tokens_before, int)
+        self.assertGreaterEqual(tokens_before, 0)
+
+        # Після додавання події токенів має побільшати
+        controller.add_event("action", "test action event for tokens")
+        tokens_after = controller.context_tokens_used
+        self.assertIsInstance(tokens_after, int)
+        self.assertGreater(tokens_after, 0)
+
+    def test_context_tokens_used_after_reset(self):
+        """Скидання контексту зменшує context_tokens_used."""
+        controller = ContextController(ask_llm_fn=None)
+        controller.add_event("action", "some long text to increase token count " * 10)
+        tokens_before = controller.context_tokens_used
+
+        controller.reset()
+        tokens_after = controller.context_tokens_used
+
+        self.assertGreater(tokens_before, 0)
+        self.assertLess(tokens_after, tokens_before)
+
     def test_reset(self):
         """Скидання стану контролера."""
         controller = ContextController(ask_llm_fn=None)

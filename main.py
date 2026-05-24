@@ -671,29 +671,40 @@ class AssistantCore:
         try:
             from functions.runtime.core_settings import get_setting
             global_voice_enabled = get_setting("GLOBAL_VOICE_ENABLED", False)
+            hotkey = get_setting("GLOBAL_VOICE_HOTKEY", "ctrl+shift+v")
+            print(f"\n{Fore.CYAN}🎙️  Global Voice Input: enabled={global_voice_enabled}, hotkey={hotkey}")
             if global_voice_enabled:
                 from functions.global_voice_input import GlobalVoiceInput
 
-                hotkey = get_setting("GLOBAL_VOICE_HOTKEY", "ctrl+shift+v")
                 print(f"\n{Fore.CYAN}🎙️  Ініціалізація глобального голосового вводу (hotkey: {hotkey})...")
 
                 def on_voice_status(status: str):
                     """Callback для статусу."""
                     print(f"{Fore.CYAN}   [Global Voice] {status}")
 
+                # Callback для отримання розпізнаного тексту — передаємо в process_text_command
+                def on_voice_text(text: str):
+                    """Callback для розпізнаного тексту."""
+                    if text and self.gui_queue:
+                        self.gui_queue.put(('add_message', ('user', f"[ГОЛОС] {text}")))
+                        self.process_text_command(text)
+
                 self.global_voice_input = GlobalVoiceInput(
                     hotkey=hotkey,
-                    callback=None,
+                    callback=on_voice_text,
                     status_callback=on_voice_status
                 )
 
                 if self.global_voice_input.start():
-                    print(f"{Fore.GREEN}✅ Глобальний голосовий вввід запущено")
+                    print(f"{Fore.GREEN}✅ Глобальний голосовий ввід запущено")
                 else:
-                    print(f"{Fore.YELLOW}⚠️  Не вдалося запустити глобальний голосовий вввід")
+                    print(f"{Fore.YELLOW}⚠️  Не вдалося запустити глобальний голосовий ввід")
                     self.global_voice_input = None
+            else:
+                print(f"{Fore.YELLOW}⏭️  Global Voice Input вимкнено (GLOBAL_VOICE_ENABLED=False)")
+                self.global_voice_input = None
         except Exception as e:
-            print(f"{Fore.YELLOW}⚠️  Не вдалося ініціалізувати глобальний голосовий вввід: {e}")
+            print(f"{Fore.YELLOW}⚠️  Не вдалося ініціалізувати глобальний голосовий ввід: {e}")
             import traceback
             traceback.print_exc()
             self.global_voice_input = None

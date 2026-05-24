@@ -3,8 +3,8 @@
   "ACTIVE_MODE": "normal",
   "AGENT_MODE": "coding",
   "LM_STUDIO_URL": "http://localhost:1234/v1/chat/completions",
-  "STT_ENABLED": false,
-  "STT_MODEL_TYPE": "both",
+  "STT_ENABLED": true,
+  "STT_MODEL_TYPE": "whisper",
   "STT_MODEL_ID": "large-v3-turbo",
   "STT_LANGUAGE": "uk",
   "STT_DEVICE": "auto",
@@ -286,5 +286,6 @@
   "MAX_SILENCE_DURATION": 8.0,
   "OI_ENABLED": true,
   "LLM_TIMEOUT": 180,
-  "AGENT_WORK_DIR": ""
+  "AGENT_WORK_DIR": "d:\\Python\\MARK\\",
+  "ACTIVE_TAB_INDEX": 5
 }

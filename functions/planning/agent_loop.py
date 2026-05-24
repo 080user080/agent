@@ -422,6 +422,20 @@ class AgentLoop:
                         and getattr(self.repairer, "is_available", False)):
                     self._try_repair(action, args, obs, plan, act_result, state)
 
+                # ── Context Update ──────────────────────────
+                if self.context_controller is not None:
+                    try:
+                        used = self.context_controller.context_tokens_used
+                        limit = getattr(self.context_controller, 'max_context_tokens', 128000)
+                        model_name = getattr(self.context_controller, 'model_name', 'unknown')
+                        self._gui_msg("context_update", {
+                            "used": used,
+                            "limit": limit,
+                            "model": model_name,
+                        })
+                    except Exception as ctx_e:
+                        logger.debug("Context tokens read error: %s", ctx_e)
+
                 state.step += 1
 
                 # Чекпоїнт
