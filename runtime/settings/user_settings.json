@@ -1,9 +1,9 @@
 {
   "ASSISTANT_NAME": "Марк",
   "ACTIVE_MODE": "normal",
-  "AGENT_MODE": "coding",
+  "AGENT_MODE": "voice",
   "LM_STUDIO_URL": "http://localhost:1234/v1/chat/completions",
-  "STT_ENABLED": true,
+  "STT_ENABLED": false,
   "STT_MODEL_TYPE": "whisper",
   "STT_MODEL_ID": "large-v3-turbo",
   "STT_LANGUAGE": "uk",
@@ -66,10 +66,10 @@
       "id": "llm3",
       "name": "Gemini",
       "enabled": true,
-      "role": "2",
-      "type": "script",
+      "role": "1",
+      "type": "openai_compatible",
       "url": "https://generativelanguage.googleapis.com/v1beta/openai",
-      "model": "gemini-3.1-flash-lite-preview",
+      "model": "gemini-3.1-flash-lite",
       "provider": "openai",
       "api_key": "AIzaSyClhK49h2Tuy-Fg_AUONLZNKsvCluC33A4",
       "temperature": 0.1,
@@ -199,7 +199,7 @@
       "id": "",
       "name": "google/gemma-4-e4b (copy)",
       "enabled": true,
-      "role": "10",
+      "role": "1",
       "type": "openai_compatible",
       "url": "http://localhost:1234/v1/chat/completions",
       "model": "google/gemma-4-e4b",
@@ -237,7 +237,7 @@
       "id": "",
       "name": "Gemini2",
       "enabled": true,
-      "role": "1",
+      "role": "10",
       "type": "script",
       "url": "https://generativelanguage.googleapis.com/v1beta/openai",
       "model": "gemini-3.1-flash-lite-preview",
@@ -272,7 +272,7 @@
       "rate_limit_total": 500
     }
   ],
-  "WINDOW_GEOMETRY": "747x888+1103+95",
+  "WINDOW_GEOMETRY": "849x888+1049+80",
   "PRIMARY_PROVIDER": "auto",
   "VOICE_INPUT_AUTO_SEND": false,
   "VISION_API_KEY": "",
@@ -287,5 +287,8 @@
   "OI_ENABLED": true,
   "LLM_TIMEOUT": 180,
   "AGENT_WORK_DIR": "d:\\Python\\MARK\\",
-  "ACTIVE_TAB_INDEX": 5
+  "ACTIVE_TAB_INDEX": 0,
+  "HIDDEN_TABS": [],
+  "HISTORY_MAX_MESSAGES": 5,
+  "HISTORY_MAX_TOKENS": 8000
 }

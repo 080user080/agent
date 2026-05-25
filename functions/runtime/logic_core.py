@@ -49,20 +49,40 @@ class FunctionRegistry:
             print(f"{Fore.YELLOW}⚠️  Папка functions не знайдена")
             return
         
+        # Захист від дублікатів: відстежуємо завантажені імена модулів
+        _loaded_modules = set()
+
+        # Допоміжна функція для побудови dotted module name
+        # Наприклад: functions/runtime/core_cache.py → "functions.runtime.core_cache"
+        #            functions/planning/core_planner.py → "functions.planning.core_planner"
+        def _module_full_name(file_path: Path) -> str:
+            rel_path = file_path.relative_to(functions_dir)
+            parts = list(rel_path.parts)
+            # Забираємо .py з останньої частини
+            parts[-1] = parts[-1].replace(".py", "")
+            return "functions." + ".".join(parts)
+
         # Спочатку завантажити CORE модулі (core_*.py)
         print(f"{Fore.CYAN}📦 Завантаження core модулів...")
-        core_files = sorted(functions_dir.glob("core_*.py"))
+        core_files = sorted(functions_dir.rglob("core_*.py"))
         
         for file_path in core_files:
             module_name = file_path.stem
-            full_name = f"functions.{module_name}"
+            full_name = _module_full_name(file_path)
+            
+            # Пропускаємо, якщо модуль з таким іменем вже завантажено
+            if full_name in _loaded_modules or full_name in sys.modules:
+                print(f"{Fore.YELLOW}⚠️  {module_name} ({file_path.relative_to(functions_dir)}) — пропущено (дублікат)")
+                continue
+            _loaded_modules.add(full_name)
+            
             try:
                 # Якщо модуль уже завантажений через `from functions.xxx import ...`
                 # (наприклад core_settings з run_assistant.py), використовуємо його.
                 if full_name in sys.modules:
                     module = sys.modules[full_name]
                 else:
-                    # Важливо: ім'я пакета functions.xxx — інакше relative import (`from . import config`) падає
+                    # Важливо: ім'я пакета functions.xxx.yyy — інакше relative import (`from .. import config`) падає
                     spec = importlib.util.spec_from_file_location(full_name, file_path)
                     module = importlib.util.module_from_spec(spec)
                     sys.modules[full_name] = module
@@ -79,13 +99,21 @@ class FunctionRegistry:
         
         # Завантажити звичайні функції (aaa_*.py)
         print(f"\n{Fore.CYAN}📦 Завантаження функцій...")
-        for file_path in sorted(functions_dir.glob("aaa_*.py")):
+        for file_path in sorted(functions_dir.rglob("aaa_*.py")):
             module_name = file_path.stem
+            full_name = _module_full_name(file_path)
+            
+            # Пропускаємо дублікати
+            if full_name in _loaded_modules:
+                print(f"{Fore.YELLOW}⚠️  {module_name} ({file_path.relative_to(functions_dir)}) — пропущено (дублікат)")
+                continue
+            _loaded_modules.add(full_name)
+            
             try:
-                # Важливо: використовуємо ім'я пакета functions.aaa_... для коректного імпорту
-                spec = importlib.util.spec_from_file_location(f"functions.{module_name}", file_path)
+                # Використовуємо правильне dotted module name
+                spec = importlib.util.spec_from_file_location(full_name, file_path)
                 module = importlib.util.module_from_spec(spec)
-                sys.modules[f"functions.{module_name}"] = module # Реєструємо в sys.modules
+                sys.modules[full_name] = module
                 spec.loader.exec_module(module)
                 
                 for _name, obj in inspect.getmembers(module):
@@ -104,12 +132,20 @@ class FunctionRegistry:
 
         # Завантажити GUI Automation tools (tools_*.py) — функції без декораторів, для прямого виклику
         print(f"\n{Fore.CYAN}📦 Завантаження GUI Automation tools...")
-        for file_path in sorted(functions_dir.glob("tools_*.py")):
+        for file_path in sorted(functions_dir.rglob("tools_*.py")):
             module_name = file_path.stem
+            full_name = _module_full_name(file_path)
+            
+            # Пропускаємо дублікати
+            if full_name in _loaded_modules:
+                print(f"{Fore.YELLOW}⚠️  {module_name} ({file_path.relative_to(functions_dir)}) — пропущено (дублікат)")
+                continue
+            _loaded_modules.add(full_name)
+            
             try:
-                spec = importlib.util.spec_from_file_location(f"functions.{module_name}", file_path)
+                spec = importlib.util.spec_from_file_location(full_name, file_path)
                 module = importlib.util.module_from_spec(spec)
-                sys.modules[f"functions.{module_name}"] = module
+                sys.modules[full_name] = module
                 spec.loader.exec_module(module)
 
                 # Реєструємо всі публічні функції (без підкреслення на початку)
@@ -117,7 +153,7 @@ class FunctionRegistry:
                 for name, obj in inspect.getmembers(module):
                     if inspect.isfunction(obj) and not name.startswith('_') and hasattr(module, name):
                         # Перевіряємо чи це функція з модуля (не імпортована)
-                        if obj.__module__ == f"functions.{module_name}":
+                        if obj.__module__ == full_name:
                             self.functions[name] = {
                                 'function': obj,
                                 'name': name,
@@ -133,6 +169,56 @@ class FunctionRegistry:
 
             except Exception as e:
                 print(f"{Fore.RED}❌ Помилка завантаження {module_name}: {e}")
+
+        # Завантажити skills модулі (skills/*.py)
+        print(f"\n{Fore.CYAN}📦 Завантаження skills...")
+        skills_dir = functions_dir / "skills"
+        if skills_dir.exists():
+            for file_path in sorted(skills_dir.glob("*.py")):
+                if file_path.name == "__init__.py":
+                    continue
+                module_name = file_path.stem
+                full_name = f"functions.skills.{module_name}"
+                try:
+                    if full_name in sys.modules:
+                        module = sys.modules[full_name]
+                    else:
+                        spec = importlib.util.spec_from_file_location(full_name, file_path)
+                        module = importlib.util.module_from_spec(spec)
+                        sys.modules[full_name] = module
+                        spec.loader.exec_module(module)
+
+                    # Реєструємо функції з декоратором _is_llm_function
+                    count = 0
+                    for _name, obj in inspect.getmembers(module):
+                        if inspect.isfunction(obj) and hasattr(obj, '_is_llm_function'):
+                            func_info = {
+                                'function': obj,
+                                'name': obj._function_name,
+                                'description': obj._description,
+                                'parameters': obj._parameters
+                            }
+                            self.functions[obj._function_name] = func_info
+                            count += 1
+                        elif inspect.isfunction(obj) and not _name.startswith('_') and hasattr(module, _name):
+                            if obj.__module__ == full_name:
+                                self.functions[_name] = {
+                                    'function': obj,
+                                    'name': _name,
+                                    'description': obj.__doc__ or f"Skill: {_name}",
+                                    'parameters': getattr(obj, '_parameters', {})
+                                }
+                                count += 1
+
+                    if count > 0:
+                        print(f"{Fore.GREEN}✅ {Fore.CYAN}skills/{module_name} ({count} функцій)")
+                    else:
+                        print(f"{Fore.YELLOW}⚠️  skills/{module_name} (немає публічних функцій)")
+
+                except Exception as e:
+                    print(f"{Fore.RED}❌ Помилка завантаження skills/{module_name}: {e}")
+        else:
+            print(f"{Fore.YELLOW}⚠️  Папка functions/skills не знайдена")
 
     def get_core_module(self, name):
         """Отримати core модуль за назвою"""
@@ -319,7 +405,17 @@ B) Питання, привітання, незрозуміла команда, 
 3. КОМАНДИ ВИКОНАННЯ ДІЙ ("відкрий", "запусти", "виконай") → JSON з action та параметрами. Без коментарів.
 4. Помилка → "Помилка: [причина]". Не зрозумів → "Не зрозумів."
 5. НЕЗРОЗУМІЛИЙ ТЕРМІН → ЗАВЖДИ спочатку запитай: {{"response":"Що ви маєте на увазі під [термін]?"}}
+   ВАЖЛИВО: [термін] — це ТІЛЬКИ одне слово (іменник), яке йде після "під".
+   Наприклад: "відкрий зюзмю" → {{"response":"Що ви маєте на увазі під зюзмю?"}}
+   НЕ вставляй всю команду цілком замість [термін]!
    НЕ ВИКОНУЙ дію без уточнення!
+
+ВІДОМІ ТЕРМІНИ (які НЕ потребують уточнення):
+- "папка", "папку", "folder", "explorer", "провідник" → {{"action":"open_program","program_name":"explorer"}}
+- "блокнот", "notepad" → {{"action":"open_program","program_name":"notepad"}}
+- "калькулятор", "calc" → {{"action":"open_program","program_name":"calc"}}
+
+ВАЖЛИВО: Якщо команда містить відомий термін зі списку вище — НЕ питай уточнення, а одразу виконуй дію!
 
 ПРИКЛАДИ:
 - "привіт" → {{"response":"Привіт! Я {ASSISTANT_NAME}, твій асистент. Чим можу допомогти?"}}

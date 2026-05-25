@@ -206,7 +206,7 @@ class AssistantCore:
             return
 
         print(f"[DEBUG] process_text_command: '{text[:80]}...'")
-        
+
         # Логуємо повідомлення користувача в GUI
         if self.gui_queue:
             self.gui_queue.put(('add_message', ('user', text)))
@@ -217,11 +217,31 @@ class AssistantCore:
         print(f"[DEBUG] Sending to LLM via process_command: '{text[:60]}...'")
         if self.assistant:
             try:
+                # Сигналізуємо GUI про початок стрімінгу
+                if self.gui_queue:
+                    self.gui_queue.put(('stream_start', None))
+                # Використовуємо відлов відповіді через зміну gui_log_callback
+                original_callback = self.assistant.gui_log_callback
+                def stream_wrapper(sender, message):
+                    if sender == "assistant":
+                        # Під час стрімінгу — передаємо чанки
+                        if self.gui_queue:
+                            self.gui_queue.put(('stream_chunk', message))
+                    else:
+                        if original_callback:
+                            original_callback(sender, message)
+                self.assistant.gui_log_callback = stream_wrapper
                 self.assistant.process_command(text, from_gui=True)
+                # Сигналізуємо GUI про завершення стрімінгу
+                if self.gui_queue:
+                    self.gui_queue.put(('stream_end', None))
+                # Відновлюємо оригінальний callback
+                self.assistant.gui_log_callback = original_callback
             except Exception as e:
                 print(f"[ERROR] process_command failed: {e}")
                 if self.gui_queue:
                     self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка: {e}')))
+                    self.gui_queue.put(('stream_end', None))
         else:
             if self.gui_queue:
                 self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації асистента...')))

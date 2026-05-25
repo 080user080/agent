@@ -42,7 +42,7 @@ class SettingsTab(BaseTab):
         "Vision-LM": "👁️",
         "Аудіо": "🔊",
         "Озвучення": "🗣️",
-        "GUI": "🖥️",
+        "Вигляд": "🖥️",
         "Global Voice Input": "🌍",
         "Аудіо-фільтри": "🎚️",
         "Інше": "📦",
@@ -193,6 +193,7 @@ class SettingsTab(BaseTab):
 
         # --- Нижня частина правої панелі: Watcher статус + кнопки ---
         bottom_widget = QWidget()
+        bottom_widget.setObjectName("bottom_widget")
         bottom_layout = QVBoxLayout(bottom_widget)
         bottom_layout.setContentsMargins(4, 4, 4, 4)
         bottom_layout.setSpacing(4)
@@ -208,38 +209,6 @@ class SettingsTab(BaseTab):
         )
         watcher_layout.addWidget(self._watcher_status_text)
         bottom_layout.addWidget(watcher_group)
-
-        # Кнопки дій
-        btn_frame = QFrame()
-        btn_layout = QHBoxLayout(btn_frame)
-        btn_layout.setContentsMargins(0, 0, 0, 0)
-
-        save_btn = QPushButton("💾 Зберегти всі")
-        save_btn.setStyleSheet("background: #2e7d32; color: white; font-weight: bold;")
-        save_btn.clicked.connect(self._save_all_settings)
-        btn_layout.addWidget(save_btn)
-
-        reset_btn = QPushButton("↺ Скинути до config.py")
-        reset_btn.setStyleSheet("background: #1976d2; color: white; font-weight: bold;")
-        reset_btn.clicked.connect(self._reset_all_settings)
-        btn_layout.addWidget(reset_btn)
-
-        reload_btn = QPushButton("🔄 Перезавантажити")
-        reload_btn.setStyleSheet("background: #555; color: #1976d2; font-weight: bold;")
-        reload_btn.clicked.connect(self._reload_settings_tab)
-        btn_layout.addWidget(reload_btn)
-
-        clear_cache_btn = QPushButton("🗑️ Очистити кеш команд")
-        clear_cache_btn.setStyleSheet("background: #e65100; color: white; font-weight: bold;")
-        clear_cache_btn.clicked.connect(self._clear_command_cache)
-        btn_layout.addWidget(clear_cache_btn)
-
-        restart_btn = QPushButton("🔁 Перезавантажити агента")
-        restart_btn.setStyleSheet("background: #d32f2f; color: white; font-weight: bold;")
-        restart_btn.clicked.connect(self._restart_agent)
-        btn_layout.addWidget(restart_btn)
-
-        bottom_layout.addWidget(btn_frame)
 
         # Статус
         self._settings_status = QLabel(
@@ -263,6 +232,65 @@ class SettingsTab(BaseTab):
         splitter.setStretchFactor(1, 1)
 
         layout.addWidget(splitter)
+
+        # --- Компактна панель кнопок внизу (поза QScrollArea) ---
+        buttons_bar = QFrame()
+        buttons_bar.setObjectName("buttons_bar")
+        buttons_bar.setFixedHeight(32)
+        buttons_bar.setStyleSheet("""
+            QFrame#buttons_bar {
+                background: transparent;
+                border: none;
+                margin: 0px;
+                padding: 0px;
+            }
+        """)
+        btn_bar_layout = QHBoxLayout(buttons_bar)
+        btn_bar_layout.setContentsMargins(4, 2, 4, 2)
+        btn_bar_layout.setSpacing(4)
+
+        # Стиль для компактних кнопок
+        _COMPACT_BTN_STYLE = """
+            QPushButton {
+                font: 9pt 'Segoe UI';
+                font-weight: bold;
+                padding: 2px 8px;
+                border: none;
+                border-radius: 3px;
+                min-height: 24px;
+                max-height: 26px;
+            }
+        """
+
+        save_btn = QPushButton("💾 Зберегти всі")
+        save_btn.setStyleSheet(_COMPACT_BTN_STYLE + "background: #2e7d32; color: white;")
+        save_btn.clicked.connect(self._save_all_settings)
+        btn_bar_layout.addWidget(save_btn)
+
+        reset_btn = QPushButton("↺ Скинути")
+        reset_btn.setStyleSheet(_COMPACT_BTN_STYLE + "background: #1976d2; color: white;")
+        reset_btn.clicked.connect(self._reset_all_settings)
+        btn_bar_layout.addWidget(reset_btn)
+
+        reload_btn = QPushButton("🔄 Оновити")
+        reload_btn.setStyleSheet(_COMPACT_BTN_STYLE + "background: #555; color: #1976d2;")
+        reload_btn.clicked.connect(self._reload_settings_tab)
+        btn_bar_layout.addWidget(reload_btn)
+
+        clear_cache_btn = QPushButton("🗑️ Кеш")
+        clear_cache_btn.setStyleSheet(_COMPACT_BTN_STYLE + "background: #e65100; color: white;")
+        clear_cache_btn.clicked.connect(self._clear_command_cache)
+        btn_bar_layout.addWidget(clear_cache_btn)
+
+        restart_btn = QPushButton("🔁 Агент")
+        restart_btn.setStyleSheet(_COMPACT_BTN_STYLE + "background: #d32f2f; color: white;")
+        restart_btn.clicked.connect(self._restart_agent)
+        btn_bar_layout.addWidget(restart_btn)
+
+        # Зберігаємо посилання на buttons_bar для можливого виключення з очищення
+        self._buttons_bar = buttons_bar
+
+        layout.addWidget(buttons_bar)
 
         # Вибрати першу категорію за замовчуванням
         if self._categories_ordered and self._category_list:
@@ -301,13 +329,8 @@ class SettingsTab(BaseTab):
             item = self._right_layout.itemAt(i)
             if item and item.widget():
                 w = item.widget()
-                # Перевіряємо чи це не bottom_widget (останні два: stretch + bottom)
-                # bottom_widget — це QGroupBox або QFrame з кнопками, він має бути останнім
-                if isinstance(w, QGroupBox) or (
-                    isinstance(w, QFrame) and w.layout() and 
-                    any(isinstance(w.layout().itemAt(j).widget(), QPushButton) 
-                        for j in range(w.layout().count()) if w.layout().itemAt(j))
-                ):
+                # Не видаляємо bottom_widget (статус, watcher, кнопки)
+                if w.objectName() == "bottom_widget":
                     continue
                 # Видаляємо віджет з layout
                 self._right_layout.removeWidget(w)
@@ -389,7 +412,7 @@ class SettingsTab(BaseTab):
             choices = schema.get("choices", [])
             widget.addItems(choices)
             widget.setCurrentText(str(value) if value else "")
-            widget.currentTextChanged.connect(partial(self._auto_save_setting, key))
+            widget.currentIndexChanged.connect(partial(self._auto_save_setting, key))
         elif wtype == "multi_choice":
             # Множинний вибір — чекбокси для кожного варіанту
             choices = schema.get("choices", [])
@@ -400,8 +423,13 @@ class SettingsTab(BaseTab):
             selected = set(value) if isinstance(value, list) else set()
             for choice in choices:
                 cb = QCheckBox(choice)
-                cb.setChecked(choice in selected)
-                cb.stateChanged.connect(partial(self._auto_save_setting, key))
+                # Вкладки "💬 Чат" і "⚙️ Налаштування" не можна приховати
+                if key == "HIDDEN_TABS" and choice in ("💬 Чат", "⚙️ Налаштування"):
+                    cb.setEnabled(False)
+                    cb.setChecked(False)
+                else:
+                    cb.setChecked(choice in selected)
+                    cb.stateChanged.connect(partial(self._auto_save_setting, key))
                 mc_layout.addWidget(cb)
             # Сховати wrapper label
             mc_layout.setSpacing(2)
@@ -420,6 +448,10 @@ class SettingsTab(BaseTab):
         elif wtype == "llm_endpoints":
             widget = LLMEndpointsEditor(value or [])
             widget.changed.connect(partial(self._auto_save_setting, key))
+        elif wtype == "text":
+            widget = QTextEdit()
+            widget.setText(str(value) if value else "")
+            widget.textChanged.connect(partial(self._auto_save_setting, key))
         else:  # str
             widget = QLineEdit()
             widget.setText(str(value) if value else "")
@@ -519,8 +551,12 @@ class SettingsTab(BaseTab):
 
     # ─── Автоматичне збереження ──────────────────────────────────────────────
 
-    def _auto_save_setting(self, key: str) -> None:
-        """Зберігає одне налаштування за ключем одразу після зміни."""
+    def _auto_save_setting(self, key: str, *args) -> None:
+        """Зберігає одне налаштування за ключем одразу після зміни.
+        
+        *args ігноруються — деякі сигнали Qt (stateChanged, valueChanged, 
+        currentIndexChanged) передають додатковий аргумент.
+        """
         from functions.runtime.core_settings import get_settings, SETTINGS_SCHEMA
 
         widget = self._settings_vars.get(key)
@@ -612,6 +648,8 @@ class SettingsTab(BaseTab):
             return v
         if wtype == "llm_endpoints":
             return widget.get()
+        if wtype == "text" or isinstance(widget, QTextEdit):
+            return widget.toPlainText()
         return widget.text()
 
     # ─── Скидання ─────────────────────────────────────────────────────────────

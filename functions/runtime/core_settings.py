@@ -110,6 +110,16 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "desc": "Шлях до папки, в межах якої дозволено файлові операції (створення, редагування, читання). Якщо порожньо — обмеження знято.",
         "default": "",
     },
+    "HISTORY_MAX_MESSAGES": {
+        "type": "int", "group": "Асистент", "label": "Макс. повідомлень в історії",
+        "desc": "Скільки останніх повідомлень зберігати в історії діалогу (2-50).",
+        "default": 2, "min": 2, "max": 50,
+    },
+    "HISTORY_MAX_TOKENS": {
+        "type": "int", "group": "Асистент", "label": "Макс. токенів в історії",
+        "desc": "Максимальна кількість токенів для історії розмови (500-32000).",
+        "default": 2000, "min": 500, "max": 32000,
+    },
 
     # --- Безпека / підтвердження ---
     "auto_approve_all": {
@@ -276,9 +286,9 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "min": 0.0, "max": 1.0,
     },
 
-    # --- GUI ---
+    # --- Вигляд ---
     "GUI_BACKEND": {
-        "type": "str", "group": "GUI", "label": "GUI бекенд",
+        "type": "str", "group": "Вигляд", "label": "GUI бекенд",
         "desc": "pyqt6 (основний GUI бекенд).",
         "choices": ["pyqt6"],
         "default": "pyqt6", "user_only": True,
@@ -289,12 +299,12 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "default": "ctrl+shift+f9", "user_only": True,
     },
     "GLOBAL_VOICE_ENABLED": {
-        "type": "bool", "group": "GUI", "label": "Глобальне голосове введення",
+        "type": "bool", "group": "Вигляд", "label": "Глобальне голосове введення",
         "desc": "Увімкнути глобальне голосове введення (Windows hooks + STT).",
         "default": True, "user_only": True,
     },
     "USE_UIA_FIRST": {
-        "type": "bool", "group": "GUI", "label": "UIA пріоритет над OCR",
+        "type": "bool", "group": "Вигляд", "label": "UIA пріоритет над OCR",
         "desc": "Спочатку використовувати UI Automation API для пошуку кнопок/полів, потім OCR+CV fallback. Стабільніше для DPI/тем/мови.",
         "default": True, "user_only": True,
     },
@@ -315,25 +325,25 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
     },
 
     "HIDDEN_TABS": {
-        "type": "multi_choice", "group": "GUI", "label": "Приховані вкладки",
+        "type": "multi_choice", "group": "Вигляд", "label": "Приховані вкладки",
         "choices": ["💬 Чат", "📋 План", "📜 Логи", "📊 Статистика", "🔧 Інструменти", "⚙️ Налаштування"],
         "desc": "Виберіть вкладки, які потрібно приховати. Зміни застосовуються після перезапуску GUI.",
-        "default": [], "user_only": True,
+        "default": [],
     },
     "ACTIVE_TAB_INDEX": {
-        "type": "int", "group": "GUI", "label": "Активна вкладка",
+        "type": "int", "group": "Вигляд", "label": "Активна вкладка",
         "desc": "Індекс останньої активної вкладки. Зберігається автоматично.",
         "user_only": True, "default": 0, "hidden": True,
     },
     "SETTINGS_SPLITTER_SIZES": {
-        "type": "str", "group": "GUI", "label": "Розмір splitter налаштувань",
+        "type": "str", "group": "Вигляд", "label": "Розмір splitter налаштувань",
         "desc": "Розміри лівої/правої панелі вкладки налаштувань. Зберігається автоматично.",
         "user_only": True, "default": "160,600", "hidden": True,
     },
 
-    # --- GUI ---
+    # --- Вигляд ---
     "WINDOW_GEOMETRY": {
-        "type": "str", "group": "GUI", "label": "Розмір і позиція вікна",
+        "type": "str", "group": "Вигляд", "label": "Розмір і позиція вікна",
         "desc": "Формат WxH+X+Y. Зберігається автоматично при закритті.",
         "user_only": True,
     },

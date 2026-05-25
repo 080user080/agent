@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import time
 from typing import Callable, Optional
 
 
@@ -36,6 +37,8 @@ class StreamingBuffer:
         self._on_context_update = on_context_update
         self._context_limit = context_limit
         self._model = model
+        self._start_time: float | None = None
+        self._elapsed: float = 0.0
 
     def update_context_limits(self, context_limit: int, model: str) -> None:
         """Оновити ліміт контексту та назву моделі (наприклад, при старті стрімінгу)."""
@@ -54,13 +57,17 @@ class StreamingBuffer:
         if not chunk:
             return self.estimated_tokens
 
+        if self._start_time is None:
+            self._start_time = time.monotonic()
+
         self.total_chars += len(chunk)
         self.estimated_tokens = self.total_chars // 4  # груба оцінка
+        self._elapsed = time.monotonic() - self._start_time
 
         # Оновлюємо статус-бар (текстове повідомлення)
         if self._on_status:
             self._on_status(
-                f"⏳ Стрімінг... ~{self.estimated_tokens} токенів"
+                f"⏳ {self._model} · ~{self.estimated_tokens} токенів · {self._elapsed:.1f}с"
             )
 
         # Оновлюємо прогрес-бар контексту (live)
@@ -82,6 +89,9 @@ class StreamingBuffer:
         Returns:
             Фінальна кількість completion токенів
         """
+        if self._start_time is not None:
+            self._elapsed = time.monotonic() - self._start_time
+
         if real_usage:
             completion_tokens = real_usage.get("completion_tokens", 0)
             total_tokens = real_usage.get("total_tokens", 0)
@@ -99,10 +109,12 @@ class StreamingBuffer:
             if self._on_status:
                 if completion_tokens > 0:
                     self._on_status(
-                        f"✅ Стрімінг завершено — {completion_tokens} токенів"
+                        f"✅ {self._model} · {completion_tokens} токенів · {self._elapsed:.1f}с"
                     )
                 else:
-                    self._on_status("✅ Стрімінг завершено")
+                    self._on_status(
+                        f"✅ {self._model} · {self._elapsed:.1f}с"
+                    )
 
             return completion_tokens
 
@@ -114,7 +126,7 @@ class StreamingBuffer:
 
         if self._on_status:
             self._on_status(
-                f"✅ Стрімінг завершено — ~{self.estimated_tokens} токенів (оцінка)"
+                f"✅ {self._model} · ~{self.estimated_tokens} токенів · {self._elapsed:.1f}с"
             )
 
         return self.estimated_tokens
@@ -123,8 +135,13 @@ class StreamingBuffer:
         """Скинути буфер."""
         self.total_chars = 0
         self.estimated_tokens = 0
+        self._start_time = None
+        self._elapsed = 0.0
 
     @property
     def current_status(self) -> str:
         """Поточний статус для відображення."""
-        return f"~{self.estimated_tokens} токенів (стрімінг)" if self.estimated_tokens > 0 else ""
+        if self.estimated_tokens > 0:
+            el = f" · {self._elapsed:.1f}с" if self._elapsed > 0 else ""
+            return f"~{self.estimated_tokens} токенів{el} ({self._model})" if self._model else f"~{self.estimated_tokens} токенів{el}"
+        return ""

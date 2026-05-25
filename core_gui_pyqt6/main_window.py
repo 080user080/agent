@@ -57,6 +57,8 @@ class MainWindowPyQt6(QMainWindow):
         self.stt_controller: Optional[Any] = None
         self._is_streaming = False
         self._stream_buffer = ""
+        self._last_model: str = ""
+        self._last_elapsed: float = 0.0
 
         # --- StreamingBuffer для live-оцінки токенів ---
         self.streaming_buffer = StreamingBuffer(
@@ -289,8 +291,11 @@ class MainWindowPyQt6(QMainWindow):
         except Exception:
             pass
 
+    # Вкладки, які не можна приховати
+    _PROTECTED_TABS = {"💬 Чат", "⚙️ Налаштування"}
+
     def _apply_hidden_tabs(self, hidden_tabs: list) -> None:
-        """Приховати вкладки зі списку hidden_tabs."""
+        """Приховати вкладки зі списку hidden_tabs. Чат та Налаштування не приховуються."""
         if not self.notebook:
             return
         tab_map = {
@@ -305,8 +310,10 @@ class MainWindowPyQt6(QMainWindow):
         for tab_name, tab_index in tab_map.items():
             if tab_index < self.notebook.count():
                 self.notebook.setTabVisible(tab_index, True)
-        # Приховати вказані
+        # Приховати вказані, крім захищених
         for tab_name in hidden_tabs:
+            if tab_name in self._PROTECTED_TABS:
+                continue  # не можна приховати
             idx = tab_map.get(tab_name)
             if idx is not None and idx < self.notebook.count():
                 self.notebook.setTabVisible(idx, False)
@@ -413,6 +420,15 @@ class MainWindowPyQt6(QMainWindow):
             self.chat_tab.end_stream_message()
         # Завершити стрімінг (поки без реального usage)
         self.streaming_buffer.finish()
+        # Зберігаємо час відповіді для статус-бару
+        self._last_elapsed = self.streaming_buffer._elapsed
+        # Оновлюємо статус-бар з моделлю та часом
+        model = self._last_model or self.streaming_buffer._model or "?"
+        elapsed = self._last_elapsed
+        if self.status_label:
+            self.status_label.setText(
+                f"✅ {model} · {elapsed:.1f}с"
+            )
         self.streaming_buffer.reset()
 
     def _on_streaming_status(self, status_text: str) -> None:
@@ -421,6 +437,8 @@ class MainWindowPyQt6(QMainWindow):
 
     def _on_streaming_context_update(self, used: int, limit: int, model: str) -> None:
         """Callback для live-оновлення бару контексту під час стрімінгу."""
+        if model:
+            self._last_model = model
         self._update_context_bar(used, limit, model)
         # Також передаємо в StatsTab для оновлення статистики
         if self.stats_tab:
@@ -583,8 +601,6 @@ class MainWindowPyQt6(QMainWindow):
                 self.append_stream_chunk(data)
             elif msg_type == "stream_end":
                 self.end_stream_message()
-                # При завершенні стрімінгу скидаємо буфер
-                self.streaming_buffer.reset()
             elif msg_type == "update_status":
                 self.update_progress(0, data)
             elif msg_type == "update_progress":

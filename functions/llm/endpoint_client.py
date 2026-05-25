@@ -433,6 +433,8 @@ def call_endpoint(endpoint: Dict[str, Any], messages: List[Dict[str, str]]) -> T
                 "max_tokens": endpoint.get("max_tokens", 1024),
                 "stream": False
             }
+            # DEBUG: перевірка розміру system prompt
+            print(f"[DEBUG] system_prompt chars: {len(messages[0]['content'])}")
         
         response = requests.post(
             endpoint["url"],

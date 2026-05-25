@@ -1,227 +1,263 @@
-"""Windows-специфічні condition-фабрики для Watcher (I3).
+"""Conditions для Windows-специфічних сценаріїв (idle-детекція чату, вікна, процеси).
 
-Phase 8 / I3. Розширення `logic_watcher.py` — умови, що спираються на
-стан Windows-середовища: заголовки вікон, процеси, «тиша» в чаті.
-
-Дизайн:
-- Всі фабрики приймають **injection points** (lister/reader-функції), щоб
-  юніт-тести повністю мокалися на Linux CI, а реальний код користувався
-  за замовчуванням `pygetwindow` / `psutil`.
-- Жодного Windows-специфічного raise в коді фабрик — якщо бібліотеки
-  недоступні (або жодного вікна не знайдено), фабрика повертає
-  condition-функцію, яка видає `False`.
-- `condition_chat_idle` - generic: не «знає» про конкретний провайдер,
-  а очікує `activity_fn() -> str | None`. Викликач сам вирішує, як
-  визначати активність (polling-сніпшот чату, timestamp файлу, хеш UI-тексту).
+Кожна функція повертає **condition-функцію** з сигнатурою `(ctx: dict) -> bool`.
+Це дозволяє використовувати їх у `Watcher` та інших циклах очікування.
 """
 from __future__ import annotations
 
 import time
 from typing import Any, Callable, Dict, List, Optional, Union
 
-from functions.runtime.logic_watcher import ConditionFn
-
 
 # ---------------------------------------------------------------------------
-# Default backends (lazy import)
+# Утиліти
 # ---------------------------------------------------------------------------
 
+def _make_window_lister() -> Callable[[], List[str]]:
+    """Повертає функцію, яка читає список заголовків вікон через pygetwindow.
 
-def _default_window_lister() -> List[str]:
-    """Повертає список видимих заголовків вікон через pygetwindow.
-
-    На Linux/без pygetwindow повертає `[]`, щоб condition видавала False
-    замість raise.
+    Якщо pygetwindow не встановлено — повертає пустий список.
     """
     try:
-        import pygetwindow as gw  # type: ignore[import]
+        import pygetwindow as gw
+        return lambda: [w.title for w in gw.getWindowsWithTitle("") if w.title]
     except ImportError:
-        return []
-    try:
-        titles = [w.title for w in gw.getAllWindows() if w.title]
-        return titles
-    except Exception:  # noqa: BLE001
-        return []
+        return lambda: []
 
 
-def _default_process_lister() -> List[Dict[str, Any]]:
-    """Повертає список словників `{pid, name}` через psutil.
+def _make_process_lister() -> Callable[[], List[Dict[str, Any]]]:
+    """Повертає функцію, яка читає список процесів через psutil.
 
-    На помилках — `[]`.
+    Якщо psutil не встановлено — повертає пустий список.
     """
     try:
-        import psutil  # type: ignore[import]
+        import psutil
+        def _list():
+            result = []
+            for proc in psutil.process_iter(["pid", "name"]):
+                try:
+                    pinfo = proc.info
+                    result.append({"pid": pinfo["pid"], "name": pinfo["name"]})
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    continue
+            return result
+        return _list
     except ImportError:
-        return []
-    try:
-        out: List[Dict[str, Any]] = []
-        for proc in psutil.process_iter(["pid", "name"]):
-            info = proc.info
-            out.append({"pid": info.get("pid"), "name": (info.get("name") or "")})
-        return out
-    except Exception:  # noqa: BLE001
-        return []
-
-
-# Type aliases
-WindowLister = Callable[[], List[str]]
-ProcessLister = Callable[[], List[Dict[str, Any]]]
-ActivityFn = Callable[[], Any]
+        return lambda: []
 
 
 # ---------------------------------------------------------------------------
-# Windows conditions
+# condition_window_title_contains
 # ---------------------------------------------------------------------------
 
 
 def condition_window_title_contains(
-    substr: str,
+    substring: str,
     *,
     case_insensitive: bool = True,
-    window_lister: Optional[WindowLister] = None,
-) -> ConditionFn:
-    """True, якщо серед відкритих вікон є хоч одне, чий заголовок містить `substr`.
+    window_lister: Optional[Callable[[], List[str]]] = None,
+) -> Callable[[Dict[str, Any]], bool]:
+    """Повертає condition: True якщо будь-яке вікно містить `substring` у тайтлі.
 
-    Використовується для шаблонів на кшталт «коли з'явиться діалог з
-    таким-то текстом». Кожен виклик condition — заново питає lister'а,
-    без кешу (щоб бачити появу/зникнення вікна).
+    Args:
+        substring: підрядок для пошуку.
+        case_insensitive: регістронезалежний пошук (default True).
+        window_lister: функція, що повертає список заголовків вікон.
+            Якщо None — використовується дефолтний через pygetwindow.
+
+    Returns:
+        condition-функція (ctx -> bool).
     """
-    needle = substr.lower() if case_insensitive else substr
-    lister = window_lister or _default_window_lister
+    lister = window_lister or _make_window_lister()
 
-    def _check(_ctx: Dict[str, Any]) -> bool:
-        titles = lister()
-        for title in titles:
-            hay = title.lower() if case_insensitive else title
-            if needle in hay:
-                return True
-        return False
+    if case_insensitive:
+        sub_lower = substring.lower()
+        def _check(_ctx: Dict[str, Any]) -> bool:
+            titles = lister()
+            return any(sub_lower in t.lower() for t in titles)
+    else:
+        def _check(_ctx: Dict[str, Any]) -> bool:
+            titles = lister()
+            return any(substring in t for t in titles)
 
     return _check
+
+
+# ---------------------------------------------------------------------------
+# condition_process_running
+# ---------------------------------------------------------------------------
 
 
 def condition_process_running(
-    target: Union[str, int],
+    name_or_pid: Union[str, int],
     *,
-    case_insensitive: bool = True,
-    process_lister: Optional[ProcessLister] = None,
-) -> ConditionFn:
-    """True, якщо процес з таким `name` або `pid` запущений.
+    process_lister: Optional[Callable[[], List[Dict[str, Any]]]] = None,
+) -> Callable[[Dict[str, Any]], bool]:
+    """Повертає condition: True якщо процес з таким ім'ям або PID існує.
 
-    - `target`-int → matching по `pid`.
-    - `target`-str → matching по `name` (часткове співпадіння, за замовч.
-      case-insensitive). Зручно: `".exe"` можна не вказувати.
+    Args:
+        name_or_pid: рядок (ім'я, регістронезалежно) або int (PID).
+        process_lister: функція, що повертає список [{pid, name}, ...].
+            Якщо None — використовується дефолтний через psutil.
+
+    Returns:
+        condition-функція (ctx -> bool).
     """
-    lister = process_lister or _default_process_lister
-    if isinstance(target, int):
-        pid_target: Optional[int] = target
-        name_target: Optional[str] = None
-    else:
-        pid_target = None
-        name_target = target.lower() if case_insensitive else target
+    lister = process_lister or _make_process_lister()
 
-    def _check(_ctx: Dict[str, Any]) -> bool:
-        for p in lister():
-            if pid_target is not None:
-                if p.get("pid") == pid_target:
+    if isinstance(name_or_pid, int):
+        pid_target = name_or_pid
+        def _check(_ctx: Dict[str, Any]) -> bool:
+            procs = lister()
+            return any(p.get("pid") == pid_target for p in procs)
+    else:
+        name_lower = name_or_pid.lower()
+        def _check(_ctx: Dict[str, Any]) -> bool:
+            procs = lister()
+            pname: Optional[str]
+            for p in procs:
+                pname = p.get("name")
+                if pname is not None and name_lower in pname.lower():
                     return True
-            else:
-                pname = p.get("name") or ""
-                if case_insensitive:
-                    pname = pname.lower()
-                if name_target and name_target in pname:
-                    return True
-        return False
+            return False
 
     return _check
+
+
+# ---------------------------------------------------------------------------
+# condition_process_finished
+# ---------------------------------------------------------------------------
 
 
 def condition_process_finished(
-    target: Union[str, int],
+    name_or_pid: Union[str, int],
     *,
-    case_insensitive: bool = True,
-    process_lister: Optional[ProcessLister] = None,
-) -> ConditionFn:
-    """True *один раз*, коли процес, що раніше був запущеним, зник.
+    process_lister: Optional[Callable[[], List[Dict[str, Any]]]] = None,
+) -> Callable[[Dict[str, Any]], bool]:
+    """Повертає one-shot condition: True коли процес зник після того, як був.
 
-    One-shot. Corner case: якщо при першому виклику condition процесу вже
-    немає — вона повертає `False` (не знаємо, чи він був запущений, тож не
-    ризикуємо з false-positive). Треба запустити watcher *поки* процес
-    ще живий.
+    **One-shot**: після першого True завжди повертає False, навіть якщо
+    процес з'явиться і знову зникне. Щоб перевикористати — створити новий
+    condition.
+
+    Args:
+        name_or_pid: рядок (ім'я) або int (PID).
+        process_lister: функція, що повертає список [{pid, name}, ...].
+            Якщо None — використовується дефолтний через psutil.
+
+    Returns:
+        condition-функція (ctx -> bool).
     """
-    running_check = condition_process_running(
-        target,
-        case_insensitive=case_insensitive,
-        process_lister=process_lister,
-    )
-    state = {"ever_running": False, "fired": False}
+    lister = process_lister or _make_process_lister()
+    _seen = False
+    _fired = False
 
-    def _check(ctx: Dict[str, Any]) -> bool:
-        if state["fired"]:
+    def _check(_ctx: Dict[str, Any]) -> bool:
+        nonlocal _seen, _fired
+        if _fired:
             return False
-        currently = running_check(ctx)
-        if currently:
-            state["ever_running"] = True
+
+        procs = lister()
+
+        if isinstance(name_or_pid, int):
+            found = any(p.get("pid") == name_or_pid for p in procs)
+        else:
+            name_lower = name_or_pid.lower()
+            found = any(
+                p.get("name") is not None and name_lower in p["name"].lower()
+                for p in procs
+            )
+
+        if found:
+            _seen = True
             return False
-        if state["ever_running"]:
-            state["fired"] = True
+
+        if _seen and not found:
+            _fired = True
             return True
+
         return False
 
     return _check
+
+
+# ---------------------------------------------------------------------------
+# condition_chat_idle
+# ---------------------------------------------------------------------------
 
 
 def condition_chat_idle(
-    activity_fn: ActivityFn,
+    activity_fn: Callable[[], Any],
     *,
-    idle_seconds: float,
-    time_fn: Callable[[], float] = time.monotonic,
-) -> ConditionFn:
-    """True, коли `activity_fn()` не змінює результат протягом `idle_seconds`.
+    idle_seconds: float = 2.0,
+    time_fn: Optional[Callable[[], float]] = None,
+) -> Callable[[Dict[str, Any]], bool]:
+    """Повертає condition: True коли `activity_fn` не змінює значення
+    протягом `idle_seconds` секунд.
 
-    `activity_fn` — будь-що, що повертає «знімок стану чату» для equality-
-    порівняння: string-хеш тексту, timestamp останнього токена, номер
-    повідомлення, tuple будь-чого. Якщо два послідовні опитування дають
-    те саме значення → запускаємо таймер; коли проходить `idle_seconds` —
-    condition спрацьовує.
+    **One-shot per idle period**: після спрацювання повертає False при
+    повторних викликах, поки не з'явиться нова активність (activity_fn змінить значення).
 
-    Після спрацьовування стан скидається — тобто condition автоматично
-    готова знову детектувати наступний idle.
+    Args:
+        activity_fn: функція без аргументів, повертає будь-яке значення.
+        idle_seconds: скільки секунд має бути тихо.
+        time_fn: годинник (за замовчуванням time.time). Для тестів передають
+            фіктивний `lambda: clock[0]`.
+
+    Returns:
+        condition-функція (ctx -> bool).
     """
-    _UNSET = object()
-    state: Dict[str, Any] = {
-        "last_value": _UNSET,
-        "last_change_at": None,
-        "fired": False,
-    }
+    if time_fn is None:
+        time_fn = time.time
+
+    _last_value: Any = None
+    _last_time: float = 0.0
+    _has_baseline: bool = False
+    _fired: bool = False
 
     def _check(_ctx: Dict[str, Any]) -> bool:
+        nonlocal _last_value, _last_time, _has_baseline, _fired
+
         try:
             current = activity_fn()
-        except Exception:  # noqa: BLE001
-            # не знаємо стан — вважаємо, що активність триває
-            state["last_value"] = _UNSET
-            state["last_change_at"] = None
-            state["fired"] = False
+        except Exception:
+            # Якщо activity_fn кидає помилку — вважаємо, що активність є
+            _has_baseline = False
             return False
 
         now = time_fn()
-        if state["last_value"] is _UNSET or current != state["last_value"]:
-            state["last_value"] = current
-            state["last_change_at"] = now
-            state["fired"] = False
+
+        if not _has_baseline:
+            _last_value = current
+            _last_time = now
+            _has_baseline = True
+            _fired = False
             return False
 
-        last_change = state["last_change_at"]
-        if last_change is None:
-            last_change = now
-            state["last_change_at"] = now
-        elapsed = now - last_change
-        if elapsed >= idle_seconds:
-            # одноразове спрацьовування до наступної активності
-            already = state["fired"]
-            state["fired"] = True
-            return not already
+        if current != _last_value:
+            # Активність змінилась — скидаємо таймер
+            _last_value = current
+            _last_time = now
+            _fired = False
+            return False
+
+        # Значення не змінилось — перевіряємо чи минуло idle_seconds
+        if not _fired and (now - _last_time) >= idle_seconds:
+            _fired = True
+            return True
+
         return False
 
     return _check
+
+
+# ---------------------------------------------------------------------------
+# Експорт
+# ---------------------------------------------------------------------------
+
+__all__ = [
+    "condition_chat_idle",
+    "condition_process_finished",
+    "condition_process_running",
+    "condition_window_title_contains",
+]

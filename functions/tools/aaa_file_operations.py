@@ -40,15 +40,18 @@ def write_file(filepath: str, content: str) -> dict:
         return {'ok': False, 'error': str(e)}
 
 
-def list_directory(directory: str = '.') -> dict:
+def list_directory(directory: str = '.', path: str = None) -> dict:
     """Показати вміст директорії.
 
     Args:
         directory: Шлях до директорії (за замовчуванням поточна)
+        path: Альтернативна назва параметра (для сумісності з action parser)
 
     Returns:
         dict: {'ok': True, 'result': 'вміст директорії'} або помилка
     """
+    # Підтримка обох назв параметра: directory або path
+    directory = directory or path or '.'
     try:
         path = Path(directory)
 

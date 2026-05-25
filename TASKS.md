@@ -34,293 +34,247 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 - Статуси: `Завершено` > `В процесі` > `Не розпочато`
 
 ---
+# Self-Coding Agent Pipeline
 
-# Аналіз і план переробки GUI
-
-## Що є зараз
-
-З коду видно що поточний `MainWindowPyQt6` — монолітний клас (~600+ рядків) з міксинами:
-- `ChatPanelQtMixin` — чат
-- `PlanPanelQtMixin` — панель плану
-- `SettingsTabQtMixin` — налаштування
-- `ConfirmationQtMixin` — підтвердження
-
-Все в одному вікні, без чіткої вкладкової структури для логів, статистики, інструментів.
-
-## Що треба зробити
-
-Переробити GUI зберігши весь існуючий функціонал але додавши нові вкладки і модульну структуру.
+## Мета
+Дати агенту здатність аналізувати власний код, планувати зміни та вносити їх безпечно.
 
 ---
 
-# Завдання для агента: Переробка GUI МАРК на модульну вкладкову структуру
+## Фаза 1 — Само-читання та аналіз
 
-## Цільова структура вкладок
+- [ ] Відмітити виконання в TASK.md
+### Крок 1.1 — Self-context builder
+Створити `functions/planning/self_code_context.py`
+Функція `build_self_context(task: str) -> dict`:
+- читає `get_repo_map()`
+- знаходить релевантні файли через `search_in_code()`
+- читає їх через `read_code_file()`
+- повертає контекст для LLM: які файли релевантні, їх поточний стан
 
-1. **Чат** — існуючий чат (перенести з `ChatPanelQtMixin`)
-2. **План** — існуюча панель плану (з `PlanPanelQtMixin`)
-3. **Логи** — новий таб з таблицею логів з файлів `runtime/logs/`
-4. **Статистика** — новий таб з метриками (токени, запити, час відповіді)
-5. **Інструменти** — новий таб зі списком зареєстрованих інструментів з `FunctionRegistry`
-6. **Налаштування** — існуючий таб (з `SettingsTabQtMixin`)
+- [ ] Відмітити виконання в TASK.md
 
-## Цільова файлова структура
+### Крок 1.2 — Gap analyzer
+Функція `analyze_gap(task: str, context: dict) -> dict`:
+- через LLM визначає: що треба змінити/додати
+- повертає список файлів для зміни + опис змін
+- перевіряє чи зміна безпечна (не чіпає критичні модулі)
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Фаза 2 — Безпечне редагування
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 2.1 — Snapshot before edit
+У `core_undo_manager.py` вже є `save_snapshot()`.
+Переконатись що перед кожною зміною коду робиться snapshot.
+Розширити `edit_file()` — автоматичний snapshot якщо файл у папці `functions/`.
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 2.2 — Code patch generator
+Створити `functions/planning/self_code_patcher.py`
+Функція `generate_patch(file_path: str, task: str, context: dict) -> str`:
+- читає поточний вміст файлу
+- через LLM генерує тільки змінену частину (не весь файл)
+- валідує синтаксис через `ast.parse()` перед застосуванням
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 2.3 — Syntax validator
+Функція `validate_python_syntax(code: str) -> tuple[bool, str]`:
+- `ast.parse()` — синтаксична перевірка
+- перевірка імпортів на валідність
+- повертає `(ok, error_message)`
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Фаза 3 — Верифікація після змін
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 3.1 — Post-edit verification
+Функція `verify_edit(file_path: str, task: str) -> dict`:
+- повторно читає змінений файл
+- через LLM перевіряє чи зміна відповідає задачі
+- оновлює `repo_map` через `update_file_in_map()`
+- повертає `{ok, summary, warnings}`
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 3.2 — Rollback якщо верифікація провалилась
+Якщо `verify_edit` повертає `ok=False`:
+- автоматично викликати `restore_snapshot()`
+- логувати в `self_learning` як невдалу спробу
+- повернути детальний звіт чому не вийшло
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Фаза 4 — Pipeline інтеграція
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 4.1 — Self-coding pipeline
+Створити `functions/planning/pipeline_self_coding.py`
+Клас `SelfCodingPipeline` — реалізує `Pipeline.compile()`:
+- отримує `TaskSpec` з `domain=DOMAIN_CODE` де ціль — файл агента
+- будує `Plan` з кроків: context → analyze → snapshot → patch → validate → verify
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 4.2 — Реєстрація в `make_default_registry()`
+В `core_plan_compiler.py` додати `DOMAIN_SELF_CODE` домен
+та зареєструвати `SelfCodingPipeline`.
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Фаза 5 — Захисні обмеження
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 5.1 — Список заборонених для авто-редагування файлів
+В `core_tool_runtime.py` або новому `self_code_safety.py`:
+- `SELF_EDIT_BLACKLIST` — файли які агент НЕ може змінювати сам:
+  - `core_safety_sandbox.py`
+  - `logic_permission_gate.py`
+  - `core_tool_runtime.py`
+  - `main.py`
+  - `run.py`
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 5.2 — Обов'язкове підтвердження користувача
+Будь-яка само-модифікація проходить через `confirm_action()`.
+Без підтвердження — тільки читання та аналіз, без запису.
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Критичні ризики (врахувати в коді)
+
+| Ризик | Мітигація |
+|-------|-----------|
+| Зламаний синтаксис | `ast.parse()` перед записом |
+| Нескінченна рекурсія само-редагування | Blacklist критичних файлів |
+| Непередбачені побічні ефекти | Snapshot + rollback |
+| LLM галюцинує функції | Верифікація після зміни |
+| Зміна змінює поведінку Guards | Ізоляція safety модулів |
+
+
+
+# Завдання: Виправлення двох багів — list_directory та склеювання слів
+
+## Мета
+Виправити баги:
+1. `list_directory()` не приймала параметр `path` → падала з `got an unexpected keyword argument 'path'`
+2. Команди "подивися мій проект", "подивис, проект", "подивися папку" не розпізнавалися → LLM склеював слова
+
+## Виконані кроки
+
+### 1. list_directory — додано підтримку `path`
+- [x] Відкрити `D:\Python\agent\functions\tools\aaa_file_operations.py`
+- [x] Змінити сигнатуру: `def list_directory(directory: str = '.', path: str = None) -> dict`
+- [x] Логіка: `directory = directory or path or '.'`
+- [x] Відмітити виконання в TASK.md
+
+### 2. Розширено _AMBIGUOUS_PROJECT_PATTERNS
+- [x] Відкрити `D:\Python\agent\functions\gui\commands_planner.py`
+- [x] Додано варіанти з "мій": `подивися мій проект`, `покажи мій проект`, `відкрий мій проект`
+- [x] Додано варіанти з комою: `подивис, проект`, `покажи, код` тощо
+- [x] Відмітити виконання в TASK.md
+
+### 3. Виправлено _CLEAR_PATTERNS
+- [x] Замінено `\s` на `(\s|$)` у всіх патернах з об'єктом
+- [x] "подивися папку" тепер матчиться (раніше вимагало пробіл після "папку")
+- [x] Відмітити виконання в TASK.md
+
+### 4. Виправлено друкарську помилку
+- [x] `\ss+` → `\s+` в одному з патернів
+
+---
+
+# Завдання: Виправлення рекурсивного завантаження модулів
+
+## Мета
+Виправити `load_all_modules()` в `functions/runtime/logic_core.py` — функції з підпапок (`functions/tools/`, `functions/skills/`) не завантажуються через не-рекурсивні glob-пошуки.
+
+---
+
+## Кроки
+
+### 1. Відкрити файл для аналізу
+- [x] Прочитати `D:\Python\agent\functions\runtime\logic_core.py` повністю
+- [x] Відмітити виконання в TASK.md
+
+### 2. Виправити glob для `core_*.py`
+- [x] Знайти рядок з `functions_dir.glob("core_*.py")` (~54)
+- [x] Замінити на `functions_dir.rglob("core_*.py")`
+- [x] Відмітити виконання в TASK.md
+
+### 3. Виправити glob для `aaa_*.py`
+- [x] Знайти рядок з `functions_dir.glob("aaa_*.py")` (~82)
+- [x] Замінити на `functions_dir.rglob("aaa_*.py")`
+- [x] Відмітити виконання в TASK.md
+
+### 4. Виправити glob для `tools_*.py`
+- [x] Знайти рядок з `functions_dir.glob("tools_*.py")` (~107)
+- [x] Замінити на `functions_dir.rglob("tools_*.py")`
+- [x] Відмітити виконання в TASK.md
+
+### 5. Додати блок завантаження `functions/skills/`
+- [x] Після блоку `tools_*.py` додано новий блок, який:
+  - Шукає `skills_dir = functions_dir / "skills"`
+  - Перевіряє що директорія існує
+  - Завантажує всі `*.py` крім `__init__.py` через `importlib`
+  - Виводить лог аналогічно до інших блоків (`✅ skills/<назва> (N функцій)`)
+- [x] Відмітити виконання в TASK.md
+
+### 6. Перевірка дублікатів після rglob
+- [x] Додано `_loaded_modules` — множина для відстеження завантажених імен
+- [x] Кожен блок (core/aaa/tools) перевіряє `if module_name in _loaded_modules` перед завантаженням
+- [x] Відмітити виконання в TASK.md
+
+### 7. Запустити та перевірити
+- [x] Запустити `run.py`
+- [x] Переконатись у консолі що тепер виводиться завантаження функцій з `functions/tools/` (aaa_*, tools_*) та `functions/skills/`
+
+---
+
+## Очікуваний результат у консолі після виправлення
 
 ```
-core_gui_pyqt6/
-├── __init__.py
-├── main_window.py          # тільки оркестрація, мінімум коду
-├── constants.py            # кольори, розміри, версія — НОВИЙ
-├── base_tab.py             # BaseTab базовий клас — НОВИЙ
-├── tab_chat.py             # ChatTab — перенести з chat_panel_qt.py
-├── tab_plan.py             # PlanTab — перенести з plan_panel_qt.py
-├── tab_logs.py             # LogsTab — НОВИЙ
-├── tab_stats.py            # StatsTab — НОВИЙ
-├── tab_tools.py            # ToolsTab — НОВИЙ
-├── tab_settings.py         # SettingsTab — перенести з settings_tab_qt.py
-├── confirmation_qt.py      # без змін
-└── llm_endpoints_editor_qt.py  # без змін
+📦 Завантаження core модулів...
+✅ core_settings (N функцій)
+✅ core_memory (N функцій)
+...
+
+📦 Завантаження функцій...
+✅ aaa_file_operations (N функцій)
+✅ aaa_create_file (N функцій)
+...
+
+📦 Завантаження GUI Automation tools...
+✅ tools_screen_capture (N функцій)
+✅ tools_mouse_keyboard (N функцій)
+✅ tools_project_indexer (4 функцій)
+...
+
+📦 Завантаження skills...
+✅ skills/browser_skills (N функцій)
+...
 ```
 
----
 
-## Кроки виконання
-
-### Крок 1 — Створити `constants.py`
-
-- [x] Створити `core_gui_pyqt6/constants.py` з константами:
-  - `APP_VERSION = "1.0.0"`, `APP_NAME = "МАРК"`
-  - Кольори ролей чату: `COLOR_USER`, `COLOR_ASSISTANT`, `COLOR_SYSTEM`
-  - Кольори рівнів логів: `COLOR_DEBUG`, `COLOR_INFO`, `COLOR_WARNING`, `COLOR_ERROR`
-  - Розміри: `INPUT_MIN_HEIGHT`, `INPUT_MAX_HEIGHT`
-- [x] Відмітити виконання в TASK.md
-
-### Крок 2 — Створити `base_tab.py`
-
-- [x] Створити `core_gui_pyqt6/base_tab.py` з класом `BaseTab(QWidget)`:
-  - Метод `setup_ui(self)` — абстрактний, реалізується в кожній вкладці
-  - Метод `refresh(self)` — для оновлення даних вкладки при переключенні
-  - Метод `get_title(self) -> str` — назва вкладки
-- [x] Відмітити виконання в TASK.md
-
-### Крок 3 — Створити `tab_chat.py`
-
-- [x] Перенести логіку з `ChatPanelQtMixin` в клас `ChatTab(BaseTab)`
-- [x] Зберегти всі публічні методи: `add_message()`, `start_stream_message()`, `append_stream_chunk()`, `end_stream_message()`, `focus_input()`
-- [x] Сигнал `command_submitted = pyqtSignal(str)` для передачі команди з поля вводу
-- [x] Кольори ролей брати з `constants.py`
-- [x] Відмітити виконання в TASK.md
-
-### Крок 4 — Створити `tab_plan.py`
-
-- [x] Перенести логіку з `PlanPanelQtMixin` в клас `PlanTab(BaseTab)`
-- [x] Зберегти всі публічні методи: `show_plan_panel()`, `update_plan_step()`, `finish_plan_panel()`
-- [x] Відмітити виконання в TASK.md
-
-### Крок 5 — Створити `tab_logs.py`
-
-- [x] Створити `LogsTab(BaseTab)` з `QTableWidget` колонками: Час, Рівень, Модуль, Повідомлення
-- [x] Фільтр по рівню (`QComboBox`: ALL / DEBUG / INFO / WARNING / ERROR)
-- [x] Поле пошуку `QLineEdit` для фільтрації по тексту
-- [x] Кнопка "Очистити" і кнопка "Оновити" (читати з `runtime/logs/`)
-- [x] Метод `add_log_entry(level, module, message)` для додавання рядків програмно
-- [x] Кольори рядків залежно від рівня — з `constants.py`
-- [x] Відмітити виконання в TASK.md
-
-### Крок 6 — Створити `tab_stats.py`
-
-- [x] Створити `StatsTab(BaseTab)` з метриками:
-  - Загальна кількість запитів до LLM
-  - Загальна кількість токенів (prompt + completion)
-  - Середній час відповіді LLM
-  - Кількість виконаних планів / кроків агента
-- [x] `QProgressBar` для показу використання контексту (якщо доступно)
-- [x] Кнопка "Оновити" яка читає дані з `SessionBudget` або логів
-- [x] Метод `update_stats(stats: dict)` для оновлення з ядра
-- [x] Відмітити виконання в TASK.md
-
-### Крок 7 — Створити `tab_tools.py`
-
-- [x] Створити `ToolsTab(BaseTab)` з `QTableWidget` колонками: Назва, Опис, Ризик, Статус
-- [x] Завантажувати список інструментів з `FunctionRegistry` при відкритті вкладки
-- [x] Кнопка "Оновити список"
-- [x] Кнопка "Виконати" для вибраного інструменту (відкриває діалог з параметрами)
-- [x] Колонка Ризик показує `get_tool_risk(action)` з `core_tool_runtime`
-- [x] Відмітити виконання в TASK.md
-
-### Крок 8 — Перенести `tab_settings.py`
-
-- [x] Перенести логіку з `SettingsTabQtMixin` в клас `SettingsTab(BaseTab)`
-- [x] Зберегти весь існуючий функціонал (lazy build, фільтр, збереження)
-- [x] Налаштування зберігати через `QSettings` де можливо
-- [x] Відмітити виконання в TASK.md
-
-### Крок 9 — Переписати `main_window.py`
-
-- [x] `MainWindowPyQt6` більше не наслідує міксини — тільки `QMainWindow`
-- [x] Створює `QTabWidget` і додає всі 6 вкладок
-- [x] Статус-бар внизу з версією програми з `constants.APP_VERSION`
-- [x] Делегує виклики відповідним вкладкам: `add_message()` → `chat_tab.add_message()`
-- [x] Зберігає зворотну сумісність публічного API для `run_assistant_qt.py`
-- [x] Потокобезпечна черга повідомлень через Qt signal залишається
-- [x] Відмітити виконання в TASK.md
-
-### Крок 10 — Перевірка
-
-- [x] Запустити `python run.py --qt` через venv
-- [x] Перевірити що всі 6 вкладок відкриваються
-- [x] Надіслати тестову команду — перевірити чат і логи
-- [x] Перевірити вкладку Інструменти — список завантажується
-- [x] Перевірити вкладку Налаштування — зберігання працює
-- [x] Запустити `python -m pytest tests/test_pyqt6_gui.py -v` — **23 passed**
-- [x] Відмітити виконання в TASK.md
-
-
-Агент правильно проаналізував код і план виглядає добре. Ось уточнення:
-
----
-
-## Уточнення до плану переробки GUI
-
-### 1. Порядок виконання — суворо послідовний
-
-Кроки 1→2→3→4→5→6→7→8→9→10 виконувати **по одному**. Не починати наступний крок поки попередній не перевірений і запускається без помилок.
-
-### 2. Зворотна сумісність — критично
-
-`run_assistant_qt.py` не чіпати. Публічний API `MainWindowPyQt6` зберегти повністю — всі методи що викликаються з `run_assistant_qt.py`:
-- `add_message()`, `start_stream_message()`, `append_stream_chunk()`, `end_stream_message()`
-- `update_progress()`, `show_stop_button()`, `hide_stop_button()`
-- `show_plan_panel()`, `update_plan_step()`, `finish_plan_panel()`
-- `show_confirmation()`, `queue_message()`, `set_assistant()`, `set_stt_controller()`, `run()`
-
-Всі вони залишаються в `MainWindowPyQt6` але **делегують** до відповідних вкладок.
-
-### 3. Міксини після перенесення
-
-Старі файли `chat_panel_qt.py`, `plan_panel_qt.py`, `settings_tab_qt.py` — **не видаляти одразу**. Спочатку переконатись що новий код працює, тоді видалити. Щоб не ламати імпорти в тестах — перевірити `tests/test_pyqt6_gui.py` що він не імпортує міксини напряму.
-
-### 4. Закоментований план-код
-
-В `main_window.py` рядки 195-221 — розкоментувати і перенести в `tab_plan.py`. Це пріоритет, бо панель плану зараз фактично не відображається.
-
-### 5. Логи — читати реальні файли
-
-`tab_logs.py` має читати з `runtime/logs/` якщо там є `.log` або `.jsonl` файли. Якщо файл не знайдено — показати порожню таблицю без помилки. Метод `add_log_entry()` також підписати на Python `logging` через `QueueHandler` щоб логи з ядра потрапляли в таблицю в реальному часі.
-
-### 6. Статистика — реальні дані
-
-`tab_stats.py` читає з `SessionBudget.snapshot()` якщо доступний, або з `runtime/logs/` як fallback. Не хардкодити нулі — показувати реальний стан або прочерк якщо дані недоступні.
-
-### 7. Вкладка Інструменти — тільки читання
-
-`tab_tools.py` — кнопку "Виконати" зробити але при натисканні показувати `QMessageBox` з повідомленням `"Введіть команду в чаті"`. Повне виконання інструментів через GUI — окреме завдання на майбутнє.
-
-### 8. Тести
-
-Перед початком запустити `pytest tests/test_pyqt6_gui.py -v` щоб знати базовий стан. Після кожного кроку — знову запускати тести. Якщо тест впав через рефакторинг — виправити одразу, не накопичувати.
-
-### 9. `confirmation_qt.py` — мінімальна зміна
-
-Залишити `ConfirmationDialog` як є. `ConfirmationQtMixin` — залишити теж (або перенести логіку в `main_window.py` напряму). Не витрачати час на рефакторинг цього файлу — він маленький і не заважає.
-
-### 10. Після завершення
-
-Оновити `core_gui_pyqt6/__init__.py` щоб експортував `MainWindowPyQt6` з нового `main_window.py`. Перевірити `python run.py --qt` — програма запускається, всі 6 вкладок видно, чат працює.
-
-
-## FEATURE: Context Window Status Bar
-
-### Задача 1: Підключити UsageInfo до SessionBudget
-- [x] Заповнювати `UsageInfo.prompt_tokens` + `completion_tokens` з реального API response в `providers_openai_compatible.py` — ✅ було готово (див. `_parse_success()`, рядки 268-273)
-- [x] Заповнювати `UsageInfo` в `providers_anthropic.py` — ✅ було готово (рядки 101-114)
-- [x] Заповнювати `UsageInfo` в `providers_google.py` — ✅ було готово (рядки 98-111)
-- [x] Передавати `usage` в `SessionBudget.record_tokens()` після кожного `chat()` виклику — ✅ додано `budget=` параметр в `ProviderRegistry.chat()` (центральний хаб усіх LLM-викликів). При `budget` не `None` і `resp.ok` — записуються `total_tokens` та `cost_usd`
-- [x] Перевірити: `SessionBudget.usage.tokens > 0` після будь-якого LLM виклику — ✅ написано 7 інтеграційних тестів (`tests/test_providers_budget_integration.py`), всі проходять
-- [x] Відмітити виконання в TASK.md
-
----
-
-### Задача 2: Знати ліміт контексту активної моделі
-- [x] Скласти словник відомих моделей → `max_context_tokens` в `endpoint_client.py`
-- [x] Реалізувати `get_model_context_limit(model_name) -> int`
-- [x] Для локальних моделей читати ліміт з `/v1/models` або з `config` — `fetch_local_model_context_limit()`
-- [x] Зберігати `active_model` + його ліміт в `SettingsManager`
-- [x] Перевірити: функція повертає коректне значення для відомих моделей — 51 тест, всі пройдено
-
----
-
-### Задача 3: ContextController → пробрасувати токени назовні
-- [x] Додати property `context_tokens_used -> int` в `context_controller.py`
-- [x] `AgentLoop` читає `context_tokens_used` після кожного кроку
-- [x] `AgentLoop` надсилає `gui_msg` типу `"context_update": {"used": N, "limit": M, "model": "..."}`
-- [x] Перевірити: повідомлення `context_update` приходить в GUI після кожного кроку — ✅ додано обробник `context_update` в `MainWindowPyQt6._on_message()`, дані передаються в `StatsTab.update_stats()`
-- [x] Відмітити виконання в TASK.md
-
----
-
-### Задача 4: GUI — окремий статус-бар контексту
-- [x] Додати `QProgressBar` тонка лінія `~6px` під чат-панеллю або над полем вводу в `main_window.py`
-- [x] Реалізувати логіку кольору: `0-60%` зелений, `60-80%` жовтий, `80-95%` помаранчевий, `95%+` червоний
-- [x] Додати tooltip: `"12 450 / 200 000 tokens (claude-sonnet-4-6)"`
-- [x] Підключити оновлення через `_on_message()` при отриманні `"context_update"`
-- [x] Скидати бар до `0` при старті нової задачі
-- [x] Перевірити: бар видно, заповнюється, міняє колір
-- [x] Відмітити виконання в TASK.md
-
----
-
-### Задача 5: Стрімінг — підрахунок токенів у реальному часі
-- [x] Створити `functions/llm/streaming_buffer.py` з класом `StreamingBuffer`
-- [x] Додати грубу оцінку токенів `chars // 4` в `StreamingBuffer.add_chunk()` для live-оновлення бару
-- [x] Додати `StreamingBuffer.finish(real_usage)` — заміна оцінки на реальне `usage` після стрімінгу
-- [x] Підключити `StreamingBuffer` в `MainWindowPyQt6.__init__()` з callbacks `_on_streaming_status` та `_on_streaming_context_update`
-- [x] Інтегрувати `StreamingBuffer` в `append_stream_chunk()` — кожен чанк оновлює прогрес-бар контексту
-- [x] При `stream_start` автоматично встановлювати ліміти контексту з `get_model_context_limit()`
-- [x] Підключити `usage_callback` в `stream_groq_sdk()` в `groq_client.py` для отримання реального usage після стріму
-- [x] Експортувати `StreamingBuffer` з `functions/llm/__init__.py`
-- [x] Перевірити: бар поступово заповнюється під час стрімінгу
-- [x] Відмітити виконання в TASK.md
-
-Ось точний і детальний план для агента кодування, сформований на основі аналізу наданого контексту архітектури та виявлених проблем проєкту.
-
----
-
-### Етап 1: Найвищий пріоритет — Стабілізація Trunk та ліквідація критичних помилок
-
-1.1. **Полагодити trunk stability**
-
-* Повернути повну сумісність між тестами й модулем `logic_task_runner`.
-* Добитися, щоб `pytest` повністю та без помилок проходив етап збору тестів (collection).
-* Однозначно зафіксувати публічні API.
-* [x] **Виконано 24.05.2026:**
-  * Додано імпорт `Callable` в `logic_task_runner.py`
-  * Створено відсутній модуль `functions/tools/tools_windsurf.py` (SnapshotFn, WindowFinder, WindsurfState, WindsurfWindow, diff_snapshots)
-  * pytest collection: 1396 tests, 0 errors
-
-1.2. **Виправити AgentLoop JSON parsing**
-
-* Усунути зациклення, які виникають через те, що LLM генерує некоректний JSON.
-* Впровадити покращений механізм парсингу з обов'язковим fallback-режимом (або перемиканням на сильнішу модель).
-* [x] **Виконано 24.05.2026:**
-  * `decide()` більше не викидає `ValueError` назовні — завжди повертає `AgentAction`
-  * Додано `_consecutive_json_failures` трекінг — після N=5 невдач force `done`
-  * Додано подвійний fallback: JSON parsing → function-calling (tool_choice="auto") → take_screenshot/done
-  * Рефакторинг: `_parse_json_from_content`, `_try_with_tools`, `_json_failure_fallback` окремі методи
-  * Збережено очищення `<think>` блоків, markdown code blocks, brace matching
-
-1.3. **Створити Skills (абстракції над базовими діями)**
-
-* Реалізувати базові високорівневі функції: `open_browser()`, `search_google()`, `fill_form()`.
-* Створити архітектуру для накопичуваної бази навичок агента.
-* [x] **Виконано 24.05.2026:**
-  * `functions/skills/` пакет з модульною архітектурою:
-    * `base.py` — `BaseSkill`, `SkillResult`, `SkillError`
-    * `registry.py` — `SkillRegistry` з реєстрацією/пошуком/списком skills
-    * `browser_skills.py` — `OpenBrowser`, `SearchGoogle`, `FillForm` (з fallback ланцюжком: playwright → CDP → subprocess)
-  * Кожен skill має: name, description, асинхронний `execute()`, логування
-
----
 
 ### Етап 2: Середній пріоритет — Доробка Accessibility-шару та Windows-інфраструктури
 
@@ -355,21 +309,21 @@ core_gui_pyqt6/
 
 ### Етап 3: Архітектурний рефакторинг великих модулів (God Objects)
 
-3.1. **Рефакторинг `main.py**`
+3.1. **Рефакторинг `main.py`**
 
 * Розділити перевантажений файл `main.py` (1242 рядки), який зараз несе забагато відповідальностей (state, app initialization, runtime wiring), на окремі ізольовані модулі.
 
 
 * [ ] Відмітити виконання в TASK.md
 
-3.2. **Рефакторинг `agent_loop.py**`
+3.2. **Рефакторинг `agent_loop.py`**
 
 * Розрізати файл `agent_loop.py` (2008 рядків) на менші логічні компоненти з чітко визначеною зоною відповідальності.
 
 
 * [ ] Відмітити виконання в TASK.md
 
-3.3. **Рефакторинг `logic_permission_gate.py` та `logic_core.py**`
+3.3. **Рефакторинг `logic_permission_gate.py` та `logic_core.py`**
 
 * Оптимізувати 4-рівневу policy stack у `logic_permission_gate.py` (~397 рядків) та усунути дублювання з `logic_expectations.py`.
 
@@ -379,7 +333,7 @@ core_gui_pyqt6/
 
 * [ ] Відмітити виконання в TASK.md
 
-3.4. **Рефакторинг `logic_commands.py` та `global_voice_input.py**`
+3.4. **Рефакторинг `logic_commands.py` та `global_voice_input.py`**
 
 * Винести надмірну бізнес-логіку з компонента `VoiceAssistant` у файлі `logic_commands.py`.
 
@@ -425,6 +379,9 @@ core_gui_pyqt6/
 
 
 * [ ] Відмітити виконання в TASK.md
+
+---
+
 ### ЕТАП Б. Індексація проєкту для кодового агента
 
 **Контекст:** Кодовий агент має бачити структуру проєкту і грамотно вносити точкові зміни, не чіпаючи решту коду.
@@ -440,23 +397,6 @@ core_gui_pyqt6/
 - [ ] Додати інструмент `search_code(query)` — повертає 3-5 релевантних фрагментів за смисловим запитом
 
 **Поки що:** для більшості задач достатньо `search_in_code` (grep) + Repo Map.
-
----
-
-### FEATURE: Уточнення неоднозначних команд
-
-**Ціль:** Якщо команда неоднозначна (наприклад: "відкрий", "подивися код", "зроби це") — запитати уточнення до відправки в LLM.
-
-- [x] Проаналізувати `process_command()` — pre-check відсутній, всі команди йдуть до LLM
-- [x] Визначити критерії неоднозначності: дієслово без об'єкта, вказівні займенники, "код/проект" без вказівки
-- [x] Реалізувати `needs_clarification()` в `commands_planner.py`
-- [x] Підключити перевірку в `process_command()` перед LLM-маршрутом
-- [x] Реалізувати `_pending_clarification` — збереження контексту + об'єднання з уточненням
-- [x] Створити тести (7 тестів, всі пройдено)
-- [x] Виправити зациклення: `_skip_clarification` флаг після об'єднання
-- [x] Виправити патерни `_AMBIGUOUS_PROJECT_PATTERNS` — додано `$` для точного збігу
-- [x] Прибрати дублювання user-повідомлень та мітку "неоднозначна команда"
-- [x] Додати тести на виправлене зациклення (5 тестів)
 
 ---
 
@@ -554,23 +494,3 @@ core_gui_pyqt6/
   - Пріоритет: P1
   - Деталі:
     - Якщо `enable_vision=True` і провайдер доступний — додавати vision_description в промпт
-
----
-
-### ПЕРЕРОБКА ВКЛАДКИ ЛОГИ (tab_logs.py) — 24.05.2026
-
-- [x] `_load_from_files()` обмежено до 50 останніх записів (читання з кінця файлу через `_read_tail()`)
-- [x] `refresh()` прибрано автозавантаження — таблиця порожня з підказкою
-- [x] Кнопка "Оновити" підключена до `_load_from_files()` з лімітом 50 записів
-- [x] `_poll_log_queue()` додано rolling window: макс. 50 рядків, найстаріші видаляються
-- [x] Додано `_placeholder_label` з текстом "Натисніть 'Оновити' щоб завантажити останні 50 записів"
-- [x] Вкладка відкривається миттєво без зависання
-
-### ПЕРЕРОБКА ВКЛАДКИ НАЛАШТУВАННЯ (tab_settings.py) — 24.05.2026
-
-- [x] Layout перероблено на `QSplitter` з лівою панеллю (QListWidget, ~160px) + права панель (QScrollArea)
-- [x] Категорії визначено з реального `SETTINGS_SCHEMA`: Асистент, Безпека, Продуктивність, LLM, LLM Моделі, Розпізнавання мови, Vision-LM, Аудіо, Озвучення, GUI, Global Voice Input, Аудіо-фільтри
-- [x] Іконки категорій (опційно) в `CATEGORY_ICONS`
-- [x] Рядок пошуку `QLineEdit` зверху над лівою панеллю — фільтрує по всіх категоріях, показує результати в правій панелі
-- [x] При кліку на категорію — права панель будує контент (lazy build, кешування в `_category_widgets`)
-- [x] За замовчуванням при відкритті — перша категорія вибрана

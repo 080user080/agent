@@ -41,14 +41,8 @@ def _gui_notify(gui_queue, status_msg: str, chat_msg: str | None = None):
 
 
 def print_audio_diagnostics():
-    """Вивести інформацію про мікрофон."""
+    """Вивести інформацію про вибраний мікрофон."""
     try:
-        print("\n" + "=" * 60)
-        print("🎤 ДОСТУПНІ МІКРОФОНИ:")
-        print("=" * 60)
-        print(sd.query_devices())
-        print("=" * 60 + "\n")
-
         if MICROPHONE_DEVICE_ID is not None:
             print(f"{Fore.YELLOW}🎤 Вибрано мікрофон #{MICROPHONE_DEVICE_ID}")
             device_info = sd.query_devices(MICROPHONE_DEVICE_ID)

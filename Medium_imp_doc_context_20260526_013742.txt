@@ -167,6 +167,7 @@ runtime\settings
 runtime\snapshots
 README.md
 TASKS.md
+TASKS_Done.md
 info.txt
 main.py
 migrate_runtime.py
@@ -360,7 +361,7 @@ class MainWindowPyQt6(QMainWindow):
     def _restore_interface_state(self) -> None:
         """Відновити інтерфейс: активна вкладка, приховані вкладки."""
     def _apply_hidden_tabs(self, hidden_tabs: list) -> None:
-        """Приховати вкладки зі списку hidden_tabs."""
+        """Приховати вкладки зі списку hidden_tabs. Чат та Налаштування не приховуються."""
     def _save_interface_state(self) -> None:
         """Зберегти стан інтерфейсу (активна вкладка)."""
     def _on_tab_interface_changed(self, index: int) -> None:
@@ -3624,7 +3625,7 @@ def get_stt_controller(process_command_callback: Callable[[str], None], gui_queu
 def _gui_notify(gui_queue, status_msg: str, chat_msg: str | None):
     """Допоміжна функція: відправити статус + чат-повідомлення в GUI."""
 def print_audio_diagnostics():
-    """Вивести інформацію про мікрофон."""
+    """Вивести інформацію про вибраний мікрофон."""
 def run_audio_smoke_test():
     """Короткий тест запису."""
 class AudioInitializer:
@@ -4670,6 +4671,7 @@ class RequestRouter:
 ============================================================
 Імпорти:
   from __future__ import annotations
+  import time
   from typing import Callable, Optional
 
 Сутності:
@@ -5857,21 +5859,20 @@ def condition_chat_idle(chat_provider, idle_seconds: float) -> bool:
   from __future__ import annotations
   import time
   from typing import Any, Callable, Dict, List, Optional, Union
-  from functions.runtime.logic_watcher import ConditionFn
 
 Сутності:
-def _default_window_lister() -> List[str]:
-    """Повертає список видимих заголовків вікон через pygetwindow."""
-def _default_process_lister() -> List[Dict[str, Any]]:
-    """Повертає список словників `{pid, name}` через psutil."""
-def condition_window_title_contains(substr: str) -> ConditionFn:
-    """True, якщо серед відкритих вікон є хоч одне, чий заголовок містить `substr`."""
-def condition_process_running(target: Union[str, int]) -> ConditionFn:
-    """True, якщо процес з таким `name` або `pid` запущений."""
-def condition_process_finished(target: Union[str, int]) -> ConditionFn:
-    """True *один раз*, коли процес, що раніше був запущеним, зник."""
-def condition_chat_idle(activity_fn: ActivityFn) -> ConditionFn:
-    """True, коли `activity_fn()` не змінює результат протягом `idle_seconds`."""
+def _make_window_lister() -> Callable[[], List[str]]:
+    """Повертає функцію, яка читає список заголовків вікон через pygetwindow."""
+def _make_process_lister() -> Callable[[], List[Dict[str, Any]]]:
+    """Повертає функцію, яка читає список процесів через psutil."""
+def condition_window_title_contains(substring: str) -> Callable[[Dict[str, Any]], bool]:
+    """Повертає condition: True якщо будь-яке вікно містить `substring` у тайтлі."""
+def condition_process_running(name_or_pid: Union[str, int]) -> Callable[[Dict[str, Any]], bool]:
+    """Повертає condition: True якщо процес з таким ім'ям або PID існує."""
+def condition_process_finished(name_or_pid: Union[str, int]) -> Callable[[Dict[str, Any]], bool]:
+    """Повертає one-shot condition: True коли процес зник після того, як був."""
+def condition_chat_idle(activity_fn: Callable[[], Any]) -> Callable[[Dict[str, Any]], bool]:
+    """Повертає condition: True коли `activity_fn` не змінює значення"""
 
 ============================================================
 Файл: D:\Python\agent\functions\runtime\core_action_recorder.py
@@ -7026,7 +7027,7 @@ def list_sandbox_scripts():
 Сутності:
 def write_file(filepath: str, content: str) -> dict:
     """Створити або перезаписати текстовий файл."""
-def list_directory(directory: str) -> dict:
+def list_directory(directory: str, path: str) -> dict:
     """Показати вміст директорії."""
 def read_file(filepath: str) -> dict:
     """Прочитати вміст текстового файлу."""
@@ -8636,6 +8637,562 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 - Статуси: `Завершено` > `В процесі` > `Не розпочато`
 
 ---
+# Self-Coding Agent Pipeline
+
+## Мета
+Дати агенту здатність аналізувати власний код, планувати зміни та вносити їх безпечно.
+
+---
+
+## Фаза 1 — Само-читання та аналіз
+
+- [ ] Відмітити виконання в TASK.md
+### Крок 1.1 — Self-context builder
+Створити `functions/planning/self_code_context.py`
+Функція `build_self_context(task: str) -> dict`:
+- читає `get_repo_map()`
+- знаходить релевантні файли через `search_in_code()`
+- читає їх через `read_code_file()`
+- повертає контекст для LLM: які файли релевантні, їх поточний стан
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 1.2 — Gap analyzer
+Функція `analyze_gap(task: str, context: dict) -> dict`:
+- через LLM визначає: що треба змінити/додати
+- повертає список файлів для зміни + опис змін
+- перевіряє чи зміна безпечна (не чіпає критичні модулі)
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Фаза 2 — Безпечне редагування
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 2.1 — Snapshot before edit
+У `core_undo_manager.py` вже є `save_snapshot()`.
+Переконатись що перед кожною зміною коду робиться snapshot.
+Розширити `edit_file()` — автоматичний snapshot якщо файл у папці `functions/`.
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 2.2 — Code patch generator
+Створити `functions/planning/self_code_patcher.py`
+Функція `generate_patch(file_path: str, task: str, context: dict) -> str`:
+- читає поточний вміст файлу
+- через LLM генерує тільки змінену частину (не весь файл)
+- валідує синтаксис через `ast.parse()` перед застосуванням
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 2.3 — Syntax validator
+Функція `validate_python_syntax(code: str) -> tuple[bool, str]`:
+- `ast.parse()` — синтаксична перевірка
+- перевірка імпортів на валідність
+- повертає `(ok, error_message)`
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Фаза 3 — Верифікація після змін
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 3.1 — Post-edit verification
+Функція `verify_edit(file_path: str, task: str) -> dict`:
+- повторно читає змінений файл
+- через LLM перевіряє чи зміна відповідає задачі
+- оновлює `repo_map` через `update_file_in_map()`
+- повертає `{ok, summary, warnings}`
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 3.2 — Rollback якщо верифікація провалилась
+Якщо `verify_edit` повертає `ok=False`:
+- автоматично викликати `restore_snapshot()`
+- логувати в `self_learning` як невдалу спробу
+- повернути детальний звіт чому не вийшло
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Фаза 4 — Pipeline інтеграція
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 4.1 — Self-coding pipeline
+Створити `functions/planning/pipeline_self_coding.py`
+Клас `SelfCodingPipeline` — реалізує `Pipeline.compile()`:
+- отримує `TaskSpec` з `domain=DOMAIN_CODE` де ціль — файл агента
+- будує `Plan` з кроків: context → analyze → snapshot → patch → validate → verify
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 4.2 — Реєстрація в `make_default_registry()`
+В `core_plan_compiler.py` додати `DOMAIN_SELF_CODE` домен
+та зареєструвати `SelfCodingPipeline`.
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Фаза 5 — Захисні обмеження
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 5.1 — Список заборонених для авто-редагування файлів
+В `core_tool_runtime.py` або новому `self_code_safety.py`:
+- `SELF_EDIT_BLACKLIST` — файли які агент НЕ може змінювати сам:
+  - `core_safety_sandbox.py`
+  - `logic_permission_gate.py`
+  - `core_tool_runtime.py`
+  - `main.py`
+  - `run.py`
+
+- [ ] Відмітити виконання в TASK.md
+
+### Крок 5.2 — Обов'язкове підтвердження користувача
+Будь-яка само-модифікація проходить через `confirm_action()`.
+Без підтвердження — тільки читання та аналіз, без запису.
+
+- [ ] Відмітити виконання в TASK.md
+
+---
+
+## Критичні ризики (врахувати в коді)
+
+| Ризик | Мітигація |
+|-------|-----------|
+| Зламаний синтаксис | `ast.parse()` перед записом |
+| Нескінченна рекурсія само-редагування | Blacklist критичних файлів |
+| Непередбачені побічні ефекти | Snapshot + rollback |
+| LLM галюцинує функції | Верифікація після зміни |
+| Зміна змінює поведінку Guards | Ізоляція safety модулів |
+
+
+
+# Завдання: Виправлення двох багів — list_directory та склеювання слів
+
+## Мета
+Виправити баги:
+1. `list_directory()` не приймала параметр `path` → падала з `got an unexpected keyword argument 'path'`
+2. Команди "подивися мій проект", "подивис, проект", "подивися папку" не розпізнавалися → LLM склеював слова
+
+## Виконані кроки
+
+### 1. list_directory — додано підтримку `path`
+- [x] Відкрити `D:\Python\agent\functions\tools\aaa_file_operations.py`
+- [x] Змінити сигнатуру: `def list_directory(directory: str = '.', path: str = None) -> dict`
+- [x] Логіка: `directory = directory or path or '.'`
+- [x] Відмітити виконання в TASK.md
+
+### 2. Розширено _AMBIGUOUS_PROJECT_PATTERNS
+- [x] Відкрити `D:\Python\agent\functions\gui\commands_planner.py`
+- [x] Додано варіанти з "мій": `подивися мій проект`, `покажи мій проект`, `відкрий мій проект`
+- [x] Додано варіанти з комою: `подивис, проект`, `покажи, код` тощо
+- [x] Відмітити виконання в TASK.md
+
+### 3. Виправлено _CLEAR_PATTERNS
+- [x] Замінено `\s` на `(\s|$)` у всіх патернах з об'єктом
+- [x] "подивися папку" тепер матчиться (раніше вимагало пробіл після "папку")
+- [x] Відмітити виконання в TASK.md
+
+### 4. Виправлено друкарську помилку
+- [x] `\ss+` → `\s+` в одному з патернів
+
+---
+
+# Завдання: Виправлення рекурсивного завантаження модулів
+
+## Мета
+Виправити `load_all_modules()` в `functions/runtime/logic_core.py` — функції з підпапок (`functions/tools/`, `functions/skills/`) не завантажуються через не-рекурсивні glob-пошуки.
+
+---
+
+## Кроки
+
+### 1. Відкрити файл для аналізу
+- [x] Прочитати `D:\Python\agent\functions\runtime\logic_core.py` повністю
+- [x] Відмітити виконання в TASK.md
+
+### 2. Виправити glob для `core_*.py`
+- [x] Знайти рядок з `functions_dir.glob("core_*.py")` (~54)
+- [x] Замінити на `functions_dir.rglob("core_*.py")`
+- [x] Відмітити виконання в TASK.md
+
+### 3. Виправити glob для `aaa_*.py`
+- [x] Знайти рядок з `functions_dir.glob("aaa_*.py")` (~82)
+- [x] Замінити на `functions_dir.rglob("aaa_*.py")`
+- [x] Відмітити виконання в TASK.md
+
+### 4. Виправити glob для `tools_*.py`
+- [x] Знайти рядок з `functions_dir.glob("tools_*.py")` (~107)
+- [x] Замінити на `functions_dir.rglob("tools_*.py")`
+- [x] Відмітити виконання в TASK.md
+
+### 5. Додати блок завантаження `functions/skills/`
+- [x] Після блоку `tools_*.py` додано новий блок, який:
+  - Шукає `skills_dir = functions_dir / "skills"`
+  - Перевіряє що директорія існує
+  - Завантажує всі `*.py` крім `__init__.py` через `importlib`
+  - Виводить лог аналогічно до інших блоків (`✅ skills/<назва> (N функцій)`)
+- [x] Відмітити виконання в TASK.md
+
+### 6. Перевірка дублікатів після rglob
+- [x] Додано `_loaded_modules` — множина для відстеження завантажених імен
+- [x] Кожен блок (core/aaa/tools) перевіряє `if module_name in _loaded_modules` перед завантаженням
+- [x] Відмітити виконання в TASK.md
+
+### 7. Запустити та перевірити
+- [x] Запустити `run.py`
+- [x] Переконатись у консолі що тепер виводиться завантаження функцій з `functions/tools/` (aaa_*, tools_*) та `functions/skills/`
+
+---
+
+## Очікуваний результат у консолі після виправлення
+
+```
+📦 Завантаження core модулів...
+✅ core_settings (N функцій)
+✅ core_memory (N функцій)
+...
+
+📦 Завантаження функцій...
+✅ aaa_file_operations (N функцій)
+✅ aaa_create_file (N функцій)
+...
+
+📦 Завантаження GUI Automation tools...
+✅ tools_screen_capture (N функцій)
+✅ tools_mouse_keyboard (N функцій)
+✅ tools_project_indexer (4 функцій)
+...
+
+📦 Завантаження skills...
+✅ skills/browser_skills (N функцій)
+...
+```
+
+
+
+### Етап 2: Середній пріоритет — Доробка Accessibility-шару та Windows-інфраструктури
+
+2.1. **Доробити accessibility-шар для Windows**
+
+* Замінити заглушки "Not implemented yet" у файлі `functions/tools_ui_accessibility.py`.
+
+
+* Повністю реалізувати функції `uia_list_elements`, `uia_find_button`, `uia_click_element`, `uia_set_text`.
+
+
+* Провести повне smoke-тестування інтерфейсу в середовищі Windows.
+
+
+* [ ] Відмітити виконання в TASK.md
+
+2.2. **Додати Windows CI / smoke suite**
+
+* Створити та інтегрувати спеціалізований smoke-набір тестів для автоматичної перевірки GUI та взаємодії з ОС Windows.
+
+
+* [ ] Відмітити виконання в TASK.md
+
+2.3. **Створити router для вибору агента**
+
+* Реалізувати логіку Meta-agent, який аналізує складність задачі та визначає оптимального виконавця (локальний інструмент чи зовнішній AI-провайдер через API).
+
+
+* [ ] Відмітити виконання в TASK.md
+
+---
+
+### Етап 3: Архітектурний рефакторинг великих модулів (God Objects)
+
+3.1. **Рефакторинг `main.py`**
+
+* Розділити перевантажений файл `main.py` (1242 рядки), який зараз несе забагато відповідальностей (state, app initialization, runtime wiring), на окремі ізольовані модулі.
+
+
+* [ ] Відмітити виконання в TASK.md
+
+3.2. **Рефакторинг `agent_loop.py`**
+
+* Розрізати файл `agent_loop.py` (2008 рядків) на менші логічні компоненти з чітко визначеною зоною відповідальності.
+
+
+* [ ] Відмітити виконання в TASK.md
+
+3.3. **Рефакторинг `logic_permission_gate.py` та `logic_core.py`**
+
+* Оптимізувати 4-рівневу policy stack у `logic_permission_gate.py` (~397 рядків) та усунути дублювання з `logic_expectations.py`.
+
+
+* Зменшити зв'язність у `logic_core.py`: розвантажити `FunctionRegistry` та винести ~200 рядків хардкодженого тексту з методу `get_system_prompt()`.
+
+
+* [ ] Відмітити виконання в TASK.md
+
+3.4. **Рефакторинг `logic_commands.py` та `global_voice_input.py`**
+
+* Винести надмірну бізнес-логіку з компонента `VoiceAssistant` у файлі `logic_commands.py`.
+
+
+* Очистити й виділити в окрему логіку механізми вставки тексту в методах `_insert_segment` та `_send_input_unicode` у `global_voice_input.py`.
+
+
+* [ ] Відмітити виконання в TASK.md
+
+3.5. **Оптимізація планувальника та усунення накладання пайплайнів**
+
+* Виправити перетин обов'язків між модулями `core_planner.py / core_planner_critic.py / core_planner_runner.py` та файлом `logic_task_runner.py`.
+
+
+* Оптимізувати Phase 13 (компоненти `core_task_intake.py / task_spec.py / pipeline_code.py / core_plan_compiler.py`): зараз 4 файли обслуговують один пайплайн, хоча `ActionDecider` вже має вбудоване online-планування.
+
+
+* [ ] Відмітити виконання в TASK.md
+
+---
+
+### Етап 4: Ліквідація дублювання коду та файлів
+
+4.1. **Усунення дублювання конфігурацій та середовищ**
+
+* Видалити дублікат `core_settings.py` (файл присутній одночасно у `functions/` та `core/`).
+
+
+* Проаналізувати та об'єднати ідентичний код у файлах `safety_sandbox.py` та `core_safety_sandbox.py`.
+
+
+* [ ] Відмітити виконання в TASK.md
+
+4.2. **Усунення дублювання STT та підсистем навчання/звітності**
+
+* Об'єднати або чітко розмежувати однакові STT-компоненти у файлах `logic_stt.py` та `core_stt_listener.py`.
+
+
+* Позбутися дублювання в логіці самонавчання агента між `logic_task_learner.py` та `self_learning.py`.
+
+
+* Синхронізувати та об'єднати генератори звітів у `logic_execution_report.py` та `logic_report_generator.py`.
+
+
+* [ ] Відмітити виконання в TASK.md
+
+---
+
+### ЕТАП Б. Індексація проєкту для кодового агента
+
+**Контекст:** Кодовий агент має бачити структуру проєкту і грамотно вносити точкові зміни, не чіпаючи решту коду.
+
+**Виконані підетапи (перенесено в TASKS_Done.md):** Б1 (Repo Map), Б2 (Dependency Graph), Б3 (Навчання комбінувати інструменти) — ✅
+
+#### Б4. Семантичний пошук (відкласти до реальної потреби)
+
+**Реалізувати ТІЛЬКИ якщо виникне конкретна проблема:** агент не може знайти функцію бо не знає її назви але може описати що вона робить.
+
+- [ ] Реалізувати `functions/vector_memory.py` на базі ChromaDB
+  - Кожна функція/клас індексується як окремий чанк
+- [ ] Додати інструмент `search_code(query)` — повертає 3-5 релевантних фрагментів за смисловим запитом
+
+**Поки що:** для більшості задач достатньо `search_in_code` (grep) + Repo Map.
+
+---
+
+### COMPUTER USE АГЕНТ — МАРК як людина за комп'ютером
+
+> Базовий план: див. `docs/PLAN_COMPUTER_USE.md` (1138 рядків, аудит коду 26.04.2026)
+
+> Мета: Перетворити МАРК з "набору інструментів з планером" на агента, який користується ПК як людина і може тестувати GUI як QA-інженер.
+
+**Поточний стан (станом на 30.04.2026):**
+
+- ✅ AgentLoop повний (`functions/agent_loop.py`, ~1190 рядків) — observe→plan→act→check + LLM tool-calling
+- ✅ ActionDecider з LLM tool-calling (через `logic_llm_tools.ask_llm_with_tools`)
+- ✅ Tools schema (`functions/logic_agent_tools_schema.py`) — AGENT/VISION/UIA/BROWSER tools
+- ✅ `Observation` посилене: screenshot, OCR, UI elements, UIA tree, vision description, active window
+- ✅ `check()` посилене: act_result + ExpectRegistry (17 evaluator-ів) + screen hash fallback
+- ✅ AgentLoop інтегрований з GUI (кнопка "🤖 Агент" → run_agent_loop)
+- ✅ Базові інструменти (mouse_keyboard, screen_capture, ocr, ui_detector, window_manager, app_recognizer, visual_diff)
+- ✅ Phase 11+ стек (TaskRunner, PermissionGate, Expectations, ExecutionReport, SessionBudget, PlanCritic)
+- ✅ UIA dual-backend (`tools_ui_accessibility.py`) — uiautomation (основний) + pywinauto fallback, 10+ LLM інструментів (uia_list_elements, uia_click_element, uia_set_text тощо), інтеграція з AgentLoop.observe() для UIA-дерева
+- ✅ Vision providers (`providers_vision.py`) — analyze_image для OpenAI/Claude/Gemini, detect_ui_elements/suggest_actions — MVP stubs
+- ✅ Browser CDP + Playwright (`tools_browser_cdp.py`, `tools_playwright.py`)
+- ✅ Repair loop базовий (`logic_repair_loop.py`)
+- ✅ Checkpoint manager (`core_checkpoint.py`)
+- ✅ LLM tool-calling низькорівневий (`logic_llm_tools.py`)
+- 🟡 **Gap**: GUITester для тестування GUI як QA-інженер — відсутній (ЕТАП 2)
+- 🟡 **Gap**: Vision-LM, Browser capabilities в decider — вимкнені за замовчуванням (треба ввімкнути в config). UIA вже інтегровано.
+
+#### ЕТАП 2: GUI ТЕСТУВАЛЬНИК (ВИСОКА ЦІННІСТЬ для self-validation)
+
+**Ціль:** МАРК може тестувати власні зміни в GUI як QA-інженер: відкрити програму, перевірити функції, зробити висновки.
+
+**Робоча основа:**
+- [ ] `test_duplication_direct.py` (~134 рядків) — працюючий скрипт для автоматизованого GUI тестування
+- Використовує: `activate_window_by_title`, `keyboard_type`, `keyboard_press`
+- Запускає GUI через subprocess, вставляє текст, чекає відповіді, читає логи
+- Це базовий шаблон для розширення до повноцінного GUITester
+
+- [ ] Створити `functions/logic_gui_tester.py` (~500 рядків) на основі `test_duplication_direct.py`
+  - Пріоритет: P1
+  - Деталі:
+    - `class GUITester` що використовує `AgentLoop` під капотом
+    - Метод `test_scenario(scenario: TestScenario) → TestReport`
+    - Метод `test_function(app_name, function_name) → TestCaseResult` — швидкий тест однієї функції
+    - Метод `test_changes(app_name, changes_description) → TestReport` — тестування ПІСЛЯ змін у коді
+    - Інтеграція з `core_action_recorder.ActionRecorder` (скріншоти до/після вже є)
+    - Інтеграція з `tools_visual_diff` (порівняння baseline/current)
+    - dataclasses: `TestCase`, `TestScenario`, `TestCaseResult`, `TestReport`, `Expectation`
+    - Built-in expectations: `TextVisible`, `TextNotVisible`, `WindowTitle`, `ElementExists`, `NoErrorDialog`, `VisualMatch`, `FileExists`
+
+- [ ] Створити `functions/logic_gui_test_report.py` (~200 рядків)
+  - Пріоритет: P1
+  - Деталі:
+    - `class TestReportGenerator` — markdown-звіт з вердиктом
+    - Колонки: Тест, Статус (✅/❌), Час, Деталі
+    - Розділ "❌ Невдалі тести" з очікуваним vs отриманим, скріншотами
+    - Висновок: "Все ок" або "Не пройшло X з Y, рекомендація: доробити"
+    - Збереження звіту в `runtime/test_reports/{date}_{scenario}.md`
+
+- [ ] Створити каталог сценаріїв `scenarios/`
+  - Пріоритет: P1
+  - Деталі:
+    - `scenarios/test_notepad_basic.json` — базові функції Notepad
+    - `scenarios/test_marka_gui.json` — самотестування PyQt6 GUI МАРКА (відкрити, ввести команду, перевірити відповідь, відсутність дублювання)
+    - `scenarios/test_browser_basic.json` — базова веб-автоматизація
+    - JSON-формат: `name`, `app_name`, `setup_steps`, `test_cases[]{name, goal, expectations[]}`, `teardown_steps`
+
+- [ ] Інтегрувати GUITester в GUI як вкладка "Тестування"
+  - Пріоритет: P2
+  - Файли: `core_gui_pyqt6/main_window.py`, новий `core_gui_pyqt6/test_panel_qt.py`
+  - Деталі:
+    - QListWidget зі списком сценаріїв
+    - Кнопки: "Запустити", "Запустити всі", "Переглянути звіт"
+    - Прогрес-бар виконання
+    - Перегляд скріншотів до/після для кожного тесту
+
+- [ ] Тести для `logic_gui_tester.py` (`tests/test_logic_gui_tester.py`, ~200 рядків)
+  - Пріоритет: P1
+
+**Оцінка:** ~700 нових рядків + ~50 змін + ~200 тестів. Складність: середня (використовує AgentLoop).
+
+#### ЕТАП 4: VISION-LLM ІНТЕГРАЦІЯ (РОЗУМІННЯ ЕКРАНУ)
+
+**Ціль:** Агент дивиться на скріншот через GPT-4V/Claude Vision/LLaVA і розуміє що бачить.
+
+- [ ] Перевірити та доробити `providers_vision.py`
+  - Пріоритет: P1
+  - Деталі:
+    - Перевірити що реалізовано: `OpenAIVisionProvider`, `AnthropicVisionProvider`, `OllamaVisionProvider`
+    - Додати методи: `describe(image_path, prompt) → str`, `plan_action(image_path, goal) → Dict`, `find_element(image_path, description) → Dict[bbox]`
+    - `get_vision_provider(assistant)` factory — з конфігу `VISION_PROVIDER` в SETTINGS_SCHEMA
+    - Кешування: не аналізувати той самий скріншот повторно (хеш скрину → опис)
+
+- [ ] Інтегрувати у `ActionDecider.decide()` (~50 рядків)
+  - Пріоритет: P1
+  - Деталі:
+    - Якщо `enable_vision=True` і провайдер доступний — додавати vision_description в промпт
+
+============================================================
+Документація/файл: D:\Python\agent\TASKS_Done.md
+============================================================
+# Виконані задачі МАРК
+> Останнє оновлення: 26.05.2026 (00:32)
+
+**ВАЖЛИВО:** Всі тести та запуск програми повинні виконуватися тільки через віртуальне середовище (venv).
+
+```bash
+cd /d D:\Python\TEXT\LLM_model
+call venv\Scripts\activate.bat
+cd /d D:\Python\agent
+```
+
+---
+
+## НЕДАВНІ ВИПРАВЛЕННЯ (15.05.2026)
+
+### A0. Усунуто конфлікт шляхів виконання (P0)
+
+---
+
+## НЕДАВНІ ВИПРАВЛЕННЯ (02.05.2026, 19:35)
+
+### Виправлено Global Voice Input - tray icon
+### Виправлено Global Voice Input - вставка буфера обміну
+
+---
+
+## ВИКОНАНІ ЗАВДАННЯ (перенесено 24.05.2026)
+
+### ЕТАП Б. Індексація проєкту для кодового агента
+
+#### Б1. Repo Map — карта проєкту
+- [x] Створити `functions/project_indexer.py`
+- [x] Додати інструмент `get_repo_map()` в реєстр функцій
+- [x] Додати інструмент `update_repo_map(filepath)`
+- [x] Інтеграція в `get_coding_system_prompt()`
+
+#### Б2. Dependency Graph — карта залежностей
+- [x] Розширити `functions/project_indexer.py` — аналіз `import`
+- [x] Додати інструмент `get_file_dependents(filepath)`
+- [x] Оновити `build_coding_section()`
+
+#### Б3. Навчити агента комбінувати інструменти
+- [x] Оновити системний промпт coding-режиму
+- [x] Додати явну заборону в промпт
+
+---
+
+## ВИКОНАНІ ЗАВДАННЯ (перенесено 18.05.2026)
+
+### ЕТАП А. Стабілізація та рефакторинг архітектури
+
+#### А1. Полагодити pytest collection (P0) ✅
+#### А2. Реструктуризація папки functions/ ✅
+#### Стабілізація AgentLoop для коду (перед А3) ✅
+#### А3. Розрізати великі модулі ✅
+
+**Частина 1: Розбиття `main.py`**
+- Крок 1.1: `core_initializer_checks.py`
+- Крок 1.2: `audio/initializer.py`
+- Крок 1.3: `agent_coordinator.py`
+
+**Частина 2: Розбиття `agent_loop.py`**
+- Крок 2.1: `observe.py`
+- Крок 2.2: `plan.py`
+- Крок 2.3: `act.py`
+- Крок 2.4: `check.py`
+- Крок 2.5: Перезбирання `AgentLoop`
+
+**Частина 3: Розбиття `logic_commands.py`**
+- Крок 3.1: `commands_streaming.py`
+- Крок 3.2: `commands_audio.py`
+- Крок 3.3: `commands_planner.py`
+- Крок 3.4: Рефакторинг `logic_commands.py`
+
+**Частина 4: Розбиття `core_planner.py`**
+- Крок 4.1: `planner_prompt_builder.py`
+- Крок 4.2: `planner_validator.py`
+- Крок 4.3: `planner_repair.py`
+- Крок 4.4: Спрощення `core_planner.py`
+
+---
+
+## 📈 Загальні критерії готовності (Definition of Done)
+
+- [x] **SRP:** Кожен файл має одну чітку відповідальність
+- [x] **Zero ImportError:** Запуск без помилок
+- [x] **Тести:** 1250 passed, 1 skipped
+- [ ] **End-to-End:** ⏳ Не верифіковано
+
+---
+
+## ПЕРЕРОБКА GUI НА ВКЛАДКОВУ СТРУКТУРУ (перенесено 25.05.2026)
 
 # Аналіз і план переробки GUI
 
@@ -8830,8 +9387,9 @@ core_gui_pyqt6/
 
 Оновити `core_gui_pyqt6/__init__.py` щоб експортував `MainWindowPyQt6` з нового `main_window.py`. Перевірити `python run.py --qt` — програма запускається, всі 6 вкладок видно, чат працює.
 
+---
 
-## FEATURE: Context Window Status Bar
+## FEATURE: Context Window Status Bar (перенесено 25.05.2026)
 
 ### Задача 1: Підключити UsageInfo до SessionBudget
 - [x] Заповнювати `UsageInfo.prompt_tokens` + `completion_tokens` з реального API response в `providers_openai_compatible.py` — ✅ було готово (див. `_parse_success()`, рядки 268-273)
@@ -8884,13 +9442,11 @@ core_gui_pyqt6/
 - [x] Перевірити: бар поступово заповнюється під час стрімінгу
 - [x] Відмітити виконання в TASK.md
 
-Ось точний і детальний план для агента кодування, сформований на основі аналізу наданого контексту архітектури та виявлених проблем проєкту.
-
 ---
 
-### Етап 1: Найвищий пріоритет — Стабілізація Trunk та ліквідація критичних помилок
+## ЕТАП 1: Стабілізація Trunk та ліквідація критичних помилок (перенесено 25.05.2026)
 
-1.1. **Полагодити trunk stability**
+### 1.1. Полагодити trunk stability
 
 * Повернути повну сумісність між тестами й модулем `logic_task_runner`.
 * Добитися, щоб `pytest` повністю та без помилок проходив етап збору тестів (collection).
@@ -8900,7 +9456,7 @@ core_gui_pyqt6/
   * Створено відсутній модуль `functions/tools/tools_windsurf.py` (SnapshotFn, WindowFinder, WindsurfState, WindsurfWindow, diff_snapshots)
   * pytest collection: 1396 tests, 0 errors
 
-1.2. **Виправити AgentLoop JSON parsing**
+### 1.2. Виправити AgentLoop JSON parsing
 
 * Усунути зациклення, які виникають через те, що LLM генерує некоректний JSON.
 * Впровадити покращений механізм парсингу з обов'язковим fallback-режимом (або перемиканням на сильнішу модель).
@@ -8911,7 +9467,7 @@ core_gui_pyqt6/
   * Рефакторинг: `_parse_json_from_content`, `_try_with_tools`, `_json_failure_fallback` окремі методи
   * Збережено очищення `<think>` блоків, markdown code blocks, brace matching
 
-1.3. **Створити Skills (абстракції над базовими діями)**
+### 1.3. Створити Skills (абстракції над базовими діями)
 
 * Реалізувати базові високорівневі функції: `open_browser()`, `search_google()`, `fill_form()`.
 * Створити архітектуру для накопичуваної бази навичок агента.
@@ -8924,128 +9480,7 @@ core_gui_pyqt6/
 
 ---
 
-### Етап 2: Середній пріоритет — Доробка Accessibility-шару та Windows-інфраструктури
-
-2.1. **Доробити accessibility-шар для Windows**
-
-* Замінити заглушки "Not implemented yet" у файлі `functions/tools_ui_accessibility.py`.
-
-
-* Повністю реалізувати функції `uia_list_elements`, `uia_find_button`, `uia_click_element`, `uia_set_text`.
-
-
-* Провести повне smoke-тестування інтерфейсу в середовищі Windows.
-
-
-* [ ] Відмітити виконання в TASK.md
-
-2.2. **Додати Windows CI / smoke suite**
-
-* Створити та інтегрувати спеціалізований smoke-набір тестів для автоматичної перевірки GUI та взаємодії з ОС Windows.
-
-
-* [ ] Відмітити виконання в TASK.md
-
-2.3. **Створити router для вибору агента**
-
-* Реалізувати логіку Meta-agent, який аналізує складність задачі та визначає оптимального виконавця (локальний інструмент чи зовнішній AI-провайдер через API).
-
-
-* [ ] Відмітити виконання в TASK.md
-
----
-
-### Етап 3: Архітектурний рефакторинг великих модулів (God Objects)
-
-3.1. **Рефакторинг `main.py**`
-
-* Розділити перевантажений файл `main.py` (1242 рядки), який зараз несе забагато відповідальностей (state, app initialization, runtime wiring), на окремі ізольовані модулі.
-
-
-* [ ] Відмітити виконання в TASK.md
-
-3.2. **Рефакторинг `agent_loop.py**`
-
-* Розрізати файл `agent_loop.py` (2008 рядків) на менші логічні компоненти з чітко визначеною зоною відповідальності.
-
-
-* [ ] Відмітити виконання в TASK.md
-
-3.3. **Рефакторинг `logic_permission_gate.py` та `logic_core.py**`
-
-* Оптимізувати 4-рівневу policy stack у `logic_permission_gate.py` (~397 рядків) та усунути дублювання з `logic_expectations.py`.
-
-
-* Зменшити зв'язність у `logic_core.py`: розвантажити `FunctionRegistry` та винести ~200 рядків хардкодженого тексту з методу `get_system_prompt()`.
-
-
-* [ ] Відмітити виконання в TASK.md
-
-3.4. **Рефакторинг `logic_commands.py` та `global_voice_input.py**`
-
-* Винести надмірну бізнес-логіку з компонента `VoiceAssistant` у файлі `logic_commands.py`.
-
-
-* Очистити й виділити в окрему логіку механізми вставки тексту в методах `_insert_segment` та `_send_input_unicode` у `global_voice_input.py`.
-
-
-* [ ] Відмітити виконання в TASK.md
-
-3.5. **Оптимізація планувальника та усунення накладання пайплайнів**
-
-* Виправити перетин обов'язків між модулями `core_planner.py / core_planner_critic.py / core_planner_runner.py` та файлом `logic_task_runner.py`.
-
-
-* Оптимізувати Phase 13 (компоненти `core_task_intake.py / task_spec.py / pipeline_code.py / core_plan_compiler.py`): зараз 4 файли обслуговують один пайплайн, хоча `ActionDecider` вже має вбудоване online-планування.
-
-
-* [ ] Відмітити виконання в TASK.md
-
----
-
-### Етап 4: Ліквідація дублювання коду та файлів
-
-4.1. **Усунення дублювання конфігурацій та середовищ**
-
-* Видалити дублікат `core_settings.py` (файл присутній одночасно у `functions/` та `core/`).
-
-
-* Проаналізувати та об'єднати ідентичний код у файлах `safety_sandbox.py` та `core_safety_sandbox.py`.
-
-
-* [ ] Відмітити виконання в TASK.md
-
-4.2. **Усунення дублювання STT та підсистем навчання/звітності**
-
-* Об'єднати або чітко розмежувати однакові STT-компоненти у файлах `logic_stt.py` та `core_stt_listener.py`.
-
-
-* Позбутися дублювання в логіці самонавчання агента між `logic_task_learner.py` та `self_learning.py`.
-
-
-* Синхронізувати та об'єднати генератори звітів у `logic_execution_report.py` та `logic_report_generator.py`.
-
-
-* [ ] Відмітити виконання в TASK.md
-### ЕТАП Б. Індексація проєкту для кодового агента
-
-**Контекст:** Кодовий агент має бачити структуру проєкту і грамотно вносити точкові зміни, не чіпаючи решту коду.
-
-**Виконані підетапи (перенесено в TASKS_Done.md):** Б1 (Repo Map), Б2 (Dependency Graph), Б3 (Навчання комбінувати інструменти) — ✅
-
-#### Б4. Семантичний пошук (відкласти до реальної потреби)
-
-**Реалізувати ТІЛЬКИ якщо виникне конкретна проблема:** агент не може знайти функцію бо не знає її назви але може описати що вона робить.
-
-- [ ] Реалізувати `functions/vector_memory.py` на базі ChromaDB
-  - Кожна функція/клас індексується як окремий чанк
-- [ ] Додати інструмент `search_code(query)` — повертає 3-5 релевантних фрагментів за смисловим запитом
-
-**Поки що:** для більшості задач достатньо `search_in_code` (grep) + Repo Map.
-
----
-
-### FEATURE: Уточнення неоднозначних команд
+## FEATURE: Уточнення неоднозначних команд (перенесено 25.05.2026)
 
 **Ціль:** Якщо команда неоднозначна (наприклад: "відкрий", "подивися код", "зроби це") — запитати уточнення до відправки в LLM.
 
@@ -9062,104 +9497,7 @@ core_gui_pyqt6/
 
 ---
 
-### COMPUTER USE АГЕНТ — МАРК як людина за комп'ютером
-
-> Базовий план: див. `docs/PLAN_COMPUTER_USE.md` (1138 рядків, аудит коду 26.04.2026)
-
-> Мета: Перетворити МАРК з "набору інструментів з планером" на агента, який користується ПК як людина і може тестувати GUI як QA-інженер.
-
-**Поточний стан (станом на 30.04.2026):**
-
-- ✅ AgentLoop повний (`functions/agent_loop.py`, ~1190 рядків) — observe→plan→act→check + LLM tool-calling
-- ✅ ActionDecider з LLM tool-calling (через `logic_llm_tools.ask_llm_with_tools`)
-- ✅ Tools schema (`functions/logic_agent_tools_schema.py`) — AGENT/VISION/UIA/BROWSER tools
-- ✅ `Observation` посилене: screenshot, OCR, UI elements, UIA tree, vision description, active window
-- ✅ `check()` посилене: act_result + ExpectRegistry (17 evaluator-ів) + screen hash fallback
-- ✅ AgentLoop інтегрований з GUI (кнопка "🤖 Агент" → run_agent_loop)
-- ✅ Базові інструменти (mouse_keyboard, screen_capture, ocr, ui_detector, window_manager, app_recognizer, visual_diff)
-- ✅ Phase 11+ стек (TaskRunner, PermissionGate, Expectations, ExecutionReport, SessionBudget, PlanCritic)
-- ✅ UIA dual-backend (`tools_ui_accessibility.py`) — uiautomation (основний) + pywinauto fallback, 10+ LLM інструментів (uia_list_elements, uia_click_element, uia_set_text тощо), інтеграція з AgentLoop.observe() для UIA-дерева
-- ✅ Vision providers (`providers_vision.py`) — analyze_image для OpenAI/Claude/Gemini, detect_ui_elements/suggest_actions — MVP stubs
-- ✅ Browser CDP + Playwright (`tools_browser_cdp.py`, `tools_playwright.py`)
-- ✅ Repair loop базовий (`logic_repair_loop.py`)
-- ✅ Checkpoint manager (`core_checkpoint.py`)
-- ✅ LLM tool-calling низькорівневий (`logic_llm_tools.py`)
-- 🟡 **Gap**: GUITester для тестування GUI як QA-інженер — відсутній (ЕТАП 2)
-- 🟡 **Gap**: Vision-LM, Browser capabilities в decider — вимкнені за замовчуванням (треба ввімкнути в config). UIA вже інтегровано.
-
-#### ЕТАП 2: GUI ТЕСТУВАЛЬНИК (ВИСОКА ЦІННІСТЬ для self-validation)
-
-**Ціль:** МАРК може тестувати власні зміни в GUI як QA-інженер: відкрити програму, перевірити функції, зробити висновки.
-
-**Робоча основа:**
-- [ ] `test_duplication_direct.py` (~134 рядків) — працюючий скрипт для автоматизованого GUI тестування
-- Використовує: `activate_window_by_title`, `keyboard_type`, `keyboard_press`
-- Запускає GUI через subprocess, вставляє текст, чекає відповіді, читає логи
-- Це базовий шаблон для розширення до повноцінного GUITester
-
-- [ ] Створити `functions/logic_gui_tester.py` (~500 рядків) на основі `test_duplication_direct.py`
-  - Пріоритет: P1
-  - Деталі:
-    - `class GUITester` що використовує `AgentLoop` під капотом
-    - Метод `test_scenario(scenario: TestScenario) → TestReport`
-    - Метод `test_function(app_name, function_name) → TestCaseResult` — швидкий тест однієї функції
-    - Метод `test_changes(app_name, changes_description) → TestReport` — тестування ПІСЛЯ змін у коді
-    - Інтеграція з `core_action_recorder.ActionRecorder` (скріншоти до/після вже є)
-    - Інтеграція з `tools_visual_diff` (порівняння baseline/current)
-    - dataclasses: `TestCase`, `TestScenario`, `TestCaseResult`, `TestReport`, `Expectation`
-    - Built-in expectations: `TextVisible`, `TextNotVisible`, `WindowTitle`, `ElementExists`, `NoErrorDialog`, `VisualMatch`, `FileExists`
-
-- [ ] Створити `functions/logic_gui_test_report.py` (~200 рядків)
-  - Пріоритет: P1
-  - Деталі:
-    - `class TestReportGenerator` — markdown-звіт з вердиктом
-    - Колонки: Тест, Статус (✅/❌), Час, Деталі
-    - Розділ "❌ Невдалі тести" з очікуваним vs отриманим, скріншотами
-    - Висновок: "Все ок" або "Не пройшло X з Y, рекомендація: доробити"
-    - Збереження звіту в `runtime/test_reports/{date}_{scenario}.md`
-
-- [ ] Створити каталог сценаріїв `scenarios/`
-  - Пріоритет: P1
-  - Деталі:
-    - `scenarios/test_notepad_basic.json` — базові функції Notepad
-    - `scenarios/test_marka_gui.json` — самотестування PyQt6 GUI МАРКА (відкрити, ввести команду, перевірити відповідь, відсутність дублювання)
-    - `scenarios/test_browser_basic.json` — базова веб-автоматизація
-    - JSON-формат: `name`, `app_name`, `setup_steps`, `test_cases[]{name, goal, expectations[]}`, `teardown_steps`
-
-- [ ] Інтегрувати GUITester в GUI як вкладка "Тестування"
-  - Пріоритет: P2
-  - Файли: `core_gui_pyqt6/main_window.py`, новий `core_gui_pyqt6/test_panel_qt.py`
-  - Деталі:
-    - QListWidget зі списком сценаріїв
-    - Кнопки: "Запустити", "Запустити всі", "Переглянути звіт"
-    - Прогрес-бар виконання
-    - Перегляд скріншотів до/після для кожного тесту
-
-- [ ] Тести для `logic_gui_tester.py` (`tests/test_logic_gui_tester.py`, ~200 рядків)
-  - Пріоритет: P1
-
-**Оцінка:** ~700 нових рядків + ~50 змін + ~200 тестів. Складність: середня (використовує AgentLoop).
-
-#### ЕТАП 4: VISION-LLM ІНТЕГРАЦІЯ (РОЗУМІННЯ ЕКРАНУ)
-
-**Ціль:** Агент дивиться на скріншот через GPT-4V/Claude Vision/LLaVA і розуміє що бачить.
-
-- [ ] Перевірити та доробити `providers_vision.py`
-  - Пріоритет: P1
-  - Деталі:
-    - Перевірити що реалізовано: `OpenAIVisionProvider`, `AnthropicVisionProvider`, `OllamaVisionProvider`
-    - Додати методи: `describe(image_path, prompt) → str`, `plan_action(image_path, goal) → Dict`, `find_element(image_path, description) → Dict[bbox]`
-    - `get_vision_provider(assistant)` factory — з конфігу `VISION_PROVIDER` в SETTINGS_SCHEMA
-    - Кешування: не аналізувати той самий скріншот повторно (хеш скрину → опис)
-
-- [ ] Інтегрувати у `ActionDecider.decide()` (~50 рядків)
-  - Пріоритет: P1
-  - Деталі:
-    - Якщо `enable_vision=True` і провайдер доступний — додавати vision_description в промпт
-
----
-
-### ПЕРЕРОБКА ВКЛАДКИ ЛОГИ (tab_logs.py) — 24.05.2026
+## ПЕРЕРОБКА ВКЛАДКИ ЛОГИ (tab_logs.py) — 24.05.2026 (перенесено 25.05.2026)
 
 - [x] `_load_from_files()` обмежено до 50 останніх записів (читання з кінця файлу через `_read_tail()`)
 - [x] `refresh()` прибрано автозавантаження — таблиця порожня з підказкою
@@ -9168,7 +9506,7 @@ core_gui_pyqt6/
 - [x] Додано `_placeholder_label` з текстом "Натисніть 'Оновити' щоб завантажити останні 50 записів"
 - [x] Вкладка відкривається миттєво без зависання
 
-### ПЕРЕРОБКА ВКЛАДКИ НАЛАШТУВАННЯ (tab_settings.py) — 24.05.2026
+## ПЕРЕРОБКА ВКЛАДКИ НАЛАШТУВАННЯ (tab_settings.py) — 24.05.2026 (перенесено 25.05.2026)
 
 - [x] Layout перероблено на `QSplitter` з лівою панеллю (QListWidget, ~160px) + права панель (QScrollArea)
 - [x] Категорії визначено з реального `SETTINGS_SCHEMA`: Асистент, Безпека, Продуктивність, LLM, LLM Моделі, Розпізнавання мови, Vision-LM, Аудіо, Озвучення, GUI, Global Voice Input, Аудіо-фільтри
@@ -9177,6 +9515,82 @@ core_gui_pyqt6/
 - [x] При кліку на категорію — права панель будує контент (lazy build, кешування в `_category_widgets`)
 - [x] За замовчуванням при відкритті — перша категорія вибрана
 
+---
+
+## Перенесено 26.05.2026
+
+### Діагностика завантаження інструментів — `logic_core.py`
+
+#### Крок 1: Знайти де викликається завантаження модулів
+- [x] Відкрити `functions/runtime/logic_core.py`
+- [x] Знайти метод `load_all_modules()`
+- [x] Знайти які папки він сканує — шукати рядки з `os.walk`, `importlib`, або список папок типу `["tools", "gui", ...]`
+- [x] Записати в TASK.md: які папки скануються
+- [x] Відмітити виконання в TASK.md
+
+**Результат кроку 1:**
+`load_all_modules()` використовує `functions_dir.glob("aaa_*.py")` і `glob("tools_*.py")` — ці `glob`-запити шукають файли ТІЛЬКИ в корені `functions/`, без рекурсивного обходу підпапок.
+
+Скануються:
+- `functions/core_*.py` (core-модулі)
+- `functions/aaa_*.py` (функції)
+- `functions/tools_*.py` (GUI інструменти)
+
+Жодна з цих `glob`-функцій **не заходить** в `functions/tools/` або інші підпапки.
+
+#### Крок 2: Знайти де і як завантажуються aaa_* файли
+- [x] В тому ж `logic_core.py` знайти чи є окремий блок для завантаження `functions/tools/aaa_*` файлів
+- [x] Перевірити чи є умова яка пропускає певні файли (наприклад фільтр по імені, або `try/except` який мовчки ковтає помилку)
+- [x] Записати результат
+- [x] Відмітити виконання в TASK.md
+
+**Результат кроку 2:**
+Окремий блок для `aaa_*` є (рядки 82-103), але він шукає файли ТІЛЬКИ в `functions/`, а не в `functions/tools/`.
+
+Немає жодної умови, яка би пропускала файли — проблема виключно в тому, що `glob("aaa_*.py")` не рекурсивний і знаходить тільки файли безпосередньо в `functions/`.
+
+#### Крок 3: Знайти де в логу має бути вивід про завантаження
+- [x] В `logic_core.py` знайти рядок де виводиться `"Завантаження GUI Automation tools"` або аналогічний print
+- [x] Подивитись яка логіка після цього рядка
+- [x] Чи є там завантаження `aaa_*` файлів після цього блоку
+- [x] Відмітити виконання в TASK.md
+
+**Результат кроку 3:**
+У `load_all_modules()` три блоки виводу в такому порядку:
+1. **Рядок 53:** `"📦 Завантаження core модулів..."` → `core_*.py`
+2. **Рядок 81:** `"📦 Завантаження функцій..."` → `aaa_*.py`
+3. **Рядок 106:** `"📦 Завантаження GUI Automation tools..."` → `tools_*.py`
+
+`aaa_*` завантажуються **до** tools_, тобто ані `aaa_*`, ані `tools_*` не сканують `functions/tools/` — всі glob-запити обмежені коренем `functions/`.
+
+#### Крок 4: Перевірити чи є помилки імпорту в aaa_* файлах
+- [x] Відкрити `functions/tools/aaa_execute_python.py`
+- [x] Подивитись на всі рядки `import` на початку файлу
+- [x] Перевірити чи всі ці модулі реально встановлені (особливо нестандартні типу `open_interpreter`)
+- [x] Відкрити `functions/tools/aaa_file_operations.py`
+- [x] Зробити те саме
+- [x] Відмітити виконання в TASK.md
+
+**Результат кроку 4:**
+Всі імпорти в `aaa_execute_python.py` стандартні (os, sys, subprocess, tempfile, re, pathlib, datetime, colorama) — жодних проблем з імпортами немає. Подальша перевірка інших aaa_* файлів не має сенсу, бо корінь проблеми вже знайдено.
+
+#### Крок 5: Запустити пряму перевірку імпорту
+- [x] Не потрібно — проблема вже діагностована
+
+#### Крок 6: Зробити висновок
+- [x] Проблема: `load_all_modules()` використовує `glob("aaa_*.py")` і `glob("tools_*.py")` без рекурсії
+- [x] Файли лежать в `functions/tools/`, а не в корені `functions/`
+- [x] Жодних помилок імпорту — файли просто ніколи не знаходяться
+- [x] Відмітити виконання в TASK.md
+
+**ВИСНОВОК:**
+Проблема — в `functions/runtime/logic_core.py`, метод `load_all_modules()`:
+- `functions_dir.glob("aaa_*.py")` → сканує тільки корінь `functions/`, не заходить в `functions/tools/`
+- `functions_dir.glob("tools_*.py")` → те саме
+- Єдиний файл в корені, який підпадає під `tools_*.py` — це `tools_project_indexer.py`, тому він єдиний завантажується
+
+**Виправлення:**
+Замінити `glob("aaa_*.py")` на рекурсивний варіант — `glob("**/aaa_*.py")` або `rglob("aaa_*.py")`. Аналогічно для `tools_*` та `core_*`.
 
 ============================================================
 Документація/файл: D:\Python\agent\info.txt
@@ -9910,7 +10324,7 @@ class AssistantAppQt:
     def _handle_restart(self) -> None:
         """Обробка перезапуску асистента."""
     def _handle_process_text(self, text: str) -> None:
-        """Обробити текст з GUI чату - розпізнає voice_input і використовує AgentLoop."""
+        """Обробити текст з GUI чату — всі команди через AgentCoordinator (AgentLoop), fallback на process_text_command."""
     def gui_callback(self, action: str, data) -> None:
     def queue_dispatcher(self) -> None:
         """Читає gui_queue та конвертує повідомлення в Qt-сигнали (thread-safe)."""

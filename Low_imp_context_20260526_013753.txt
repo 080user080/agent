@@ -1497,6 +1497,7 @@ class RequestRouter:
 ============================================================
 Імпорти:
   from __future__ import annotations
+  import time
   from typing import Callable, Optional
 
 Сутності:
@@ -2362,15 +2363,14 @@ def condition_chat_idle(chat_provider, idle_seconds: float) -> bool:
   from __future__ import annotations
   import time
   from typing import Any, Callable, Dict, List, Optional, Union
-  from functions.runtime.logic_watcher import ConditionFn
 
 Сутності:
-def _default_window_lister() -> List[str]:
-def _default_process_lister() -> List[Dict[str, Any]]:
-def condition_window_title_contains(substr: str) -> ConditionFn:
-def condition_process_running(target: Union[str, int]) -> ConditionFn:
-def condition_process_finished(target: Union[str, int]) -> ConditionFn:
-def condition_chat_idle(activity_fn: ActivityFn) -> ConditionFn:
+def _make_window_lister() -> Callable[[], List[str]]:
+def _make_process_lister() -> Callable[[], List[Dict[str, Any]]]:
+def condition_window_title_contains(substring: str) -> Callable[[Dict[str, Any]], bool]:
+def condition_process_running(name_or_pid: Union[str, int]) -> Callable[[Dict[str, Any]], bool]:
+def condition_process_finished(name_or_pid: Union[str, int]) -> Callable[[Dict[str, Any]], bool]:
+def condition_chat_idle(activity_fn: Callable[[], Any]) -> Callable[[Dict[str, Any]], bool]:
 
 ============================================================
 Файл: D:\Python\agent\functions\runtime\core_action_recorder.py
@@ -3229,7 +3229,7 @@ def list_sandbox_scripts():
 
 Сутності:
 def write_file(filepath: str, content: str) -> dict:
-def list_directory(directory: str) -> dict:
+def list_directory(directory: str, path: str) -> dict:
 def read_file(filepath: str) -> dict:
 
 ============================================================

@@ -467,11 +467,20 @@ class VoiceAssistant:
 
     def _manage_conversation_history(
         self,
-        max_messages: int = 2,
-        max_tokens: int = 2000,
+        max_messages: int = None,
+        max_tokens: int = None,
         summarize_threshold: int = 6,
     ) -> None:
-        """Адаптивне управління історією діалогу з підсумовуванням (Sliding Window)."""
+        """Адаптивне управління історією діалогу з підсумовуванням (Sliding Window).
+
+        Ліміти беруться з SETTINGS_SCHEMA (HISTORY_MAX_MESSAGES, HISTORY_MAX_TOKENS),
+        якщо не передані явно.
+        """
+        from ..runtime.core_settings import get_setting
+        if max_messages is None:
+            max_messages = get_setting("HISTORY_MAX_MESSAGES", 2)
+        if max_tokens is None:
+            max_tokens = get_setting("HISTORY_MAX_TOKENS", 2000)
         token_count = self._estimate_tokens(self.conversation_history)
         print(
             f"{Fore.LIGHTBLACK_EX}[DEBUG] Conversation history: "
