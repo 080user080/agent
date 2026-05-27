@@ -288,7 +288,11 @@
   "LLM_TIMEOUT": 180,
   "AGENT_WORK_DIR": "d:\\Python\\MARK\\",
   "ACTIVE_TAB_INDEX": 0,
-  "HIDDEN_TABS": [],
+  "HIDDEN_TABS": [
+    "📋 План",
+    "📜 Логи",
+    "📊 Статистика"
+  ],
   "HISTORY_MAX_MESSAGES": 5,
   "HISTORY_MAX_TOKENS": 8000
 }
