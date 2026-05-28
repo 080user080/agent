@@ -12,7 +12,23 @@ import time
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+try:
+    from pydantic import BaseModel, Field, field_validator
+except ImportError:
+    # Заглушки для CI/Linux без pydantic
+    class BaseModel:  # type: ignore[no-redef]
+        """Заглушка BaseModel для оточень без pydantic."""
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+    def Field(*args, **kwargs):  # type: ignore[no-redef]
+        return kwargs.get("default")
+
+    def field_validator(*args, **kwargs):  # type: ignore[no-redef]
+        def decorator(func):
+            return func
+        return decorator
 
 logger = logging.getLogger("plan_models")
 

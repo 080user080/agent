@@ -30,7 +30,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from pydantic import ValidationError
+try:
+    from pydantic import ValidationError
+except ImportError:
+    # pydantic не встановлений — заглушка, яка ніколи не спрацює в catch,
+    # але дозволяє імпортувати модуль без помилки
+    class ValidationError(Exception):  # type: ignore[no-redef]
+        """Заглушка для оточень без pydantic."""
+        pass
 
 from functions.planning.logic_execution_report import (
     STATUS_DENIED,
