@@ -26,7 +26,7 @@ runtime/user_settings.json
 *.pt
 *.pth
 *.onnx
-
+user_settings.json
 # Distribution / packaging
 .Python
 build/
