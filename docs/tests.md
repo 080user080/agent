@@ -160,7 +160,7 @@ python -m pytest tests/ -v
 Перевіряє: browser automation, пошук, отримання інформації
 
 -----------------------------------
-Створи текстовий файл у "d:\Python\agent\" test.txt з текстом 'Hello World'
+Створи текстовий файл у "d:\Python\MARK\" test.txt з текстом 'Hello World'
 Перевіряє: file creation, basic tools
 -----------------------------------
 

@@ -44,6 +44,17 @@ def classify_task(task: str) -> str:
         return "CHAT"
 
     task_lower = task.lower()
+    print(f"[classify_task] DEBUG: task='{task[:60]}' task_lower='{task_lower[:60]}'")
+
+    # ═══ ПЕРША ПЕРЕВІРКА: Вітання / розмова — просто відповідь (не запускати AgentLoop) ═══
+    greeting_keywords = [
+        "привіт", "вітаю", "добрий день", "добрий вечір",
+        "hello", "hi", "hey", "how are you",
+        "good morning", "good evening",
+    ]
+    if any(k in task_lower for k in greeting_keywords):
+        print(f"[classify_task] CHAT ← greeting: '{task_lower[:40]}'")
+        return "CHAT"
 
     # Файлові операції — не потрібен екран
     file_keywords = [
@@ -51,6 +62,7 @@ def classify_task(task: str) -> str:
         "видали файл", "перейменуй", "create file", "write file", "read file",
     ]
     if any(k in task_lower for k in file_keywords):
+        print(f"[classify_task] FILE_OP: '{task_lower[:40]}'")
         return "FILE_OP"
 
     # Питання — просто відповідь
@@ -59,6 +71,7 @@ def classify_task(task: str) -> str:
         "what is", "explain", "how does",
     ]
     if any(k in task_lower for k in question_keywords):
+        print(f"[classify_task] CHAT ← question: '{task_lower[:40]}'")
         return "CHAT"
 
     # GUI дії — потрібен екран
@@ -67,8 +80,10 @@ def classify_task(task: str) -> str:
         "знайди на екрані", "click", "open app", "екран", "вікно", "кнопк",
     ]
     if any(k in task_lower for k in gui_keywords):
+        print(f"[classify_task] GUI_ACTION: '{task_lower[:40]}'")
         return "GUI_ACTION"
 
+    print(f"[classify_task] AGENT ← fallback: '{task_lower[:40]}'")
     return "AGENT"  # fallback — повний AgentLoop (включає виконання коду)
 
 

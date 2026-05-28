@@ -168,7 +168,6 @@ runtime\snapshots
 README.md
 TASKS.md
 TASKS_Done.md
-info.txt
 main.py
 migrate_runtime.py
 requirements-dev.txt
@@ -234,7 +233,7 @@ class ChatPanelQtMixin:
     def append_stream_chunk(self, text: str) -> None:
         """Додати фрагмент тексту до стрімінгового повідомлення."""
     def end_stream_message(self) -> None:
-        """Завершити стрімінг (додати новий рядок і оновити статус)."""
+        """Завершити стрімінг (додати новий рядок)."""
     def _setup_clipboard_and_menus(self) -> None:
         """Налаштувати clipboard та контекстні меню."""
     def _show_input_context_menu(self, pos) -> None:
@@ -3292,7 +3291,7 @@ python -m pytest tests/ -v
 Перевіряє: browser automation, пошук, отримання інформації
 
 -----------------------------------
-Створи текстовий файл у "d:\Python\agent\" test.txt з текстом 'Hello World'
+Створи текстовий файл у "d:\Python\MARK\" test.txt з текстом 'Hello World'
 Перевіряє: file creation, basic tools
 -----------------------------------
 
@@ -3612,8 +3611,6 @@ def get_stt_controller(process_command_callback: Callable[[str], None], gui_queu
 ============================================================
 Імпорти:
   import time
-  import numpy
-  import sounddevice
   from colorama import Fore, Back, Style
   from functions.config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, ACTIVATION_WORD, ACTIVATION_LISTEN_DURATION, COMMAND_LISTEN_DURATION, MICROPHONE_DEVICE_ID, CONTINUOUS_MODE, CONTINUOUS_LISTENING_ENABLED, ASSISTANT_NAME, ASSISTANT_EMOJI, ASSISTANT_DISPLAY_NAME, TTS_ENABLED, TTS_DEVICE, TTS_CACHE_DIR, TTS_VOICES_DIR, TTS_DEFAULT_VOICE, TTS_SPEECH_RATE, TTS_VOLUME, TTS_SPEAK_PREFIXES
   from functions.audio.logic_stt import get_stt_engine
@@ -3624,15 +3621,11 @@ def get_stt_controller(process_command_callback: Callable[[str], None], gui_queu
 Сутності:
 def _gui_notify(gui_queue, status_msg: str, chat_msg: str | None):
     """Допоміжна функція: відправити статус + чат-повідомлення в GUI."""
-def print_audio_diagnostics():
-    """Вивести інформацію про вибраний мікрофон."""
-def run_audio_smoke_test():
-    """Короткий тест запису."""
 class AudioInitializer:
     """Менеджер ініціалізації аудіо-підсистеми."""
     def __init__(self, gui_queue):
     def diagnostics(self):
-        """Провести діагностику мікрофона та smoke-тест."""
+        """Діагностика мікрофона (вимкнена для прискорення запуску)."""
     def _load_stt_model(self):
         """Завантажити STT двигун (внутрішній метод)."""
     def init_stt(self) -> bool:
@@ -6903,7 +6896,7 @@ def read_code_file(filepath, start_line, max_lines):
     """Прочитати файл з обмеженням кількості рядків."""
 def search_in_code(pattern, directory, file_pattern, max_results):
     """Пошук по файлах за патерном."""
-def list_directory(directory):
+def list_directory(directory, path):
     """Перелічити файли в директорії."""
 def git_status(directory):
     """Виконати git status."""
@@ -8637,6 +8630,7 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 - Статуси: `Завершено` > `В процесі` > `Не розпочато`
 
 ---
+
 # Self-Coding Agent Pipeline
 
 ## Мета
@@ -8646,22 +8640,19 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 ## Фаза 1 — Само-читання та аналіз
 
-- [ ] Відмітити виконання в TASK.md
 ### Крок 1.1 — Self-context builder
 Створити `functions/planning/self_code_context.py`
 Функція `build_self_context(task: str) -> dict`:
-- читає `get_repo_map()`
-- знаходить релевантні файли через `search_in_code()`
-- читає їх через `read_code_file()`
+- використовує існуючі `get_repo_map()`, `search_in_code()`, `read_code_file()` з `aaa_code_tools.py`
 - повертає контекст для LLM: які файли релевантні, їх поточний стан
 
 - [ ] Відмітити виконання в TASK.md
 
 ### Крок 1.2 — Gap analyzer
-Функція `analyze_gap(task: str, context: dict) -> dict`:
-- через LLM визначає: що треба змінити/додати
+Функція `analyze_gap(task: str, context: dict) -> dict` в тому ж файлі:
+- через LLM визначає що треба змінити/додати
 - повертає список файлів для зміни + опис змін
-- перевіряє чи зміна безпечна (не чіпає критичні модулі)
+- перевіряє чи файл не в `SELF_EDIT_BLACKLIST` (з Кроку 5.1)
 
 - [ ] Відмітити виконання в TASK.md
 
@@ -8669,29 +8660,19 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 ## Фаза 2 — Безпечне редагування
 
-- [ ] Відмітити виконання в TASK.md
-
-### Крок 2.1 — Snapshot before edit
-У `core_undo_manager.py` вже є `save_snapshot()`.
-Переконатись що перед кожною зміною коду робиться snapshot.
-Розширити `edit_file()` — автоматичний snapshot якщо файл у папці `functions/`.
+### Крок 2.1 — Snapshot перед редагуванням
+`SelfCodingPipeline` викликає існуючий `UndoManager.save_snapshot()` перед кожним патчем.
+`edit_file()` не чіпаємо — у нього вже є власний datetime-бекап.
 
 - [ ] Відмітити виконання в TASK.md
 
 ### Крок 2.2 — Code patch generator
 Створити `functions/planning/self_code_patcher.py`
 Функція `generate_patch(file_path: str, task: str, context: dict) -> str`:
-- читає поточний вміст файлу
+- читає поточний вміст файлу через `read_code_file()`
 - через LLM генерує тільки змінену частину (не весь файл)
-- валідує синтаксис через `ast.parse()` перед застосуванням
-
-- [ ] Відмітити виконання в TASK.md
-
-### Крок 2.3 — Syntax validator
-Функція `validate_python_syntax(code: str) -> tuple[bool, str]`:
-- `ast.parse()` — синтаксична перевірка
-- перевірка імпортів на валідність
-- повертає `(ok, error_message)`
+- перед поверненням валідує через існуючий `PythonSandbox.validate_code()` з `aaa_execute_python.py`
+- якщо синтаксис невалідний — повертає помилку, не записує файл
 
 - [ ] Відмітити виконання в TASK.md
 
@@ -8699,22 +8680,20 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 ## Фаза 3 — Верифікація після змін
 
-- [ ] Відмітити виконання в TASK.md
-
 ### Крок 3.1 — Post-edit verification
-Функція `verify_edit(file_path: str, task: str) -> dict`:
-- повторно читає змінений файл
+Функція `verify_edit(file_path: str, task: str) -> dict` в `self_code_patcher.py`:
+- повторно читає змінений файл через `read_code_file()`
 - через LLM перевіряє чи зміна відповідає задачі
-- оновлює `repo_map` через `update_file_in_map()`
+- оновлює repo map через існуючий `update_file_in_map()`
 - повертає `{ok, summary, warnings}`
 
 - [ ] Відмітити виконання в TASK.md
 
-### Крок 3.2 — Rollback якщо верифікація провалилась
+### Крок 3.2 — Автоматичний rollback
 Якщо `verify_edit` повертає `ok=False`:
-- автоматично викликати `restore_snapshot()`
-- логувати в `self_learning` як невдалу спробу
-- повернути детальний звіт чому не вийшло
+- викликати існуючий `UndoManager.restore_snapshot()`
+- залогувати через існуючий `SelfLearning.log_execution()` як невдалу спробу
+- повернути детальний звіт
 
 - [ ] Відмітити виконання в TASK.md
 
@@ -8722,19 +8701,17 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 ## Фаза 4 — Pipeline інтеграція
 
-- [ ] Відмітити виконання в TASK.md
-
 ### Крок 4.1 — Self-coding pipeline
 Створити `functions/planning/pipeline_self_coding.py`
-Клас `SelfCodingPipeline` — реалізує `Pipeline.compile()`:
-- отримує `TaskSpec` з `domain=DOMAIN_CODE` де ціль — файл агента
-- будує `Plan` з кроків: context → analyze → snapshot → patch → validate → verify
+Клас `SelfCodingPipeline` — реалізує `Pipeline.compile()` як в існуючому `pipeline_code.py`:
+- отримує `TaskSpec`
+- будує `Plan` з кроків у послідовності:
+  `build_self_context` → `analyze_gap` → `confirm_action` → `save_snapshot` → `generate_patch` → `verify_edit` → (rollback якщо треба)
 
 - [ ] Відмітити виконання в TASK.md
 
 ### Крок 4.2 — Реєстрація в `make_default_registry()`
-В `core_plan_compiler.py` додати `DOMAIN_SELF_CODE` домен
-та зареєструвати `SelfCodingPipeline`.
+В `core_plan_compiler.py` додати `DOMAIN_SELF_CODE` та зареєструвати `SelfCodingPipeline`.
 
 - [ ] Відмітити виконання в TASK.md
 
@@ -8742,36 +8719,50 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 
 ## Фаза 5 — Захисні обмеження
 
+### Крок 5.1 — Blacklist файлів
+Створити `functions/planning/self_code_safety.py`
+`SELF_EDIT_BLACKLIST` — файли які агент не може змінювати:
+- `core_safety_sandbox.py`
+- `logic_permission_gate.py`
+- `core_tool_runtime.py`
+- `main.py`
+- `run.py`
+- `self_code_safety.py` (сам себе)
+
+Функція `is_edit_allowed(file_path: str) -> tuple[bool, str]`
+
 - [ ] Відмітити виконання в TASK.md
 
-### Крок 5.1 — Список заборонених для авто-редагування файлів
-В `core_tool_runtime.py` або новому `self_code_safety.py`:
-- `SELF_EDIT_BLACKLIST` — файли які агент НЕ може змінювати сам:
-  - `core_safety_sandbox.py`
-  - `logic_permission_gate.py`
-  - `core_tool_runtime.py`
-  - `main.py`
-  - `run.py`
-
-- [ ] Відмітити виконання в TASK.md
-
-### Крок 5.2 — Обов'язкове підтвердження користувача
-Будь-яка само-модифікація проходить через `confirm_action()`.
-Без підтвердження — тільки читання та аналіз, без запису.
+### Крок 5.2 — Підтвердження користувача
+`SelfCodingPipeline` викликає існуючий `confirm_action()` з `aaa_confirmation.py` перед кожним записом патча.
+Без підтвердження — тільки читання та аналіз, жодного запису.
 
 - [ ] Відмітити виконання в TASK.md
 
 ---
 
-## Критичні ризики (врахувати в коді)
+## Залежності між кроками
+
+```
+5.1 → 1.2 (blacklist потрібен в analyze_gap)
+1.1 → 1.2 → 4.1
+2.1 → 2.2 → 3.1 → 3.2
+4.1 → 4.2
+```
+
+Рекомендований порядок виконання: **5.1 → 1.1 → 1.2 → 2.2 → 3.1 → 3.2 → 2.1 → 4.1 → 4.2 → 5.2**
+
+---
+
+## Критичні ризики
 
 | Ризик | Мітигація |
 |-------|-----------|
-| Зламаний синтаксис | `ast.parse()` перед записом |
-| Нескінченна рекурсія само-редагування | Blacklist критичних файлів |
-| Непередбачені побічні ефекти | Snapshot + rollback |
-| LLM галюцинує функції | Верифікація після зміни |
-| Зміна змінює поведінку Guards | Ізоляція safety модулів |
+| Зламаний синтаксис | `PythonSandbox.validate_code()` перед записом |
+| Нескінченна рекурсія само-редагування | `SELF_EDIT_BLACKLIST` |
+| Непередбачені побічні ефекти | `UndoManager` snapshot + rollback |
+| LLM галюцинує функції | `verify_edit()` після зміни |
+| Зміна ламає safety модулі | Blacklist ізолює критичні файли |
 
 
 
@@ -8876,6 +8867,59 @@ docs/DEBUG_LOOP.md --- тут більш детально описано цей 
 ✅ skills/browser_skills (N функцій)
 ...
 ```
+
+# Фікс: Режими Voice / Coding не розрізняються
+
+## Мета
+Слово "привіт" (і будь-яка розмовна фраза) не повинне запускати AgentLoop.
+Voice-режим = планування/розмова. Coding-режим = виконання/дія.
+
+## Кроки
+
+### 1. Діагностика — знайти точку входу
+- [x] Відкрити `run_assistant_qt.py`, метод `_handle_process_text()`
+- [x] Знайти де саме викликається `run_agent_loop` або `AgentCoordinator.run()`
+- [x] Перевірити чи є перевірка `classify_task()` перед запуском агента
+- [x] **Висновок:** `_handle_process_text` уже має правильну гілку `if task_type == "CHAT"` (рядок 77). Код коректний.
+- [x] Відмітити виконання в TASK.md
+
+### 2. Діагностика — перевірити classify_task
+- [x] Відкрити `functions/gui/commands_planner.py`
+- [x] Перевірити що повертає `classify_task("привіт")` — `CHAT` ✅
+- [x] Перевірити що повертає `classify_task("напиши функцію сортування")` — `AGENT` ✅
+- [x] **Висновок:** `classify_task()` має greeting_keywords і правильно класифікує. `run_agent_loop()` у тому ж файлі НЕ викликає `classify_task` повторно — все всередині себе коректно.
+- [x] Відмітити виконання в TASK.md
+
+### 3. Діагностика — перевірити весь ланцюжок CHAT vs AGENT
+- [x] Знайти всі місця де викликається `run_agent_loop` або `AgentCoordinator.run()`
+- [x] **Ланцюжок з PyQt6 GUI:**
+  - `ChatTab._send_text_command()` → emit `command_submitted`
+  - `MainWindowPyQt6._on_command_submitted(command)` → `assistant_callback("process_text", command)`
+  - `AssistantAppQt.gui_callback("process_text")` → `_handle_process_text(text)`
+  - `_handle_process_text` → `classify_task()` → `CHAT` → `process_text_command()` (LLM без AgentLoop) ✅
+  - `_handle_process_text` → `classify_task()` → не-CHAT → `run_agent_loop()` (AgentLoop) ✅
+- [x] **Обхідні шляхи:** `gui_callback("run_agent")` (кнопка 🤖) — свідомо запускає AgentLoop без classify_task — очікувана поведінка
+- [x] **Проблема:** `importlib.reload(gui.commands_planner)` у `_handle_process_text` — крихкий механізм з можливими проблемами кешування. **Виправлено** — замінено на прямий `import`.
+- [x] Відмітити виконання в TASK.md
+
+### 4. Виправити точку входу
+- [x] `_handle_process_text` вже має правильну логіку: CHAT → `process_text_command()`, інакше → `AgentCoordinator`
+- [x] **Виправлено:** прибрано `importlib.reload` — замінено на прямий `from functions.gui.commands_planner import classify_task`
+- [x] Відмітити виконання в TASK.md
+
+### 5. Перевірити needs_clarification
+- [x] У `commands_planner.py` є `needs_clarification()` — вже викликає `classify_task()` і пропускає CHAT (не питає уточнення для вітань) — ✅
+- [x] Для неоднозначних запитів агент має питати уточнення — вже працює через `_AMBIGUOUS_VERBS` — ✅
+- [x] Відмітити виконання в TASK.md
+
+### 6. Тест та перезапуск
+- [x] `classify_task("привіт")` → `CHAT` ✅ (перевірено через python -c)
+- [x] `classify_task("напиши функцію сортування")` → `AGENT` ✅ (перевірено)
+- [x] `classify_task("відкрий notepad")` → `GUI_ACTION` ✅
+- [x] **Виправлено:** прибрано `importlib.reload` з `run_assistant_qt.py`
+- [ ] Запустити асистента та протестувати в реальному GUI
+- [x] Відмітити виконання в TASK.md
+кнопку 🤖
 
 
 
@@ -9591,606 +9635,6 @@ core_gui_pyqt6/
 
 **Виправлення:**
 Замінити `glob("aaa_*.py")` на рекурсивний варіант — `glob("**/aaa_*.py")` або `rglob("aaa_*.py")`. Аналогічно для `tools_*` та `core_*`.
-
-============================================================
-Документація/файл: D:\Python\agent\info.txt
-============================================================
-додай інформацію в info.txt про functions/logic_permission_gate.py. що потрібно додати подивися по аналогії у info.txt.
-
-
-
-================================================================================
-ОПИСИ .PY ФАЙЛІВ ПРОЕКТУ
-Корінь: d:\Python\agent
-Згенеровано: автоматично
-================================================================================
-
---- КОРЕНЕВІ ФАЙЛИ ---
-
-   [main.py]
-   Код: # main.py """Головний файл запуску з GUI інтеграцією""" 
-   - Статус: Критично
-   - Проблеми:
-     * 1242 рядки — завеликий файл-моноліт, порушує SRP.
-     * Клас `AssistantCore` — **God Object**: відповідає за STT, TTS, аудіо, LM Studio, AgentLoop, PlanExecutor, WindsurfWatcher, GUI, Self-learning, GlobalVoiceInput.
-     * Метод `initialize_without_listener()` ~300 рядків — важко читати і підтримувати.
-     * `check_lm_studio()` — 150 рядків з логікою автозавантаження моделі, яку можна винести.
-     * Логіка ініціалізації розмазана між `initialize()`, `initialize_without_listener()`, `_init_assistant_common()`.
-   - Рекомендація:
-     1. Виділити `LMModelManager` для запуску/перевірки LM Studio.
-     2. Виділити `AudioManager` для запису та діагностики аудіо.
-     3. Виділити `STTManager` та `TTSManager`.
-     4. Скоротити `AssistantCore` до координатора, який ініціалізує та з'єднує модулі.
-     5. Перейменувати `initialize_without_listener()` → `init_text_mode()`.
-   - Пріоритет змін: Високий
---------------------------------------------------
-
-   [remove_secrets.py]
-   - Статус: Ок
-   - Проблеми: немає
-   - Рекомендація: без змін. Окремий одноразовий скрипт без залежностей від основного коду.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [run.py]
-   - Статус: Ок
-   - Проблеми: немає. Мінімальний файл-завантажувач (18 рядків).
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [run_assistant_qt.py]
-   - Статус: Ок
-   - Проблеми: немає серйозних. Добре структурований (197 рядків).
-   - Рекомендація: можна винести словник action_handlers в окремий метод або конфігурацію, але це опціонально. Архітектура потік-диспетчер коректна.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-
---- TEST_GUI/ ---
-
-   [test_aaa_osnova2_vstavka_GVI.py]
-   - Статус: Ок
-   - Проблеми: немає. Спеціалізований тест одного функціоналу.
-   - Рекомендація: без змін. ПОСТІЙНИЙ ТЕСТ.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [test_agent_loop_chat.py]
-   - Статус: Ок
-   - Проблеми: немає. Простий тест GUI чату.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [test_debug_loop_methodology.py]
-   - Статус: Ок
-   - Проблеми: немає. Демонстраційний скрипт.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [test_global_voice.py]
-   - Статус: Ок
-   - Проблеми: немає. Діагностичний скрипт.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [test_insert_notepad.py]
-   - Статус: Ок
-   - Проблеми: немає. Одиничний тест інтеграції.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [test_insert_text_smart.py]
-   - Статус: Ок
-   - Проблеми: немає. Одиничний тест.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [test_mic_button_voice_input.py]
-   - Статус: Ок
-   - Проблеми: немає. Спеціалізований тест.
-   - Рекомендація: без змін. ПОСТІЙНИЙ ТЕСТ.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [test_osnova2.py]
-   - Статус: Ок
-   - Проблеми: немає. Інтеграційний тест.
-   - Рекомендація: без змін. ПОСТІЙНИЙ ТЕСТ.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [test_stt_hotkey.py]
-   - Статус: Ок
-   - Проблеми: немає. Спеціалізований тест.
-   - Рекомендація: без змін. ПОСТІЙНИЙ ТЕСТ.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [test_tray_icon.py]
-   - Статус: Ок
-   - Проблеми: немає. Простий тест.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
-
-
---- core/ ---
-
-   [__init__.py]
-   - Статус: Ок
-   - Проблеми: немає. Порожній __init__.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [context_controller.py]
-   - Статус: Ок
-   - Проблеми: не виявлено при огляді. Єдиний центр управління пам'яттю.
-   - Рекомендація: перевірити на дублювання функціоналу з context_manager.py. Якщо вони частково перетинаються — об'єднати або розмежувати чітко.
-   - Пріоритет змін: Середній
---------------------------------------------------
-
---- core_gui_pyqt6/ ---
-
-   [__init__.py]
-   - Статус: Ок
-   - Проблеми: немає. Порожній __init__.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [chat_panel_qt.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Порт з Tkinter на PyQt6 — очікувана архітектура.
-   - Рекомендація: стежити за синхронізацією з Tkinter-аналогом (core_gui/chat_panel.py) при змінах.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [confirmation_qt.py]
-   - Статус: Ок
-   - Проблеми: не виявлено.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [llm_endpoints_editor_qt.py]
-   - Статус: Ок
-   - Проблеми: не виявлено.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [main_window.py]
-   - Статус: Ок
-   - Проблеми: потенційно великий файл (порт main_window.py Tkinter). Містить багато логіки GUI.
-   - Рекомендація: перевірити розмір. Якщо >500 рядків — розділити на окремі модулі (main_window.py, menu_bar.py, status_bar.py).
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-   [plan_panel_qt.py]
-   - Статус: Ок
-   - Проблеми: не виявлено.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [settings_tab_qt.py]
-   - Статус: Ок
-   - Проблеми: не виявлено.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
-
-
---- functions/ ---
-
-   [__init__.py]
-   - Статус: Ок
-   - Проблеми: немає. Порожній __init__.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [agent_loop.py]
-   - Статус: Критично
-   - Проблеми:
-     * **2008 рядків!** — найбільший файл у проєкті, містить 2 класи (`ActionDecider`, `AgentLoop`) + 1 фабрику + 3 dataclasses.
-     * `ActionDecider` — 400+ рядків з величезним SYSTEM_PROMPT (~170 рядків тексту).
-     * `AgentLoop` — 1400+ рядків з усією логікою циклу, observe, plan, act, check, checkpoint, repair, loop detection, GUI messaging.
-     * Порушує SRP: один клас `AgentLoop` відповідає за observe (screen+OCR+UIA+Vision), plan (LLM+Compiled+Planner), act, check, checkpoint, repair, list_directory блокування, write_file блокування.
-   - Рекомендація:
-     1. Виділити `AgentLoopEngine` (чистий цикл) окремо від `ObservationCollector` (observe).
-     2. Винести `ActionDecider` в окремий файл `action_decider.py` або залишити з мінімумом.
-     3. Винести SYSTEM_PROMPT в окремий текстовий файл або константу.
-     4. Методи `_plan_from_decider`, `_plan_from_compiled`, `_plan_from_planner` — потенційно Strategy Pattern.
-     5. Занадто багато "суворої логіки" (list_directory, write_file блокування) — винести в окремий `ActionGuard` або подібний.
-   - Пріоритет змін: Високий
---------------------------------------------------
-
-   [logic_core.py]
-   - Статус: Ок (помірно)
-   - Проблеми:
-     * `FunctionRegistry` робить занадто багато: завантаження модулів, створення system prompt, виконання функцій, аудит, автовиправлення.
-     * `get_system_prompt()` — 2 різні методи, кожен ~100 рядків хардкодженого тексту.
-   - Рекомендація:
-     1. Винести system prompts в окремі файли (system_prompt_coding.txt, system_prompt_voice.txt) або константи.
-     2. Розділити `FunctionRegistry`: `ModuleLoader` (завантаження) + `FunctionRegistry` (реєстр) + `SystemPromptBuilder`.
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-   [config.py]
-   - Статус: Потребує рефакторингу
-   - Проблеми:
-     * Ймовірно містить усі глобальні налаштування проєкту — потенційний God Object для конфігів.
-     * Змішані: налаштування аудіо, TTS, STT, LLM, режимів, шляхів — можна групувати.
-   - Рекомендація: розділити на модулі: `config_audio.py`, `config_tts.py`, `config_llm.py`. Або залишити один, але згрупувати в dataclasses/константи за темою.
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-   [logic_commands.py]
-   - Статус: Потребує рефакторингу
-   - Проблеми: потенційно великий файл (VoiceAssistant — багато логіки команд, планування, исполни).
-   - Рекомендація: перевірити розмір. Якщо >500 рядків — розділити на `VoiceAssistant` (клас) + `CommandProcessor` (логіка).
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-   [global_voice_input.py]
-   - Статус: Потребує рефакторингу
-   - Проблеми:
-     * Вже позначено ⚠️ в оригінальному описі: логіка вставки тексту в `_insert_segment` та `_send_input_unicode`.
-     * Імовірно має проблеми з дублюванням коду для різних методів вставки тексту.
-   - Рекомендація: виділити спільну логіку вставки в `TextInserter` або `InputSimulator`.
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-   [context_manager.py]
-   - Статус: Ок (помірно)
-   - Проблеми: дублювання з `core/context_controller.py`. Обидва роблять "стиснення історії дій".
-   - Рекомендація: об'єднати з core/context_controller.py або чітко розмежувати: `context_manager` — стиснення, `context_controller` — єдина точка доступу.
-   - Пріоритет змін: Високий
---------------------------------------------------
-
-   [core_settings.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Єдина точка доступу до налаштувань.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_executor.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Менеджер виконання у фоновому потоці.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_loop_detector.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Спеціалізований модуль.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_checkpoint.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Phase 12.4, добре ізольований.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_memory.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Три типи пам'яті — добре.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_planner.py] / [core_planner_critic.py] / [core_planner_runner.py]
-   - Статус: Потребує рефакторингу
-   - Проблеми: 3 окремі файли для планування, але їх логіка перетинається з `logic_task_runner.py`, `logic_repair_loop.py`, `plan_executor.py`. Надлишкова абстракція.
-   - Рекомендація: провести аудит зв'язків і видалити мертві/дубльовані файли. Можливо `core_planner_critic` і `core_planner_runner` можна злити з `logic_plan_critic` і `plan_executor`.
-   - Пріоритет змін: Високий
---------------------------------------------------
-
-   [core_task_intake.py] + [task_spec.py] + [pipeline_code.py] + [core_plan_compiler.py]
-   - Статус: Потребує рефакторингу (група Phase 13)
-   - Проблеми:
-     * 4 файли реалізують один пайплайн `TaskSpec → Plan` (offline planning — повний план наперед).
-     * Але `agent_loop.py` вже має `ActionDecider`, який робить **online planning** (крок за кроком через LLM).
-     * Phase 13 — **НЕ замінюється** agent_loop, але стає майже непотрібним, якщо працює ActionDecider.
-     * ActionDecider сам вирішує наступний крок — навіщо тоді повний план наперед?
-     * Файли містять багато "скелетів" (недописаного коду) — Phase 13 в розробці.
-   - Рекомендація:
-     1. Якщо `ActionDecider` стабільно працює — Phase 13 можна **видалити** як надлишковий.
-     2. Якщо Phase 13 все ж потрібен (наприклад, для задач, що не потребують LLM на кожному кроці):
-        * Об'єднати в пакет `task_pipeline/` з модулями: `intake.py`, `compiler.py`, `pipeline_code.py`.
-        * `core_plan_compiler.py` — видалити (дублює логіку).
-     3. Чітко визначити: коли використовувати ActionDecider (online), а коли Phase 13 (offline).
-   - Пріоритет змін: Високий
---------------------------------------------------
-
-   [core_tool_runtime.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Стандартизація результатів — добре.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_undo_manager.py] / [core_action_recorder.py] / [core_gui_guardian.py]
-   - Статус: Ок (група Phase 6)
-   - Проблеми: не виявлено. Кожен робить одну справу.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_app_profile.py] / [core_macro.py]
-   - Статус: Ок (Phase 7 група)
-   - Проблеми: не виявлено. Фундамент для профілів і макросів.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_session_budget.py] / [core_windsurf_watcher.py]
-   - Статус: Ок (Phase 8/12 група)
-   - Проблеми: не виявлено. Добре ізольовані модулі.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_dispatcher.py]
-   - Статус: Потребує уточнення
-   - Проблеми: в оригінальному описі лише "Класи: Dispatcher" — незрозуміло, що робить.
-   - Рекомендація: перевірити код. Якщо дублює `core_executor.py` — об'єднати.
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-   [core_cache.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Безпечний кеш.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_stt_listener.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Окремий модуль для голосових команд.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_streaming.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Малий спеціалізований файл.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_safety_sandbox.py] / [safety_sandbox.py]
-   - Статус: Критично
-   - Проблеми: **ДУБЛЮВАННЯ!** Є два файли: `core_safety_sandbox.py` і `safety_sandbox.py`. Імовірно містять однакову або майже однакову логіку.
-   - Рекомендація: об'єднати в один файл. Видалити дубль.
-   - Пріоритет змін: Високий
---------------------------------------------------
-
-[--- AAA_* група (інструменти для LLM) ---]
-
-   [aaa_architect.py] / [aaa_code_tools.py] / [aaa_confirmation.py] / [aaa_create_file.py] / [aaa_debug_code.py] / [aaa_edit_file.py] / [aaa_execute_python.py] / [aaa_file_operations.py] / [aaa_help.py] / [aaa_open_browser.py] / [aaa_open_interpreter.py] / [aaa_programs.py] / [aaa_system.py] / [aaa_utility_tools.py] / [aaa_voice_input.py]
-   - Статус: Ок (група з 15 файлів, однотипні)
-   - Проблеми:
-     * 15 окремих файлів на ~15 функцій — надмірна дробність.
-     * Кожен файл майже завжди містить 1-3 функції з декоратором `@llm_function`.
-     * Патерн "один файл на одну функцію" ускладнює навігацію.
-   - Рекомендація:
-     * Згрупувати в пакети: `tools/code_tools/` (aaa_code_tools, aaa_edit_file, aaa_create_file), `tools/voice_audio/` (aaa_voice_input), `tools/system/` (aaa_system, aaa_programs), `tools/dev_tools/` (aaa_execute_python, aaa_debug_code, aaa_open_interpreter).
-     * `aaa_architect.py` — потенційно найважливіший, залишити як є.
-     * `aaa_open_interpreter.py` — можна злити з `aaa_execute_python.py`.
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-[--- LOGIC_* група ---]
-
-   [logic_agent_tools_schema.py] / [logic_ai_adapter.py] / [logic_orchestrator.py] / [logic_provider_registry.py]
-   - Статус: Ок (Phase 9 група — AI Orchestration)
-   - Проблеми: `logic_ai_adapter.py` позначено як "скелет" — без реальних HTTP-викликів. Схоже на незавершений код.
-   - Рекомендація: або дописати, або позначити як deprecated. `logic_orchestrator` і `logic_provider_registry` — добре структуровані.
-   - Пріоритет змін: Низький (але дописати/видалити ai_adapter)
---------------------------------------------------
-
-   [logic_audio.py] / [logic_audio_filtering.py] / [logic_continuous_listener.py] / [logic_stt.py] / [logic_tts.py]
-   - Статус: Ок (аудіо група)
-   - Проблеми: `logic_stt.py` має "Whisper та w2v-bert" — можливе дублювання з `core_stt_listener.py`.
-   - Рекомендація: перевірити overlap між `logic_stt.py` та `core_stt_listener.py`. Якщо є — об'єднати.
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-   [logic_context_analyzer.py] / [logic_scenario_runner.py] / [logic_ui_navigator.py]
-   - Статус: Ок (GUI Automation Phase 5 група)
-   - Проблеми: не виявлено. Чіткий розподіл: аналіз → сценарій → навігація.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [logic_execution_report.py] / [logic_report_generator.py]
-   - Статус: Потребує рефакторингу
-   - Проблеми: **ДУБЛЮВАННЯ!** Обидва генерують звіти виконання. `logic_execution_report` — Phase 11.3, `logic_report_generator` — Phase 13 S10. Ймовірно overlap.
-   - Рекомендація: об'єднати в один модуль `report_generator.py`. `logic_execution_report` — видалити або реекспортувати.
-   - Пріоритет змін: Високий
---------------------------------------------------
-
-   [logic_expectations.py] / [logic_permission_gate.py] / [logic_task_runner.py] / [logic_repair_loop.py] / [logic_plan_critic.py] / [plan_executor.py]
-   - Статус: Потребує рефакторингу (Phase 11-12 група)
-   - Проблеми: 6 файлів, які тісно пов'язані. `TaskRunner` використовує `PermissionGate`, `Expectations`, `RepairLoop`. Але також є `plan_executor.py` — міст до Planner.
-   - Рекомендація: провести аудит і об'єднати `plan_executor.py` з `logic_task_runner.py` (вони виконують одне і те ж — запуск плану). `logic_plan_critic.py` — може залишитись окремо.
-   - Пріоритет змін: Високий
---------------------------------------------------
-
-   [logic_watcher.py] / [conditions_web.py] / [conditions_windows.py]
-   - Статус: Ок (Phase 8 група)
-   - Проблеми: не виявлено. Добре розділено.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [logic_llm_tools.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Адитивний шар для tool-calling — добре.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [logic_task_learner.py] / [self_learning.py]
-   - Статус: Потребує рефакторингу
-   - Проблеми: **ДУБЛЮВАННЯ!** `logic_task_learner` (Phase 7.3) і `self_learning.py` — обидва аналізують помилки і створюють skills.
-   - Рекомендація: об'єднати в один модуль `self_learning/`. Ймовірно `logic_task_learner` можна видалити.
-   - Пріоритет змін: Високий
---------------------------------------------------
-
-[--- TOOLS_* група ---]
-
-   [tools_app_recognizer.py] / [tools_browser_cdp.py] / [tools_comfyui.py] / [tools_excel.py] / [tools_ffmpeg.py] / [tools_image_pillow.py] / [tools_mouse_keyboard.py] / [tools_notification.py] / [tools_ocr.py] / [tools_pdf.py] / [tools_playwright.py] / [tools_screen_capture.py] / [tools_ui_accessibility.py] / [tools_ui_detector.py] / [tools_visual_diff.py] / [tools_window_manager.py] / [tools_windsurf.py] / [tools_word.py]
-   - Статус: Ок (група ~18 файлів — GUI Automation + Phase 10 інструменти)
-   - Проблеми:
-     * 18 окремих файлів — можна згрупувати за призначенням.
-     * Деякі можуть бути "скелетами" (tools_comfyui.py, tools_excel.py, tools_ffmpeg.py, tools_image_pillow.py, tools_pdf.py, tools_word.py — Phase 10, можливо недописані).
-   - Рекомендація:
-     * Групи: `tools/browser/` (tools_browser_cdp, tools_playwright), `tools/ui_v2/` (tools_ui_detector, tools_visual_diff, tools_app_recognizer), `tools/ui_v1/` (tools_ui_accessibility, tools_window_manager), `tools/phase10/` (comfyui, excel, ffmpeg, pillow, pdf, word — залишити як є або об'єднати в `tools/media_tools.py`).
-     * Перевірити чи Phase 10 файли реально використовуються. Якщо ні — позначити або видалити.
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-[--- PROVIDERS_* група ---]
-
-   [providers_anthropic.py] / [providers_browser.py] / [providers_google.py] / [providers_openai_compatible.py] / [providers_vision.py]
-   - Статус: Ок (Phase 9 група)
-   - Проблеми: 5 окремих файлів — логічно, бо різні API. Але містять дубльований код HTTP-запитів.
-   - Рекомендація: створити базовий клас `BaseAPIProvider` зі спільною логікою HTTP. `providers_vision.py` — можна об'єднати з одним із провайдерів, якщо він використовує той самий API.
-   - Пріоритет змін: Середній
---------------------------------------------------
-
-[--- ІНШІ ---]
-
-   [ai_actors.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Делегування до зовнішніх AI — добре.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [common_decorators.py]
-   - Статус: Ок
-   - Проблеми: не виявлено.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [voice_tray_icon.py] / [windsurf_watcher_executor.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Спеціалізовані файли.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
-
---- functions\llm/ ---
-
-   [__init__.py]
-   - Статус: Ок
-   - Проблеми: немає. Порожній __init__.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [core_settings.py]
-   - Статус: Ок
-   - Проблеми: один рядок `from ..core_settings import *` — це re-export.
-   - Рекомендація: без змін, але краще імпортувати явні імена.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [endpoint_client.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Чистий клієнт API.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [groq_client.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Спеціалізований клієнт для Groq.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [provider_chain.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Рівень 2 — добре ізольований.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [response_parser.py]
-   - Статус: Ок
-   - Проблеми: не виявлено.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [router.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Рівень 1 — класифікація запитів.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
-
-
---- runtime/ ---
-
-   [sync_settings_copy.py]
-   - Статус: Ок
-   - Проблеми: немає. Одноразовий скрипт для GitHub.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
-
-   [logic_permission_gate.py]
-   - Статус: Критично
-   - Проблеми:
-     * 397 рядків — великий файл, містить `PermissionGate`, `PermissionRequest`, `Decision`, `PermissionPolicy` + конvenience-функції `always_allow()`, `always_deny()`, `console_ask()`.
-     * 4-рівнева policy stack: Always-deny (regex), Always-allow (whitelist), Session-cache, ask_fn callback.
-     * Persistent storage через JSON файл для `PermissionGate`.
-     * Дублювання з `logic_expectations.py` — `PermissionGate` і `Expectations` обидва для task-level, `PermissionGate` для action-level.
-   - Рекомендація:
-     1. Чітко розмежувати: `PermissionGate` — action-level, `Expectations` — task-level.
-     2. Винести `PermissionPolicy` в окремий файл, якщо планується розширення.
-     3. Додати документацію для `console_ask()` та `always_allow()` — для CI/CD.
-   - Пріоритет змін: Високий
-
-
---- utils/ ---
-
-   [__init__.py]
-   - Статус: Ок
-   - Проблеми: немає. Порожній __init__.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
---------------------------------------------------
-
-   [screen_helper.py]
-   - Статус: Ок
-   - Проблеми: не виявлено. Спеціалізований модуль для DPI.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
-
-
---- можливі майбутні розробки/ ---
-
-   [test_multi_tab_gui.py]
-   - Статус: Ок
-   - Проблеми: немає. Тестове GUI вікно.
-   - Рекомендація: без змін.
-   - Пріоритет змін: Низький
-
-</file_content>
 # [Помилка синтаксису] D:\Python\agent\main.py
 
 
@@ -10324,7 +9768,7 @@ class AssistantAppQt:
     def _handle_restart(self) -> None:
         """Обробка перезапуску асистента."""
     def _handle_process_text(self, text: str) -> None:
-        """Обробити текст з GUI чату — всі команди через AgentCoordinator (AgentLoop), fallback на process_text_command."""
+        """Обробити текст з GUI чату."""
     def gui_callback(self, action: str, data) -> None:
     def queue_dispatcher(self) -> None:
         """Читає gui_queue та конвертує повідомлення в Qt-сигнали (thread-safe)."""

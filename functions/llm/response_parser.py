@@ -259,6 +259,14 @@ def _execute_single_action(registry, action_dict):
     action = action_dict.pop("action", None)
     if not action:
         return False, "Немає action"
+
+    # AgentLoop — складні задачі: повертаємо маркер для виклику через callback
+    if action == "run_agent_loop":
+        task = action_dict.get("task", action_dict.get("description", ""))
+        if not task:
+            return False, "❌ run_agent_loop: немає task"
+        return True, f"__AGENT_LOOP__:{task}"
+
     action_map = {
         "execute_python": "execute_python",
         "execute_python_code": "execute_python",
@@ -296,6 +304,21 @@ def _execute_single_action(registry, action_dict):
     # Дефолтний title для activate_window_by_title (від find_windsurf_window без параметрів)
     if function_name == "activate_window_by_title" and "title" not in action_dict:
         action_dict["title"] = "Windsurf"
+
+    # ── Нормалізація назв параметрів ────────────────────────────────
+    # LLM може генерувати різні назви для одного параметра.
+    # Наприклад: "filename" замість "save_path", "filepath" замість "path".
+    PARAM_ALIASES = {
+        "filename": "save_path",
+        "filepath": "file_path",
+        "query": "pattern",
+        "destination": "path",
+        "target": "path",
+        "dest": "path",
+    }
+    for alias, canonical in PARAM_ALIASES.items():
+        if alias in action_dict and canonical not in action_dict:
+            action_dict[canonical] = action_dict.pop(alias)
 
     print(f"{Fore.MAGENTA}⚡ [Виконую]: {function_name} з параметрами {action_dict}")
     try:

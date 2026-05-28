@@ -150,8 +150,10 @@ class ChatPanelQtMixin:
         self.chat_history.setTextCursor(cursor)
         self.chat_history.ensureCursorVisible()
 
-        # Оновити статус
-        if sender == "assistant" and hasattr(self, 'status_label'):
+        # Оновити статус (тільки для user-повідомлень)
+        # Для assistant статус вже оновлено через _update_status_after_llm
+        # з реальним часом LLM (наприклад "✅ Gemini (12.8с)")
+        if sender == "user" and hasattr(self, 'status_label'):
             import time as _time
             ts = _time.strftime('%H:%M:%S')
             self.status_label.setText(f"✅ Відповідь готова | {ts}")
@@ -213,9 +215,11 @@ class ChatPanelQtMixin:
         self.chat_history.ensureCursorVisible()
 
     def end_stream_message(self) -> None:
-        """Завершити стрімінг (додати новий рядок і оновити статус)."""
-        import time as _time
-
+        """Завершити стрімінг (додати новий рядок).
+        
+        Не перезаписує статус-бар — він вже оновлений через _update_status_after_llm
+        з реальним часом відповіді LLM (наприклад, "✅ Gemini (0.9с)").
+        """
         cursor = self.chat_history.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
 
@@ -242,10 +246,8 @@ class ChatPanelQtMixin:
 
         self._is_streaming = False
         self._stream_buffer = ""
-
-        if hasattr(self, 'status_label'):
-            ts = _time.strftime('%H:%M:%S')
-            self.status_label.setText(f"✅ Відповідь готова | {ts}")
+        # Статус-бар не перезаписуємо — він вже містить час LLM
+        # (оновлюється через _update_status_after_llm в logic_commands.py)
 
     # ---------- Clipboard та контекстні меню ----------
 

@@ -67,6 +67,9 @@ class VoiceAssistant:
         self._pending_clarification: Optional[str] = None
         self._skip_clarification: bool = False
 
+        # Callback для AgentLoop (встановлюється ззовні, з main.py)
+        self.agent_loop_callback: Optional[Callable[[str], None]] = None
+
         # Core модулі
         self.dispatcher = None
         self.cache_manager = None
@@ -273,7 +276,9 @@ class VoiceAssistant:
                     print(f"{Fore.CYAN}💾 [Кеш] Використано кешовану відповідь")
                     self.log_to_gui("assistant", cached_response)
                     self._speak_if_needed(cached_response)
-                    print(f"{Fore.LIGHTBLACK_EX}⏱️  0.00с")
+                    if self.gui_log_callback:
+                        self.gui_log_callback("update_status", "💾 Кеш")
+                    print(f"{Fore.LIGHTBLACK_EX}⏱️  0.00с (кеш)")
                     return
 
             # ── 8. Швидкий маршрут (диспетчер) ──────────────
@@ -374,8 +379,9 @@ class VoiceAssistant:
             except Exception as e:
                 print(f"{Fore.YELLOW}⚠️ Стрімінг не вдався: {e}, використовую звичайний запит")
                 full_response = self._fallback_llm(command_text)
+                used_streaming = True  # ✅ Запобігає подвійному виклику
 
-        # ── Звичайний запит ────────────────────────────────
+        # ── Звичайний запит (тільки якщо стрімінг не спрацював) ──
         if not used_streaming:
             print(f"{Fore.MAGENTA}🤔 [Думаю...]")
             if self.gui_log_callback:
@@ -384,6 +390,7 @@ class VoiceAssistant:
             answer = ask_llm(command_text, self.conversation_history, self.system_prompt)
             full_response = answer
             llm_time = time.time() - start_llm
+            print(f"[DEBUG] _execute_llm_and_process: llm_time={llm_time:.2f}с")
             self._update_status_after_llm(llm_time)
 
         # ── Обробка відповіді та виконання функцій ──────────
@@ -394,6 +401,15 @@ class VoiceAssistant:
 
         # Додаємо відповідь до історії
         self.conversation_history.append({"role": "assistant", "content": full_response})
+
+        # ═══ Перевірка: чи LLM попросив AgentLoop? ═══
+        if final_answer and final_answer.startswith("__AGENT_LOOP__:"):
+            agent_task = final_answer[len("__AGENT_LOOP__:"):].strip()
+            print(f"{Fore.CYAN}🤖 LLM попросив AgentLoop: '{agent_task[:60]}...'")
+            if self.agent_loop_callback:
+                self.agent_loop_callback(agent_task)
+            # Не озвучуємо технічний маркер
+            return
 
         # Озвучення
         self._speak_if_needed(final_answer)
@@ -411,9 +427,28 @@ class VoiceAssistant:
         self._manage_conversation_history()
 
     def _fallback_llm(self, command_text: str) -> str:
-        """Fallback на звичайний запит LLM (без стрімінгу)."""
-        from ..llm import ask_llm
+        """Fallback на звичайний запит LLM (без стрімінгу).
+        
+        Використовує call_endpoint напряму, щоб уникнути дублювання повідомлень,
+        яке виникає при використанні ask_llm (бо conversation_history вже містить command_text).
+        """
+        from ..llm.endpoint_client import get_primary_endpoint, call_endpoint
+        
+        messages = [{"role": "system", "content": self.system_prompt}]
+        messages.extend(self.conversation_history)
+        
         start_llm = time.time()
+        primary = get_primary_endpoint()
+        if primary:
+            success, result = call_endpoint(primary, messages)
+            if success:
+                llm_time = time.time() - start_llm
+                print(f"[DEBUG] _fallback_llm: llm_time={llm_time:.2f}с")
+                self._update_status_after_llm(llm_time)
+                return result
+        
+        # Якщо primary не спрацював — пробуємо через ask_llm (як запасний варіант)
+        from ..llm import ask_llm
         answer = ask_llm(command_text, self.conversation_history, self.system_prompt)
         llm_time = time.time() - start_llm
         self._update_status_after_llm(llm_time)
@@ -422,14 +457,19 @@ class VoiceAssistant:
     def _update_status_after_llm(self, llm_time: float) -> None:
         """Оновити статус-бар після відповіді LLM."""
         if not self.gui_log_callback:
+            print(f"[DEBUG _update_status_after_llm] gui_log_callback is None, time={llm_time:.2f}с")
             return
         try:
             from ..llm import get_primary_endpoint
             ep = get_primary_endpoint()
             llm_name = ep.get("name", "LLM")
-            self.gui_log_callback("update_status", f"✅ {llm_name} ({llm_time:.1f}с)")
-        except Exception:
-            self.gui_log_callback("update_status", f"✅ LLM ({llm_time:.1f}с)")
+            msg = f"📊 LLM: {llm_name} · {llm_time:.1f}с ✅"
+            print(f"[DEBUG _update_status_after_llm] sending: '{msg}' via gui_log_callback={self.gui_log_callback.__name__ if hasattr(self.gui_log_callback, '__name__') else 'stream_wrapper'}")
+            self.gui_log_callback("update_status", msg)
+        except Exception as e:
+            print(f"[DEBUG _update_status_after_llm] exception in try: {e}")
+            msg = f"📊 LLM: · {llm_time:.1f}с ✅"
+            self.gui_log_callback("update_status", msg)
 
     def _speak_if_needed(self, text: str) -> None:
         """Озвучити текст, якщо TTS увімкнено — делегує в commands_audio.

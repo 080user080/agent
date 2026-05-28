@@ -60,18 +60,24 @@ class AssistantAppQt:
                 app.quit()
 
     def _handle_process_text(self, text: str) -> None:
-        """Обробити текст з GUI чату — всі команди через AgentCoordinator (AgentLoop), fallback на process_text_command."""
+        """Обробити текст з GUI чату.
+        
+        БЕЗ keyword-фільтрації. Завжди йдемо в LLM.
+        LLM отримує system prompt з інструментами і сам вирішує:
+        - {"response":"..."} — просто відповісти (привітання, питання)
+        - {"action":"...", "params":{...}} — виконати просту дію
+        - {"action":"run_agent_loop","task":"..."} — запустити AgentLoop для складних задач
+        """
         if not text:
             return
 
-        if getattr(self.core, 'agent_coordinator', None):
-            threading.Thread(
-                target=self.core.run_agent_loop, args=(text,), daemon=True
-            ).start()
-        else:
-            threading.Thread(
-                target=self.core.process_text_command, args=(text,), daemon=True
-            ).start()
+        # Всі команди йдуть в LLM через process_text_command.
+        # LLM сам вирішує — відповісти текстом чи викликати інструмент.
+        # process_text_command викликає LLM → process_llm_response парсить JSON і виконує.
+        # Якщо LLM попросив AgentLoop — process_text_command запустить його через callback.
+        threading.Thread(
+            target=self.core.process_text_command, args=(text,), daemon=True
+        ).start()
 
     def gui_callback(self, action: str, data=None) -> None:
         if not self.core:

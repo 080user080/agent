@@ -94,9 +94,10 @@ class ChatTab(BaseTab):
         input_layout.addWidget(self.send_button)
 
         # Кнопка агента
-        self.agent_button = QPushButton("🤖")
+        self.agent_button = QPushButton("⚡AI")
         self.agent_button.setObjectName("agent_button")
-        self.agent_button.setFixedSize(48, 48)
+        self.agent_button.setToolTip("Запустити агентний режим")
+        self.agent_button.setFixedSize(58, 48)
         self.agent_button.clicked.connect(self._on_agent_clicked)
         input_layout.addWidget(self.agent_button)
 
@@ -377,12 +378,14 @@ class ChatTab(BaseTab):
         self.chat_history.setTextCursor(cursor)
         self.chat_history.ensureCursorVisible()
 
-        # Оновити статус
+        # Оновити статус (тільки для user-повідомлень)
         mw = self._main_window
-        if sender == "assistant" and mw and hasattr(mw, 'status_label'):
+        if sender == "user" and mw and hasattr(mw, 'status_label'):
             import time as _time
             ts = _time.strftime('%H:%M:%S')
             mw.status_label.setText(f"✅ Відповідь готова | {ts}")
+        # Для assistant статус вже оновлено через _update_status_after_llm
+        # з реальним часом LLM (наприклад "✅ Gemini (12.8с)")
 
     # ─── Стрімінг ─────────────────────────────────────────────────────────────
 
@@ -444,7 +447,6 @@ class ChatTab(BaseTab):
     def end_stream_message(self) -> None:
         if not self.chat_history:
             return
-        import time as _time
 
         cursor = self.chat_history.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
@@ -469,11 +471,8 @@ class ChatTab(BaseTab):
 
         self._is_streaming = False
         self._stream_buffer = ""
-
-        mw = self._main_window
-        if mw and hasattr(mw, 'status_label'):
-            ts = _time.strftime('%H:%M:%S')
-            mw.status_label.setText(f"✅ Відповідь готова | {ts}")
+        # Статус-бар не перезаписуємо — він вже містить час LLM
+        # (оновлюється через _update_status_after_llm в logic_commands.py)
 
     def focus_input(self) -> None:
         """Встановити фокус на поле вводу."""

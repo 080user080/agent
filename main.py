@@ -294,6 +294,15 @@ class AssistantCore:
         if any(k in task_lower for k in question_keywords):
             return "CHAT"
 
+        # Вітання / розмова — просто відповідь (не запускати AgentLoop)
+        greeting_keywords = [
+            "привіт", "вітаю", "добрий день", "добрий вечір",
+            "hello", "hi", "hey", "how are you",
+            "good morning", "good evening",
+        ]
+        if any(k in task_lower for k in greeting_keywords):
+            return "CHAT"
+
         # GUI дії — потрібен екран
         gui_keywords = ["клікни", "відкрий програму", "натисни",
                         "знайди на екрані", "click", "open app", "екран", "вікно", "кнопк"]
@@ -661,6 +670,13 @@ class AssistantCore:
             else:
                 self.agent_loop = None
                 print(f"{Fore.YELLOW}⚠️  AgentLoop недоступний (через AgentCoordinator)")
+
+            # ═══ Встановити agent_loop_callback в VoiceAssistant ═══
+            # Після того як process_llm_response поверне "__AGENT_LOOP__:task",
+            # VoiceAssistant викличе цей callback для запуску AgentLoop
+            if self.assistant is not None:
+                self.assistant.agent_loop_callback = self.run_agent_loop
+                print(f"{Fore.GREEN}✅ agent_loop_callback встановлено в VoiceAssistant")
 
             # Виконати чергу задач, якщо є
             if hasattr(self, '_pending_tasks') and self._pending_tasks:

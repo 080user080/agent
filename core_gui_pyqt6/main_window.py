@@ -258,6 +258,13 @@ class MainWindowPyQt6(QMainWindow):
             QPushButton#mic_button:hover  { background: #757575; }
             QPushButton#restart_button { background: #ff9800; }
             QPushButton#restart_button:hover { background: #f57c00; }
+            QPushButton#agent_button {
+                background: #0f6f73;
+                color: #f4fbfb;
+                font: bold 11pt 'Segoe UI';
+            }
+            QPushButton#agent_button:hover { background: #0b5f63; }
+            QPushButton#agent_button:pressed { background: #084b4f; }
             QPushButton#stop_button, QPushButton#plan_stop_btn { background: #e65100; }
             QPushButton#stop_button:hover, QPushButton#plan_stop_btn:hover { background: #bf360c; }
             QPushButton#plan_run_btn { background: #2e7d32; }
@@ -418,17 +425,12 @@ class MainWindowPyQt6(QMainWindow):
     def end_stream_message(self) -> None:
         if self.chat_tab:
             self.chat_tab.end_stream_message()
-        # Завершити стрімінг (поки без реального usage)
-        self.streaming_buffer.finish()
-        # Зберігаємо час відповіді для статус-бару
+        # Зберігаємо час відповіді
         self._last_elapsed = self.streaming_buffer._elapsed
-        # Оновлюємо статус-бар з моделлю та часом
-        model = self._last_model or self.streaming_buffer._model or "?"
-        elapsed = self._last_elapsed
-        if self.status_label:
-            self.status_label.setText(
-                f"✅ {model} · {elapsed:.1f}с"
-            )
+        # Статус-бар НЕ перезаписуємо — він вже оновлений через _update_status_after_llm
+        # з реальним часом LLM (наприклад "✅ Gemini (12.8с)")
+        # Виклик streaming_buffer.finish() викидав статус з _elapsed=0.0 (якщо стрімінгу не було),
+        # що перезаписувало правильний час
         self.streaming_buffer.reset()
 
     def _on_streaming_status(self, status_text: str) -> None:
@@ -602,6 +604,7 @@ class MainWindowPyQt6(QMainWindow):
             elif msg_type == "stream_end":
                 self.end_stream_message()
             elif msg_type == "update_status":
+                print(f"[GUI] _on_message update_status: {data}")
                 self.update_progress(0, data)
             elif msg_type == "update_progress":
                 progress, status_text = data

@@ -750,8 +750,6 @@ def get_stt_controller(process_command_callback: Callable[[str], None], gui_queu
 ============================================================
 Імпорти:
   import time
-  import numpy
-  import sounddevice
   from colorama import Fore, Back, Style
   from functions.config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, ACTIVATION_WORD, ACTIVATION_LISTEN_DURATION, COMMAND_LISTEN_DURATION, MICROPHONE_DEVICE_ID, CONTINUOUS_MODE, CONTINUOUS_LISTENING_ENABLED, ASSISTANT_NAME, ASSISTANT_EMOJI, ASSISTANT_DISPLAY_NAME, TTS_ENABLED, TTS_DEVICE, TTS_CACHE_DIR, TTS_VOICES_DIR, TTS_DEFAULT_VOICE, TTS_SPEECH_RATE, TTS_VOLUME, TTS_SPEAK_PREFIXES
   from functions.audio.logic_stt import get_stt_engine
@@ -761,8 +759,6 @@ def get_stt_controller(process_command_callback: Callable[[str], None], gui_queu
 
 Сутності:
 def _gui_notify(gui_queue, status_msg: str, chat_msg: str | None):
-def print_audio_diagnostics():
-def run_audio_smoke_test():
 class AudioInitializer:
     def __init__(self, gui_queue):
     def diagnostics(self):
@@ -3130,7 +3126,7 @@ def llm_function(name, description, parameters):
 def _resolve_path(filepath: str) -> str:
 def read_code_file(filepath, start_line, max_lines):
 def search_in_code(pattern, directory, file_pattern, max_results):
-def list_directory(directory):
+def list_directory(directory, path):
 def git_status(directory):
 def git_diff(directory, staged):
 

@@ -12,8 +12,6 @@
 Використовується замість масивного блоку ініціалізації в main.py.
 """
 import time
-import numpy as np
-import sounddevice as sd
 from colorama import Fore, Back, Style
 
 from functions.config import (
@@ -40,52 +38,6 @@ def _gui_notify(gui_queue, status_msg: str, chat_msg: str | None = None):
         gui_queue.put(('add_message', ('assistant', chat_msg)))
 
 
-def print_audio_diagnostics():
-    """Вивести інформацію про вибраний мікрофон."""
-    try:
-        if MICROPHONE_DEVICE_ID is not None:
-            print(f"{Fore.YELLOW}🎤 Вибрано мікрофон #{MICROPHONE_DEVICE_ID}")
-            device_info = sd.query_devices(MICROPHONE_DEVICE_ID)
-            print(f"   Назва: {device_info['name']}")
-            print(f"   Канали: {device_info['max_input_channels']}")
-        else:
-            print(f"{Fore.YELLOW}🎤 Використовується системний мікрофон за замовчуванням")
-            default_input = sd.query_devices(kind='input')
-            print(f"   Назва: {default_input['name']}")
-        print()
-    except Exception as e:
-        print(f"{Fore.YELLOW}⚠️  Діагностику мікрофона пропущено: {e}")
-
-
-def run_audio_smoke_test():
-    """Короткий тест запису."""
-    try:
-        print("🧪 Тестовий запис 2 секунди...")
-        test_audio = sd.rec(
-            int(2 * SAMPLE_RATE),
-            samplerate=SAMPLE_RATE,
-            channels=1,
-            dtype=np.float32,
-            device=MICROPHONE_DEVICE_ID,
-            blocking=True
-        )
-        volume = np.abs(test_audio).mean()
-        print(f"   Середня гучність: {volume:.6f}")
-        print(f"   Поріг: {VOLUME_THRESHOLD}")
-
-        if volume < 0.01:
-            print(f"{Fore.RED}   ⚠️  ДУЖЕ ТИХО! Гучність {volume:.6f} < 0.01")
-            print(f"{Fore.YELLOW}   💡 Підвищіть гучність мікрофона:")
-            print(f"{Fore.YELLOW}      1. Правий клік на звук → Налаштування")
-            print(f"{Fore.YELLOW}      2. Введення → Властивості")
-            print(f"{Fore.YELLOW}      3. Рівні → Мікрофон 100% + Підсилення +20dB")
-        elif volume > VOLUME_THRESHOLD:
-            print("   ✅ Мікрофон працює!")
-        else:
-            print("   ❌ Занадто тихо")
-        print()
-    except Exception as e:
-        print(f"{Fore.YELLOW}⚠️  Тест аудіо пропущено: {e}")
 
 
 class AudioInitializer:
@@ -111,9 +63,8 @@ class AudioInitializer:
     # ── Діагностика ───────────────────────────────────────
 
     def diagnostics(self):
-        """Провести діагностику мікрофона та smoke-тест."""
-        print_audio_diagnostics()
-        run_audio_smoke_test()
+        """Діагностика мікрофона (вимкнена для прискорення запуску)."""
+        pass
 
     # ── STT ────────────────────────────────────────────────
 

@@ -219,7 +219,7 @@ class ChatPanelQtMixin:
     def append_stream_chunk(self, text: str) -> None:
         """Додати фрагмент тексту до стрімінгового повідомлення."""
     def end_stream_message(self) -> None:
-        """Завершити стрімінг (додати новий рядок і оновити статус)."""
+        """Завершити стрімінг (додати новий рядок)."""
     def _setup_clipboard_and_menus(self) -> None:
         """Налаштувати clipboard та контекстні меню."""
     def _show_input_context_menu(self, pos) -> None:
@@ -951,8 +951,6 @@ def get_stt_controller(process_command_callback: Callable[[str], None], gui_queu
 ============================================================
 Імпорти:
   import time
-  import numpy
-  import sounddevice
   from colorama import Fore, Back, Style
   from functions.config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, ACTIVATION_WORD, ACTIVATION_LISTEN_DURATION, COMMAND_LISTEN_DURATION, MICROPHONE_DEVICE_ID, CONTINUOUS_MODE, CONTINUOUS_LISTENING_ENABLED, ASSISTANT_NAME, ASSISTANT_EMOJI, ASSISTANT_DISPLAY_NAME, TTS_ENABLED, TTS_DEVICE, TTS_CACHE_DIR, TTS_VOICES_DIR, TTS_DEFAULT_VOICE, TTS_SPEECH_RATE, TTS_VOLUME, TTS_SPEAK_PREFIXES
   from functions.audio.logic_stt import get_stt_engine
@@ -963,15 +961,11 @@ def get_stt_controller(process_command_callback: Callable[[str], None], gui_queu
 Сутності:
 def _gui_notify(gui_queue, status_msg: str, chat_msg: str | None):
     """Допоміжна функція: відправити статус + чат-повідомлення в GUI."""
-def print_audio_diagnostics():
-    """Вивести інформацію про вибраний мікрофон."""
-def run_audio_smoke_test():
-    """Короткий тест запису."""
 class AudioInitializer:
     """Менеджер ініціалізації аудіо-підсистеми."""
     def __init__(self, gui_queue):
     def diagnostics(self):
-        """Провести діагностику мікрофона та smoke-тест."""
+        """Діагностика мікрофона (вимкнена для прискорення запуску)."""
     def _load_stt_model(self):
         """Завантажити STT двигун (внутрішній метод)."""
     def init_stt(self) -> bool:
@@ -4242,7 +4236,7 @@ def read_code_file(filepath, start_line, max_lines):
     """Прочитати файл з обмеженням кількості рядків."""
 def search_in_code(pattern, directory, file_pattern, max_results):
     """Пошук по файлах за патерном."""
-def list_directory(directory):
+def list_directory(directory, path):
     """Перелічити файли в директорії."""
 def git_status(directory):
     """Виконати git status."""
@@ -5545,7 +5539,7 @@ class AssistantAppQt:
     def _handle_restart(self) -> None:
         """Обробка перезапуску асистента."""
     def _handle_process_text(self, text: str) -> None:
-        """Обробити текст з GUI чату — всі команди через AgentCoordinator (AgentLoop), fallback на process_text_command."""
+        """Обробити текст з GUI чату."""
     def gui_callback(self, action: str, data) -> None:
     def queue_dispatcher(self) -> None:
         """Читає gui_queue та конвертує повідомлення в Qt-сигнали (thread-safe)."""

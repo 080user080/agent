@@ -216,9 +216,12 @@ def search_in_code(pattern, directory=None, file_pattern="*", max_results=50):
         "directory": "(опціонально) шлях до директорії, за замовчуванням поточна",
     },
 )
-def list_directory(directory=None):
+def list_directory(directory=None, path=None):
     """Перелічити файли в директорії."""
     try:
+        # Якщо передано path – використовуємо його як directory
+        if path is not None:
+            directory = path
         if not directory:
             directory = os.getcwd()
         directory = os.path.abspath(directory)
