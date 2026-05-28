@@ -7,7 +7,7 @@ from functions.gui.commands_planner import needs_clarification
 
 
 def test_pending_merge_never_ambiguous():
-    """Після об'єднання з pending — команда завжди виконується.
+    r"""Після об'єднання з pending — команда завжди виконується.
     
     Симулюємо що було: "подивися проект" (pending) + "d:\Python\MARK\" (відповідь)
     Об'єднана команда "подивися проект d:\Python\MARK\" не повинна знову питати.

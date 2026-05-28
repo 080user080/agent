@@ -315,7 +315,7 @@ class SettingsTabQtMixin:
 
         query = self._settings_search_edit.text().strip().lower()
 
-        for group_name, info in self._group_headers.items():
+        for _group_name, info in self._group_headers.items():
             any_visible = False
             for key in info["keys"]:
                 schema = SETTINGS_SCHEMA.get(key, {})

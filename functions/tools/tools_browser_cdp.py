@@ -647,7 +647,7 @@ def cdp_get_response(timeout: int = 120, max_retries: int = 2) -> Dict[str, Any]
         ready = _wait_for_response(page, timeout=timeout)
 
         # Спроба через кнопку Copy
-        for attempt in range(max_retries):
+        for _attempt in range(max_retries):
             if _click_copy_button(page):
                 time.sleep(0.5)
                 if PYPERCLIP_AVAILABLE:

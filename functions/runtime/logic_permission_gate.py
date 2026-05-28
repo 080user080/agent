@@ -1,4 +1,4 @@
-"""PermissionGate — policy-based consent-шар для автопілота (Phase 11.2).
+r"""PermissionGate — policy-based consent-шар для автопілота (Phase 11.2).
 
 Викликається TaskRunner-ом перед будь-якою «живою» дією (subprocess,
 writefile, HTTP-виклик). Повертає `Decision(allow=..., reason=...)` —

@@ -209,7 +209,7 @@ def _fallback_plan_parse(data: Dict[str, Any]) -> "Plan":
                 expect=parse_expect_list(entry.get("expect")),
             )
         )
-    return cls(
+    return Plan(
         name=str(data.get("name") or "(unnamed plan)"),
         tasks=tasks, metadata=dict(data.get("metadata") or {}),
     )

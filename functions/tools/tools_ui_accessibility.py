@@ -127,9 +127,9 @@ class UIAWrapper:
 
         try:
             if self._backend == "uiautomation":
-                from uiautomation import GetFocusedElement
+                from uiautomation import GetFocusedControl
 
-                elem = GetFocusedElement()
+                elem = GetFocusedControl()
                 if elem:
                     rect = elem.BoundingRectangle
                     return UIElement(
@@ -266,7 +266,7 @@ class UIAWrapper:
                 # Якщо hwnd не задано — беремо фокований елемент або його вікно
                 if hwnd is None:
                     try:
-                        elem = GetFocusedElement()
+                        elem = GetFocusedControl()
                         if elem:
                             root = elem.GetParentControl()
                             # Піднімаємося до Window

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 from colorama import Fore
 
 from functions.config import LM_STUDIO_URL, TTS_ENABLED, ASSISTANT_DISPLAY_NAME

@@ -314,7 +314,7 @@ class MainWindowPyQt6(QMainWindow):
             "⚙️ Налаштування": 5,
         }
         # Спочатку показати всі вкладки
-        for tab_name, tab_index in tab_map.items():
+        for _tab_name, tab_index in tab_map.items():
             if tab_index < self.notebook.count():
                 self.notebook.setTabVisible(tab_index, True)
         # Приховати вказані, крім захищених

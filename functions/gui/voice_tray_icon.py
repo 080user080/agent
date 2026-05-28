@@ -15,12 +15,19 @@ except ImportError:
     PYQT6_AVAILABLE = False
 
 
-class _StatusUpdateEvent(QEvent):
-    """Кастомний QEvent для оновлення статусу tray icon."""
-    def __init__(self, status: VoiceStatus, text: str):
-        super().__init__(QEvent.Type.User)
-        self.status = status
-        self.text = text
+if PYQT6_AVAILABLE:
+    class _StatusUpdateEvent(QEvent):  # type: ignore[no-redef]
+        """Кастомний QEvent для оновлення статусу tray icon."""
+        def __init__(self, status: 'VoiceStatus', text: str):
+            super().__init__(QEvent.Type.User)
+            self.status = status
+            self.text = text
+else:
+    class _StatusUpdateEvent:  # type: ignore[no-redef]
+        """Заглушка для оточень без PyQt6."""
+        def __init__(self, status: 'VoiceStatus', text: str):
+            self.status = status
+            self.text = text
 
 
 class VoiceStatus(Enum):

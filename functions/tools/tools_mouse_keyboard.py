@@ -12,6 +12,7 @@
 
 import ctypes
 import os
+import sys
 import time
 from io import BytesIO
 from typing import Dict, Any, Optional, Tuple
@@ -85,6 +86,11 @@ class MouseKeyboardController:
     }
 
     def __init__(self):
+        if sys.platform != 'win32':
+            raise NotImplementedError(
+                "MouseKeyboardController працює лише на Windows "
+                "(ctypes.windll.user32 недоступний)"
+            )
         self.last_position = None
         self._user32 = ctypes.windll.user32
         # Ініціалізуємо DPI кеш при створенні
@@ -623,34 +629,43 @@ class MouseKeyboardController:
 
 # ==================== Функції для інтеграції в TOOL_POLICIES ====================
 
-_controller = MouseKeyboardController()
+try:
+    _controller = MouseKeyboardController()
+except (NotImplementedError, AttributeError):
+    _controller = None
+
+
+def _ensure_controller() -> MouseKeyboardController:
+    if _controller is None:
+        raise RuntimeError("MouseKeyboardController недоступний (не Windows)")
+    return _controller
 
 
 def mouse_click(x: int, y: int, button: str = 'left', clicks: int = 1, interval: float = 0.1) -> Dict[str, Any]:
     """Клік мишою в координати."""
-    return _controller.mouse_click(x, y, button, clicks, interval)
+    return _ensure_controller().mouse_click(x, y, button, clicks, interval)
 
 
 def mouse_move(x: int, y: int, duration: float = 0.5) -> Dict[str, Any]:
     """Перемістити курсор в координати."""
-    return _controller.mouse_move(x, y, duration)
+    return _ensure_controller().mouse_move(x, y, duration)
 
 
 def mouse_scroll(amount: int, direction: str = 'vertical',
                  x: Optional[int] = None, y: Optional[int] = None) -> Dict[str, Any]:
     """Прокрутка мишою."""
-    return _controller.mouse_scroll(amount, direction, x, y)
+    return _ensure_controller().mouse_scroll(amount, direction, x, y)
 
 
 def mouse_drag(start_x: int, start_y: int, end_x: int, end_y: int,
                duration: float = 0.5, button: str = 'left') -> Dict[str, Any]:
     """Перетягування drag & drop."""
-    return _controller.mouse_drag(start_x, start_y, end_x, end_y, duration, button)
+    return _ensure_controller().mouse_drag(start_x, start_y, end_x, end_y, duration, button)
 
 
 def get_mouse_position() -> Dict[str, Any]:
     """Поточні координати курсора."""
-    return _controller.get_mouse_position()
+    return _ensure_controller().get_mouse_position()
 
 
 def wait_for_response(duration: int = 300, check_interval: int = 25, 
@@ -850,47 +865,47 @@ def wait_for_response(duration: int = 300, check_interval: int = 25,
 
 def mouse_click_image(image_path: str, confidence: float = 0.8) -> Dict[str, Any]:
     """Клік по зображенню на екрані."""
-    return _controller.mouse_click_image(image_path, confidence)
+    return _ensure_controller().mouse_click_image(image_path, confidence)
 
 
 def keyboard_press(key: str) -> Dict[str, Any]:
     """Натиснути клавішу."""
-    return _controller.keyboard_press(key)
+    return _ensure_controller().keyboard_press(key)
 
 
 def keyboard_type(text: str, interval: float = 0.02) -> Dict[str, Any]:
     """Ввести текст посимвольно."""
-    return _controller.keyboard_type(text, interval)
+    return _ensure_controller().keyboard_type(text, interval)
 
 
 def keyboard_hotkey(*keys: str) -> Dict[str, Any]:
     """Комбінація клавіш."""
-    return _controller.keyboard_hotkey(*keys)
+    return _ensure_controller().keyboard_hotkey(*keys)
 
 
 def keyboard_hold(key: str, duration: float = 1.0) -> Dict[str, Any]:
     """Утримувати клавішу."""
-    return _controller.keyboard_hold(key, duration)
+    return _ensure_controller().keyboard_hold(key, duration)
 
 
 def keyboard_send_special(key_name: str) -> Dict[str, Any]:
     """Спеціальна клавіша (PrintScreen, NumLock, ...)."""
-    return _controller.keyboard_send_special(key_name)
+    return _ensure_controller().keyboard_send_special(key_name)
 
 
 def clipboard_copy_text(text: str) -> Dict[str, Any]:
     """Копіювати текст у буфер."""
-    return _controller.clipboard_copy_text(text)
+    return _ensure_controller().clipboard_copy_text(text)
 
 
 def clipboard_get_text() -> Dict[str, Any]:
     """Отримати текст з буфера."""
-    return _controller.clipboard_get_text()
+    return _ensure_controller().clipboard_get_text()
 
 
 def send_input_unicode(text: str) -> Dict[str, Any]:
     """Вставити текст через SendInput з KEYEVENTF_UNICODE (працює з кирилицею)."""
-    return _controller.send_input_unicode(text)
+    return _ensure_controller().send_input_unicode(text)
 
 
 def insert_text_smart(text: str) -> Dict[str, Any]:
@@ -902,9 +917,9 @@ def insert_text_smart(text: str) -> Dict[str, Any]:
     - Fallback: SendInput Unicode
     - Last fallback: Ctrl+V
     """
-    return _controller.insert_text_smart(text)
+    return _ensure_controller().insert_text_smart(text)
 
 
 def clipboard_copy_image(image_path: str) -> Dict[str, Any]:
     """Копіювати зображення у буфер."""
-    return _controller.clipboard_copy_image(image_path)
+    return _ensure_controller().clipboard_copy_image(image_path)
