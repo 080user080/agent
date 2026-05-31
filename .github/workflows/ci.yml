@@ -40,10 +40,10 @@ jobs:
         continue-on-error: true  # поки не прийняли форматер — лише інформативно
 
   tests:
-    name: Tests (pytest, Linux)
-    runs-on: ubuntu-latest
-    # Linux-прогін: win32*/pyautogui/pyperclip/mss/pytesseract/easyocr/sounddevice
-    # підміняються auto-mock заглушками з tests/conftest.py.
+    name: Tests (pytest, Windows)
+    runs-on: windows-latest
+    # Windows-прогін: всі Windows-залежності (pywin32, uiautomation, pywinauto)
+    # встановлюються нативно. Mock-заглушки з conftest.py не використовуються.
     steps:
       - uses: actions/checkout@v4
 
@@ -53,15 +53,22 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      - name: Install core + dev deps (без GUI/audio/ML)
+      - name: Install Tesseract OCR
+        run: choco install tesseract --no-progress
+
+      - name: Install dependencies
+        shell: powershell
         run: |
           python -m pip install --upgrade pip
-          # Ставимо лише легкі залежності, що реально потрібні для тестів.
-          # Тяжкі пакети (torch, transformers, accelerate, pyautogui, pywin32)
-          # не встановлюємо — вони замокані у tests/conftest.py.
-          pip install pytest pytest-cov numpy Pillow opencv-python requests colorama psutil
+          pip install -r requirements-dev.txt
+
+      - name: Install Playwright browsers
+        run: |
+          pip install playwright
+          playwright install chromium
 
       - name: Run pytest
+        shell: powershell
         run: pytest --cov=functions --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage artifact
