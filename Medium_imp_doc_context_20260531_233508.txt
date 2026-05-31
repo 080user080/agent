@@ -158,7 +158,7 @@ macros
 profiles
 runtime\cache
 runtime\checkpoints
-runtime\logs
+runtime\logs\screenshots
 runtime\macros
 runtime\memory
 runtime\profiles
@@ -297,7 +297,7 @@ class ConfirmationQtMixin:
 ============================================================
 Імпорти:
   from __future__ import annotations
-  from typing import Any, List
+  from typing import Any, List, Optional
   from PyQt6.QtCore import Qt, pyqtSignal
   from PyQt6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QLineEdit, QComboBox, QCheckBox, QDialog, QDialogButtonBox, QListWidget, QListWidgetItem
 
@@ -4197,37 +4197,11 @@ def dismiss_all_dialogs(timeout: float) -> Dict[str, Any]:
   from typing import Optional
 
 Сутності:
-class _StatusUpdateEvent(QEvent):
-    """Кастомний QEvent для оновлення статусу tray icon."""
-    def __init__(self, status: VoiceStatus, text: str):
 class VoiceStatus(Enum):
     """Статус голосового введення."""
 class _TrayStatusData:
     """Дані для оновлення статусу."""
     def __init__(self, status: VoiceStatus, text: str):
-class VoiceTrayIcon(QObject):
-    """Tray icon для показу статусу голосового введення."""
-    def __init__(self, parent):
-    def initialize(self) -> bool:
-        """Ініціалізувати tray icon."""
-    def _run_event_loop(self):
-        """Запустити Qt event loop в окремому потоці."""
-    def set_status(self, status: VoiceStatus, text: str):
-        """Встановити статус tray icon (потокобезпечно)."""
-    def customEvent(self, event: QEvent):
-        """Обробити кастомний event для оновлення статусу."""
-    def _do_set_status(self, status: VoiceStatus, text: str):
-        """Внутрішній метод - виконується в основному потоці Qt."""
-    def _create_icon(self, status: VoiceStatus) -> QIcon:
-        """Створити іконку мікрофона з кольором статусу."""
-    def _get_tooltip(self, status: VoiceStatus, text: str) -> str:
-        """Отримати tooltip для статусу."""
-    def show(self):
-        """Показати tray icon."""
-    def hide(self):
-        """Приховати tray icon."""
-    def cleanup(self):
-        """Очистити ресурси."""
 def get_voice_tray_icon() -> Optional[VoiceTrayIcon]:
     """Отримати singleton екземпляр VoiceTrayIcon."""
 
@@ -5426,7 +5400,6 @@ class ScenarioLearner:
   from dataclasses import dataclass, field
   from pathlib import Path
   from typing import Any, Callable, Dict, List, Optional
-  from pydantic import ValidationError
   from functions.planning.logic_execution_report import STATUS_DENIED, STATUS_ERROR, STATUS_EXPECT_FAILED, STATUS_OK, STATUS_PRECHECK_FAILED, STATUS_SKIPPED, ExecutionReport, StepReport
   from functions.planning.logic_expectations import ExpectContext, ExpectRegistry, ExpectSpec, ExpectationResult, all_ok, failures, parse_expect_list
   from functions.planning.logic_repair_loop import RepairLoop, RepairProposer
@@ -5562,7 +5535,6 @@ class PlanExecutor:
   import time
   from enum import Enum
   from typing import Any, Dict, List, Optional
-  from pydantic import BaseModel, Field, field_validator
 
 Сутності:
 class DomainEnum(str, Enum):
@@ -7363,6 +7335,7 @@ def create_thumbnail(img: Any, size: Tuple[int, int]) -> Dict[str, Any]:
 Імпорти:
   import ctypes
   import os
+  import sys
   import time
   from io import BytesIO
   from typing import Dict, Any, Optional, Tuple
@@ -7416,6 +7389,7 @@ class MouseKeyboardController:
         """Конвертувати зображення в DIB формат для clipboard."""
     def clipboard_copy_image(self, image_path: str) -> Dict[str, Any]:
         """Скопіювати зображення у буфер обміну."""
+def _ensure_controller() -> MouseKeyboardController:
 def mouse_click(x: int, y: int, button: str, clicks: int, interval: float) -> Dict[str, Any]:
     """Клік мишою в координати."""
 def mouse_move(x: int, y: int, duration: float) -> Dict[str, Any]:
@@ -8136,7 +8110,7 @@ def get_file_dependents(filepath: str) -> str:
 
 # Невідомий тип: D:\Python\agent\runtime\checkpoints
 
-# Невідомий тип: D:\Python\agent\runtime\logs
+# Невідомий тип: D:\Python\agent\runtime\logs\screenshots
 
 # Невідомий тип: D:\Python\agent\runtime\macros
 
@@ -9142,6 +9116,107 @@ Voice-режим = планування/розмова. Coding-режим = ви
   - Деталі:
     - Якщо `enable_vision=True` і провайдер доступний — додавати vision_description в промпт
 
+---
+
+## 🔴 Пріоритет 1: Стабільність основних модулів (критичні для роботи)
+
+- [ ] **`get_endpoint_by_role` — відсутній експорт** (1 FAILED: `test_execute_not_implemented`)
+  - Файли: `functions/config.py`, `functions/planning/ai_actors.py`
+  - Фікс: додати функцію назад у config або оновити ai_actors.py
+
+- [ ] **`WindsurfWatcherConfig.max_tokens` — відсутній атрибут** (7 FAILED)
+  - Файл: `functions/runtime/core_windsurf_watcher.py`
+  - Фікс: додати поле `max_tokens` до dataclass `WindsurfWatcherConfig`
+
+- [ ] **ActionDecider fallback логіка** (5 FAILED: `test_decide_handles_llm_error`, `test_decide_handles_llm_exception`, `test_decider_noop_falls_through`, `test_empty_response`, `test_invalid_json`)
+  - Файл: `functions/agent/plan.py` (рядки ~440-460)
+  - Фікс: після вичерпання спроб JSON парсингу повертати `noop` замість `take_screenshot`
+
+- [ ] **AgentLoop — видалені методи** (6 FAILED: `test_consecutive_failures_increment`, `test_handle_ask_user_step_*`, `test_plan_with_ask_user_compiled_plan`)
+  - Файл: `functions/planning/agent_loop.py` (рядки 300-450)
+  - Фікс: повернути методи `_execute_single_step` та `_handle_ask_user_step` або оновити тести
+
+- [ ] **Імпорт `functions.logic_plan_critic`** (2 FAILED: `test_calls_create_plan_with_concerns_block`, `test_serialized_plan_contains_goal_and_validation_in_legacy_meta`)
+  - Файл: `tests/test_core_planner_critic.py`
+  - Фікс: виправити імпорт на `functions.planning.logic_plan_critic`
+
+## 🟠 Пріоритет 2: UndoManager (10 FAILED)
+
+- [ ] **Повний рефакторинг UndoManager**
+  - Файл: `functions/runtime/core_undo_manager.py`
+  - Проблеми:
+    - стек 4 замість 3 (`test_add_multiple_to_undo_stack`)
+    - `undo_last` повертає 0 замість 1
+    - `undo_all` повертає 1 замість 2
+    - `save_snapshot` повертає False
+    - `list_snapshots` повертає 3 замість 2
+    - `restore_snapshot` повертає False
+    - `undo_to_snapshot` повертає False
+  - Фікс: переписати логіку стеків/снапшотів або синхронізувати тести
+
+## 🟡 Пріоритет 3: API-сумісність
+
+- [ ] **ScreenCapture — змінені імена методів** (5 FAILED)
+  - Файл: `functions/tools/tools_screen_capture.py`
+  - Фікс: додати методи-обгортки `capture_screen` → `capture_region`, `save_screenshot` → `take_screenshot`
+
+- [ ] **UIElement — конструктор** (2 FAILED: `test_ui_element_creation`, `test_ui_element_defaults`)
+  - Файл: `functions/tools/tools_ui_accessibility.py`
+  - Фікс: `bounding_rectangle` → `bounding_rect`, `control_type` мати дефолт None
+
+- [ ] **UIAWrapper — нормалізація return** (6 FAILED)
+  - Файл: `functions/tools/tools_ui_accessibility.py`
+  - Фікс: методи мають повертати `{"error": "...", "success": False}` замість None
+
+- [ ] **LLMTools UIA — сигнатури функцій** (8 FAILED)
+  - Файли: `functions/tools/tools_ui_accessibility.py`, `tests/test_tools_ui_accessibility.py`
+  - Фікс: синхронізувати сигнатури `uia_list_elements`, `uia_set_text`, `uia_wait_for_element`, `uia_list_buttons`, `uia_list_inputs`, `uia_get_focused_element`
+
+## 🔵 Пріоритет 4: Інфраструктура тестів
+
+- [ ] **PermissionGate — шлях поза project root** (3 FAILED)
+  - Файли: `functions/runtime/logic_permission_gate.py`, `tests/test_logic_permission_gate.py`
+  - Фікс: налаштувати CWD тестів або виправити логіку визначення project root
+
+- [ ] **`test_second_response_extracts_tail`** — зайвий пробіл
+  - Файл: `tests/test_core_windsurf_watcher.py`
+  - Фікс: strip() при порівнянні
+
+- [ ] **`test_missing_kind_raises`** — ValueError не кидається
+  - Файл: `tests/test_logic_task_runner.py`
+  - Фікс: виправити парсинг `Plan.from_dict()` або тест
+
+- [ ] **`test_plan_from_dict_parses_expect_and_precheck`** — dict замість об'єкта
+  - Файл: `tests/test_logic_task_runner_expect.py`
+  - Фікс: нормалізувати precheck
+
+- [ ] **TestCodePipelineEndToEnd** — scaffold denied (permission gate)
+  - Файл: `tests/test_pipeline_code.py`
+  - Фікс: те саме, що permission gate
+
+- [ ] **TestUIDetector** — find_input_field/find_checkbox
+  - Файл: `tests/test_tools_ui_detector.py`
+  - Фікс: виправити обробку помилок
+
+- [ ] **TestVoiceTrayIcon** — `_get_tooltip` відсутній, `_should_run`
+  - Файл: `tests/test_voice_tray_icon.py`, `functions/gui/voice_tray_icon.py`
+  - Фікс: додати `_get_tooltip` метод, нормалізувати `_should_run`
+
+## ⚪ Пріоритет 5: Linux-специфічні (очікувані на CI, маркувати skip)
+
+- [ ] **DPI scaling / ScreenHelper** (8 FAILED)
+  - Файл: `tests/test_screen_helper.py`, `tests/test_dpi_multimonitor.py`
+  - Фікс: `ctypes.windll` не існує на Linux → `@pytest.mark.skipif(sys.platform != "win32")`
+
+- [ ] **MouseKeyboardController** (17 ERROR + 6 FAILED)
+  - Файл: `tests/test_tools_mouse_keyboard.py`, `tests/test_drag_drop.py`
+  - Фікс: `@pytest.mark.skipif(sys.platform != "win32")`
+
+- [ ] **GlobalVoiceInput** (12 FAILED)
+  - Файл: `tests/test_global_voice_input.py`
+  - Фікс: `@pytest.mark.skipif(...)` або оновити імпорти
+
+
 ============================================================
 Документація/файл: D:\Python\agent\TASKS_Done.md
 ============================================================
@@ -9720,6 +9795,9 @@ noisereduce>=2.0.0
 transformers>=4.30.0       # w2v-bert-uk, Silero і т.п.
 accelerate>=0.20.0
 groq>=0.11.0               # Groq API SDK для швидких LLM запитів
+
+# --- Pydantic (валідація даних для планування) ---
+pydantic>=2.0.0
 
 # --- Open Interpreter (self-healing executor) ---
 open-interpreter>=0.3.0     # Self-healing code execution з LLM

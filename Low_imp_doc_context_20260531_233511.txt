@@ -16,7 +16,15 @@ core_gui_pyqt6\tab_plan.py
 core_gui_pyqt6\tab_settings.py
 core_gui_pyqt6\tab_stats.py
 core_gui_pyqt6\tab_tools.py
-docs
+docs\API.md
+docs\ARCHITECTURE.md
+docs\DEBUG_LOOP.md
+docs\LLM_to_LM_Studio.md
+docs\MODULES.md
+docs\PLAN_COMPUTER_USE.md
+docs\SECURITY.md
+docs\agent_loop_line_length_analysis.txt
+docs\tests.md
 functions\agent\__init__.py
 functions\agent\act.py
 functions\agent\check.py
@@ -150,17 +158,23 @@ macros
 profiles
 runtime\cache
 runtime\checkpoints
-runtime\logs
+runtime\logs\screenshots
 runtime\macros
 runtime\memory
 runtime\profiles
 runtime\self_learning
 runtime\settings
 runtime\snapshots
+README.md
+TASKS.md
+TASKS_Done.md
 main.py
 migrate_runtime.py
+requirements-dev.txt
+requirements.txt
 run.py
 run_assistant_qt.py
+status.md
 
 ============================================================
 ДЕТАЛІЗАЦІЯ КОДУ (рівень: low)
@@ -253,7 +267,7 @@ class ConfirmationQtMixin:
 ============================================================
 Імпорти:
   from __future__ import annotations
-  from typing import Any, List
+  from typing import Any, List, Optional
   from PyQt6.QtCore import Qt, pyqtSignal
   from PyQt6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QLineEdit, QComboBox, QCheckBox, QDialog, QDialogButtonBox, QListWidget, QListWidgetItem
 
@@ -586,7 +600,23 @@ class ToolsTab(BaseTab):
     def _load_tools(self) -> None:
     def _update_table(self) -> None:
     def _on_execute_tool(self) -> None:
-# Невідомий тип: D:\Python\agent\docs
+# Пропущено (low деталізація): D:\Python\agent\docs\API.md
+
+# Пропущено (low деталізація): D:\Python\agent\docs\ARCHITECTURE.md
+
+# Пропущено (low деталізація): D:\Python\agent\docs\DEBUG_LOOP.md
+
+# Пропущено (low деталізація): D:\Python\agent\docs\LLM_to_LM_Studio.md
+
+# Пропущено (low деталізація): D:\Python\agent\docs\MODULES.md
+
+# Пропущено (low деталізація): D:\Python\agent\docs\PLAN_COMPUTER_USE.md
+
+# Пропущено (low деталізація): D:\Python\agent\docs\SECURITY.md
+
+# Пропущено (low деталізація): D:\Python\agent\docs\agent_loop_line_length_analysis.txt
+
+# Пропущено (low деталізація): D:\Python\agent\docs\tests.md
 
 
 ============================================================
@@ -1137,23 +1167,9 @@ def dismiss_all_dialogs(timeout: float) -> Dict[str, Any]:
   from typing import Optional
 
 Сутності:
-class _StatusUpdateEvent(QEvent):
-    def __init__(self, status: VoiceStatus, text: str):
 class VoiceStatus(Enum):
 class _TrayStatusData:
     def __init__(self, status: VoiceStatus, text: str):
-class VoiceTrayIcon(QObject):
-    def __init__(self, parent):
-    def initialize(self) -> bool:
-    def _run_event_loop(self):
-    def set_status(self, status: VoiceStatus, text: str):
-    def customEvent(self, event: QEvent):
-    def _do_set_status(self, status: VoiceStatus, text: str):
-    def _create_icon(self, status: VoiceStatus) -> QIcon:
-    def _get_tooltip(self, status: VoiceStatus, text: str) -> str:
-    def show(self):
-    def hide(self):
-    def cleanup(self):
 def get_voice_tray_icon() -> Optional[VoiceTrayIcon]:
 
 ============================================================
@@ -2058,7 +2074,6 @@ class ScenarioLearner:
   from dataclasses import dataclass, field
   from pathlib import Path
   from typing import Any, Callable, Dict, List, Optional
-  from pydantic import ValidationError
   from functions.planning.logic_execution_report import STATUS_DENIED, STATUS_ERROR, STATUS_EXPECT_FAILED, STATUS_OK, STATUS_PRECHECK_FAILED, STATUS_SKIPPED, ExecutionReport, StepReport
   from functions.planning.logic_expectations import ExpectContext, ExpectRegistry, ExpectSpec, ExpectationResult, all_ok, failures, parse_expect_list
   from functions.planning.logic_repair_loop import RepairLoop, RepairProposer
@@ -2161,7 +2176,6 @@ class PlanExecutor:
   import time
   from enum import Enum
   from typing import Any, Dict, List, Optional
-  from pydantic import BaseModel, Field, field_validator
 
 Сутності:
 class DomainEnum(str, Enum):
@@ -3468,6 +3482,7 @@ def create_thumbnail(img: Any, size: Tuple[int, int]) -> Dict[str, Any]:
 Імпорти:
   import ctypes
   import os
+  import sys
   import time
   from io import BytesIO
   from typing import Dict, Any, Optional, Tuple
@@ -3499,6 +3514,7 @@ class MouseKeyboardController:
     def insert_text_smart(self, text: str) -> Dict[str, Any]:
     def _convert_image_to_dib(self, image_path: str) -> bytes:
     def clipboard_copy_image(self, image_path: str) -> Dict[str, Any]:
+def _ensure_controller() -> MouseKeyboardController:
 def mouse_click(x: int, y: int, button: str, clicks: int, interval: float) -> Dict[str, Any]:
 def mouse_move(x: int, y: int, duration: float) -> Dict[str, Any]:
 def mouse_scroll(amount: int, direction: str, x: Optional[int], y: Optional[int]) -> Dict[str, Any]:
@@ -3956,7 +3972,7 @@ def get_file_dependents(filepath: str) -> str:
 
 # Невідомий тип: D:\Python\agent\runtime\checkpoints
 
-# Невідомий тип: D:\Python\agent\runtime\logs
+# Невідомий тип: D:\Python\agent\runtime\logs\screenshots
 
 # Невідомий тип: D:\Python\agent\runtime\macros
 
@@ -3969,6 +3985,12 @@ def get_file_dependents(filepath: str) -> str:
 # Невідомий тип: D:\Python\agent\runtime\settings
 
 # Невідомий тип: D:\Python\agent\runtime\snapshots
+
+# Пропущено (low деталізація): D:\Python\agent\README.md
+
+# Пропущено (low деталізація): D:\Python\agent\TASKS.md
+
+# Пропущено (low деталізація): D:\Python\agent\TASKS_Done.md
 
 # [Помилка синтаксису] D:\Python\agent\main.py
 
@@ -3984,6 +4006,10 @@ def get_file_dependents(filepath: str) -> str:
   from pathlib import Path
 
 (немає класів чи функцій верхнього рівня)
+# Пропущено (low деталізація): D:\Python\agent\requirements-dev.txt
+
+# Пропущено (low деталізація): D:\Python\agent\requirements.txt
+
 
 ============================================================
 Файл: D:\Python\agent\run.py
@@ -4021,3 +4047,4 @@ class AssistantAppQt:
     def queue_dispatcher(self) -> None:
     def run_core_in_thread(self) -> None:
     def start(self) -> None:
+# Пропущено (low деталізація): D:\Python\agent\status.md

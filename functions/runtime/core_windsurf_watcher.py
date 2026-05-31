@@ -73,6 +73,7 @@ class WindsurfWatcherConfig:
     notify_on_response: bool = True
     log_dir: Path = field(default_factory=lambda: Path("logs/windsurf_watch"))
     heartbeat_interval: Optional[float] = 60.0  # heartbeat кожну хвилину
+    max_tokens: Optional[int] = None  # бюджет токенів для SessionBudget
     response_filter: Optional[Callable[[str], bool]] = None
     auto_scroll: bool = False
     auto_scroll_lines: int = 50

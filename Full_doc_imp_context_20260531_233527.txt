@@ -150,7 +150,7 @@ macros
 profiles
 runtime\cache
 runtime\checkpoints
-runtime\logs
+runtime\logs\screenshots
 runtime\macros
 runtime\memory
 runtime\profiles
@@ -301,7 +301,7 @@ class ConfirmationQtMixin:
 ============================================================
 Імпорти:
   from __future__ import annotations
-  from typing import Any, List
+  from typing import Any, List, Optional
   from PyQt6.QtCore import Qt, pyqtSignal
   from PyQt6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QLineEdit, QComboBox, QCheckBox, QDialog, QDialogButtonBox, QListWidget, QListWidgetItem
 
@@ -2207,37 +2207,11 @@ def dismiss_all_dialogs(timeout: float) -> Dict[str, Any]:
   from typing import Optional
 
 Сутності:
-class _StatusUpdateEvent(QEvent):
-    """Кастомний QEvent для оновлення статусу tray icon."""
-    def __init__(self, status: VoiceStatus, text: str):
 class VoiceStatus(Enum):
     """Статус голосового введення."""
 class _TrayStatusData:
     """Дані для оновлення статусу."""
     def __init__(self, status: VoiceStatus, text: str):
-class VoiceTrayIcon(QObject):
-    """Tray icon для показу статусу голосового введення."""
-    def __init__(self, parent):
-    def initialize(self) -> bool:
-        """Ініціалізувати tray icon."""
-    def _run_event_loop(self):
-        """Запустити Qt event loop в окремому потоці."""
-    def set_status(self, status: VoiceStatus, text: str):
-        """Встановити статус tray icon (потокобезпечно)."""
-    def customEvent(self, event: QEvent):
-        """Обробити кастомний event для оновлення статусу."""
-    def _do_set_status(self, status: VoiceStatus, text: str):
-        """Внутрішній метод - виконується в основному потоці Qt."""
-    def _create_icon(self, status: VoiceStatus) -> QIcon:
-        """Створити іконку мікрофона з кольором статусу."""
-    def _get_tooltip(self, status: VoiceStatus, text: str) -> str:
-        """Отримати tooltip для статусу."""
-    def show(self):
-        """Показати tray icon."""
-    def hide(self):
-        """Приховати tray icon."""
-    def cleanup(self):
-        """Очистити ресурси."""
 def get_voice_tray_icon() -> Optional[VoiceTrayIcon]:
     """Отримати singleton екземпляр VoiceTrayIcon."""
 
@@ -4111,7 +4085,6 @@ Returns:
   from dataclasses import dataclass, field
   from pathlib import Path
   from typing import Any, Callable, Dict, List, Optional
-  from pydantic import ValidationError
   from functions.planning.logic_execution_report import STATUS_DENIED, STATUS_ERROR, STATUS_EXPECT_FAILED, STATUS_OK, STATUS_PRECHECK_FAILED, STATUS_SKIPPED, ExecutionReport, StepReport
   from functions.planning.logic_expectations import ExpectContext, ExpectRegistry, ExpectSpec, ExpectationResult, all_ok, failures, parse_expect_list
   from functions.planning.logic_repair_loop import RepairLoop, RepairProposer
@@ -4327,7 +4300,6 @@ Returns:
   import time
   from enum import Enum
   from typing import Any, Dict, List, Optional
-  from pydantic import BaseModel, Field, field_validator
 
 Сутності:
 class DomainEnum(str, Enum):
@@ -6973,6 +6945,7 @@ Returns:
 Імпорти:
   import ctypes
   import os
+  import sys
   import time
   from io import BytesIO
   from typing import Dict, Any, Optional, Tuple
@@ -7135,6 +7108,7 @@ Args:
 
 Returns:
     {"success": True, "path": image_path}"""
+def _ensure_controller() -> MouseKeyboardController:
 def mouse_click(x: int, y: int, button: str, clicks: int, interval: float) -> Dict[str, Any]:
     """Клік мишою в координати."""
 def mouse_move(x: int, y: int, duration: float) -> Dict[str, Any]:
@@ -8356,7 +8330,7 @@ Returns:
 
 # Невідомий тип: D:\Python\agent\runtime\checkpoints
 
-# Невідомий тип: D:\Python\agent\runtime\logs
+# Невідомий тип: D:\Python\agent\runtime\logs\screenshots
 
 # Невідомий тип: D:\Python\agent\runtime\macros
 

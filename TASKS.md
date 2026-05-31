@@ -545,3 +545,103 @@ Voice-режим = планування/розмова. Coding-режим = ви
   - Пріоритет: P1
   - Деталі:
     - Якщо `enable_vision=True` і провайдер доступний — додавати vision_description в промпт
+
+---
+
+## 🔴 Пріоритет 1: Стабільність основних модулів (критичні для роботи)
+
+- [ ] **`get_endpoint_by_role` — відсутній експорт** (1 FAILED: `test_execute_not_implemented`)
+  - Файли: `functions/config.py`, `functions/planning/ai_actors.py`
+  - Фікс: додати функцію назад у config або оновити ai_actors.py
+
+- [ ] **`WindsurfWatcherConfig.max_tokens` — відсутній атрибут** (7 FAILED)
+  - Файл: `functions/runtime/core_windsurf_watcher.py`
+  - Фікс: додати поле `max_tokens` до dataclass `WindsurfWatcherConfig`
+
+- [ ] **ActionDecider fallback логіка** (5 FAILED: `test_decide_handles_llm_error`, `test_decide_handles_llm_exception`, `test_decider_noop_falls_through`, `test_empty_response`, `test_invalid_json`)
+  - Файл: `functions/agent/plan.py` (рядки ~440-460)
+  - Фікс: після вичерпання спроб JSON парсингу повертати `noop` замість `take_screenshot`
+
+- [ ] **AgentLoop — видалені методи** (6 FAILED: `test_consecutive_failures_increment`, `test_handle_ask_user_step_*`, `test_plan_with_ask_user_compiled_plan`)
+  - Файл: `functions/planning/agent_loop.py` (рядки 300-450)
+  - Фікс: повернути методи `_execute_single_step` та `_handle_ask_user_step` або оновити тести
+
+- [ ] **Імпорт `functions.logic_plan_critic`** (2 FAILED: `test_calls_create_plan_with_concerns_block`, `test_serialized_plan_contains_goal_and_validation_in_legacy_meta`)
+  - Файл: `tests/test_core_planner_critic.py`
+  - Фікс: виправити імпорт на `functions.planning.logic_plan_critic`
+
+## 🟠 Пріоритет 2: UndoManager (10 FAILED)
+
+- [ ] **Повний рефакторинг UndoManager**
+  - Файл: `functions/runtime/core_undo_manager.py`
+  - Проблеми:
+    - стек 4 замість 3 (`test_add_multiple_to_undo_stack`)
+    - `undo_last` повертає 0 замість 1
+    - `undo_all` повертає 1 замість 2
+    - `save_snapshot` повертає False
+    - `list_snapshots` повертає 3 замість 2
+    - `restore_snapshot` повертає False
+    - `undo_to_snapshot` повертає False
+  - Фікс: переписати логіку стеків/снапшотів або синхронізувати тести
+
+## 🟡 Пріоритет 3: API-сумісність
+
+- [ ] **ScreenCapture — змінені імена методів** (5 FAILED)
+  - Файл: `functions/tools/tools_screen_capture.py`
+  - Фікс: додати методи-обгортки `capture_screen` → `capture_region`, `save_screenshot` → `take_screenshot`
+
+- [ ] **UIElement — конструктор** (2 FAILED: `test_ui_element_creation`, `test_ui_element_defaults`)
+  - Файл: `functions/tools/tools_ui_accessibility.py`
+  - Фікс: `bounding_rectangle` → `bounding_rect`, `control_type` мати дефолт None
+
+- [ ] **UIAWrapper — нормалізація return** (6 FAILED)
+  - Файл: `functions/tools/tools_ui_accessibility.py`
+  - Фікс: методи мають повертати `{"error": "...", "success": False}` замість None
+
+- [ ] **LLMTools UIA — сигнатури функцій** (8 FAILED)
+  - Файли: `functions/tools/tools_ui_accessibility.py`, `tests/test_tools_ui_accessibility.py`
+  - Фікс: синхронізувати сигнатури `uia_list_elements`, `uia_set_text`, `uia_wait_for_element`, `uia_list_buttons`, `uia_list_inputs`, `uia_get_focused_element`
+
+## 🔵 Пріоритет 4: Інфраструктура тестів
+
+- [ ] **PermissionGate — шлях поза project root** (3 FAILED)
+  - Файли: `functions/runtime/logic_permission_gate.py`, `tests/test_logic_permission_gate.py`
+  - Фікс: налаштувати CWD тестів або виправити логіку визначення project root
+
+- [ ] **`test_second_response_extracts_tail`** — зайвий пробіл
+  - Файл: `tests/test_core_windsurf_watcher.py`
+  - Фікс: strip() при порівнянні
+
+- [ ] **`test_missing_kind_raises`** — ValueError не кидається
+  - Файл: `tests/test_logic_task_runner.py`
+  - Фікс: виправити парсинг `Plan.from_dict()` або тест
+
+- [ ] **`test_plan_from_dict_parses_expect_and_precheck`** — dict замість об'єкта
+  - Файл: `tests/test_logic_task_runner_expect.py`
+  - Фікс: нормалізувати precheck
+
+- [ ] **TestCodePipelineEndToEnd** — scaffold denied (permission gate)
+  - Файл: `tests/test_pipeline_code.py`
+  - Фікс: те саме, що permission gate
+
+- [ ] **TestUIDetector** — find_input_field/find_checkbox
+  - Файл: `tests/test_tools_ui_detector.py`
+  - Фікс: виправити обробку помилок
+
+- [ ] **TestVoiceTrayIcon** — `_get_tooltip` відсутній, `_should_run`
+  - Файл: `tests/test_voice_tray_icon.py`, `functions/gui/voice_tray_icon.py`
+  - Фікс: додати `_get_tooltip` метод, нормалізувати `_should_run`
+
+## ⚪ Пріоритет 5: Linux-специфічні (очікувані на CI, маркувати skip)
+
+- [ ] **DPI scaling / ScreenHelper** (8 FAILED)
+  - Файл: `tests/test_screen_helper.py`, `tests/test_dpi_multimonitor.py`
+  - Фікс: `ctypes.windll` не існує на Linux → `@pytest.mark.skipif(sys.platform != "win32")`
+
+- [ ] **MouseKeyboardController** (17 ERROR + 6 FAILED)
+  - Файл: `tests/test_tools_mouse_keyboard.py`, `tests/test_drag_drop.py`
+  - Фікс: `@pytest.mark.skipif(sys.platform != "win32")`
+
+- [ ] **GlobalVoiceInput** (12 FAILED)
+  - Файл: `tests/test_global_voice_input.py`
+  - Фікс: `@pytest.mark.skipif(...)` або оновити імпорти

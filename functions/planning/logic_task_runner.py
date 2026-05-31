@@ -169,17 +169,20 @@ class Plan:
 def _task_to_pydantic(data: Dict[str, Any]) -> TaskPydantic:
     """Конвертує dict -> TaskPydantic."""
     tid = data.get("id") or "t1"
+    kind = data.get("kind")
+    if not kind:
+        raise ValueError(f"task #{tid} missing 'kind'")
     return TaskPydantic(
         id=str(tid),
-        kind=str(data.get("kind", "")),
+        kind=str(kind),
         name=data.get("name", ""),
         params=dict(data.get("params") or {}),
         on_error=data.get("on_error", "stop"),
         max_retries=int(data.get("max_retries", 2)),
         retry_delay_s=float(data.get("retry_delay_s", 1.0)),
         depends_on=list(data.get("depends_on") or []),
-        precheck=data.get("precheck") or [],
-        expect=data.get("expect") or [],
+        precheck=parse_expect_list(data.get("precheck")),
+        expect=parse_expect_list(data.get("expect")),
     )
 
 
