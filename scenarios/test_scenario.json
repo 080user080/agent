@@ -1,0 +1,24 @@
+{
+  "name": "test_scenario",
+  "description": "description",
+  "version": "1.0",
+  "author": "",
+  "created": "",
+  "variables": {},
+  "timeout_per_step": 30.0,
+  "steps": [
+    {
+      "step_type": "click",
+      "description": "desc",
+      "params": {
+        "x": 100,
+        "y": 200
+      },
+      "verify": null,
+      "on_fail": "abort",
+      "max_retries": 1,
+      "delay_before": 0.0,
+      "delay_after": 0.5
+    }
+  ]
+}

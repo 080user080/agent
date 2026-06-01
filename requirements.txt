@@ -1,0 +1,70 @@
+# ============================================================
+# МАРК (Agent Assistant) — runtime dependencies
+# ============================================================
+# Встановлення:
+#   pip install -r requirements.txt
+#
+# PyTorch встановлюйте окремо (з відповідним CUDA-варіантом):
+#   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# або (CPU-only):
+#   pip install torch torchvision torchaudio
+# ============================================================
+
+# --- Core / утиліти ---
+numpy>=1.24.0
+scipy>=1.10.0
+colorama>=0.4.6
+requests>=2.28.0
+tiktoken>=0.5.0            # Токенометрія для LLM промптів
+
+# --- GUI Automation# Phase 1 — Basic GUI Automation
+pyautogui>=0.9.54
+pyperclip>=1.8.2
+mss>=9.0.1
+pywin32>=306
+pillow>=10.0.0
+pystray>=0.19.5            # win32gui / win32con / win32process / win32ui
+psutil>=5.9.0
+pywinauto>=0.6.8          # Windows UI Automation API (V1) — fallback для старих Win32 додатків
+uiautomation>=2.0.1       # Windows UI Automation API (V1) — основний для швидкості + глибокого контролю
+pynput>=1.8.0             # Global hotkey support (без прав адміністратора)
+
+# --- GUI Frontend ---
+PyQt6>=6.6.0              # Альтернативний GUI-фреймворк (поступова міграція з Tkinter)
+
+# --- Browser CDP automation (Phase 9 / S1) ---
+playwright>=1.40.0         # pip install playwright && playwright install chromium
+
+# --- Screen capture + Image processing (Phase 2/4) ---
+mss>=9.0.1
+Pillow>=10.0.0
+opencv-python>=4.8.0
+
+# --- OCR (Phase 3) ---
+pytesseract>=0.3.10        # основний OCR-движок (потребує Tesseract встановленого у системі)
+# easyocr          # опційний fallback; розкоментуйте якщо потрібен (важкий, тягне torch-моделі)
+
+# --- Аудіо: STT / TTS / фільтрація ---
+sounddevice>=0.4.6
+soundfile>=0.12.0
+noisereduce>=2.0.0
+
+# --- ML моделі (STT / голос) ---
+transformers>=4.30.0       # w2v-bert-uk, Silero і т.п.
+accelerate>=0.20.0
+groq>=0.11.0               # Groq API SDK для швидких LLM запитів
+
+# --- Pydantic (валідація даних для планування) ---
+pydantic>=2.0.0
+
+# --- Open Interpreter (self-healing executor) ---
+open-interpreter>=0.3.0     # Self-healing code execution з LLM
+
+# ============================================================
+# Dev-залежності (lint, tests) перенести у requirements-dev.txt:
+#   pytest
+#   pytest-cov
+#   ruff
+#   black
+#   mypy
+# ============================================================
