@@ -42,7 +42,6 @@ class SettingsTab(BaseTab):
         "Аудіо": "🔊",
         "Озвучення": "🗣️",
         "Вигляд": "🖥️",
-        "Global Voice Input": "🌍",
         "Аудіо-фільтри": "🎚️",
         "Інше": "📦",
     }
@@ -360,6 +359,35 @@ class SettingsTab(BaseTab):
                 spacer.setFixedHeight(10)
                 container_layout.addWidget(spacer)
                 row_widgets.append(spacer)
+
+        # --- Активні Watcher-и тільки для "Асистент" ---
+        if cat_name == "Асистент":
+            # Роздільник
+            sep = QFrame()
+            sep.setFrameShape(QFrame.Shape.HLine)
+            sep.setStyleSheet("color: #444;")
+            container_layout.addWidget(sep)
+
+            watcher_header = QLabel("🔄 Активні Watcher-и")
+            watcher_header.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+            watcher_header.setStyleSheet("color: #1976d2; padding: 4px 0;")
+            container_layout.addWidget(watcher_header)
+
+            self._watcher_status_text = QTextEdit()
+            self._watcher_status_text.setReadOnly(True)
+            self._watcher_status_text.setMaximumHeight(120)
+            self._watcher_status_text.setStyleSheet("""
+                QTextEdit {
+                    background: #1e1e1e;
+                    color: #ccc;
+                    border: 1px solid #444;
+                    border-radius: 4px;
+                    padding: 4px;
+                    font-size: 10px;
+                }
+            """)
+            self._watcher_status_text.setText("Немає активних Watcher-ів.")
+            container_layout.addWidget(self._watcher_status_text)
 
         container_layout.addStretch()
 

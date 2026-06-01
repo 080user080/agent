@@ -1,19 +1,4 @@
 {
-  "check_null_bytes.py": {
-    "classes": [],
-    "functions": [],
-    "imports": []
-  },
-  "remove_null_bytes.py": {
-    "classes": [],
-    "functions": [],
-    "imports": []
-  },
-  "remove_secrets.py": {
-    "classes": [],
-    "functions": [],
-    "imports": []
-  },
   "run.py": {
     "classes": [],
     "functions": [],
@@ -59,7 +44,7 @@
               }
             ],
             "return_type": "None",
-            "doc": "Обробити текст з GUI чату - розпізнає voice_input і використовує AgentLoop."
+            "doc": "Обробити текст з GUI чату."
           },
           {
             "name": "gui_callback",
@@ -131,6 +116,79 @@
       "functions/tools/aaa_confirmation.py",
       "main.py"
     ]
+  },
+  "core_gui_pyqt6/base_tab.py": {
+    "classes": [
+      {
+        "name": "BaseTab",
+        "bases": [
+          "QWidget"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parent",
+                "type": "QWidget | None"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "set_main_window",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mw",
+                "type": "Any"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Зберегти посилання на MainWindow для доступу до спільних об'єктів."
+          },
+          {
+            "name": "setup_ui",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Створити всі віджети вкладки. Має бути перевизначений."
+          },
+          {
+            "name": "refresh",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити дані вкладки при перемиканні. За замовчуванням нічого не робить."
+          },
+          {
+            "name": "get_title",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "str",
+            "doc": "Повернути назву вкладки для QTabWidget."
+          }
+        ],
+        "doc": "Базовий клас для вкладки.\n\nКожна вкладка наслідує BaseTab і реалізує:\n- setup_ui() — створення віджетів\n- refresh() — оновлення даних при перемиканні\n- get_title() — назва вкладки (для QTabWidget)"
+      }
+    ],
+    "functions": [],
+    "imports": []
   },
   "core_gui_pyqt6/chat_panel_qt.py": {
     "classes": [
@@ -216,7 +274,7 @@
               }
             ],
             "return_type": "None",
-            "doc": "Завершити стрімінг (додати новий рядок і оновити статус)."
+            "doc": "Завершити стрімінг (додати новий рядок)."
           },
           {
             "name": "_setup_clipboard_and_menus",
@@ -485,6 +543,11 @@
     "functions": [],
     "imports": []
   },
+  "core_gui_pyqt6/constants.py": {
+    "classes": [],
+    "functions": [],
+    "imports": []
+  },
   "core_gui_pyqt6/llm_endpoints_editor_qt.py": {
     "classes": [
       {
@@ -700,11 +763,7 @@
       {
         "name": "MainWindowPyQt6",
         "bases": [
-          "QMainWindow",
-          "SettingsTabQtMixin",
-          "ChatPanelQtMixin",
-          "PlanPanelQtMixin",
-          "ConfirmationQtMixin"
+          "QMainWindow"
         ],
         "methods": [
           {
@@ -732,7 +791,7 @@
               }
             ],
             "return_type": "None",
-            "doc": "Зберегти геометрію вікна при закритті."
+            "doc": "Зберегти геометрію вікна та стан інтерфейсу при закритті."
           },
           {
             "name": "_init_ui",
@@ -752,33 +811,83 @@
               }
             ],
             "return_type": "None",
-            "doc": "QSS — єдина тема кольорів (синій шрифт, чорний фон як в акордеонах)."
+            "doc": "QSS — єдина тема кольорів."
           },
           {
-            "name": "_update_input_height",
+            "name": "_restore_interface_state",
             "params": [
               {
                 "name": "self"
               }
             ],
             "return_type": "None",
-            "doc": "Динамічно оновити висоту поля вводу на основі реальної висоти тексту."
+            "doc": "Відновити інтерфейс: активна вкладка, приховані вкладки."
           },
           {
-            "name": "eventFilter",
+            "name": "_apply_hidden_tabs",
             "params": [
               {
                 "name": "self"
               },
               {
-                "name": "obj"
-              },
-              {
-                "name": "event"
+                "name": "hidden_tabs",
+                "type": "list"
               }
             ],
-            "return_type": null,
-            "doc": null
+            "return_type": "None",
+            "doc": "Приховати вкладки зі списку hidden_tabs. Чат та Налаштування не приховуються."
+          },
+          {
+            "name": "_save_interface_state",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Зберегти стан інтерфейсу (активна вкладка)."
+          },
+          {
+            "name": "_on_tab_interface_changed",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "index",
+                "type": "int"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Автоматично зберігати активну вкладку при перемиканні."
+          },
+          {
+            "name": "_on_tab_changed",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "index",
+                "type": "int"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити активну вкладку при перемиканні."
+          },
+          {
+            "name": "_on_command_submitted",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "command",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Отримано команду з поля вводу чату."
           },
           {
             "name": "send_text_command",
@@ -788,7 +897,7 @@
               }
             ],
             "return_type": "None",
-            "doc": null
+            "doc": "Відправити команду з поля вводу (для зворотної сумісності)."
           },
           {
             "name": "on_send_clicked",
@@ -798,7 +907,7 @@
               }
             ],
             "return_type": "None",
-            "doc": "Обробник натискання кнопки відправки."
+            "doc": null
           },
           {
             "name": "on_agent_clicked",
@@ -808,7 +917,7 @@
               }
             ],
             "return_type": "None",
-            "doc": "Обробник натискання кнопки агента."
+            "doc": null
           },
           {
             "name": "on_stop_clicked",
@@ -818,7 +927,7 @@
               }
             ],
             "return_type": "None",
-            "doc": "Обробник натискання кнопки стоп."
+            "doc": null
           },
           {
             "name": "on_restart_clicked",
@@ -828,7 +937,7 @@
               }
             ],
             "return_type": "None",
-            "doc": "Обробник натискання кнопки перезавантаження."
+            "doc": null
           },
           {
             "name": "stop_execution",
@@ -848,85 +957,7 @@
               }
             ],
             "return_type": "None",
-            "doc": "Обробник натискання кнопки мікрофона - запускає STT прослуховування."
-          },
-          {
-            "name": "_start_mic_listening",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": "None",
-            "doc": "Почати запис з мікрофона."
-          },
-          {
-            "name": "_stop_mic_listening",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": "None",
-            "doc": "Зупинити запис (викликається при натисканні кнопки або автоматично після розпізнавання)."
-          },
-          {
-            "name": "_mic_listen_worker",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": "None",
-            "doc": "Потік для запису та розпізнавання."
-          },
-          {
-            "name": "_on_mic_finished",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "text",
-                "type": "str | None"
-              }
-            ],
-            "return_type": "None",
-            "doc": "Викликається коли розпізнавання завершено."
-          },
-          {
-            "name": "_on_run_plan",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": "None",
             "doc": null
-          },
-          {
-            "name": "_on_stop_plan",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": "None",
-            "doc": null
-          },
-          {
-            "name": "_should_skip_json_message",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "text",
-                "type": "str"
-              }
-            ],
-            "return_type": "bool",
-            "doc": "Перевірити чи повідомлення є JSON/markdown, який слід пропустити."
           },
           {
             "name": "add_message",
@@ -944,17 +975,7 @@
               }
             ],
             "return_type": "None",
-            "doc": null
-          },
-          {
-            "name": "_scroll_chat_to_end",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": "None",
-            "doc": null
+            "doc": "Додати повідомлення в чат (делегує ChatTab)."
           },
           {
             "name": "start_stream_message",
@@ -989,6 +1010,102 @@
             ],
             "return_type": "None",
             "doc": null
+          },
+          {
+            "name": "_on_streaming_status",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "status_text",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Callback для оновлення статус-бару під час стрімінгу."
+          },
+          {
+            "name": "_on_streaming_context_update",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "used",
+                "type": "int"
+              },
+              {
+                "name": "limit",
+                "type": "int"
+              },
+              {
+                "name": "model",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Callback для live-оновлення бару контексту під час стрімінгу."
+          },
+          {
+            "name": "update_streaming_context_limits",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "context_limit",
+                "type": "int"
+              },
+              {
+                "name": "model",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити ліміти контексту для StreamingBuffer (при старті стрімінгу)."
+          },
+          {
+            "name": "focus_input",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_update_context_bar",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "used",
+                "type": "int"
+              },
+              {
+                "name": "limit",
+                "type": "int"
+              },
+              {
+                "name": "model",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити тонкий QProgressBar контексту LLM з кольором і tooltip."
+          },
+          {
+            "name": "_reset_context_bar",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Скинути бар контексту до 0 і сховати."
           },
           {
             "name": "update_progress",
@@ -1027,16 +1144,6 @@
             ],
             "return_type": "None",
             "doc": null
-          },
-          {
-            "name": "_on_restart_agent",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": "None",
-            "doc": "Перезавантажити агента (без підтвердження)."
           },
           {
             "name": "show_plan_panel",
@@ -1116,7 +1223,7 @@
               }
             ],
             "return_type": "None",
-            "doc": null
+            "doc": "Показати діалог підтвердження (без міксину)."
           },
           {
             "name": "queue_message",
@@ -1190,7 +1297,7 @@
               }
             ],
             "return_type": "None",
-            "doc": "Запустити GUI mainloop. Має бути викликаний у головному потоці."
+            "doc": "Запустити GUI mainloop."
           },
           {
             "name": "showEvent",
@@ -1203,10 +1310,10 @@
               }
             ],
             "return_type": null,
-            "doc": "Викликається коли вікно показується - встановлює фокус на поле вводу."
+            "doc": "Встановити фокус на поле вводу при показі."
           }
         ],
-        "doc": "Головне вікно асистента на PyQt6 (повний еквівалент Tkinter версії)."
+        "doc": "Головне вікно асистента на PyQt6 (модульна версія з вкладками)."
       }
     ],
     "functions": [
@@ -1223,6 +1330,8 @@
       }
     ],
     "imports": [
+      "functions/llm/endpoint_client.py",
+      "functions/llm/streaming_buffer.py",
       "functions/runtime/core_settings.py"
     ]
   },
@@ -1537,6 +1646,1231 @@
     "imports": [
       "functions/runtime/core_settings.py"
     ]
+  },
+  "core_gui_pyqt6/tab_chat.py": {
+    "classes": [
+      {
+        "name": "ChatTab",
+        "bases": [
+          "BaseTab"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parent",
+                "type": "QWidget | None"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "setup_ui",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "get_title",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "refresh",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "При перемиканні на чат — фокус на ввід."
+          },
+          {
+            "name": "eventFilter",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "obj"
+              },
+              {
+                "name": "event"
+              }
+            ],
+            "return_type": "bool",
+            "doc": null
+          },
+          {
+            "name": "_send_text_command",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_on_send_clicked",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_on_agent_clicked",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_on_stop_clicked",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_on_restart_clicked",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_update_input_height",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_on_mic_clicked",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_start_mic_listening",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_stop_mic_listening",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_mic_listen_worker",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "on_mic_finished",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "text",
+                "type": "str | None"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Викликається коли розпізнавання завершено."
+          },
+          {
+            "name": "_should_skip_json_message",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "text",
+                "type": "str"
+              }
+            ],
+            "return_type": "bool",
+            "doc": "Перевірити чи повідомлення є JSON/markdown, який слід пропустити."
+          },
+          {
+            "name": "add_message",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "sender",
+                "type": "str"
+              },
+              {
+                "name": "message",
+                "type": "Any"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Додати повідомлення до чату (чистить ANSI/LLM токени)."
+          },
+          {
+            "name": "start_stream_message",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "append_stream_chunk",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "chunk",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "end_stream_message",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "focus_input",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Встановити фокус на поле вводу."
+          },
+          {
+            "name": "_setup_clipboard_and_menus",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_show_input_context_menu",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "pos"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_show_chat_context_menu",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "pos"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_clipboard_copy",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "widget",
+                "type": "QTextEdit | None"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_clipboard_cut",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_clipboard_paste",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_clipboard_select_all",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "widget",
+                "type": "QTextEdit | None"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          }
+        ],
+        "doc": "Вкладка чату: історія, ввід, кнопки, стрімінг, clipboard, STT."
+      }
+    ],
+    "functions": [],
+    "imports": []
+  },
+  "core_gui_pyqt6/tab_logs.py": {
+    "classes": [
+      {
+        "name": "LogsTab",
+        "bases": [
+          "BaseTab"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parent"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "setup_ui",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_update_placeholder_visibility",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Показати/сховати плейсхолдер залежно від кількості рядків."
+          },
+          {
+            "name": "get_title",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "refresh",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "При перемиканні на вкладку — нічого не завантажуємо автоматично."
+          },
+          {
+            "name": "_read_tail",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "filepath",
+                "type": "str"
+              },
+              {
+                "name": "max_lines",
+                "type": "int"
+              }
+            ],
+            "return_type": "list[str]",
+            "doc": "Прочитати останні max_lines рядків з файлу (з кінця)."
+          },
+          {
+            "name": "_load_from_files",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Прочитати останні 50 записів з лог-файлів (читає з кінця)."
+          },
+          {
+            "name": "_parse_log_line",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "line",
+                "type": "str"
+              }
+            ],
+            "return_type": "dict | None",
+            "doc": "Спроба розпарсити рядок логу."
+          },
+          {
+            "name": "_setup_queue_handler",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Підключити QueueHandler до кореневого логера."
+          },
+          {
+            "name": "_poll_log_queue",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Прочитати нові логи з черги і додати в таблицю (rolling window)."
+          },
+          {
+            "name": "_format_time",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "record",
+                "type": "logging.LogRecord"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "add_log_entry",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "level",
+                "type": "str"
+              },
+              {
+                "name": "module",
+                "type": "str"
+              },
+              {
+                "name": "message",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Додати рядок логу програмно (наприклад, з ядра)."
+          },
+          {
+            "name": "_apply_filters",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Застосувати фільтр рівня + пошук."
+          },
+          {
+            "name": "_level_to_int",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "level",
+                "type": "str"
+              }
+            ],
+            "return_type": "int",
+            "doc": null
+          },
+          {
+            "name": "_set_row",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "row_idx",
+                "type": "int"
+              },
+              {
+                "name": "entry",
+                "type": "dict"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Заповнити рядок таблиці з кольорами."
+          },
+          {
+            "name": "_level_color",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "level",
+                "type": "str"
+              }
+            ],
+            "return_type": "QColor",
+            "doc": null
+          },
+          {
+            "name": "_clear_logs",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Очистити таблицю (не файли)."
+          }
+        ],
+        "doc": "Вкладка логів: таблиця, фільтр, пошук, real-time оновлення."
+      }
+    ],
+    "functions": [],
+    "imports": []
+  },
+  "core_gui_pyqt6/tab_plan.py": {
+    "classes": [
+      {
+        "name": "PlanTab",
+        "bases": [
+          "BaseTab"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parent"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "setup_ui",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "get_title",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "show_plan_panel",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "steps_info",
+                "type": "list"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Показати панель плану з переліком кроків."
+          },
+          {
+            "name": "update_plan_step",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "data",
+                "type": "dict"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити статус конкретного кроку."
+          },
+          {
+            "name": "finish_plan_panel",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "stats",
+                "type": "dict | None"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Закінчити план — показати фінальний статус."
+          },
+          {
+            "name": "on_plan_execution_started",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Викликається коли план почав виконуватися."
+          },
+          {
+            "name": "on_plan_execution_finished",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Викликається коли план завершив виконання."
+          },
+          {
+            "name": "_update_progress_display",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити відображення прогресу."
+          },
+          {
+            "name": "_auto_hide_plan_panel",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Автоматично приховати панель після успішного виконання."
+          },
+          {
+            "name": "_on_run_plan",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Обробник кнопки 'Виконати план'."
+          },
+          {
+            "name": "_on_stop_plan",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Обробник кнопки 'Стоп план'."
+          }
+        ],
+        "doc": "Вкладка плану: список кроків, кнопки запуску/зупинки."
+      }
+    ],
+    "functions": [],
+    "imports": []
+  },
+  "core_gui_pyqt6/tab_settings.py": {
+    "classes": [
+      {
+        "name": "SettingsTab",
+        "bases": [
+          "BaseTab"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parent"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "setup_ui",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Побудувати UI вкладки налаштувань."
+          },
+          {
+            "name": "get_title",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "refresh",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити статус Watcher-ів при перемиканні."
+          },
+          {
+            "name": "_build_settings_tab",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_on_category_changed",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "row",
+                "type": "int"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Обрана нова категорія зліва — будуємо/показуємо її поля справа."
+          },
+          {
+            "name": "_clear_right_content",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Видалити всі віджети категорій з правої панелі."
+          },
+          {
+            "name": "_build_category_content",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "cat_name",
+                "type": "str"
+              }
+            ],
+            "return_type": "QWidget",
+            "doc": "Створити контент для однієї категорії (lazy)."
+          },
+          {
+            "name": "_create_settings_widget",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parent",
+                "type": "QWidget"
+              },
+              {
+                "name": "key",
+                "type": "str"
+              },
+              {
+                "name": "schema",
+                "type": "dict"
+              },
+              {
+                "name": "value",
+                "type": "Any"
+              },
+              {
+                "name": "row_widgets",
+                "type": "list"
+              }
+            ],
+            "return_type": "QWidget",
+            "doc": "Створити віджет для одного налаштування."
+          },
+          {
+            "name": "_apply_settings_filter",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "При пошуку — показати результати в правій панелі."
+          },
+          {
+            "name": "_auto_save_setting",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "key",
+                "type": "str"
+              },
+              {
+                "name": "*args",
+                "type": null
+              }
+            ],
+            "return_type": "None",
+            "doc": "Зберігає одне налаштування за ключем одразу після зміни."
+          },
+          {
+            "name": "_update_settings_status",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "text",
+                "type": "str"
+              },
+              {
+                "name": "color",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити текст статусу, безпечно обробляючи видалений QLabel."
+          },
+          {
+            "name": "_save_all_settings",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_get_widget_value",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "widget",
+                "type": "QWidget"
+              },
+              {
+                "name": "wtype",
+                "type": "str"
+              },
+              {
+                "name": "schema",
+                "type": "dict"
+              }
+            ],
+            "return_type": "Any",
+            "doc": null
+          },
+          {
+            "name": "_reset_all_settings",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_reload_settings_tab",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_clear_command_cache",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_restart_agent",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "_toggle_windsurf_watch",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Перемкнути Windsurf Watch Start/Stop."
+          },
+          {
+            "name": "update_watcher_status_from_executor",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "executor",
+                "type": "Any"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити статус Watcher-ів з WindsurfWatcherExecutor."
+          },
+          {
+            "name": "update_watcher_status",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "engine",
+                "type": "Any"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          }
+        ],
+        "doc": "Вкладка налаштувань (SETTINGS_SCHEMA) на PyQt6.\n\nЛіва панель — список категорій.\nПрава панель — QScrollArea з полями обраної категорії (lazy build)."
+      }
+    ],
+    "functions": [],
+    "imports": [
+      "functions/runtime/core_settings.py"
+    ]
+  },
+  "core_gui_pyqt6/tab_stats.py": {
+    "classes": [
+      {
+        "name": "StatsTab",
+        "bases": [
+          "BaseTab"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parent"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "setup_ui",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "get_title",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "refresh",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити при перемиканні вкладки."
+          },
+          {
+            "name": "update_stats",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "stats",
+                "type": "dict"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити метрики з ядра."
+          },
+          {
+            "name": "_refresh_stats",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Спроба отримати реальні дані з SessionBudget або логів."
+          },
+          {
+            "name": "_update_display",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити UI з поточними даними."
+          },
+          {
+            "name": "_set_label",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "key",
+                "type": "str"
+              },
+              {
+                "name": "value",
+                "type": "Any"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Встановити текст label, або прочерк якщо значення None."
+          }
+        ],
+        "doc": "Вкладка статистики: метрики використання LLM, планів, контексту."
+      }
+    ],
+    "functions": [],
+    "imports": [
+      "functions/runtime/logic_core.py"
+    ]
+  },
+  "core_gui_pyqt6/tab_tools.py": {
+    "classes": [
+      {
+        "name": "ToolsTab",
+        "bases": [
+          "BaseTab"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parent"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "setup_ui",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "get_title",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "refresh",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити список при перемиканні вкладки."
+          },
+          {
+            "name": "_load_tools",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Завантажити список інструментів з FunctionRegistry."
+          },
+          {
+            "name": "_update_table",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Заповнити таблицю з поточними даними."
+          },
+          {
+            "name": "_on_execute_tool",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Показати підказку: виконання через чат."
+          }
+        ],
+        "doc": "Вкладка інструментів: таблиця, оновлення, виконання (тільки читання)."
+      }
+    ],
+    "functions": [],
+    "imports": []
   },
   "core_gui_pyqt6/__init__.py": {
     "classes": [],
@@ -2120,6 +3454,17 @@
         "doc": "Форматує функцію/метод в компактний рядок: name(arg: type, ...) -> return_type."
       },
       {
+        "name": "get_file_dependents",
+        "params": [
+          {
+            "name": "filepath",
+            "type": "str"
+          }
+        ],
+        "return_type": "list[str]",
+        "doc": "Повертає список всіх файлів проєкту, які імпортують вказаний файл."
+      },
+      {
         "name": "update_file_in_map",
         "params": [
           {
@@ -2158,6 +3503,17 @@
         "params": [],
         "return_type": "str",
         "doc": "Повністю перебудувати Repo Map (повне сканування проєкту)."
+      },
+      {
+        "name": "get_file_dependents",
+        "params": [
+          {
+            "name": "filepath",
+            "type": "str"
+          }
+        ],
+        "return_type": "str",
+        "doc": "Показати всі файли проєкту, які імпортують вказаний файл."
       }
     ],
     "imports": [
@@ -2689,6 +4045,10 @@
               {
                 "name": "history_max",
                 "type": "int"
+              },
+              {
+                "name": "max_json_failures",
+                "type": "int"
               }
             ],
             "return_type": null,
@@ -2837,6 +4197,146 @@
             ],
             "return_type": "AgentAction",
             "doc": "Один крок рішення через LLM (JSON parsing fallback)."
+          },
+          {
+            "name": "_parse_tool_calls",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "response",
+                "type": "Any"
+              },
+              {
+                "name": "tool_calls",
+                "type": "List[Any]"
+              }
+            ],
+            "return_type": "AgentAction",
+            "doc": "Розпарсити tool_calls у AgentAction."
+          },
+          {
+            "name": "_try_with_tools",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "messages",
+                "type": "List[Dict[str, str]]"
+              }
+            ],
+            "return_type": "AgentAction",
+            "doc": "Fallback: спроба LLM виклику з function-calling (tool_choice='auto')."
+          },
+          {
+            "name": "_json_failure_fallback",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "AgentAction",
+            "doc": "Повернути fallback дію при невдалому парсингу JSON."
+          },
+          {
+            "name": "_fix_truncated_json",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "content",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": "Дописати закриваючі дужки для обрізаного JSON."
+          },
+          {
+            "name": "_parse_json_from_content",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "response",
+                "type": "Any"
+              }
+            ],
+            "return_type": "Optional[AgentAction]",
+            "doc": "Спробувати розпарсити JSON з content відповіді."
+          },
+          {
+            "name": "_try_json_load",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "content",
+                "type": "str"
+              }
+            ],
+            "return_type": "Optional[dict]",
+            "doc": "Спробувати json.loads з обробкою помилок."
+          },
+          {
+            "name": "_build_action_from_parsed",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parsed",
+                "type": "dict"
+              }
+            ],
+            "return_type": "Optional[AgentAction]",
+            "doc": "Побудувати AgentAction з розпарсеного dict."
+          },
+          {
+            "name": "_clean_think_blocks",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "content",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": "Видалити <think>...</think> блоки."
+          },
+          {
+            "name": "_extract_from_markdown",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "content",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": "Виділити JSON з markdown code blocks."
+          },
+          {
+            "name": "_extract_json_braces",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "content",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": "Виділити JSON об'єкт через балансування дужок."
           },
           {
             "name": "replan",
@@ -3265,7 +4765,7 @@
               }
             ],
             "return_type": null,
-            "doc": "Провести діагностику мікрофона та smoke-тест."
+            "doc": "Діагностика мікрофона (вимкнена для прискорення запуску)."
           },
           {
             "name": "_load_stt_model",
@@ -3353,18 +4853,6 @@
         ],
         "return_type": null,
         "doc": "Допоміжна функція: відправити статус + чат-повідомлення в GUI."
-      },
-      {
-        "name": "print_audio_diagnostics",
-        "params": [],
-        "return_type": null,
-        "doc": "Вивести інформацію про мікрофон."
-      },
-      {
-        "name": "run_audio_smoke_test",
-        "params": [],
-        "return_type": null,
-        "doc": "Короткий тест запису."
       }
     ],
     "imports": [
@@ -4250,6 +5738,28 @@
         ],
         "return_type": "str",
         "doc": "Швидка класифікація завдання без LLM."
+      },
+      {
+        "name": "needs_clarification",
+        "params": [
+          {
+            "name": "task",
+            "type": "str"
+          }
+        ],
+        "return_type": "tuple[bool, str]",
+        "doc": "Перевірити, чи команда неоднозначна і потребує уточнення."
+      },
+      {
+        "name": "_make_clarification",
+        "params": [
+          {
+            "name": "verb",
+            "type": "str"
+          }
+        ],
+        "return_type": "tuple[bool, str]",
+        "doc": "Сформувати питання для уточнення залежно від дієслова."
       },
       {
         "name": "extract_python_code",
@@ -6121,33 +7631,6 @@
   "functions/gui/voice_tray_icon.py": {
     "classes": [
       {
-        "name": "_StatusUpdateEvent",
-        "bases": [
-          "QEvent"
-        ],
-        "methods": [
-          {
-            "name": "__init__",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "status",
-                "type": "VoiceStatus"
-              },
-              {
-                "name": "text",
-                "type": "str"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          }
-        ],
-        "doc": "Кастомний QEvent для оновлення статусу tray icon."
-      },
-      {
         "name": "VoiceStatus",
         "bases": [
           "Enum"
@@ -6179,6 +7662,58 @@
           }
         ],
         "doc": "Дані для оновлення статусу."
+      },
+      {
+        "name": "_StatusUpdateEvent",
+        "bases": [
+          "QEvent"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "status",
+                "type": "VoiceStatus"
+              },
+              {
+                "name": "text",
+                "type": "str"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          }
+        ],
+        "doc": "Кастомний QEvent для оновлення статусу tray icon."
+      },
+      {
+        "name": "_StatusUpdateEvent",
+        "bases": [],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "status",
+                "type": "VoiceStatus"
+              },
+              {
+                "name": "text",
+                "type": "str"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          }
+        ],
+        "doc": "Заглушка для оточень без PyQt6."
       },
       {
         "name": "VoiceTrayIcon",
@@ -6333,6 +7868,84 @@
           }
         ],
         "doc": "Tray icon для показу статусу голосового введення."
+      },
+      {
+        "name": "VoiceTrayIcon",
+        "bases": [],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "parent"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "initialize",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "bool",
+            "doc": null
+          },
+          {
+            "name": "set_status",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "status",
+                "type": "VoiceStatus"
+              },
+              {
+                "name": "text",
+                "type": "str"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "show",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "hide",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "cleanup",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          }
+        ],
+        "doc": "Заглушка для оточень без PyQt6."
       }
     ],
     "functions": [
@@ -6355,6 +7968,36 @@
   "functions/llm/endpoint_client.py": {
     "classes": [],
     "functions": [
+      {
+        "name": "get_model_context_limit",
+        "params": [
+          {
+            "name": "model_name",
+            "type": "str"
+          }
+        ],
+        "return_type": "int",
+        "doc": "Повертає ліміт контексту (max_context_tokens) для заданої моделі."
+      },
+      {
+        "name": "fetch_local_model_context_limit",
+        "params": [
+          {
+            "name": "base_url",
+            "type": "str"
+          },
+          {
+            "name": "api_key",
+            "type": "str"
+          },
+          {
+            "name": "timeout",
+            "type": "int"
+          }
+        ],
+        "return_type": "Optional[int]",
+        "doc": "Спроба отримати ліміт контексту для локальної моделі через /v1/models."
+      },
       {
         "name": "_is_groq_endpoint",
         "params": [
@@ -6478,6 +8121,9 @@
           },
           {
             "name": "callback"
+          },
+          {
+            "name": "usage_callback"
           }
         ],
         "return_type": "bool",
@@ -7267,6 +8913,10 @@
               {
                 "name": "on_attempt",
                 "type": "Optional[Callable[[ChatAttempt], None]]"
+              },
+              {
+                "name": "budget",
+                "type": "Optional[Any]"
               }
             ],
             "return_type": "ChatResponse",
@@ -8036,6 +9686,24 @@
             "doc": "Аналіз через Google Gemini Pro Vision."
           },
           {
+            "name": "describe",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "image_path",
+                "type": "str"
+              },
+              {
+                "name": "prompt",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": "Отримати текстовий опис зображення через Vision-LM."
+          },
+          {
             "name": "detect_ui_elements",
             "params": [
               {
@@ -8537,13 +10205,119 @@
     "functions": [],
     "imports": []
   },
+  "functions/llm/streaming_buffer.py": {
+    "classes": [
+      {
+        "name": "StreamingBuffer",
+        "bases": [],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "on_status",
+                "type": "Optional[Callable[[str], None]]"
+              },
+              {
+                "name": "on_context_update",
+                "type": "Optional[Callable[[int, int, str], None]]"
+              },
+              {
+                "name": "context_limit",
+                "type": "int"
+              },
+              {
+                "name": "model",
+                "type": "str"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "update_context_limits",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "context_limit",
+                "type": "int"
+              },
+              {
+                "name": "model",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Оновити ліміт контексту та назву моделі (наприклад, при старті стрімінгу)."
+          },
+          {
+            "name": "add_chunk",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "chunk",
+                "type": "str"
+              }
+            ],
+            "return_type": "int",
+            "doc": "Додати чанк тексту, оновити оцінку токенів і викликати callback."
+          },
+          {
+            "name": "finish",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "real_usage",
+                "type": "Optional[dict]"
+              }
+            ],
+            "return_type": "int",
+            "doc": "Завершити стрімінг, замінити оцінку реальним usage якщо є."
+          },
+          {
+            "name": "reset",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Скинути буфер."
+          },
+          {
+            "name": "current_status",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "str",
+            "doc": "Поточний статус для відображення."
+          }
+        ],
+        "doc": "Буфер стрімінгу з live-оцінкою токенів.\n\nAttributes:\n    total_chars: Загальна кількість символів, отриманих під час стрімінгу\n    estimated_tokens: Груба оцінка токенів (total_chars // 4)\n    _on_status: Callback(status_text) для оновлення статус-бару\n    _on_context_update: Callback(used_tokens, limit, model) для оновлення бару контексту\n    _context_limit: Ліміт контексту моделі (береться з endpoint)\n    _model: Назва активної моделі"
+      }
+    ],
+    "functions": [],
+    "imports": []
+  },
   "functions/llm/__init__.py": {
     "classes": [],
     "functions": [],
     "imports": [
       "functions/llm/endpoint_client.py",
       "functions/llm/helpers.py",
-      "functions/llm/response_parser.py"
+      "functions/llm/response_parser.py",
+      "functions/llm/streaming_buffer.py"
     ]
   },
   "functions/planning/agent_coordinator.py": {
@@ -8736,6 +10510,7 @@
     ],
     "imports": [
       "functions/agent/plan.py",
+      "functions/llm/router.py",
       "functions/planning/agent_loop.py",
       "functions/planning/logic_repair_loop.py"
     ]
@@ -9259,7 +11034,10 @@
         "doc": "Отримати singleton ActorRegistry."
       }
     ],
-    "imports": []
+    "imports": [
+      "functions/config.py",
+      "functions/tools/tools_browser_cdp.py"
+    ]
   },
   "functions/planning/context_controller.py": {
     "classes": [
@@ -9288,10 +11066,24 @@
               {
                 "name": "max_content_chars",
                 "type": "int"
+              },
+              {
+                "name": "max_context_tokens",
+                "type": "int"
               }
             ],
             "return_type": null,
             "doc": "Args:"
+          },
+          {
+            "name": "context_tokens_used",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "int",
+            "doc": "Повертає кількість токенів використаних у поточному контексті."
           },
           {
             "name": "add_event",
@@ -12780,7 +14572,7 @@
               }
             ],
             "return_type": "Plan",
-            "doc": null
+            "doc": "Парсити dict в Plan з Pydantic-валідацією."
           },
           {
             "name": "from_json",
@@ -12809,6 +14601,16 @@
             ],
             "return_type": "Plan",
             "doc": null
+          },
+          {
+            "name": "to_pydantic",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "PlanPydantic",
+            "doc": "Конвертує Plan -> PlanPydantic."
           }
         ],
         "doc": "Упорядкований список `Task`-ів + метадані."
@@ -13011,9 +14813,50 @@
           }
         ],
         "doc": "Core orchestrator. Thread-safe через per-instance lock навколо state."
+      },
+      {
+        "name": "ValidationError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": [],
+        "doc": "Заглушка для оточень без pydantic."
       }
     ],
     "functions": [
+      {
+        "name": "_task_to_pydantic",
+        "params": [
+          {
+            "name": "data",
+            "type": "Dict[str, Any]"
+          }
+        ],
+        "return_type": "TaskPydantic",
+        "doc": "Конвертує dict -> TaskPydantic."
+      },
+      {
+        "name": "_task_from_pydantic",
+        "params": [
+          {
+            "name": "tp",
+            "type": "TaskPydantic"
+          }
+        ],
+        "return_type": "Task",
+        "doc": "Конвертує TaskPydantic -> Task."
+      },
+      {
+        "name": "_fallback_plan_parse",
+        "params": [
+          {
+            "name": "data",
+            "type": "Dict[str, Any]"
+          }
+        ],
+        "return_type": "Plan",
+        "doc": "Fallback парсинг без Pydantic (звичайна логіка)."
+      },
       {
         "name": "_handler_noop",
         "params": [
@@ -13141,6 +14984,7 @@
       "functions/planning/logic_execution_report.py",
       "functions/planning/logic_expectations.py",
       "functions/planning/logic_repair_loop.py",
+      "functions/planning/plan_models.py",
       "functions/runtime/logic_permission_gate.py"
     ]
   },
@@ -13150,6 +14994,38 @@
         "name": "CodePipeline",
         "bases": [],
         "methods": [
+          {
+            "name": "__post_init__",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "_generate_with_ai",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "deliv",
+                "type": "str"
+              },
+              {
+                "name": "spec",
+                "type": "TaskSpec"
+              },
+              {
+                "name": "filename",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": "Спробувати згенерувати контент через AI actors."
+          },
           {
             "name": "compile",
             "params": [
@@ -13221,6 +15097,36 @@
         "doc": "Витягнути з рядка deliverable сане ім'я .py файлу."
       },
       {
+        "name": "_is_testfile",
+        "params": [
+          {
+            "name": "filename",
+            "type": "str"
+          }
+        ],
+        "return_type": "bool",
+        "doc": "Перевірити чи файл виглядає як тестовий (test_* або *_test.py)."
+      },
+      {
+        "name": "_scaffold_pytest_template",
+        "params": [
+          {
+            "name": "deliv",
+            "type": "str"
+          },
+          {
+            "name": "spec",
+            "type": "TaskSpec"
+          },
+          {
+            "name": "filename",
+            "type": "str"
+          }
+        ],
+        "return_type": "str",
+        "doc": "Згенерувати pytest-шаблон для тестового файлу."
+      },
+      {
         "name": "_scaffold_content",
         "params": [
           {
@@ -13278,6 +15184,7 @@
       }
     ],
     "imports": [
+      "functions/planning/ai_actors.py",
       "functions/planning/core_task_intake.py",
       "functions/planning/logic_expectations.py",
       "functions/planning/logic_task_runner.py"
@@ -14226,6 +16133,569 @@
     "functions": [],
     "imports": []
   },
+  "functions/planning/plan_models.py": {
+    "classes": [
+      {
+        "name": "DomainEnum",
+        "bases": [
+          "str",
+          "Enum"
+        ],
+        "methods": [],
+        "doc": "DomainEnum — еквівалент Domain з task_spec.py."
+      },
+      {
+        "name": "PriorityEnum",
+        "bases": [
+          "str",
+          "Enum"
+        ],
+        "methods": [],
+        "doc": "PriorityEnum — еквівалент Priority з task_spec.py."
+      },
+      {
+        "name": "TaskSpecPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [
+          {
+            "name": "description_not_empty",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "to_dict",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "Dict[str, Any]",
+            "doc": null
+          }
+        ],
+        "doc": "Pydantic-еквівалент TaskSpec."
+      },
+      {
+        "name": "CompiledPlanPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [
+          {
+            "name": "duration_non_negative",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "float"
+              }
+            ],
+            "return_type": "float",
+            "doc": null
+          },
+          {
+            "name": "tokens_non_negative",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "int"
+              }
+            ],
+            "return_type": "int",
+            "doc": null
+          },
+          {
+            "name": "to_dict",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "Dict[str, Any]",
+            "doc": null
+          }
+        ],
+        "doc": "Pydantic-еквівалент CompiledPlan."
+      },
+      {
+        "name": "TaskPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [
+          {
+            "name": "id_kind_not_empty",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "max_retries_non_negative",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "int"
+              }
+            ],
+            "return_type": "int",
+            "doc": null
+          },
+          {
+            "name": "retry_delay_non_negative",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "float"
+              }
+            ],
+            "return_type": "float",
+            "doc": null
+          }
+        ],
+        "doc": "Pydantic-еквівалент Task."
+      },
+      {
+        "name": "PlanPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [
+          {
+            "name": "name_not_empty",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          }
+        ],
+        "doc": "Pydantic-еквівалент Plan."
+      },
+      {
+        "name": "TaskContextPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент TaskContext."
+      },
+      {
+        "name": "RunResultPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент RunResult."
+      },
+      {
+        "name": "ExpectSpecPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [
+          {
+            "name": "kind_not_empty",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          }
+        ],
+        "doc": "Pydantic-еквівалент ExpectSpec."
+      },
+      {
+        "name": "ExpectationResultPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [
+          {
+            "name": "kind_not_empty",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          }
+        ],
+        "doc": "Pydantic-еквівалент ExpectationResult."
+      },
+      {
+        "name": "ExpectContextPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент ExpectContext."
+      },
+      {
+        "name": "StepReportPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [
+          {
+            "name": "required_fields_not_empty",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "str"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          },
+          {
+            "name": "non_negative",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "float"
+              }
+            ],
+            "return_type": "float",
+            "doc": null
+          },
+          {
+            "name": "tokens_non_negative",
+            "params": [
+              {
+                "name": "cls"
+              },
+              {
+                "name": "v",
+                "type": "int"
+              }
+            ],
+            "return_type": "int",
+            "doc": null
+          }
+        ],
+        "doc": "Pydantic-еквівалент StepReport."
+      },
+      {
+        "name": "ExecutionReportEventPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент ExecutionReportEvent."
+      },
+      {
+        "name": "ReportFooterPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент ReportFooter."
+      },
+      {
+        "name": "ReportSummaryPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент ReportSummary."
+      },
+      {
+        "name": "PlanExecutionConfigPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент PlanExecutionConfig."
+      },
+      {
+        "name": "PlanExecutionStatePydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент PlanExecutionState."
+      },
+      {
+        "name": "ConcernPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент Concern."
+      },
+      {
+        "name": "CritiqueResultPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент CritiqueResult."
+      },
+      {
+        "name": "TaskPatternPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент TaskPattern."
+      },
+      {
+        "name": "RepairProposalPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент RepairProposal."
+      },
+      {
+        "name": "RepairDecisionPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент RepairDecision."
+      },
+      {
+        "name": "LegacyCritiqueResultPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент LegacyCritiqueResult."
+      },
+      {
+        "name": "LegacyRunResultPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент LegacyRunResult."
+      },
+      {
+        "name": "SkeletonPipelinePydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент SkeletonPipeline."
+      },
+      {
+        "name": "AgentStatePydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент AgentState."
+      },
+      {
+        "name": "AgentLoopConfigPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент AgentLoopConfig."
+      },
+      {
+        "name": "ProviderEnum",
+        "bases": [
+          "str",
+          "Enum"
+        ],
+        "methods": [],
+        "doc": "ProviderEnum — еквівалент Provider з ai_actors.py."
+      },
+      {
+        "name": "ActorResultPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент ActorResult."
+      },
+      {
+        "name": "CodePipelinePydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент CodePipeline."
+      },
+      {
+        "name": "ScreenElementTypeEnum",
+        "bases": [
+          "str",
+          "Enum"
+        ],
+        "methods": [],
+        "doc": "ScreenElementTypeEnum — еквівалент ScreenElementType з logic_context_analyzer.py."
+      },
+      {
+        "name": "ScreenElementPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент ScreenElement."
+      },
+      {
+        "name": "ScreenContextPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент ScreenContext."
+      },
+      {
+        "name": "BlockerInfoPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент BlockerInfo."
+      },
+      {
+        "name": "BudgetHintsPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент BudgetHints."
+      },
+      {
+        "name": "ClarificationPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент Clarification."
+      },
+      {
+        "name": "IntakeResultPydantic",
+        "bases": [
+          "BaseModel"
+        ],
+        "methods": [],
+        "doc": "Pydantic-еквівалент IntakeResult."
+      },
+      {
+        "name": "BaseModel",
+        "bases": [],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "**kwargs",
+                "type": null
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          }
+        ],
+        "doc": "Заглушка BaseModel для оточень без pydantic."
+      }
+    ],
+    "functions": [
+      {
+        "name": "Field",
+        "params": [
+          {
+            "name": "*args",
+            "type": null
+          },
+          {
+            "name": "**kwargs",
+            "type": null
+          }
+        ],
+        "return_type": null,
+        "doc": null
+      },
+      {
+        "name": "field_validator",
+        "params": [
+          {
+            "name": "*args",
+            "type": null
+          },
+          {
+            "name": "**kwargs",
+            "type": null
+          }
+        ],
+        "return_type": null,
+        "doc": null
+      },
+      {
+        "name": "decorator",
+        "params": [
+          {
+            "name": "func"
+          }
+        ],
+        "return_type": null,
+        "doc": null
+      }
+    ],
+    "imports": []
+  },
   "functions/planning/task_spec.py": {
     "classes": [
       {
@@ -14448,22 +16918,22 @@
     "classes": [],
     "functions": [
       {
-        "name": "_default_window_lister",
+        "name": "_make_window_lister",
         "params": [],
-        "return_type": "List[str]",
-        "doc": "Повертає список видимих заголовків вікон через pygetwindow."
+        "return_type": "Callable[[], List[str]]",
+        "doc": "Повертає функцію, яка читає список заголовків вікон через pygetwindow."
       },
       {
-        "name": "_default_process_lister",
+        "name": "_make_process_lister",
         "params": [],
-        "return_type": "List[Dict[str, Any]]",
-        "doc": "Повертає список словників `{pid, name}` через psutil."
+        "return_type": "Callable[[], List[Dict[str, Any]]]",
+        "doc": "Повертає функцію, яка читає список процесів через psutil."
       },
       {
         "name": "condition_window_title_contains",
         "params": [
           {
-            "name": "substr",
+            "name": "substring",
             "type": "str"
           },
           {
@@ -14472,56 +16942,48 @@
           },
           {
             "name": "window_lister",
-            "type": "Optional[WindowLister]"
+            "type": "Optional[Callable[[], List[str]]]"
           }
         ],
-        "return_type": "ConditionFn",
-        "doc": "True, якщо серед відкритих вікон є хоч одне, чий заголовок містить `substr`."
+        "return_type": "Callable[[Dict[str, Any]], bool]",
+        "doc": "Повертає condition: True якщо будь-яке вікно містить `substring` у тайтлі."
       },
       {
         "name": "condition_process_running",
         "params": [
           {
-            "name": "target",
+            "name": "name_or_pid",
             "type": "Union[str, int]"
           },
           {
-            "name": "case_insensitive",
-            "type": "bool"
-          },
-          {
             "name": "process_lister",
-            "type": "Optional[ProcessLister]"
+            "type": "Optional[Callable[[], List[Dict[str, Any]]]]"
           }
         ],
-        "return_type": "ConditionFn",
-        "doc": "True, якщо процес з таким `name` або `pid` запущений."
+        "return_type": "Callable[[Dict[str, Any]], bool]",
+        "doc": "Повертає condition: True якщо процес з таким ім'ям або PID існує."
       },
       {
         "name": "condition_process_finished",
         "params": [
           {
-            "name": "target",
+            "name": "name_or_pid",
             "type": "Union[str, int]"
           },
           {
-            "name": "case_insensitive",
-            "type": "bool"
-          },
-          {
             "name": "process_lister",
-            "type": "Optional[ProcessLister]"
+            "type": "Optional[Callable[[], List[Dict[str, Any]]]]"
           }
         ],
-        "return_type": "ConditionFn",
-        "doc": "True *один раз*, коли процес, що раніше був запущеним, зник."
+        "return_type": "Callable[[Dict[str, Any]], bool]",
+        "doc": "Повертає one-shot condition: True коли процес зник після того, як був."
       },
       {
         "name": "condition_chat_idle",
         "params": [
           {
             "name": "activity_fn",
-            "type": "ActivityFn"
+            "type": "Callable[[], Any]"
           },
           {
             "name": "idle_seconds",
@@ -14529,11 +16991,11 @@
           },
           {
             "name": "time_fn",
-            "type": "Callable[[], float]"
+            "type": "Optional[Callable[[], float]]"
           }
         ],
-        "return_type": "ConditionFn",
-        "doc": "True, коли `activity_fn()` не змінює результат протягом `idle_seconds`."
+        "return_type": "Callable[[Dict[str, Any]], bool]",
+        "doc": "Повертає condition: True коли `activity_fn` не змінює значення"
       },
       {
         "name": "_check",
@@ -14558,10 +17020,38 @@
         "doc": null
       },
       {
+        "name": "_list",
+        "params": [],
+        "return_type": null,
+        "doc": null
+      },
+      {
         "name": "_check",
         "params": [
           {
-            "name": "ctx",
+            "name": "_ctx",
+            "type": "Dict[str, Any]"
+          }
+        ],
+        "return_type": "bool",
+        "doc": null
+      },
+      {
+        "name": "_check",
+        "params": [
+          {
+            "name": "_ctx",
+            "type": "Dict[str, Any]"
+          }
+        ],
+        "return_type": "bool",
+        "doc": null
+      },
+      {
+        "name": "_check",
+        "params": [
+          {
+            "name": "_ctx",
             "type": "Dict[str, Any]"
           }
         ],
@@ -14580,9 +17070,7 @@
         "doc": null
       }
     ],
-    "imports": [
-      "functions/runtime/logic_watcher.py"
-    ]
+    "imports": []
   },
   "functions/runtime/core_action_recorder.py": {
     "classes": [
@@ -14614,7 +17102,7 @@
               },
               {
                 "name": "logs_dir",
-                "type": "str"
+                "type": "str | None"
               }
             ],
             "return_type": null,
@@ -14881,6 +17369,7 @@
       }
     ],
     "imports": [
+      "functions/runtime/core_settings.py",
       "functions/tools/tools_screen_capture.py"
     ]
   },
@@ -15015,7 +17504,7 @@
               },
               {
                 "name": "profiles_dir",
-                "type": "str | Path"
+                "type": "str | Path | None"
               }
             ],
             "return_type": null,
@@ -15121,7 +17610,9 @@
         "doc": "Повертає вбудовані профілі для найпоширеніших програм."
       }
     ],
-    "imports": []
+    "imports": [
+      "functions/runtime/core_settings.py"
+    ]
   },
   "functions/runtime/core_cache.py": {
     "classes": [
@@ -15273,7 +17764,9 @@
       }
     ],
     "functions": [],
-    "imports": []
+    "imports": [
+      "functions/runtime/core_settings.py"
+    ]
   },
   "functions/runtime/core_checkpoint.py": {
     "classes": [
@@ -15433,7 +17926,9 @@
         "doc": "Отримати singleton CheckpointManager."
       }
     ],
-    "imports": []
+    "imports": [
+      "functions/runtime/core_settings.py"
+    ]
   },
   "functions/runtime/core_dispatcher.py": {
     "classes": [
@@ -15753,7 +18248,7 @@
               },
               {
                 "name": "macros_dir",
-                "type": "str | Path"
+                "type": "str | Path | None"
               }
             ],
             "return_type": null,
@@ -15986,7 +18481,9 @@
         "doc": null
       }
     ],
-    "imports": []
+    "imports": [
+      "functions/runtime/core_settings.py"
+    ]
   },
   "functions/runtime/core_memory.py": {
     "classes": [
@@ -16460,7 +18957,9 @@
       }
     ],
     "functions": [],
-    "imports": []
+    "imports": [
+      "functions/runtime/core_settings.py"
+    ]
   },
   "functions/runtime/core_safety_sandbox.py": {
     "classes": [
@@ -17062,12 +19561,110 @@
             ],
             "return_type": "None",
             "doc": null
+          },
+          {
+            "name": "set_active_model",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "model_name",
+                "type": "str"
+              },
+              {
+                "name": "context_limit",
+                "type": "int"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Зберігає назву активної моделі та її ліміт контексту в runtime."
+          },
+          {
+            "name": "get_active_model",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "Optional[str]",
+            "doc": "Повертає назву активної моделі або None."
+          },
+          {
+            "name": "get_active_model_context_limit",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "int",
+            "doc": "Повертає ліміт контексту активної моделі."
           }
         ],
         "doc": "Зчитує/оновлює налаштування поверх `config.py`."
       }
     ],
     "functions": [
+      {
+        "name": "get_runtime_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "Повертає базову директорію runtime/."
+      },
+      {
+        "name": "get_settings_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "runtime/settings/ — user_settings.json та інші налаштування."
+      },
+      {
+        "name": "get_memory_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "runtime/memory/ — довготривала пам'ять та task-пам'ять."
+      },
+      {
+        "name": "get_checkpoints_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "runtime/checkpoints/ — чекпоїнти агента."
+      },
+      {
+        "name": "get_cache_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "runtime/cache/ — кеш даних."
+      },
+      {
+        "name": "get_macros_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "runtime/macros/ — макроси."
+      },
+      {
+        "name": "get_profiles_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "runtime/profiles/ — профілі програм."
+      },
+      {
+        "name": "get_self_learning_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "runtime/self_learning/ — логи самонавчання, skills, rules."
+      },
+      {
+        "name": "get_logs_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "runtime/logs/ — логи дій, audit."
+      },
+      {
+        "name": "get_snapshots_dir",
+        "params": [],
+        "return_type": "str",
+        "doc": "runtime/snapshots/ — snapshots стану для undo."
+      },
       {
         "name": "get_settings",
         "params": [],
@@ -17353,7 +19950,7 @@
               },
               {
                 "name": "snapshots_dir",
-                "type": "str"
+                "type": "str | None"
               }
             ],
             "return_type": null,
@@ -17739,6 +20336,7 @@
       }
     ],
     "imports": [
+      "functions/runtime/core_settings.py",
       "functions/tools/tools_screen_capture.py"
     ]
   },
@@ -19027,7 +21625,7 @@
               },
               {
                 "name": "data_dir",
-                "type": "str"
+                "type": "str | None"
               }
             ],
             "return_type": null,
@@ -19213,6 +21811,20 @@
             "doc": "Отримати skill за патерном."
           },
           {
+            "name": "learn_from_pattern",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "pattern",
+                "type": "TaskPattern"
+              }
+            ],
+            "return_type": "str",
+            "doc": "Інтеграція з logic_task_learner — зберегти виявлений патерн як skill."
+          },
+          {
             "name": "get_stats",
             "params": [
               {
@@ -19239,7 +21851,10 @@
         "doc": "Отримати singleton екземпляр SelfLearning."
       }
     ],
-    "imports": []
+    "imports": [
+      "functions/planning/logic_task_learner.py",
+      "functions/runtime/core_settings.py"
+    ]
   },
   "functions/runtime/sync_settings_copy.py": {
     "classes": [],
@@ -19341,6 +21956,439 @@
     "imports": []
   },
   "functions/runtime/__init__.py": {
+    "classes": [],
+    "functions": [],
+    "imports": []
+  },
+  "functions/skills/base.py": {
+    "classes": [
+      {
+        "name": "SkillResult",
+        "bases": [],
+        "methods": [],
+        "doc": "Результат виконання skill-у.\n\nAttributes:\n    success: True якщо виконання успішне.\n    data: Корисні дані результату (напр. текст, знайдені елементи).\n    error: Текст помилки (якщо success=False).\n    metadata: Додаткова інформація (час виконання, проміжні кроки)."
+      },
+      {
+        "name": "SkillError",
+        "bases": [
+          "Exception"
+        ],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "message",
+                "type": "str"
+              },
+              {
+                "name": "error_code",
+                "type": "str"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          }
+        ],
+        "doc": "Виняток для помилок виконання skill-у.\n\nМістить код помилки (error_code) для програмної обробки."
+      },
+      {
+        "name": "BaseSkill",
+        "bases": [],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "execute",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "ctx",
+                "type": "Any"
+              },
+              {
+                "name": "**kwargs",
+                "type": "Any"
+              }
+            ],
+            "return_type": "SkillResult",
+            "doc": "Виконати skill."
+          },
+          {
+            "name": "__repr__",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "str",
+            "doc": null
+          }
+        ],
+        "doc": "Абстрактний базовий клас для всіх skill-ів.\n\nВикористання:\n    class MySkill(BaseSkill):\n        name = \"my_skill\"\n        description = \"Опис мого скілу\"\n\n        async def execute(self, ctx, **kwargs) -> SkillResult:\n            # реалізація\n            return SkillResult(success=True, data=\"done\")"
+      }
+    ],
+    "functions": [],
+    "imports": []
+  },
+  "functions/skills/browser_skills.py": {
+    "classes": [
+      {
+        "name": "OpenBrowser",
+        "bases": [
+          "BaseSkill"
+        ],
+        "methods": [
+          {
+            "name": "execute",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "ctx",
+                "type": "Any"
+              },
+              {
+                "name": "url",
+                "type": "str"
+              },
+              {
+                "name": "browser",
+                "type": "str"
+              },
+              {
+                "name": "headless",
+                "type": "bool"
+              },
+              {
+                "name": "wait_seconds",
+                "type": "float"
+              },
+              {
+                "name": "**kwargs",
+                "type": "Any"
+              }
+            ],
+            "return_type": "SkillResult",
+            "doc": null
+          },
+          {
+            "name": "_has_playwright",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "bool",
+            "doc": null
+          },
+          {
+            "name": "_has_cdp",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "bool",
+            "doc": null
+          },
+          {
+            "name": "_open_with_playwright",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "url",
+                "type": "str"
+              },
+              {
+                "name": "browser",
+                "type": "str"
+              },
+              {
+                "name": "headless",
+                "type": "bool"
+              }
+            ],
+            "return_type": "SkillResult",
+            "doc": null
+          },
+          {
+            "name": "_open_with_cdp",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "url",
+                "type": "str"
+              },
+              {
+                "name": "browser",
+                "type": "str"
+              }
+            ],
+            "return_type": "SkillResult",
+            "doc": null
+          },
+          {
+            "name": "_open_with_subprocess",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "url",
+                "type": "str"
+              },
+              {
+                "name": "browser",
+                "type": "str"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Відкрити URL через subprocess (найнадійніший спосіб)."
+          }
+        ],
+        "doc": "Відкрити браузер на вказаному URL.\n\nParameters:\n    url: URL для відкриття.\n    browser: \"chrome\" (default) або \"edge\".\n    headless: True для headless режиму (default: False).\n    wait_seconds: Скільки секунд чекати після відкриття (default: 2).\n\nReturns:\n    SkillResult з даними:\n    - url: відкритий URL\n    - method: який метод використано (playwright / cdp / subprocess)"
+      },
+      {
+        "name": "SearchGoogle",
+        "bases": [
+          "BaseSkill"
+        ],
+        "methods": [
+          {
+            "name": "execute",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "ctx",
+                "type": "Any"
+              },
+              {
+                "name": "query",
+                "type": "str"
+              },
+              {
+                "name": "num_results",
+                "type": "int"
+              },
+              {
+                "name": "**kwargs",
+                "type": "Any"
+              }
+            ],
+            "return_type": "SkillResult",
+            "doc": null
+          },
+          {
+            "name": "_has_playwright",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "bool",
+            "doc": null
+          },
+          {
+            "name": "_search_with_playwright",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "url",
+                "type": "str"
+              }
+            ],
+            "return_type": "List[Dict[str, str]]",
+            "doc": null
+          },
+          {
+            "name": "_search_with_requests",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "url",
+                "type": "str"
+              }
+            ],
+            "return_type": "List[Dict[str, str]]",
+            "doc": null
+          }
+        ],
+        "doc": "Виконати пошук в Google і повернути результати.\n\nParameters:\n    query: Пошуковий запит.\n    num_results: Максимальна кількість результатів (default: 5).\n\nReturns:\n    SkillResult з даними:\n    - query: пошуковий запит.\n    - results: список словників {title, url, snippet}."
+      },
+      {
+        "name": "FillForm",
+        "bases": [
+          "BaseSkill"
+        ],
+        "methods": [
+          {
+            "name": "execute",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "ctx",
+                "type": "Any"
+              },
+              {
+                "name": "url",
+                "type": "str"
+              },
+              {
+                "name": "fields",
+                "type": "Optional[Dict[str, str]]"
+              },
+              {
+                "name": "submit_selector",
+                "type": "str"
+              },
+              {
+                "name": "wait_after",
+                "type": "float"
+              },
+              {
+                "name": "**kwargs",
+                "type": "Any"
+              }
+            ],
+            "return_type": "SkillResult",
+            "doc": null
+          }
+        ],
+        "doc": "Заповнити форму на веб-сторінці.\n\nParameters:\n    url: URL сторінки з формою (опційно, якщо сторінка вже відкрита).\n    fields: Словник {selector: value} для заповнення полів.\n    submit_selector: CSS-селектор кнопки submit (опційно).\n    wait_after: Секунд чекати після заповнення (default: 1).\n\nReturns:\n    SkillResult з даними:\n    - filled_fields: кількість заповнених полів.\n    - submitted: чи була натиснута кнопка submit."
+      }
+    ],
+    "functions": [],
+    "imports": [
+      "functions/tools/tools_browser_cdp.py"
+    ]
+  },
+  "functions/skills/registry.py": {
+    "classes": [
+      {
+        "name": "SkillRegistry",
+        "bases": [],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          },
+          {
+            "name": "register",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "skill",
+                "type": "BaseSkill"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Зареєструвати skill."
+          },
+          {
+            "name": "unregister",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "name",
+                "type": "str"
+              }
+            ],
+            "return_type": "bool",
+            "doc": "Видалити skill за іменем."
+          },
+          {
+            "name": "get",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "name",
+                "type": "str"
+              }
+            ],
+            "return_type": "Optional[BaseSkill]",
+            "doc": "Отримати skill за іменем."
+          },
+          {
+            "name": "list_skills",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "List[Dict[str, Any]]",
+            "doc": "Повернути список всіх зареєстрованих skills з метаданими."
+          },
+          {
+            "name": "count",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "int",
+            "doc": "Кількість зареєстрованих skills."
+          },
+          {
+            "name": "has",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "name",
+                "type": "str"
+              }
+            ],
+            "return_type": "bool",
+            "doc": "Перевірити чи зареєстровано skill з таким ім'ям."
+          }
+        ],
+        "doc": "Реєстр skills. Thread-safe для одночасного доступу.\n\nПриклад:\n    registry = SkillRegistry()\n    registry.register(OpenBrowser())\n    skill = registry.get(\"open_browser\")\n    result = await skill.execute(ctx, url=\"https://example.com\")"
+      }
+    ],
+    "functions": [],
+    "imports": []
+  },
+  "functions/skills/__init__.py": {
     "classes": [],
     "functions": [],
     "imports": []
@@ -19483,6 +22531,9 @@
         "params": [
           {
             "name": "directory"
+          },
+          {
+            "name": "path"
           }
         ],
         "return_type": null,
@@ -19630,6 +22681,9 @@
           },
           {
             "name": "name"
+          },
+          {
+            "name": "save_path"
           }
         ],
         "return_type": null,
@@ -19973,6 +23027,10 @@
         "params": [
           {
             "name": "directory",
+            "type": "str"
+          },
+          {
+            "name": "path",
             "type": "str"
           }
         ],
@@ -21892,6 +24950,12 @@
         ],
         "return_type": "Tuple[int, int]",
         "doc": "Застосувати DPI correction до координат з кешуванням."
+      },
+      {
+        "name": "_ensure_controller",
+        "params": [],
+        "return_type": "MouseKeyboardController",
+        "doc": null
       },
       {
         "name": "mouse_click",
@@ -25532,6 +28596,117 @@
     ],
     "imports": []
   },
+  "functions/tools/tools_windsurf.py": {
+    "classes": [
+      {
+        "name": "SnapshotDiff",
+        "bases": [],
+        "methods": [],
+        "doc": "Результат diff-у двох snapshot-ів."
+      },
+      {
+        "name": "WindsurfState",
+        "bases": [],
+        "methods": [
+          {
+            "name": "register_response",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "at",
+                "type": "float"
+              },
+              {
+                "name": "diff",
+                "type": "SnapshotDiff"
+              },
+              {
+                "name": "max_keep",
+                "type": "int"
+              }
+            ],
+            "return_type": "Dict[str, Any]",
+            "doc": "Реєструє нову відповідь, обрізає історію до max_keep."
+          }
+        ],
+        "doc": "Стан спостереження за Windsurf."
+      },
+      {
+        "name": "WindsurfWindow",
+        "bases": [],
+        "methods": [
+          {
+            "name": "find",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "Optional[Dict[str, Any]]",
+            "doc": "Намагається знайти вікно Windsurf."
+          },
+          {
+            "name": "_as_dict",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "hwnd",
+                "type": "int"
+              }
+            ],
+            "return_type": "Dict[str, Any]",
+            "doc": null
+          }
+        ],
+        "doc": "Опис вікна Windsurf IDE."
+      }
+    ],
+    "functions": [
+      {
+        "name": "diff_snapshots",
+        "params": [
+          {
+            "name": "old",
+            "type": "str"
+          },
+          {
+            "name": "new",
+            "type": "str"
+          }
+        ],
+        "return_type": "SnapshotDiff",
+        "doc": "Порівнює два snapshot-и тексту."
+      },
+      {
+        "name": "make_default_window_finder",
+        "params": [],
+        "return_type": "WindowFinder",
+        "doc": "Створює WindowFinder за замовчуванням."
+      },
+      {
+        "name": "make_default_snapshot_fn",
+        "params": [],
+        "return_type": "SnapshotFn",
+        "doc": "Створює SnapshotFn за замовчуванням (OCR через win32gui + Tesseract)."
+      },
+      {
+        "name": "_snapshot",
+        "params": [
+          {
+            "name": "window",
+            "type": "Dict[str, Any]"
+          }
+        ],
+        "return_type": "str",
+        "doc": "Робить OCR-знімок вікна."
+      }
+    ],
+    "imports": []
+  },
   "functions/tools/__init__.py": {
     "classes": [],
     "functions": [],
@@ -26423,7 +29598,7 @@
             "doc": null
           },
           {
-            "name": "test_decider_noop_falls_through",
+            "name": "test_decider_fallback_to_take_screenshot",
             "params": [
               {
                 "name": "self"
@@ -26658,6 +29833,16 @@
         "bases": [],
         "methods": [
           {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
             "name": "execute_function",
             "params": [
               {
@@ -26668,6 +29853,9 @@
               },
               {
                 "name": "args"
+              },
+              {
+                "name": "auto_create"
               }
             ],
             "return_type": null,
@@ -27781,6 +30969,44 @@
       "functions/runtime/core_checkpoint.py"
     ]
   },
+  "tests/test_clarification_pending.py": {
+    "classes": [],
+    "functions": [
+      {
+        "name": "test_pending_merge_never_ambiguous",
+        "params": [],
+        "return_type": null,
+        "doc": "Після об'єднання з pending — команда завжди виконується."
+      },
+      {
+        "name": "test_simple_path_as_answer",
+        "params": [],
+        "return_type": null,
+        "doc": "Конкретний шлях як відповідь на уточнення — завжди однозначно."
+      },
+      {
+        "name": "test_chat_with_verb_not_ambiguous",
+        "params": [],
+        "return_type": null,
+        "doc": "CHAT-команди які містять дієслово — не питаємо."
+      },
+      {
+        "name": "test_question_like_ambiguous_response",
+        "params": [],
+        "return_type": null,
+        "doc": "Питання-відповідь типу 'в які можеш подивитися' — це відповідь, не нова команда."
+      },
+      {
+        "name": "test_verb_with_obj_not_ambiguous",
+        "params": [],
+        "return_type": null,
+        "doc": "Дієслово з об'єктом — не питаємо (більші патерни з _CLEAR_PATTERNS)."
+      }
+    ],
+    "imports": [
+      "functions/gui/commands_planner.py"
+    ]
+  },
   "tests/test_conditions_windows.py": {
     "classes": [
       {
@@ -28164,6 +31390,26 @@
             ],
             "return_type": null,
             "doc": "Довгий OCR текст стискається."
+          },
+          {
+            "name": "test_context_tokens_used_property",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Property context_tokens_used повертає int після додавання події."
+          },
+          {
+            "name": "test_context_tokens_used_after_reset",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Скидання контексту зменшує context_tokens_used."
           },
           {
             "name": "test_reset",
@@ -39557,6 +42803,372 @@
       "functions/runtime/core_loop_detector.py"
     ]
   },
+  "tests/test_model_context_limit.py": {
+    "classes": [
+      {
+        "name": "TestGetModelContextLimitExact",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_exact_match",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "model",
+                "type": "str"
+              },
+              {
+                "name": "expected",
+                "type": "int"
+              }
+            ],
+            "return_type": "None",
+            "doc": null
+          }
+        ],
+        "doc": "Перевірка точного збігу з відомими моделями."
+      },
+      {
+        "name": "TestGetModelContextLimitPartial",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_prefix_match_gpt4o_date",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "gpt-4o-2024-08-06 має збігтися з gpt-4o."
+          },
+          {
+            "name": "test_prefix_match_claude_date",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "claude-3-5-sonnet-20241022 має збігтися з claude-3-5-sonnet."
+          },
+          {
+            "name": "test_prefix_match_o1_date",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "o1-2024-12-17 має збігтися з o1."
+          },
+          {
+            "name": "test_nested_name_match",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "meta/llama-3.1-70b містить llama-3.1-70b."
+          },
+          {
+            "name": "test_nested_name_match_hf",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "mistralai/Mistral-7B-v0.1 містить mistral-7b."
+          },
+          {
+            "name": "test_organization_prefix",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "openai/gpt-4o має збігтися з gpt-4o."
+          }
+        ],
+        "doc": "Перевірка часткового збігу (префікс, вкладена назва)."
+      },
+      {
+        "name": "TestGetModelContextLimitUnknown",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_unknown_model",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Невідома модель повертає дефолт."
+          },
+          {
+            "name": "test_empty_string",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Порожній рядок повертає дефолт."
+          },
+          {
+            "name": "test_none",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "None повертає дефолт."
+          },
+          {
+            "name": "test_garbled_name",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Випадковий шум не збігається."
+          }
+        ],
+        "doc": "Перевірка для невідомих / граничних випадків."
+      },
+      {
+        "name": "TestFetchLocalModelContextLimit",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_openai_compatible_format",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mock_get",
+                "type": "MagicMock"
+              }
+            ],
+            "return_type": "None",
+            "doc": "OpenAI-compatible формат з max_context_length."
+          },
+          {
+            "name": "test_openai_compatible_context_window",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mock_get",
+                "type": "MagicMock"
+              }
+            ],
+            "return_type": "None",
+            "doc": "OpenAI-compatible формат з context_window."
+          },
+          {
+            "name": "test_ollama_format_no_limit",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mock_get",
+                "type": "MagicMock"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Ollama формат не має ліміту в API — повертає None."
+          },
+          {
+            "name": "test_http_error",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mock_get",
+                "type": "MagicMock"
+              }
+            ],
+            "return_type": "None",
+            "doc": "HTTP помилка повертає None."
+          },
+          {
+            "name": "test_connection_error",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mock_get",
+                "type": "MagicMock"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Помилка з'єднання повертає None."
+          },
+          {
+            "name": "test_url_with_slash",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mock_get",
+                "type": "MagicMock"
+              }
+            ],
+            "return_type": "None",
+            "doc": "URL з /chat/completions правильно трансформується в /models."
+          }
+        ],
+        "doc": "Перевірка fetch_local_model_context_limit з mock-відповідями."
+      },
+      {
+        "name": "TestSettingsManagerActiveModel",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_set_and_get",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "set_active_model + get_active_model."
+          },
+          {
+            "name": "test_overwrite",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Перезапис моделі."
+          },
+          {
+            "name": "test_default_when_not_set",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Якщо модель не встановлена — повертає None та дефолтний ліміт."
+          },
+          {
+            "name": "test_isolation_between_instances",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Різні екземпляри SettingsManager ізольовані."
+          },
+          {
+            "name": "test_with_get_model_context_limit",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Інтеграційна перевірка: get_model_context_limit + SettingsManager."
+          },
+          {
+            "name": "test_with_claude_date_version",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Інтеграційна перевірка з версією моделі з датою."
+          },
+          {
+            "name": "test_reset_after_clear",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "None",
+            "doc": "Після reset система повертається до дефолту."
+          }
+        ],
+        "doc": "Перевірка збереження/читання активної моделі та її ліміту."
+      }
+    ],
+    "functions": [],
+    "imports": [
+      "functions/llm/endpoint_client.py",
+      "functions/runtime/core_settings.py"
+    ]
+  },
+  "tests/test_needs_clarification.py": {
+    "classes": [],
+    "functions": [
+      {
+        "name": "test_clear_commands",
+        "params": [],
+        "return_type": null,
+        "doc": "Чіткі команди — без питань."
+      },
+      {
+        "name": "test_ambiguous_verbs",
+        "params": [],
+        "return_type": null,
+        "doc": "Дієслова без об'єкта — питаємо."
+      },
+      {
+        "name": "test_ambiguous_demonstrative",
+        "params": [],
+        "return_type": null,
+        "doc": "Вказівні займенники — питаємо."
+      },
+      {
+        "name": "test_project_without_object",
+        "params": [],
+        "return_type": null,
+        "doc": "'подивися код' / 'покажи проект' без об'єкта — питаємо."
+      },
+      {
+        "name": "test_chat_never_ambiguous",
+        "params": [],
+        "return_type": null,
+        "doc": "CHAT команди — ніколи не питаємо, навіть якщо виглядають неоднозначно."
+      },
+      {
+        "name": "test_question_pattern",
+        "params": [],
+        "return_type": null,
+        "doc": "Прямі питання — ніколи не питаємо."
+      },
+      {
+        "name": "test_empty_input",
+        "params": [],
+        "return_type": null,
+        "doc": "Порожній ввід — без питань."
+      }
+    ],
+    "imports": [
+      "functions/gui/commands_planner.py"
+    ]
+  },
   "tests/test_phase7_9.py": {
     "classes": [
       {
@@ -40556,6 +44168,183 @@
       "functions/planning/plan_executor.py"
     ]
   },
+  "tests/test_providers_budget_integration.py": {
+    "classes": [
+      {
+        "name": "UsageTrackingProvider",
+        "bases": [],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "prompt_tokens",
+                "type": "int"
+              },
+              {
+                "name": "completion_tokens",
+                "type": "int"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "available",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "bool",
+            "doc": null
+          },
+          {
+            "name": "chat",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "request",
+                "type": "ChatRequest"
+              }
+            ],
+            "return_type": "ChatResponse",
+            "doc": null
+          }
+        ],
+        "doc": "Mock-провайдер, що повертає заданий UsageInfo в кожному ChatResponse."
+      },
+      {
+        "name": "DefaultProvider",
+        "bases": [],
+        "methods": [
+          {
+            "name": "__init__",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "available",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": "bool",
+            "doc": null
+          },
+          {
+            "name": "chat",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "request",
+                "type": "ChatRequest"
+              }
+            ],
+            "return_type": "ChatResponse",
+            "doc": null
+          }
+        ],
+        "doc": "Mock-провайдер для fallback-тестів."
+      },
+      {
+        "name": "TestBudgetIntegration",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_registry_chat_with_budget_records_tokens",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Після registry.chat(budget=b) budget.usage.tokens має бути > 0."
+          },
+          {
+            "name": "test_registry_chat_without_budget_does_not_record",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Без budget budget не міняється."
+          },
+          {
+            "name": "test_budget_records_only_from_ok_response",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Якщо всі провайдери впали — токени не записуються."
+          },
+          {
+            "name": "test_fallback_still_records_tokens",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "При fallback з primary на secondary — токени записуються з secondary."
+          },
+          {
+            "name": "test_multiple_calls_accumulate",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Декілька викликів накопичують токени."
+          },
+          {
+            "name": "test_registry_chain_fallback_preserves_budget",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Test з реального ProviderChain-like сценарію."
+          },
+          {
+            "name": "test_budget_cost_wired_with_estimate_cost",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Cost з UsageInfo матчиться з estimate_cost провайдера."
+          }
+        ],
+        "doc": null
+      }
+    ],
+    "functions": [],
+    "imports": [
+      "functions/llm/logic_ai_adapter.py",
+      "functions/llm/logic_provider_registry.py",
+      "functions/runtime/core_session_budget.py"
+    ]
+  },
   "tests/test_providers_openai_compatible.py": {
     "classes": [
       {
@@ -41432,7 +45221,7 @@
               }
             ],
             "return_type": null,
-            "doc": "Вкладка налаштувань будується ліниво при перемиканні."
+            "doc": null
           },
           {
             "name": "test_settings_widgets_created",
@@ -41448,7 +45237,7 @@
               }
             ],
             "return_type": null,
-            "doc": "Віджети налаштувань створюються для всіх ключів SETTINGS_SCHEMA."
+            "doc": null
           },
           {
             "name": "test_llm_endpoints_editor",
@@ -41461,7 +45250,7 @@
               }
             ],
             "return_type": null,
-            "doc": "LLMEndpointsEditor створюється і працює."
+            "doc": null
           },
           {
             "name": "test_llm_endpoints_editor_preserves_legacy_fields",
@@ -41474,10 +45263,10 @@
               }
             ],
             "return_type": null,
-            "doc": "PyQt6 editor не повинен втрачати поля старих LLM endpoint-ів."
+            "doc": null
           }
         ],
-        "doc": "Перевірка SettingsTabQtMixin."
+        "doc": "Перевірка SettingsTab."
       },
       {
         "name": "TestDynamicInputHeight",
@@ -41494,7 +45283,7 @@
               }
             ],
             "return_type": null,
-            "doc": "Початкова висота поля вводу має бути в межах 60-160px."
+            "doc": null
           },
           {
             "name": "test_input_height_increases_with_text",
@@ -41507,7 +45296,7 @@
               }
             ],
             "return_type": null,
-            "doc": "Висота має збільшуватися при додаванні рядків."
+            "doc": null
           },
           {
             "name": "test_input_height_respects_minimum",
@@ -41520,7 +45309,7 @@
               }
             ],
             "return_type": null,
-            "doc": "Висота не може бути менше 60px."
+            "doc": null
           },
           {
             "name": "test_input_height_respects_maximum",
@@ -41533,7 +45322,7 @@
               }
             ],
             "return_type": null,
-            "doc": "Висота не може бути більше 160px."
+            "doc": null
           },
           {
             "name": "test_input_height_updates_on_text_change",
@@ -41546,7 +45335,7 @@
               }
             ],
             "return_type": null,
-            "doc": "Висота оновлюється при зміні тексту."
+            "doc": null
           }
         ],
         "doc": "Перевірка динамічного збільшення висоти поля вводу."
@@ -42528,6 +46317,601 @@
       "functions/runtime/core_tool_runtime.py",
       "functions/tools/__init__.py"
     ]
+  },
+  "tests/test_tools_comfyui.py": {
+    "classes": [
+      {
+        "name": "TestComfyUIAvailability",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_requests_available_flag",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Перевірити флаг доступності requests."
+          }
+        ],
+        "doc": "Тести доступності requests."
+      },
+      {
+        "name": "TestComfyUIClient",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_create_client",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення клієнта."
+          },
+          {
+            "name": "test_create_client_custom_url",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення клієнта з кастомним URL."
+          },
+          {
+            "name": "test_check_connection_without_requests",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Перевірка з'єднання без requests."
+          },
+          {
+            "name": "test_get_queue_info_without_requests",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Отримання інформації про чергу без requests."
+          },
+          {
+            "name": "test_get_history_without_requests",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Отримання історії без requests."
+          },
+          {
+            "name": "test_upload_image_without_requests",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Завантаження зображення без requests."
+          },
+          {
+            "name": "test_upload_image_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Завантаження неіснуючого файлу."
+          },
+          {
+            "name": "test_get_view_metadata_without_requests",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Отримання метаданих без requests."
+          },
+          {
+            "name": "test_execute_workflow_without_requests",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Виконання workflow без requests."
+          },
+          {
+            "name": "test_generate_text_to_image_without_requests",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Генерація зображень з тексту без requests."
+          },
+          {
+            "name": "test_interrupt_without_requests",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Переривання без requests."
+          }
+        ],
+        "doc": "Тести класу ComfyUIClient."
+      },
+      {
+        "name": "TestCreateComfyUIClient",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_create_client_function",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення клієнта через функцію."
+          },
+          {
+            "name": "test_create_client_function_custom_url",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення клієнта через функцію з кастомним URL."
+          }
+        ],
+        "doc": "Тести функції create_comfyui_client."
+      }
+    ],
+    "functions": [],
+    "imports": []
+  },
+  "tests/test_tools_excel.py": {
+    "classes": [
+      {
+        "name": "TestExcelAvailability",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_excel_available_flag",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Перевірити флаг доступності Excel."
+          }
+        ],
+        "doc": "Тести доступності Excel."
+      },
+      {
+        "name": "TestOpenExcelWorkbook",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_open_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Відкриття неіснуючого файлу."
+          },
+          {
+            "name": "test_open_without_win32com",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Відкриття без win32com."
+          }
+        ],
+        "doc": "Тести відкриття Excel робочих книг."
+      },
+      {
+        "name": "TestCreateExcelWorkbook",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_create_without_win32com",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення без win32com."
+          }
+        ],
+        "doc": "Тести створення Excel робочих книг."
+      },
+      {
+        "name": "TestReadCell",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_read_cell_mock",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Читання клітинки з мок-об'єктом."
+          }
+        ],
+        "doc": "Тести читання клітинок."
+      },
+      {
+        "name": "TestWriteCell",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_write_cell_mock",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Запис клітинки в мок-об'єкт."
+          }
+        ],
+        "doc": "Тести запису клітинок."
+      },
+      {
+        "name": "TestReadRange",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_read_range_mock",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Читання діапазону з мок-об'єктом."
+          }
+        ],
+        "doc": "Тести читання діапазонів."
+      },
+      {
+        "name": "TestWriteRange",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_write_range_mock",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Запис діапазону в мок-об'єкт."
+          }
+        ],
+        "doc": "Тести запису діапазонів."
+      },
+      {
+        "name": "TestFormatCell",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_format_cell_mock",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Форматування клітинки в мок-об'єкті."
+          }
+        ],
+        "doc": "Тести форматування клітинок."
+      },
+      {
+        "name": "TestAddWorksheet",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_add_worksheet_mock",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Додавання аркуша в мок-об'єкті."
+          }
+        ],
+        "doc": "Тести додавання аркушів."
+      },
+      {
+        "name": "TestSaveWorkbook",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_save_workbook",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Збереження книги."
+          },
+          {
+            "name": "test_save_and_close_workbook",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Збереження та закриття книги."
+          }
+        ],
+        "doc": "Тести збереження робочих книг."
+      },
+      {
+        "name": "TestGetUsedRange",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_get_used_range_mock",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Отримання діапазону з мок-об'єкта."
+          }
+        ],
+        "doc": "Тести отримання діапазону використовуваних клітинок."
+      }
+    ],
+    "functions": [
+      {
+        "name": "temp_excel_path",
+        "params": [],
+        "return_type": null,
+        "doc": "Створити тимчасовий шлях для Excel файлу."
+      }
+    ],
+    "imports": []
+  },
+  "tests/test_tools_ffmpeg.py": {
+    "classes": [
+      {
+        "name": "TestFFmpegAvailability",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_check_ffmpeg_available_success",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mock_run"
+              }
+            ],
+            "return_type": null,
+            "doc": "Перевірка доступності ffmpeg (успішно)."
+          },
+          {
+            "name": "test_check_ffmpeg_available_not_found",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mock_run"
+              }
+            ],
+            "return_type": null,
+            "doc": "Перевірка доступності ffmpeg (не знайдено)."
+          },
+          {
+            "name": "test_check_ffmpeg_available_exception",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "mock_run"
+              }
+            ],
+            "return_type": null,
+            "doc": "Перевірка доступності ffmpeg (помилка)."
+          }
+        ],
+        "doc": "Тести доступності ffmpeg."
+      },
+      {
+        "name": "TestGetVideoMetadata",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_get_metadata_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Отримання метаданих неіснуючого файлу."
+          }
+        ],
+        "doc": "Тести отримання метаданих відео."
+      },
+      {
+        "name": "TestConvertVideo",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_convert_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Конвертація неіснуючого файлу."
+          }
+        ],
+        "doc": "Тести конвертації відео."
+      },
+      {
+        "name": "TestExtractAudio",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_extract_audio_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Витягування аудіо з неіснуючого файлу."
+          }
+        ],
+        "doc": "Тести витягування аудіо."
+      },
+      {
+        "name": "TestTrimVideo",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_trim_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Обрізка неіснуючого файлу."
+          },
+          {
+            "name": "test_trim_with_duration",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Обрізка з тривалістю."
+          },
+          {
+            "name": "test_trim_with_end_time",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Обрізка з часом кінця."
+          }
+        ],
+        "doc": "Тести обрізки відео."
+      },
+      {
+        "name": "TestExtractFrames",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_extract_frames_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Витягування кадрів з неіснуючого файлу."
+          }
+        ],
+        "doc": "Тести витягування кадрів."
+      },
+      {
+        "name": "TestCreateThumbnail",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_create_thumbnail_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення мініатюри з неіснуючого файлу."
+          }
+        ],
+        "doc": "Тести створення мініатюр."
+      },
+      {
+        "name": "TestCombineVideos",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_combine_empty_list",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Об'єднання порожнього списку."
+          },
+          {
+            "name": "test_combine_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Об'єднання з неіснуючим файлом."
+          }
+        ],
+        "doc": "Тести об'єднання відео."
+      }
+    ],
+    "functions": [
+      {
+        "name": "temp_video_path",
+        "params": [],
+        "return_type": null,
+        "doc": "Створити тимчасовий шлях для відео файлу."
+      }
+    ],
+    "imports": []
   },
   "tests/test_tools_mouse_keyboard.py": {
     "classes": [
@@ -44568,6 +48952,589 @@
     "imports": [
       "functions/tools/tools_window_manager.py"
     ]
+  },
+  "tests/test_tools_windsurf.py": {
+    "classes": [
+      {
+        "name": "TestNormalize",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_empty_text",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_collapses_whitespace",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_strips_leading_trailing",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_removes_cursor_markers",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_cursor_blink_same_hash",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Дві версії тексту з різним cursor-блінком мають ОДНАКОВИЙ хеш."
+          }
+        ],
+        "doc": null
+      },
+      {
+        "name": "TestDiff",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_same_text_not_changed",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_append_tail_returns_diff",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_completely_different_returns_full_current",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_empty_previous_returns_full_current",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          }
+        ],
+        "doc": null
+      },
+      {
+        "name": "TestFindWindow",
+        "bases": [],
+        "methods": [
+          {
+            "name": "_windows",
+            "params": [
+              {
+                "name": "self"
+              },
+              {
+                "name": "*entries",
+                "type": "Dict[str, Any]"
+              }
+            ],
+            "return_type": "List[Dict[str, Any]]",
+            "doc": null
+          },
+          {
+            "name": "test_returns_none_when_empty",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_matches_by_title_substring",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_matches_by_process_name",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_custom_patterns",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_lister_exception_returns_none",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_case_insensitive",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_returns_copy_not_reference",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          }
+        ],
+        "doc": null
+      },
+      {
+        "name": "TestSnapshotFn",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_default_snapshot_with_ok_ocr",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_snapshot_ocr_failure_returns_empty",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_snapshot_ocr_exception_returns_empty",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_snapshot_missing_hwnd_returns_empty",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          }
+        ],
+        "doc": null
+      },
+      {
+        "name": "TestWindsurfState",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_register_response_increments_counter",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          },
+          {
+            "name": "test_register_response_trims_buffer",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": null
+          }
+        ],
+        "doc": null
+      }
+    ],
+    "functions": [],
+    "imports": [
+      "functions/__init__.py"
+    ]
+  },
+  "tests/test_tools_word.py": {
+    "classes": [
+      {
+        "name": "TestWordAvailability",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_word_available_flag",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Перевірити флаг доступності Word."
+          }
+        ],
+        "doc": "Тести доступності Word."
+      },
+      {
+        "name": "TestOpenWordDocument",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_open_nonexistent_file",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Відкриття неіснуючого файлу."
+          },
+          {
+            "name": "test_open_without_win32com",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Відкриття без win32com."
+          }
+        ],
+        "doc": "Тести відкриття Word документів."
+      },
+      {
+        "name": "TestReadWordDocument",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_read_without_win32com",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Читання без win32com."
+          }
+        ],
+        "doc": "Тести читання Word документів."
+      },
+      {
+        "name": "TestCreateWordDocument",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_create_without_win32com",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення без win32com."
+          }
+        ],
+        "doc": "Тести створення Word документів."
+      },
+      {
+        "name": "TestWriteTextToDocument",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_write_to_mock_document",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Запис тексту в мок-документ."
+          },
+          {
+            "name": "test_write_replace_content",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Заміна вмісту документа."
+          }
+        ],
+        "doc": "Тести запису тексту в документ."
+      },
+      {
+        "name": "TestFormatParagraph",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_format_paragraph",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Форматування параграфу."
+          }
+        ],
+        "doc": "Тести форматування параграфів."
+      },
+      {
+        "name": "TestInsertTable",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_insert_table",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Вставка таблиці."
+          }
+        ],
+        "doc": "Тести вставки таблиць."
+      },
+      {
+        "name": "TestSetCellText",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_set_cell_text",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Запис тексту в клітинку."
+          }
+        ],
+        "doc": "Тести запису тексту в клітинки таблиці."
+      },
+      {
+        "name": "TestSaveDocument",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_save_document",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Збереження документа."
+          },
+          {
+            "name": "test_save_and_close_document",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Збереження та закриття документа."
+          }
+        ],
+        "doc": "Тести збереження документів."
+      }
+    ],
+    "functions": [
+      {
+        "name": "temp_doc_path",
+        "params": [],
+        "return_type": null,
+        "doc": "Створити тимчасовий шлях для Word документу."
+      }
+    ],
+    "imports": []
+  },
+  "tests/test_tray_icon.py": {
+    "classes": [
+      {
+        "name": "TestTrayIcon",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_tray_icon_not_available",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Tray icon коли pystray не встановлено."
+          },
+          {
+            "name": "test_tray_icon_creation",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення tray icon."
+          },
+          {
+            "name": "test_create_icon_image",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення іконки."
+          },
+          {
+            "name": "test_on_clicked",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Обробник кліку на іконку."
+          },
+          {
+            "name": "test_on_quit_clicked",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Обробник кліку на Quit."
+          },
+          {
+            "name": "test_run_without_pystray",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Запуск без pystray."
+          },
+          {
+            "name": "test_stop_without_icon",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Зупинка без іконки."
+          }
+        ],
+        "doc": "Тести для TrayIcon."
+      },
+      {
+        "name": "TestCreateTrayIcon",
+        "bases": [],
+        "methods": [
+          {
+            "name": "test_create_tray_icon_not_available",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення tray icon коли pystray не встановлено."
+          },
+          {
+            "name": "test_create_tray_icon_available",
+            "params": [
+              {
+                "name": "self"
+              }
+            ],
+            "return_type": null,
+            "doc": "Створення tray icon коли pystray встановлено."
+          }
+        ],
+        "doc": "Тести для create_tray_icon."
+      }
+    ],
+    "functions": [],
+    "imports": []
   },
   "tests/test_ui_accessibility.py": {
     "classes": [
@@ -73349,524 +78316,6 @@
             "name": "log_dir"
           }
         ],
-        "return_type": null,
-        "doc": null
-      }
-    ],
-    "imports": []
-  },
-  "TTS/voices/voice_split.py": {
-    "classes": [
-      {
-        "name": "AdvancedVoiceMergerGUI",
-        "bases": [],
-        "methods": [
-          {
-            "name": "__init__",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "root"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "create_widgets",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "setup_merge_tab",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "parent"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "setup_audio_tab",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "parent"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "setup_info_tab",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "parent"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "create_slider",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "parent"
-              },
-              {
-                "name": "label"
-              },
-              {
-                "name": "variable"
-              },
-              {
-                "name": "from_"
-              },
-              {
-                "name": "to"
-              },
-              {
-                "name": "resolution"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "create_model_widgets",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "index"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "update_model_count",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "select_file",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "index"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "select_output",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "balance_weights",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "load_preset",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "pitch"
-              },
-              {
-                "name": "tempo"
-              },
-              {
-                "name": "echo"
-              },
-              {
-                "name": "reverb"
-              },
-              {
-                "name": "bass"
-              },
-              {
-                "name": "treble"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "reset_effects",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "merge_models",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "merge_multiple_models",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "models"
-              },
-              {
-                "name": "weights"
-              }
-            ],
-            "return_type": null,
-            "doc": "Зливає кілька моделей з заданими вагами"
-          },
-          {
-            "name": "apply_audio_effects",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "model"
-              }
-            ],
-            "return_type": null,
-            "doc": "Застосовує аудіо ефекти до моделі"
-          },
-          {
-            "name": "get_effect_info",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": "Повертає інформацію про застосовані ефекти"
-          }
-        ],
-        "doc": null
-      }
-    ],
-    "functions": [
-      {
-        "name": "main",
-        "params": [],
-        "return_type": null,
-        "doc": null
-      }
-    ],
-    "imports": []
-  },
-  "voices/voice_split.py": {
-    "classes": [
-      {
-        "name": "AdvancedVoiceMergerGUI",
-        "bases": [],
-        "methods": [
-          {
-            "name": "__init__",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "root"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "create_widgets",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "setup_merge_tab",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "parent"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "setup_audio_tab",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "parent"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "setup_info_tab",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "parent"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "create_slider",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "parent"
-              },
-              {
-                "name": "label"
-              },
-              {
-                "name": "variable"
-              },
-              {
-                "name": "from_"
-              },
-              {
-                "name": "to"
-              },
-              {
-                "name": "resolution"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "create_model_widgets",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "index"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "update_model_count",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "select_file",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "index"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "select_output",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "balance_weights",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "load_preset",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "pitch"
-              },
-              {
-                "name": "tempo"
-              },
-              {
-                "name": "echo"
-              },
-              {
-                "name": "reverb"
-              },
-              {
-                "name": "bass"
-              },
-              {
-                "name": "treble"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "reset_effects",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "merge_models",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": null
-          },
-          {
-            "name": "merge_multiple_models",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "models"
-              },
-              {
-                "name": "weights"
-              }
-            ],
-            "return_type": null,
-            "doc": "Зливає кілька моделей з заданими вагами"
-          },
-          {
-            "name": "apply_audio_effects",
-            "params": [
-              {
-                "name": "self"
-              },
-              {
-                "name": "model"
-              }
-            ],
-            "return_type": null,
-            "doc": "Застосовує аудіо ефекти до моделі"
-          },
-          {
-            "name": "get_effect_info",
-            "params": [
-              {
-                "name": "self"
-              }
-            ],
-            "return_type": null,
-            "doc": "Повертає інформацію про застосовані ефекти"
-          }
-        ],
-        "doc": null
-      }
-    ],
-    "functions": [
-      {
-        "name": "main",
-        "params": [],
-        "return_type": null,
-        "doc": null
-      }
-    ],
-    "imports": []
-  },
-  "можливі майбутні розробки/test_multi_tab_gui.py": {
-    "classes": [],
-    "functions": [
-      {
-        "name": "main",
-        "params": [],
         "return_type": null,
         "doc": null
       }

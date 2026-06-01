@@ -184,6 +184,16 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "type": "str", "group": "Розпізнавання мови", "label": "ID моделі Whisper",
         "desc": "tiny / base / small / medium / large-v3.",
     },
+    "GLOBAL_VOICE_HOTKEY": {
+        "type": "str", "group": "Розпізнавання мови", "label": "Гаряча клавіша для глобального голосового введення",
+        "desc": "Комбінація клавіш для активації голосового введення в будь-якій програмі (наприклад: ctrl+shift+f9, ctrl+shift+v, win+v). Примітка: ctrl+f9 може конфліктувати з Ctrl+V в деяких програмах",
+        "default": "ctrl+shift+f9", "user_only": True,
+    },
+    "GLOBAL_VOICE_ENABLED": {
+        "type": "bool", "group": "Розпізнавання мови", "label": "Глобальне голосове введення",
+        "desc": "Увімкнути глобальне голосове введення (Windows hooks + STT).",
+        "default": True, "user_only": True,
+    },
     "STT_LANGUAGE": {
         "type": "str", "group": "Розпізнавання мови", "label": "Мова",
         "desc": "Код мови (uk, en, ru).",
@@ -292,16 +302,6 @@ SETTINGS_SCHEMA: Dict[str, Dict[str, Any]] = {
         "desc": "pyqt6 (основний GUI бекенд).",
         "choices": ["pyqt6"],
         "default": "pyqt6", "user_only": True,
-    },
-    "GLOBAL_VOICE_HOTKEY": {
-        "type": "str", "group": "Global Voice Input", "label": "Гаряча клавіша для глобального голосового введення",
-        "desc": "Комбінація клавіш для активації голосового введення в будь-якій програмі (наприклад: ctrl+shift+f9, ctrl+shift+v, win+v). Примітка: ctrl+f9 може конфліктувати з Ctrl+V в деяких програмах",
-        "default": "ctrl+shift+f9", "user_only": True,
-    },
-    "GLOBAL_VOICE_ENABLED": {
-        "type": "bool", "group": "Вигляд", "label": "Глобальне голосове введення",
-        "desc": "Увімкнути глобальне голосове введення (Windows hooks + STT).",
-        "default": True, "user_only": True,
     },
     "USE_UIA_FIRST": {
         "type": "bool", "group": "Вигляд", "label": "UIA пріоритет над OCR",
