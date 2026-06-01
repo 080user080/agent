@@ -9,7 +9,7 @@ BACKUP_DIR = Path(r"d:\Python\agent_backup")
 SZ = r"c:\Program Files\7-Zip\7z.exe"
 
 EXCLUDE_DIRS = [
-    "pytest_cache", ".ruff_cache", ".vscode", ".windsurf",
+    ".git", "pytest_cache", ".ruff_cache", ".vscode", ".windsurf",
     "__pycache__", "backup", "debug_logs", "logs", "macros",
     "scenarios", "TEST_GUI", "tests", "TTS", "tts_cache", "voices",
 ]
