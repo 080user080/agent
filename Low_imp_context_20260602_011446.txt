@@ -1,0 +1,4011 @@
+СТРУКТУРА ПРОЄКТУ
+============================================================
+D:\Python\agent
+core_gui_pyqt6\__init__.py
+core_gui_pyqt6\base_tab.py
+core_gui_pyqt6\chat_panel_qt.py
+core_gui_pyqt6\confirmation_qt.py
+core_gui_pyqt6\constants.py
+core_gui_pyqt6\llm_endpoints_editor_qt.py
+core_gui_pyqt6\main_window.py
+core_gui_pyqt6\plan_panel_qt.py
+core_gui_pyqt6\settings_tab_qt.py
+core_gui_pyqt6\tab_chat.py
+core_gui_pyqt6\tab_logs.py
+core_gui_pyqt6\tab_plan.py
+core_gui_pyqt6\tab_settings.py
+core_gui_pyqt6\tab_stats.py
+core_gui_pyqt6\tab_tools.py
+docs
+functions\agent\__init__.py
+functions\agent\act.py
+functions\agent\check.py
+functions\agent\observe.py
+functions\agent\plan.py
+functions\audio\__init__.py
+functions\audio\core_stt_listener.py
+functions\audio\initializer.py
+functions\audio\logic_audio.py
+functions\audio\logic_audio_filtering.py
+functions\audio\logic_continuous_listener.py
+functions\audio\logic_stt.py
+functions\audio\logic_tts.py
+functions\gui\__init__.py
+functions\gui\commands_audio.py
+functions\gui\commands_planner.py
+functions\gui\commands_streaming.py
+functions\gui\core_gui_guardian.py
+functions\gui\logic_commands.py
+functions\gui\logic_scenario_runner.py
+functions\gui\logic_ui_navigator.py
+functions\gui\voice_tray_icon.py
+functions\llm\__init__.py
+functions\llm\endpoint_client.py
+functions\llm\groq_client.py
+functions\llm\helpers.py
+functions\llm\logic_ai_adapter.py
+functions\llm\logic_llm_tools.py
+functions\llm\logic_provider_registry.py
+functions\llm\provider_chain.py
+functions\llm\providers_anthropic.py
+functions\llm\providers_browser.py
+functions\llm\providers_google.py
+functions\llm\providers_openai_compatible.py
+functions\llm\providers_vision.py
+functions\llm\response_parser.py
+functions\llm\router.py
+functions\llm\streaming_buffer.py
+functions\logs
+functions\planning\__init__.py
+functions\planning\agent_coordinator.py
+functions\planning\agent_loop.py
+functions\planning\ai_actors.py
+functions\planning\context_controller.py
+functions\planning\core_plan_compiler.py
+functions\planning\core_planner.py
+functions\planning\core_planner_critic.py
+functions\planning\core_planner_runner.py
+functions\planning\core_task_intake.py
+functions\planning\logic_agent_tools_schema.py
+functions\planning\logic_context_analyzer.py
+functions\planning\logic_execution_report.py
+functions\planning\logic_expectations.py
+functions\planning\logic_orchestrator.py
+functions\planning\logic_plan_critic.py
+functions\planning\logic_repair_loop.py
+functions\planning\logic_task_learner.py
+functions\planning\logic_task_runner.py
+functions\planning\pipeline_code.py
+functions\planning\plan_executor.py
+functions\planning\plan_models.py
+functions\planning\planner_prompt_builder.py
+functions\planning\planner_repair.py
+functions\planning\planner_validator.py
+functions\planning\task_spec.py
+functions\runtime\__init__.py
+functions\runtime\conditions_web.py
+functions\runtime\conditions_windows.py
+functions\runtime\core_action_recorder.py
+functions\runtime\core_app_profile.py
+functions\runtime\core_cache.py
+functions\runtime\core_checkpoint.py
+functions\runtime\core_dispatcher.py
+functions\runtime\core_executor.py
+functions\runtime\core_initializer_checks.py
+functions\runtime\core_loop_detector.py
+functions\runtime\core_macro.py
+functions\runtime\core_memory.py
+functions\runtime\core_safety_sandbox.py
+functions\runtime\core_session_budget.py
+functions\runtime\core_settings.py
+functions\runtime\core_tool_runtime.py
+functions\runtime\core_undo_manager.py
+functions\runtime\core_windsurf_watcher.py
+functions\runtime\logic_core.py
+functions\runtime\logic_permission_gate.py
+functions\runtime\logic_watcher.py
+functions\runtime\self_learning.py
+functions\runtime\sync_settings_copy.py
+functions\runtime\windsurf_watcher_executor.py
+functions\skills\__init__.py
+functions\skills\base.py
+functions\skills\browser_skills.py
+functions\skills\registry.py
+functions\tools\__init__.py
+functions\tools\aaa_architect.py
+functions\tools\aaa_code_tools.py
+functions\tools\aaa_confirmation.py
+functions\tools\aaa_create_file.py
+functions\tools\aaa_debug_code.py
+functions\tools\aaa_edit_file.py
+functions\tools\aaa_execute_python.py
+functions\tools\aaa_file_operations.py
+functions\tools\aaa_open_browser.py
+functions\tools\aaa_open_interpreter.py
+functions\tools\aaa_programs.py
+functions\tools\aaa_system.py
+functions\tools\aaa_utility_tools.py
+functions\tools\aaa_voice_input.py
+functions\tools\common_decorators.py
+functions\tools\screen_helper.py
+functions\tools\tools_app_recognizer.py
+functions\tools\tools_browser_cdp.py
+functions\tools\tools_image_pillow.py
+functions\tools\tools_mouse_keyboard.py
+functions\tools\tools_notification.py
+functions\tools\tools_ocr.py
+functions\tools\tools_playwright.py
+functions\tools\tools_screen_capture.py
+functions\tools\tools_ui_accessibility.py
+functions\tools\tools_ui_detector.py
+functions\tools\tools_visual_diff.py
+functions\tools\tools_window_manager.py
+functions\tools\tools_windsurf.py
+functions\__init__.py
+functions\config.py
+functions\global_voice_input.py
+functions\project_indexer.py
+functions\tools_project_indexer.py
+macros
+profiles
+runtime\cache
+runtime\checkpoints
+runtime\logs\screenshots
+runtime\macros
+runtime\memory
+runtime\profiles
+runtime\self_learning
+runtime\settings
+runtime\snapshots
+main.py
+run.py
+run_assistant.py
+run_assistant_qt.py
+
+============================================================
+ДЕТАЛІЗАЦІЯ КОДУ (рівень: low)
+============================================================
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\__init__.py
+============================================================
+Імпорти:
+  from main_window import MainWindowPyQt6
+
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\base_tab.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any
+  from PyQt6.QtWidgets import QWidget
+
+Сутності:
+class BaseTab(QWidget):
+    def __init__(self, parent: QWidget | None):
+    def set_main_window(self, mw: Any) -> None:
+    def setup_ui(self) -> None:
+    def refresh(self) -> None:
+    def get_title(self) -> str:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\chat_panel_qt.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import re
+  from typing import Any
+  from PyQt6.QtCore import Qt, QEvent
+  from PyQt6.QtGui import QTextCursor, QTextCharFormat, QClipboard, QKeySequence
+  from PyQt6.QtWidgets import QWidget, QTextEdit, QMenu, QApplication
+
+Сутності:
+class ChatPanelQtMixin:
+    def __init__(self):
+    def focus_input(self) -> None:
+    def add_message(self, sender: str, message: Any) -> None:
+    def start_stream_message(self) -> None:
+    def append_stream_chunk(self, text: str) -> None:
+    def end_stream_message(self) -> None:
+    def _setup_clipboard_and_menus(self) -> None:
+    def _show_input_context_menu(self, pos) -> None:
+    def _show_chat_context_menu(self, pos) -> None:
+    def _clipboard_copy(self, widget: QTextEdit) -> None:
+    def _clipboard_cut(self) -> None:
+    def _clipboard_paste(self) -> None:
+    def _clipboard_select_all(self, widget: QTextEdit) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\confirmation_qt.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any, Callable, Optional
+  from PyQt6.QtCore import QTimer, Qt
+  from PyQt6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QWidget
+
+Сутності:
+class ConfirmationDialog(QDialog):
+    def __init__(self, question: str, parent: Optional[QWidget]):
+    def _init_ui(self) -> None:
+    def _start_countdown(self) -> None:
+    def _update_countdown(self) -> None:
+    def _on_yes(self) -> None:
+    def _on_no(self) -> None:
+    def _on_auto(self) -> None:
+    def _on_timeout(self) -> None:
+    def get_result(self) -> Any:
+class ConfirmationQtMixin:
+    def __init__(self):
+    def show_confirmation(self, question: str, callback: Callable) -> None:
+    def _on_dialog_finished(self) -> None:
+    def hide_confirmation(self) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\constants.py
+============================================================
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\llm_endpoints_editor_qt.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any, List, Optional
+  from PyQt6.QtCore import Qt, pyqtSignal
+  from PyQt6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QPushButton, QLabel, QLineEdit, QComboBox, QCheckBox, QDialog, QDialogButtonBox, QListWidget, QListWidgetItem
+
+Сутності:
+class LLMEndpointItem:
+    def __init__(self, data: dict):
+    def to_dict(self) -> dict:
+class LLMEndpointDialog(QDialog):
+    def __init__(self, item: Optional[LLMEndpointItem], parent, total_items):
+    def _init_ui(self) -> None:
+    def _on_provider_changed(self, provider: str) -> None:
+    def get_item(self) -> LLMEndpointItem:
+class LLMEndpointsEditor(QFrame):
+    def __init__(self, value: List[dict] | None, parent):
+    def _init_ui(self) -> None:
+    def _refresh_list(self) -> None:
+    def _add_item(self) -> None:
+    def _edit_item(self) -> None:
+    def _copy_item(self) -> None:
+    def _remove_item(self) -> None:
+    def get(self) -> List[dict]:
+    def set(self, value: List[dict]) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\main_window.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import sys
+  from typing import Any, Callable, Optional
+  from PyQt6.QtCore import Qt, pyqtSignal
+  from PyQt6.QtGui import QFont, QIcon
+  from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QProgressBar, QFrame, QTabWidget
+  from constants import APP_NAME, APP_VERSION, ASSISTANT_TITLE
+  from functions.llm.streaming_buffer import StreamingBuffer
+  from tab_chat import ChatTab
+  from tab_plan import PlanTab
+  from tab_logs import LogsTab
+  from tab_stats import StatsTab
+  from tab_tools import ToolsTab
+  from tab_settings import SettingsTab
+  from confirmation_qt import ConfirmationDialog
+
+Сутності:
+class MainWindowPyQt6(QMainWindow):
+    def __init__(self, assistant_callback: Optional[Callable]):
+    def closeEvent(self, event) -> None:
+    def _init_ui(self) -> None:
+    def _apply_styles(self) -> None:
+    def _restore_interface_state(self) -> None:
+    def _apply_hidden_tabs(self, hidden_tabs: list) -> None:
+    def _save_interface_state(self) -> None:
+    def _on_tab_interface_changed(self, index: int) -> None:
+    def _on_tab_changed(self, index: int) -> None:
+    def _on_command_submitted(self, command: str) -> None:
+    def send_text_command(self) -> None:
+    def on_send_clicked(self) -> None:
+    def on_agent_clicked(self) -> None:
+    def on_stop_clicked(self) -> None:
+    def on_restart_clicked(self) -> None:
+    def stop_execution(self) -> None:
+    def on_mic_clicked(self) -> None:
+    def add_message(self, sender: str, message: Any) -> None:
+    def start_stream_message(self) -> None:
+    def append_stream_chunk(self, chunk: str) -> None:
+    def end_stream_message(self) -> None:
+    def _on_streaming_status(self, status_text: str) -> None:
+    def _on_streaming_context_update(self, used: int, limit: int, model: str) -> None:
+    def update_streaming_context_limits(self, context_limit: int, model: str) -> None:
+    def focus_input(self) -> None:
+    def _update_context_bar(self, used: int, limit: int, model: str) -> None:
+    def _reset_context_bar(self) -> None:
+    def update_progress(self, progress: int, status_text: str) -> None:
+    def show_stop_button(self) -> None:
+    def hide_stop_button(self) -> None:
+    def show_plan_panel(self, steps: Any) -> None:
+    def update_plan_step(self, data: Any) -> None:
+    def finish_plan_panel(self, data: Any) -> None:
+    def on_plan_execution_started(self) -> None:
+    def on_plan_execution_finished(self) -> None:
+    def show_confirmation(self, question: str, callback: Callable[[bool], None]) -> None:
+    def queue_message(self, msg_type: str, data: Any) -> None:
+    def _on_message(self, msg_type: str, data: Any) -> None:
+    def set_assistant(self, assistant: Any) -> None:
+    def set_stt_controller(self, stt_controller: Any) -> None:
+    def run(self) -> None:
+    def showEvent(self, event):
+def create_pyqt6_gui(assistant_callback: Optional[Callable]) -> MainWindowPyQt6:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\plan_panel_qt.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any
+  from PyQt6.QtCore import QTimer, Qt
+  from PyQt6.QtGui import QColor
+  from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QListWidget, QListWidgetItem
+
+Сутності:
+class PlanPanelQtMixin:
+    def __init__(self):
+    def show_plan_panel(self, steps_info: list) -> None:
+    def update_plan_step(self, data: dict) -> None:
+    def finish_plan_panel(self, stats: dict) -> None:
+    def _update_progress_display(self) -> None:
+    def _auto_hide_plan_panel(self) -> None:
+    def _on_run_plan(self) -> None:
+    def _on_stop_plan(self) -> None:
+    def on_plan_execution_started(self) -> None:
+    def on_plan_execution_finished(self) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\settings_tab_qt.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import os
+  from typing import Any
+  from PyQt6.QtCore import Qt, pyqtSignal
+  from PyQt6.QtGui import QFont
+  from PyQt6.QtWidgets import QFrame, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QLabel, QLineEdit, QCheckBox, QComboBox, QSpinBox, QDoubleSpinBox, QPushButton, QToolButton, QGroupBox, QTextEdit, QButtonGroup
+  from llm_endpoints_editor_qt import LLMEndpointsEditor
+
+Сутності:
+class SettingsTabQtMixin:
+    def _on_tab_changed(self, index: int) -> None:
+    def _build_settings_tab(self) -> None:
+    def _create_settings_widget(self, parent: QWidget, key: str, schema: dict, value: Any, row_widgets: list) -> QWidget:
+    def _toggle_group(self, group_name: str) -> None:
+    def update_watcher_status(self, engine: Any) -> None:
+    def _apply_settings_filter(self) -> None:
+    def _save_all_settings(self) -> None:
+    def _get_widget_value(self, widget: QWidget, wtype: str, schema: dict) -> Any:
+    def _reset_all_settings(self) -> None:
+    def _reload_settings_tab(self) -> None:
+    def _clear_command_cache(self) -> None:
+    def _restart_agent(self) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_chat.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import datetime
+  import os
+  import re
+  import threading
+  from typing import Any
+  from PyQt6.QtCore import Qt, pyqtSignal, QEvent
+  from PyQt6.QtGui import QFont, QTextCursor, QTextCharFormat, QClipboard
+  from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit, QPushButton, QLabel, QFrame, QMenu, QApplication
+  from base_tab import BaseTab
+  from constants import APP_NAME, ASSISTANT_TITLE, USER_TITLE, COLOR_USER, COLOR_ASSISTANT, COLOR_SYSTEM, INPUT_MIN_HEIGHT, INPUT_MAX_HEIGHT
+
+Сутності:
+class ChatTab(BaseTab):
+    def __init__(self, parent: QWidget | None):
+    def setup_ui(self) -> None:
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+    def eventFilter(self, obj, event) -> bool:
+    def _send_text_command(self) -> None:
+    def _on_send_clicked(self) -> None:
+    def _on_agent_clicked(self) -> None:
+    def _on_stop_clicked(self) -> None:
+    def _on_restart_clicked(self) -> None:
+    def _update_input_height(self) -> None:
+    def _on_mic_clicked(self) -> None:
+    def _start_mic_listening(self) -> None:
+    def _stop_mic_listening(self) -> None:
+    def _mic_listen_worker(self) -> None:
+    def on_mic_finished(self, text: str | None) -> None:
+    def _should_skip_json_message(self, text: str) -> bool:
+    def add_message(self, sender: str, message: Any) -> None:
+    def start_stream_message(self) -> None:
+    def append_stream_chunk(self, chunk: str) -> None:
+    def end_stream_message(self) -> None:
+    def focus_input(self) -> None:
+    def _setup_clipboard_and_menus(self) -> None:
+    def _show_input_context_menu(self, pos) -> None:
+    def _show_chat_context_menu(self, pos) -> None:
+    def _clipboard_copy(self, widget: QTextEdit | None) -> None:
+    def _clipboard_cut(self) -> None:
+    def _clipboard_paste(self) -> None:
+    def _clipboard_select_all(self, widget: QTextEdit | None) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_logs.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import glob
+  import logging
+  import os
+  from typing import Any
+  from queue import Queue
+  from logging.handlers import QueueHandler
+  from PyQt6.QtCore import Qt, QTimer
+  from PyQt6.QtGui import QColor, QFont
+  from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QComboBox, QLineEdit, QPushButton, QLabel, QFrame
+  from base_tab import BaseTab
+  from constants import COLOR_DEBUG, COLOR_INFO, COLOR_WARNING, COLOR_ERROR
+
+Сутності:
+class LogsTab(BaseTab):
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+    def _update_placeholder_visibility(self) -> None:
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+    def _read_tail(self, filepath: str, max_lines: int) -> list[str]:
+    def _load_from_files(self) -> None:
+    def _parse_log_line(self, line: str) -> dict | None:
+    def _setup_queue_handler(self) -> None:
+    def _poll_log_queue(self) -> None:
+    def _format_time(self, record: logging.LogRecord) -> str:
+    def add_log_entry(self, level: str, module: str, message: str) -> None:
+    def _apply_filters(self) -> None:
+    def _level_to_int(self, level: str) -> int:
+    def _set_row(self, row_idx: int, entry: dict) -> None:
+    def _level_color(self, level: str) -> QColor:
+    def _clear_logs(self) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_plan.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any
+  from PyQt6.QtCore import QTimer
+  from PyQt6.QtGui import QColor
+  from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QListWidget, QListWidgetItem
+  from base_tab import BaseTab
+
+Сутності:
+class PlanTab(BaseTab):
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+    def get_title(self) -> str:
+    def show_plan_panel(self, steps_info: list) -> None:
+    def update_plan_step(self, data: dict) -> None:
+    def finish_plan_panel(self, stats: dict | None) -> None:
+    def on_plan_execution_started(self) -> None:
+    def on_plan_execution_finished(self) -> None:
+    def _update_progress_display(self) -> None:
+    def _auto_hide_plan_panel(self) -> None:
+    def _on_run_plan(self) -> None:
+    def _on_stop_plan(self) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_settings.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import os
+  from functools import partial
+  from typing import Any
+  from PyQt6.QtCore import Qt, pyqtSignal
+  from PyQt6.QtGui import QFont, QIcon
+  from PyQt6.QtWidgets import QFrame, QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QSplitter, QLabel, QLineEdit, QCheckBox, QComboBox, QSpinBox, QDoubleSpinBox, QPushButton, QToolButton, QGroupBox, QTextEdit, QListWidget, QListWidgetItem, QSizePolicy
+  from base_tab import BaseTab
+  from llm_endpoints_editor_qt import LLMEndpointsEditor
+
+Сутності:
+class SettingsTab(BaseTab):
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+    def _build_settings_tab(self) -> None:
+    def _on_category_changed(self, row: int) -> None:
+    def _clear_right_content(self) -> None:
+    def _build_category_content(self, cat_name: str) -> QWidget:
+    def _create_settings_widget(self, parent: QWidget, key: str, schema: dict, value: Any, row_widgets: list) -> QWidget:
+    def _apply_settings_filter(self) -> None:
+    def _auto_save_setting(self, key: str) -> None:
+    def _update_settings_status(self, text: str, color: str) -> None:
+    def _save_all_settings(self) -> None:
+    def _get_widget_value(self, widget: QWidget, wtype: str, schema: dict) -> Any:
+    def _reset_all_settings(self) -> None:
+    def _reload_settings_tab(self) -> None:
+    def _clear_command_cache(self) -> None:
+    def _restart_agent(self) -> None:
+    def _toggle_windsurf_watch(self) -> None:
+    def update_watcher_status_from_executor(self, executor: Any) -> None:
+    def update_watcher_status(self, engine: Any) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_stats.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import os
+  from typing import Any
+  from PyQt6.QtCore import Qt
+  from PyQt6.QtGui import QFont
+  from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton, QFrame, QProgressBar, QGroupBox
+  from base_tab import BaseTab
+  from constants import APP_VERSION
+
+Сутності:
+class StatsTab(BaseTab):
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+    def update_stats(self, stats: dict) -> None:
+    def _refresh_stats(self) -> None:
+    def _update_display(self) -> None:
+    def _set_label(self, key: str, value: Any) -> None:
+
+============================================================
+Файл: D:\Python\agent\core_gui_pyqt6\tab_tools.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any
+  from PyQt6.QtCore import Qt
+  from PyQt6.QtGui import QFont, QColor
+  from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QPushButton, QLabel, QFrame, QMessageBox
+  from base_tab import BaseTab
+
+Сутності:
+class ToolsTab(BaseTab):
+    def __init__(self, parent):
+    def setup_ui(self) -> None:
+    def get_title(self) -> str:
+    def refresh(self) -> None:
+    def _load_tools(self) -> None:
+    def _update_table(self) -> None:
+    def _on_execute_tool(self) -> None:
+# Невідомий тип: D:\Python\agent\docs
+
+
+============================================================
+Файл: D:\Python\agent\functions\agent\__init__.py
+============================================================
+Імпорти:
+  from functions.agent.plan import ActionDecider, AgentAction, build_default_decider
+  from functions.agent.observe import Observation, ObserveConfig, observe
+  from functions.agent.check import CheckConfig, CheckResult, CheckState, check
+
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\agent\act.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import logging
+  import re
+  from dataclasses import dataclass, field
+  from typing import Any, Dict, List, Optional, Set
+
+Сутності:
+class ActionGuardConfig:
+class ActionGuard:
+    def __init__(self, config: Optional[ActionGuardConfig]):
+    def extract_python_write_targets(code: str) -> List[str]:
+    def execute(self, registry: Any, action: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    def check_read_file_guard(self, action: str, args: Dict[str, Any], gui_cb) -> Optional[Dict[str, Any]]:
+    def check_list_directory_guard(self, action: str, args: Dict[str, Any], actions_history: List[Dict[str, Any]], gui_cb) -> Optional[Dict[str, Any]]:
+    def check_write_file_guard(self, action: str, args: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def check_execute_python_guard(self, action: str, args: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def run_guards(self, action: str, args: Dict[str, Any], actions_history: List[Dict[str, Any]], gui_cb) -> Optional[Dict[str, Any]]:
+    def update_after_action(self, action: str, args: Dict[str, Any], act_result: Dict[str, Any]) -> str:
+    def reset(self):
+    def list_directory_used(self) -> bool:
+    def last_list_dir_files(self) -> List[str]:
+    def has_written_since_list_dir(self) -> bool:
+
+============================================================
+Файл: D:\Python\agent\functions\agent\check.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  from dataclasses import dataclass, field
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class CheckConfig:
+class CheckResult:
+class CheckState:
+def run_expectations(expectations: List[Dict[str, Any]], obs: Any, act_result: Dict[str, Any], task_id: str, registry_cache: Optional[CheckState]) -> List[Dict[str, Any]]:
+def check(action: str, obs: Any, state: CheckState, act_result: Optional[Dict[str, Any]], expectations: Optional[List[Dict[str, Any]]], task_id: str) -> CheckResult:
+def save_checkpoint(state: CheckState, agent_state: Any, task_id: str, task_description: str, total_steps: int, config: Optional[Dict[str, Any]], enabled: bool) -> None:
+def load_checkpoint(task_id: str, enabled: bool) -> Optional[Dict[str, Any]]:
+def cleanup_checkpoint(task_id: str, enabled: bool) -> None:
+
+============================================================
+Файл: D:\Python\agent\functions\agent\observe.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import hashlib
+  import logging
+  import time
+  from dataclasses import dataclass, field
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class ObserveConfig:
+class Observation:
+def hash_screenshot(path: str) -> str:
+def get_active_window_title() -> str:
+def collect_ui_elements() -> List[Dict[str, Any]]:
+def safe_uia_dict(element) -> Dict[str, Any]:
+def build_uia_tree(uia) -> Optional[Dict[str, Any]]:
+def needs_screen_observation(task: str) -> bool:
+def observe(config: ObserveConfig, assistant, task: str) -> Observation:
+
+============================================================
+Файл: D:\Python\agent\functions\agent\plan.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import logging
+  import re
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Optional
+
+Сутності:
+class AgentAction:
+class ActionDecider:
+    def __init__(self, ask_llm_with_tools_fn: Optional[Callable[..., Any]], tools_schema: Optional[List[Dict[str, Any]]], tool_aliases: Optional[Dict[str, str]], system_prompt: Optional[str], history_max: int, max_json_failures: int):
+    def is_available(self) -> bool:
+    def resolve_alias(self, tool_name: str) -> str:
+    def _format_observation(self, obs: Any, max_chars: int) -> str:
+    def _format_history(self, history: List[Dict[str, Any]]) -> str:
+    def build_messages(self, goal: str, observation: Any, history: List[Dict[str, Any]], last_result: Optional[Dict[str, Any]], extra_instructions: str, current_step: int, progress_summary: str, context_controller: Optional[Any], stuck_warning: str) -> List[Dict[str, str]]:
+    def decide(self, goal: str, observation: Any, history: List[Dict[str, Any]], last_result: Optional[Dict[str, Any]], progress_summary: str, context_controller: Optional[Any], stuck_warning: str, extra_instructions: str) -> AgentAction:
+    def _parse_tool_calls(self, response: Any, tool_calls: List[Any]) -> AgentAction:
+    def _try_with_tools(self, messages: List[Dict[str, str]]) -> AgentAction:
+    def _json_failure_fallback(self) -> AgentAction:
+    def _fix_truncated_json(self, content: str) -> str:
+    def _parse_json_from_content(self, response: Any) -> Optional[AgentAction]:
+    def _try_json_load(self, content: str) -> Optional[dict]:
+    def _build_action_from_parsed(self, parsed: dict) -> Optional[AgentAction]:
+    def _clean_think_blocks(self, content: str) -> str:
+    def _extract_from_markdown(self, content: str) -> str:
+    def _extract_json_braces(self, content: str) -> str:
+    def replan(self, goal: str, observation: Any, history: List[Dict[str, Any]], consecutive_failures: int, progress_summary: str, context_controller: Optional[Any]) -> AgentAction:
+def build_default_decider() -> Optional[ActionDecider]:
+
+============================================================
+Файл: D:\Python\agent\functions\audio\__init__.py
+============================================================
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\audio\core_stt_listener.py
+============================================================
+Імпорти:
+  import threading
+  import time
+  import os
+  import json
+  import logging
+  import numpy
+  import sounddevice
+  from typing import Callable, Optional, Dict, Any
+  from colorama import Fore
+  from functions.audio.logic_stt import get_stt_engine, STTEngine
+  from functions.config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, SILENCE_DURATION, MIN_SILENCE_DURATION, MAX_SILENCE_DURATION, STT_LOGGING_ENABLED, MICROPHONE_DEVICE_ID, STT_ENABLED, STT_LANGUAGE
+
+Сутності:
+class STTListener:
+    def __init__(self, command_callback: Callable[[str], None], status_callback: Optional[Callable[[str, Any], None]]):
+    def initialize(self) -> bool:
+    def _update_status(self, status: str, data: Any):
+    def start(self, wake_word_mode: bool):
+    def stop(self):
+    def listen_once(self, duration: Optional[int], wait_for_speech: bool) -> Optional[str]:
+    def listen_streaming(self, stop_event: Optional[threading.Event], segment_callback: Optional[Callable[[str], None]]) -> str:
+    def _record_audio(self, duration: int, wait_for_speech: bool) -> Optional[np.ndarray]:
+    def _wait_for_speech_and_record(self, duration: int, pre_buffer_sec: float) -> Optional[np.ndarray]:
+    def _listen_loop(self):
+    def _listen_for_wake_word(self):
+    def _execute_command(self, text: str):
+    def _clean_text(self, text: str) -> str:
+    def set_wake_word_enabled(self, enabled: bool):
+class STTGuiController:
+    def __init__(self, process_command_callback: Callable[[str], None], gui_queue, tray_status_callback):
+    def initialize(self) -> bool:
+    def toggle_listening(self) -> Optional[str]:
+    def start_wake_word_mode(self):
+    def stop(self):
+    def _on_status_change(self, status: str, data: Any):
+def get_stt_controller(process_command_callback: Callable[[str], None], gui_queue, tray_status_callback) -> Optional[STTGuiController]:
+
+============================================================
+Файл: D:\Python\agent\functions\audio\initializer.py
+============================================================
+Імпорти:
+  import time
+  from colorama import Fore, Back, Style
+  from functions.config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, ACTIVATION_WORD, ACTIVATION_LISTEN_DURATION, COMMAND_LISTEN_DURATION, MICROPHONE_DEVICE_ID, CONTINUOUS_MODE, CONTINUOUS_LISTENING_ENABLED, ASSISTANT_NAME, ASSISTANT_EMOJI, ASSISTANT_DISPLAY_NAME, TTS_ENABLED, TTS_DEVICE, TTS_CACHE_DIR, TTS_VOICES_DIR, TTS_DEFAULT_VOICE, TTS_SPEECH_RATE, TTS_VOLUME, TTS_SPEAK_PREFIXES
+  from functions.audio.logic_stt import get_stt_engine
+  from functions.audio.logic_tts import TTSEngine
+  from functions.audio.logic_audio_filtering import get_audio_filter
+  from functions.audio.logic_continuous_listener import create_continuous_listener
+
+Сутності:
+def _gui_notify(gui_queue, status_msg: str, chat_msg: str | None):
+class AudioInitializer:
+    def __init__(self, gui_queue):
+    def diagnostics(self):
+    def _load_stt_model(self):
+    def init_stt(self) -> bool:
+    def init_tts(self) -> bool:
+    def init_audio_filter(self) -> bool:
+    def init_listener(self) -> bool:
+    def init_all(self, with_listener: bool) -> dict:
+
+============================================================
+Файл: D:\Python\agent\functions\audio\logic_audio.py
+============================================================
+Імпорти:
+  import re
+  import numpy
+  from colorama import Fore
+  from config import VOLUME_THRESHOLD, MIN_COMMAND_LENGTH, IGNORE_PHRASES, WHISPER_CORRECTIONS, ACTIVATION_WORD, ACTIVATION_SIMILARITY_THRESHOLD
+
+Сутності:
+def check_volume(audio):
+def should_ignore_command(text):
+def correct_whisper_text(text):
+def text_similarity(text1, text2):
+def check_activation_word(text):
+def remove_activation_word(text):
+
+============================================================
+Файл: D:\Python\agent\functions\audio\logic_audio_filtering.py
+============================================================
+Імпорти:
+  import numpy
+  import torch
+  from colorama import Fore
+
+Сутності:
+class AudioFilter:
+    def __init__(self, sample_rate):
+    def _init_noise_reducer(self):
+    def apply_agc(self, audio):
+    def apply_noise_reduction(self, audio):
+    def process_audio(self, audio, use_agc, use_noise_reducer):
+def get_audio_filter(sample_rate):
+
+============================================================
+Файл: D:\Python\agent\functions\audio\logic_continuous_listener.py
+============================================================
+Імпорти:
+  import numpy
+  import sounddevice
+  import threading
+  import queue
+  import time
+  from colorama import Fore, Style
+  from collections import deque
+
+Сутності:
+class ContinuousListener:
+    def __init__(self, sample_rate, audio_filter, vad_model, vad_utils, device_id, config):
+    def audio_callback(self, indata, frames, time_info, status):
+    def pause_listening(self):
+    def resume_listening(self):
+    def show_activity_indicator(self, volume, is_sound):
+    def process_speech(self, transcribe_func, assistant):
+    def listening_loop(self, transcribe_func, assistant):
+    def start(self, transcribe_func, assistant):
+    def stop(self):
+def create_continuous_listener(sample_rate, audio_filter, microphone_id, config):
+
+============================================================
+Файл: D:\Python\agent\functions\audio\logic_stt.py
+============================================================
+Імпорти:
+  import numpy
+  import torch
+  import threading
+  from queue import Queue
+  from colorama import Fore
+  from functions.config import STT_MODEL_TYPE, STT_MODEL_ID, STT_DEVICE, STT_LANGUAGE, STT_PARALLEL_ENABLED, STT_CONFIDENCE_THRESHOLD, WHISPER_COMPUTE_TYPE, WHISPER_BATCH_SIZE, W2V_BERT_MODEL_NAME
+
+Сутності:
+class STTEngine:
+    def __init__(self):
+    def _determine_device(self):
+    def _load_models(self):
+    def _load_whisper(self):
+    def _load_w2v_bert(self):
+    def transcribe_whisper(self, audio):
+    def transcribe_w2v_bert(self, audio):
+    def _transcribe_parallel(self, audio):
+    def _choose_best_result(self, results):
+    def transcribe(self, audio):
+    def get_available_models(self):
+def get_stt_engine():
+
+============================================================
+Файл: D:\Python\agent\functions\audio\logic_tts.py
+============================================================
+Імпорти:
+  import os
+  import sys
+  import time
+  import hashlib
+  import threading
+  import subprocess
+  from pathlib import Path
+  from colorama import Fore
+  import numpy
+  import sounddevice
+  import soundfile
+  import torch
+
+Сутності:
+class TTSEngine:
+    def __init__(self, config, listener):
+    def _install_dependencies(self):
+    def _discover_voices(self):
+    def _load_model(self):
+    def _load_style_vectors(self):
+    def _preprocess_text(self, text):
+    def _split_to_parts(self, text):
+    def _get_cache_key(self, text, voice_name, rate):
+    def _pause_recording(self):
+    def _resume_recording(self):
+    def synthesize(self, text, voice_name, rate):
+    def speak(self, text, voice_name, rate, wait):
+    def stop(self):
+    def get_voices(self):
+    def set_voice(self, voice_name):
+    def set_rate(self, rate):
+    def set_volume(self, volume):
+def get_tts_engine(listener):
+def init_tts(listener):
+
+============================================================
+Файл: D:\Python\agent\functions\gui\__init__.py
+============================================================
+Імпорти:
+  from commands_streaming import StreamingBuffer, stream_llm_response
+  from commands_audio import set_tts_engine, should_speak_response, extract_speakable_text, filter_code_for_tts, speak_response, speak_response_async, speak_if_possible
+  from commands_planner import classify_task, execute_direct, extract_python_code, run_agent_loop, run_agent_loop_for_voice, run_pending_plan, stop_plan_execution
+
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\gui\commands_audio.py
+============================================================
+Імпорти:
+  import re
+  import threading
+  from colorama import Fore
+  from typing import Optional
+
+Сутності:
+def set_tts_engine(voice_assistant, tts_engine) -> None:
+def should_speak_response(tts_enabled: bool, tts_engine) -> bool:
+def extract_speakable_text(response_text: str) -> str:
+def filter_code_for_tts(text: str) -> str:
+def speak_response(tts_engine, text: str) -> None:
+def speak_response_async(tts_engine, speakable_text: str) -> None:
+def speak_if_possible(tts_enabled: bool, tts_engine, response_text: str) -> None:
+
+============================================================
+Файл: D:\Python\agent\functions\gui\commands_planner.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  import re
+  import threading
+  import time
+  from typing import Any, Callable, Optional
+  from colorama import Fore
+
+Сутності:
+def classify_task(task: str) -> str:
+def needs_clarification(task: str) -> tuple[bool, str]:
+def _make_clarification(verb: str) -> tuple[bool, str]:
+def extract_python_code(task: str) -> str:
+def execute_direct(task: str, action: str, registry: Any, gui_queue: Any) -> None:
+def run_agent_loop(task: str) -> None:
+def _run_agent_loop_safe_wrapper(coordinator: Any, task: str, on_result: Callable[[dict], None], timeout: float) -> None:
+def run_pending_plan() -> None:
+def _get_last_user_command(assistant: Any) -> str:
+def stop_plan_execution() -> None:
+def run_agent_loop_for_voice(command_text: str) -> None:
+
+============================================================
+Файл: D:\Python\agent\functions\gui\commands_streaming.py
+============================================================
+Імпорти:
+  import time
+  from colorama import Fore
+  from typing import Optional, Callable
+
+Сутності:
+class StreamingBuffer:
+    def __init__(self, gui_log_callback, gui_queue):
+    def full_response(self) -> str:
+    def add_chunk(self, chunk_text: str) -> None:
+    def _update_status(self) -> None:
+    def _flush(self) -> None:
+    def final_flush(self) -> None:
+    def reset(self) -> None:
+def stream_llm_response(streaming_handler, messages, gui_log_callback, gui_queue, on_token: Optional[Callable[[str], None]]) -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\gui\core_gui_guardian.py
+============================================================
+Імпорти:
+  import re
+  import time
+  from typing import Dict, Any, List, Optional, Set, Tuple
+  from dataclasses import dataclass, field
+  from enum import Enum
+
+Сутності:
+class GUIRiskLevel(Enum):
+class RiskAssessment:
+class SafetyZone:
+class GUIGuardian:
+    def __init__(self):
+    def enable_sandbox_mode(self, allowed_region: Optional[Tuple[int, int, int, int]], allowed_apps: Optional[List[str]]):
+    def disable_sandbox_mode(self):
+    def set_allowed_region(self, x: int, y: int, width: int, height: int):
+    def set_allowed_applications(self, app_names: List[str]):
+    def add_blocked_application(self, app_name: str):
+    def assess_risk(self, action: str, params: Dict[str, Any], target_text: Optional[str]) -> RiskAssessment:
+    def is_action_allowed(self, action: str, params: Dict[str, Any], target_text: Optional[str]) -> Dict[str, Any]:
+    def preview_action(self, action: str, params: Dict[str, Any]) -> str:
+    def simulate_action(self, action: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    def get_safety_report(self) -> str:
+    def get_blocked_actions_history(self) -> List[Dict[str, Any]]:
+def get_guardian() -> GUIGuardian:
+def enable_sandbox_mode(allowed_region: Optional[Tuple[int, int, int, int]], allowed_apps: Optional[List[str]]):
+def disable_sandbox_mode():
+def set_allowed_region(x: int, y: int, width: int, height: int):
+def set_allowed_applications(app_names: List[str]):
+def add_blocked_application(app_name: str):
+def assess_risk(action: str, params: Dict[str, Any], target_text: Optional[str]) -> Dict[str, Any]:
+def is_action_allowed(action: str, params: Dict[str, Any], target_text: Optional[str]) -> Dict[str, Any]:
+def preview_action(action: str, params: Dict[str, Any]) -> str:
+def simulate_action(action: str, params: Dict[str, Any]) -> Dict[str, Any]:
+def get_safety_report() -> str:
+def guarded(action_name: str, require_confirmation_for: List[str]):
+# [Помилка синтаксису] D:\Python\agent\functions\gui\logic_commands.py
+
+
+============================================================
+Файл: D:\Python\agent\functions\gui\logic_scenario_runner.py
+============================================================
+Імпорти:
+  import json
+  import time
+  import os
+  from typing import Dict, Any, List, Optional, Callable
+  from dataclasses import dataclass, field, asdict
+  from enum import Enum
+  from pathlib import Path
+  from logic_ui_navigator import UINavigator, UIAction, UIActionType, UIActionResult, click_element, type_in_field, select_option, check_checkbox, fill_form, submit_form, open_menu, click_menu_item, handle_dialog, dismiss_all_dialogs
+  from tools.tools_window_manager import find_window_by_title, activate_window, get_active_window
+  from tools.tools_mouse_keyboard import keyboard_hotkey
+  from tools.tools_app_recognizer import detect_active_application, is_application_ready
+
+Сутності:
+class ScenarioStepType(Enum):
+class ScenarioStep:
+class Scenario:
+    def to_dict(self) -> Dict[str, Any]:
+    def from_dict(cls, data: Dict[str, Any]) -> 'Scenario':
+class ScenarioResult:
+class ScenarioRunner:
+    def __init__(self, scenarios_dir: str):
+    def save_scenario(self, scenario: Scenario, filename: Optional[str]) -> Dict[str, Any]:
+    def load_scenario(self, filename: str) -> Dict[str, Any]:
+    def list_scenarios(self) -> List[Dict[str, Any]]:
+    def delete_scenario(self, filename: str) -> Dict[str, Any]:
+    def run_scenario(self, scenario: Scenario, variables: Optional[Dict[str, Any]]) -> ScenarioResult:
+    def run_scenario_from_file(self, filename: str, variables: Optional[Dict[str, Any]]) -> ScenarioResult:
+    def validate_scenario(self, scenario: Scenario) -> Dict[str, Any]:
+    def _handle_click(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_type(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_select(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_check(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_hotkey(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_menu(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_dialog(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_wait(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_verify(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_window(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_custom(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _substitute_variables(self, params: Dict[str, Any], variables: Dict[str, Any]) -> Dict[str, Any]:
+    def _verify_text(self, text: str) -> bool:
+def get_runner(scenarios_dir: str) -> ScenarioRunner:
+def run_scenario(scenario: Scenario, variables: Optional[Dict[str, Any]]) -> ScenarioResult:
+def run_scenario_from_file(filename: str, variables: Optional[Dict[str, Any]]) -> ScenarioResult:
+def save_scenario(scenario: Scenario, filename: Optional[str]) -> Dict[str, Any]:
+def load_scenario(filename: str) -> Dict[str, Any]:
+def list_scenarios() -> List[Dict[str, Any]]:
+def delete_scenario(filename: str) -> Dict[str, Any]:
+def validate_scenario(scenario: Scenario) -> Dict[str, Any]:
+def scenario_save_file(window_title: Optional[str]) -> ScenarioResult:
+def scenario_open_file(window_title: Optional[str], file_path: Optional[str]) -> ScenarioResult:
+def scenario_save_as(window_title: Optional[str], save_path: Optional[str]) -> ScenarioResult:
+def scenario_find_in_program(window_title: Optional[str], search_text: Optional[str]) -> ScenarioResult:
+def scenario_print(window_title: Optional[str]) -> ScenarioResult:
+def scenario_undo_redo(window_title: Optional[str], action: str, count: int) -> ScenarioResult:
+def scenario_select_all_copy(window_title: Optional[str]) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\gui\logic_ui_navigator.py
+============================================================
+Імпорти:
+  import time
+  from typing import Dict, Any, List, Optional, Tuple, Union
+  from dataclasses import dataclass, field
+  from enum import Enum
+  from tools.tools_mouse_keyboard import mouse_click, mouse_move, mouse_scroll, keyboard_type, keyboard_press, keyboard_hotkey
+  from tools.tools_screen_capture import ScreenCapture
+  from tools.tools_ocr import find_text_on_screen, click_text
+  from tools.tools_ui_detector import find_button_by_text, find_input_field, find_label, find_input_near_label, find_checkbox, is_checkbox_checked
+  from tools.tools_app_recognizer import detect_active_application, detect_application_state
+
+Сутності:
+class UIActionType(Enum):
+class UIElement:
+class UIAction:
+class UIActionResult:
+class UINavigator:
+    def __init__(self):
+    def click_element(self, description: str, element_type: str, region: Optional[Tuple[int, int, int, int]], offset_x: int, offset_y: int) -> Dict[str, Any]:
+    def type_in_field(self, field_description: str, text: str, clear_first: bool, press_enter: bool) -> Dict[str, Any]:
+    def select_option(self, dropdown_description: str, option_text: str) -> Dict[str, Any]:
+    def check_checkbox(self, label: str, state: bool) -> Dict[str, Any]:
+    def select_radio(self, label: str) -> Dict[str, Any]:
+    def navigate_tabs(self, tab_name: str) -> Dict[str, Any]:
+    def fill_form(self, field_dict: Dict[str, str]) -> Dict[str, Any]:
+    def submit_form(self, submit_button_text: str) -> Dict[str, Any]:
+    def read_form_values(self, field_names: List[str]) -> Dict[str, Any]:
+    def validate_form_filled(self, required_fields: List[str]) -> Dict[str, Any]:
+    def open_menu(self, menu_name: str) -> Dict[str, Any]:
+    def click_menu_item(self, path_list: List[str]) -> Dict[str, Any]:
+    def open_context_menu(self, x: int, y: int) -> Dict[str, Any]:
+    def click_context_item(self, item_text: str) -> Dict[str, Any]:
+    def close_menu(self) -> Dict[str, Any]:
+    def handle_dialog(self, expected_text: Optional[str], action: str) -> Dict[str, Any]:
+    def dismiss_all_dialogs(self, timeout: float) -> Dict[str, Any]:
+    def execute_action(self, action: UIAction) -> UIActionResult:
+def get_navigator() -> UINavigator:
+def click_element(description: str, element_type: str) -> Dict[str, Any]:
+def type_in_field(field_description: str, text: str, clear_first: bool) -> Dict[str, Any]:
+def select_option(dropdown_description: str, option_text: str) -> Dict[str, Any]:
+def check_checkbox(label: str, state: bool) -> Dict[str, Any]:
+def select_radio(label: str) -> Dict[str, Any]:
+def navigate_tabs(tab_name: str) -> Dict[str, Any]:
+def fill_form(field_dict: Dict[str, str]) -> Dict[str, Any]:
+def submit_form(submit_button_text: str) -> Dict[str, Any]:
+def read_form_values(field_names: List[str]) -> Dict[str, Any]:
+def validate_form_filled(required_fields: List[str]) -> Dict[str, Any]:
+def open_menu(menu_name: str) -> Dict[str, Any]:
+def click_menu_item(path_list: List[str]) -> Dict[str, Any]:
+def open_context_menu(x: int, y: int) -> Dict[str, Any]:
+def click_context_item(item_text: str) -> Dict[str, Any]:
+def close_menu() -> Dict[str, Any]:
+def handle_dialog(expected_text: Optional[str], action: str) -> Dict[str, Any]:
+def dismiss_all_dialogs(timeout: float) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\gui\voice_tray_icon.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import threading
+  import time
+  from enum import Enum
+  from typing import Optional
+
+Сутності:
+class VoiceStatus(Enum):
+class _TrayStatusData:
+    def __init__(self, status: VoiceStatus, text: str):
+def get_voice_tray_icon() -> Optional[VoiceTrayIcon]:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\__init__.py
+============================================================
+Імпорти:
+  from functions.llm.helpers import ask_llm
+  from functions.llm.response_parser import process_llm_response
+  from functions.llm.endpoint_client import get_primary_endpoint, call_endpoint
+  from functions.llm.streaming_buffer import StreamingBuffer
+
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\llm\endpoint_client.py
+============================================================
+Імпорти:
+  import time
+  import requests
+  from typing import Dict, Any, List, Optional, Tuple
+  from colorama import Fore
+  from config import LM_STUDIO_URL
+
+Сутності:
+def get_model_context_limit(model_name: str) -> int:
+def fetch_local_model_context_limit(base_url: str, api_key: str, timeout: int) -> Optional[int]:
+def _is_groq_endpoint(endpoint: Dict[str, Any]) -> bool:
+def _normalize_endpoint(ep: Dict[str, Any]) -> Dict[str, Any]:
+def get_endpoint_by_role(role: str, default: Optional[Dict]) -> Optional[Dict]:
+def get_primary_endpoint():
+def get_secondary_endpoint():
+def _reload_model(endpoint: Dict[str, Any], headers: Dict[str, str]) -> bool:
+def call_endpoint(endpoint: Dict[str, Any], messages: List[Dict[str, str]]) -> Tuple[bool, str]:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\groq_client.py
+============================================================
+Імпорти:
+  from typing import Dict, Any, List, Optional, Tuple
+  import sys
+  from colorama import Fore
+
+Сутності:
+def call_groq_sdk(endpoint: Dict[str, Any], messages: List[Dict[str, str]]) -> Tuple[bool, str]:
+def stream_groq_sdk(endpoint: Dict[str, Any], messages: List[Dict[str, str]], callback, usage_callback) -> bool:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\helpers.py
+============================================================
+Імпорти:
+  from typing import List, Optional
+  from colorama import Fore
+  from functions.llm.endpoint_client import get_primary_endpoint, get_secondary_endpoint, call_endpoint
+
+Сутності:
+def ask_llm(prompt: str, system_prompt: str, history: list) -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\logic_ai_adapter.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from abc import ABC, abstractmethod
+  from dataclasses import asdict, dataclass, field
+  from typing import Any, Callable, Dict, List, Optional
+
+Сутності:
+class ChatMessage:
+    def __post_init__(self) -> None:
+    def to_dict(self) -> Dict[str, Any]:
+class ToolSpec:
+class ChatRequest:
+    def add(self, role: str, content: str) -> 'ChatRequest':
+class UsageInfo:
+class ToolCall:
+class ChatResponse:
+    def ok(self) -> bool:
+class ProviderCapabilities:
+    def satisfies(self, requirements: Dict[str, Any]) -> bool:
+class AIProvider(ABC):
+    def __init__(self):
+    def chat(self, request: ChatRequest) -> ChatResponse:
+    def available(self) -> bool:
+    def estimate_tokens(self, request: ChatRequest) -> int:
+    def estimate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
+    def describe(self) -> Dict[str, Any]:
+class EchoProvider(AIProvider):
+    def __init__(self):
+    def chat(self, request: ChatRequest) -> ChatResponse:
+class ScriptedProvider(AIProvider):
+    def __init__(self, responses: List[str] | List[ChatResponse]):
+    def chat(self, request: ChatRequest) -> ChatResponse:
+class CallableProvider(AIProvider):
+    def __init__(self, handler: Callable[[ChatRequest], Any]):
+    def chat(self, request: ChatRequest) -> ChatResponse:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\logic_llm_tools.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import time
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
+  import requests
+  from llm.endpoint_client import get_primary_endpoint
+
+Сутності:
+class ToolCall:
+    def to_dict(self) -> Dict[str, Any]:
+class ToolExecutionResult:
+    def to_dict(self) -> Dict[str, Any]:
+class ChatToolsResponse:
+    def ok(self) -> bool:
+    def has_tool_calls(self) -> bool:
+    def to_dict(self) -> Dict[str, Any]:
+def build_tool_spec(name: str, description: str, parameters: Optional[Mapping[str, Any]]) -> Dict[str, Any]:
+def functions_to_tools(functions_map: Mapping[str, Mapping[str, Any]]) -> List[Dict[str, Any]]:
+def registry_to_tools(registry: Any) -> List[Dict[str, Any]]:
+def _parse_arguments(raw: Any) -> Dict[str, Any]:
+def parse_tool_calls_from_body(body: Mapping[str, Any]) -> List[ToolCall]:
+def ask_llm_with_tools(messages: Sequence[Mapping[str, Any]], tools: Optional[Sequence[Mapping[str, Any]]]) -> ChatToolsResponse:
+def execute_tool_calls(tool_calls: Sequence[ToolCall], registry: Any) -> List[ToolExecutionResult]:
+def tool_results_to_messages(tool_calls: Sequence[ToolCall], results: Sequence[ToolExecutionResult]) -> List[Dict[str, Any]]:
+def _serialize_tool_result(value: Any) -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\logic_provider_registry.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import threading
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Optional
+  from logic_ai_adapter import AIProvider, ChatRequest, ChatResponse
+
+Сутності:
+class SelectionCriteria:
+class ChatAttempt:
+class ProviderRegistry:
+    def __init__(self) -> None:
+    def register(self, provider: AIProvider) -> None:
+    def unregister(self, name: str) -> bool:
+    def clear(self) -> None:
+    def get(self, name: str) -> Optional[AIProvider]:
+    def list_names(self) -> List[str]:
+    def list_providers(self) -> List[AIProvider]:
+    def describe_all(self) -> List[Dict[str, Any]]:
+    def select(self, criteria: Optional[SelectionCriteria]) -> Optional[AIProvider]:
+    def select_many(self, criteria: Optional[SelectionCriteria]) -> List[AIProvider]:
+    def chat(self, request: ChatRequest) -> ChatResponse:
+def get_default_registry() -> ProviderRegistry:
+def reset_default_registry() -> None:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\provider_chain.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  import time
+  from typing import Optional
+  from router import RoutingDecision
+  from logic_ai_adapter import AIProvider, ChatRequest, ChatResponse
+
+Сутності:
+class ProviderChain:
+    def __init__(self, providers: dict[str, AIProvider]):
+    def execute(self, request: ChatRequest, decision: RoutingDecision, timeout_per_provider: float) -> ChatResponse:
+    def _health_check(self, provider_id: str) -> bool:
+    def _is_quota_exceeded(self, provider_id: str) -> bool:
+    def _record_success(self, provider_id: str, elapsed: float):
+    def _record_error(self, provider_id: str):
+    def get_stats(self) -> dict:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\providers_anthropic.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import os
+  from typing import Any, Dict, List, Optional
+  from logic_ai_adapter import AIProvider, ChatRequest, ChatResponse, ProviderCapabilities, UsageInfo
+
+Сутності:
+class AnthropicAdapter(AIProvider):
+    def __init__(self, api_key: Optional[str], model: str, base_url: str):
+    def available(self) -> bool:
+    def _map_messages(self, request: ChatRequest) -> List[Dict[str, str]]:
+    def _extract_system(self, request: ChatRequest) -> str:
+    def chat(self, request: ChatRequest) -> ChatResponse:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\providers_browser.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import time
+  from typing import Any, Dict, List, Optional
+  from logic_ai_adapter import AIProvider, ChatRequest, ChatResponse, ChatMessage, ProviderCapabilities, UsageInfo
+
+Сутності:
+class BrowserProviderAdapter(AIProvider):
+    def __init__(self, url: Optional[str], headless: bool, wait: Optional[float]):
+    def available(self) -> bool:
+    def _format_prompt(self, request: ChatRequest) -> str:
+    def chat(self, request: ChatRequest) -> ChatResponse:
+    def _get_page(self):
+    def _type_prompt(self, page, prompt: str) -> bool:
+class WindsurfBrowserAdapter(BrowserProviderAdapter):
+class CursorBrowserAdapter(BrowserProviderAdapter):
+
+============================================================
+Файл: D:\Python\agent\functions\llm\providers_google.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import os
+  from typing import Any, Dict, List, Optional
+  from logic_ai_adapter import AIProvider, ChatRequest, ChatResponse, ProviderCapabilities, UsageInfo
+
+Сутності:
+class GoogleAdapter(AIProvider):
+    def __init__(self, api_key: Optional[str], model: str, base_url: str):
+    def available(self) -> bool:
+    def _map_contents(self, request: ChatRequest) -> List[Dict[str, Any]]:
+    def _extract_system_instruction(self, request: ChatRequest) -> str:
+    def chat(self, request: ChatRequest) -> ChatResponse:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\providers_openai_compatible.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import os
+  import time
+  from dataclasses import dataclass
+  from typing import Any, Callable, Dict, List, Optional
+  from logic_ai_adapter import AIProvider, ChatMessage, ChatRequest, ChatResponse, ProviderCapabilities, ToolCall, UsageInfo
+
+Сутності:
+class HTTPResponse:
+    def ok(self) -> bool:
+def _default_http_client(url: str, headers: Dict[str, str], payload: Dict[str, Any], timeout: float) -> HTTPResponse:
+class OpenAICompatibleProvider(AIProvider):
+    def __init__(self):
+    def available(self) -> bool:
+    def chat(self, request: ChatRequest) -> ChatResponse:
+    def _build_payload(self, request: ChatRequest) -> Dict[str, Any]:
+    def _serialize_message(self, msg: ChatMessage) -> Dict[str, Any]:
+    def _should_retry(self, resp: HTTPResponse) -> bool:
+    def _format_error(self, resp: HTTPResponse) -> str:
+    def _parse_success(self, body: Any, request: ChatRequest) -> ChatResponse:
+def lmstudio_provider() -> OpenAICompatibleProvider:
+def ollama_provider() -> OpenAICompatibleProvider:
+def openai_provider() -> OpenAICompatibleProvider:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\providers_vision.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import base64
+  import logging
+  from dataclasses import dataclass
+  from typing import Any, Dict, List, Optional
+  import requests
+  from functions.runtime.core_settings import get_setting
+
+Сутності:
+class VisionQuery:
+class VisionResponse:
+    def __post_init__(self):
+class VisionLMProvider:
+    def __init__(self, assistant):
+    def _init_vision(self):
+    def is_available(self) -> bool:
+    def analyze_image(self, query: VisionQuery) -> VisionResponse:
+    def _analyze_openai(self, image_data: str, query: VisionQuery) -> VisionResponse:
+    def _analyze_claude(self, image_data: str, query: VisionQuery) -> VisionResponse:
+    def _analyze_gemini(self, image_data: str, query: VisionQuery) -> VisionResponse:
+    def describe(self, image_path: str, prompt: str) -> str:
+    def detect_ui_elements(self, image_path: str) -> List[Dict[str, Any]]:
+    def suggest_actions(self, image_path: str, goal: str) -> List[str]:
+def get_vision_provider(assistant) -> VisionLMProvider:
+def vision_analyze_screenshot(args: Dict[str, Any]) -> Dict[str, Any]:
+def vision_detect_ui(args: Dict[str, Any]) -> Dict[str, Any]:
+def vision_suggest_actions(args: Dict[str, Any]) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\response_parser.py
+============================================================
+Імпорти:
+  import json
+  import re
+  import time
+  from typing import Dict, Any, List, Optional
+  from colorama import Fore
+
+Сутності:
+def sanitize_json_string(text: str) -> str:
+def safe_json_loads(text: str) -> Any:
+def clean_llm_tokens(text: str) -> str:
+def _find_matching_brace(text: str, open_char: str, close_char: str, start: int) -> int:
+def _try_extract_json(clean_text: str, open_char: str, close_char: str) -> Optional[str]:
+def extract_json_from_text(text: str) -> str:
+def extract_all_json_actions(text: str) -> List[Dict[str, Any]]:
+def _extract_text_to_type(command_text: str) -> Optional[str]:
+def _is_type_command(text: str) -> bool:
+def _execute_single_action(registry, action_dict):
+def _handle_empty_response(original_command: str, registry) -> Optional[str]:
+def _handle_simple_text_command(clean_text: str, registry) -> Optional[str]:
+def _format_action_summary(action: dict) -> str:
+def _handle_multi_actions(multi_actions: list, registry) -> Optional[str]:
+def _handle_json_response(response_json: dict, registry, response_text: str) -> str:
+def _try_extract_from_tokens(response_text: str, registry) -> Optional[str]:
+def process_llm_response(response_text, registry, original_command):
+
+============================================================
+Файл: D:\Python\agent\functions\llm\router.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from dataclasses import dataclass
+  from enum import Enum
+  from typing import List
+
+Сутності:
+class TaskType(Enum):
+class RoutingDecision:
+class RequestRouter:
+    def classify(self, text: str) -> TaskType:
+    def route(self, text: str, available_providers: dict) -> RoutingDecision:
+
+============================================================
+Файл: D:\Python\agent\functions\llm\streaming_buffer.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import time
+  from typing import Callable, Optional
+
+Сутності:
+class StreamingBuffer:
+    def __init__(self, on_status: Optional[Callable[[str], None]], on_context_update: Optional[Callable[[int, int, str], None]], context_limit: int, model: str):
+    def update_context_limits(self, context_limit: int, model: str) -> None:
+    def add_chunk(self, chunk: str) -> int:
+    def finish(self, real_usage: Optional[dict]) -> int:
+    def reset(self) -> None:
+    def current_status(self) -> str:
+# Невідомий тип: D:\Python\agent\functions\logs
+
+
+============================================================
+Файл: D:\Python\agent\functions\planning\__init__.py
+============================================================
+Імпорти:
+  from functions.planning.agent_loop import AgentLoop, AgentLoopConfig, AgentState
+
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\planning\agent_coordinator.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  import threading
+  import time
+  from typing import Any, Callable, Optional
+
+Сутності:
+class AgentCoordinatorError(Exception):
+class AgentLoopTimeoutError(AgentCoordinatorError):
+class AgentCoordinator:
+    def __init__(self, assistant: Any, registry: Any, gui_queue: Any, gui_log_callback: Callable[[str, str], None]):
+    def build(self) -> bool:
+    def run(self, task: str, timeout: float) -> dict:
+    def request_stop(self) -> None:
+    def _build_decider(self) -> None:
+    def _build_repairer(self) -> None:
+    def _build_agent_loop(self) -> None:
+    def _attach_gui_callback(self) -> None:
+    def _log_decider_and_repair_status(self) -> None:
+def build_agent_coordinator(assistant: Any, registry: Any, gui_queue: Any, gui_log_callback: Callable[[str, str], None]) -> Optional[AgentCoordinator]:
+def run_agent_loop_safe(coordinator: Optional[AgentCoordinator], task: str, on_result: Optional[Callable[[dict], None]], timeout: float) -> dict:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\agent_loop.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  import time
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Optional
+  from functions.agent.observe import Observation, ObserveConfig, observe
+  from functions.agent.plan import ActionDecider
+  from functions.agent.act import ActionGuard, ActionGuardConfig
+  from functions.agent.check import CheckState, check, save_checkpoint, load_checkpoint, cleanup_checkpoint
+
+Сутності:
+class AgentState:
+class AgentLoopConfig:
+class AgentLoop:
+    def __init__(self, assistant, registry, config: Optional[AgentLoopConfig], ask_user_callback: Optional[Callable[[str, List[str]], str]], decider: Optional[ActionDecider], repairer: Optional[Any], context_controller: Optional[Any]):
+    def _gui_msg(self, msg_type: str, data: Any) -> None:
+    def request_stop(self) -> None:
+    def set_compiled_plan(self, compiled_plan) -> None:
+    def observe(self) -> Observation:
+    def plan(self, task: str, obs: Observation, state: AgentState) -> Dict[str, Any]:
+    def _plan_from_decider(self, task: str, obs: Observation, state: AgentState) -> Optional[Dict[str, Any]]:
+    def act(self, plan: Dict[str, Any]) -> Dict[str, Any]:
+    def check(self, action: str, obs: Observation, act_result: Optional[Dict[str, Any]], expectations: Optional[List[Dict[str, Any]]]) -> Dict[str, Any]:
+    def _try_repair(self, action: str, args: Dict[str, Any], obs: Observation, plan: Dict[str, Any], act_result: Dict[str, Any], state: AgentState) -> None:
+    def run(self, task: str) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\ai_actors.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  from dataclasses import dataclass
+  from enum import Enum
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class Provider(Enum):
+class ActorResult:
+    def __post_init__(self):
+class AIActor:
+    def __init__(self, provider: Provider, config: Optional[Dict[str, Any]]):
+    def execute(self, prompt: str, context: Optional[Dict[str, Any]]) -> ActorResult:
+    def _execute_codex(self, prompt: str, context: Dict[str, Any]) -> ActorResult:
+    def _execute_windsurf(self, prompt: str, context: Dict[str, Any]) -> ActorResult:
+    def _execute_cursor(self, prompt: str, context: Dict[str, Any]) -> ActorResult:
+    def _execute_chatgpt(self, prompt: str, context: Dict[str, Any]) -> ActorResult:
+    def _execute_claude(self, prompt: str, context: Dict[str, Any]) -> ActorResult:
+    def _execute_gemini(self, prompt: str, context: Dict[str, Any]) -> ActorResult:
+class ActorRegistry:
+    def __init__(self):
+    def _init_default_actors(self):
+    def register(self, provider: Provider, actor: AIActor):
+    def get_actor(self, provider: Provider) -> Optional[AIActor]:
+    def execute_with_fallback(self, prompt: str, preferred_order: List[Provider], context: Optional[Dict[str, Any]]) -> ActorResult:
+def get_actor_registry() -> ActorRegistry:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\context_controller.py
+============================================================
+Імпорти:
+  from typing import List, Dict, Any, Optional, Callable
+  import logging
+
+Сутності:
+def summarize_progress(old_actions: List[Dict[str, Any]], current_summary: str, ask_llm_fn: Callable[[str, Optional[str]], str]) -> str:
+def format_actions_for_summary(actions: List[Dict[str, Any]]) -> str:
+def should_summarize(actions_count: int, threshold: int, keep_recent: int) -> bool:
+class ContextController:
+    def __init__(self, ask_llm_fn: Optional[Callable[[str, Optional[str]], str]], model_name: str, max_short_term: int, max_content_chars: int, max_context_tokens: int):
+    def context_tokens_used(self) -> int:
+    def add_event(self, event_type: str, content: Any) -> Optional[str]:
+    def _clean_content(self, content: Any) -> str:
+    def _summarize_oldest(self) -> str:
+    def get_full_context(self) -> str:
+    def count_tokens(self, text: str) -> int:
+    def get_compressed_ocr(self, ocr_text: str, max_chars: int) -> str:
+    def reset(self):
+
+============================================================
+Файл: D:\Python\agent\functions\planning\core_plan_compiler.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from dataclasses import dataclass
+  from typing import Any, Dict, List, Optional, Protocol, runtime_checkable
+  from functions.planning.core_task_intake import ALLOWED_DOMAINS, DOMAIN_CODE, DOMAIN_MIXED, DOMAIN_PHOTO_BATCH, DOMAIN_PRESENTATION, DOMAIN_UNKNOWN, DOMAIN_WEB_RESEARCH, TaskSpec
+  from functions.planning.logic_task_runner import Plan, Task
+
+Сутності:
+class Pipeline(Protocol):
+    def compile(self, spec: TaskSpec) -> Plan:
+    def required_tools(self, spec: TaskSpec) -> List[str]:
+class PipelineRegistryError(RuntimeError):
+class PipelineRegistry:
+    def __init__(self) -> None:
+    def register(self, domain: str, pipeline: Pipeline) -> None:
+    def unregister(self, domain: str) -> None:
+    def get(self, domain: str) -> Optional[Pipeline]:
+    def resolve(self, domain: str) -> Pipeline:
+    def list_domains(self) -> List[str]:
+class SkeletonPipeline:
+    def compile(self, spec: TaskSpec) -> Plan:
+    def required_tools(self, spec: TaskSpec) -> List[str]:
+def make_default_registry() -> PipelineRegistry:
+def compile_plan_from_spec(spec: TaskSpec) -> Plan:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\core_planner.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import os
+  import re
+  import time
+  import logging
+  from typing import Any, Dict, List, Optional, Tuple, Set
+  from colorama import Fore
+  from runtime.core_tool_runtime import check_dangerous_content, check_ambiguous_content
+  from planner_prompt_builder import PlannerPromptBuilder
+  from planner_validator import PlannerValidator, ValidationResult
+  from planner_repair import StepRepairer, RepairLoop
+
+Сутності:
+class Planner:
+    def __init__(self, assistant, prompt_builder: Optional[PlannerPromptBuilder], validator: Optional[PlannerValidator], repairer: Optional[StepRepairer], repair_loop: Optional[RepairLoop]):
+    def validator(self) -> PlannerValidator:
+    def repair_loop(self) -> RepairLoop:
+    def prompt_builder(self) -> PlannerPromptBuilder:
+    def _ask_llm(self, prompt: str) -> str:
+    def _detect_llm_error(self, response: str, task: str) -> bool:
+    def should_plan(self, task: str) -> bool:
+    def _is_coding_task(self, task: str) -> bool:
+    def _available_actions_description(self) -> str:
+    def _extract_json(self, text: str) -> Optional[Any]:
+    def normalize_plan(self, raw_plan: Any) -> List[Dict[str, Any]]:
+    def _recent_history_section(self, limit: int) -> str:
+    def create_plan(self, task: str, context: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def validate_plan_safety(self, plan: List[Dict[str, Any]], task: str) -> Tuple[bool, str]:
+    def _extract_file_path(self, result_text: str) -> Optional[str]:
+    def _resolve_placeholders(self, value: Any, context: Dict[str, Any]) -> Any:
+    def prepare_step(self, step: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+    def _validate_step(self, action: str, args: Dict[str, Any], result: str, context: Dict[str, Any]) -> Tuple[bool, str]:
+    def update_context_from_result(self, step: Dict[str, Any], result: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_artifacts_summary(self, context: Dict[str, Any]) -> str:
+    def propose_repair_step(self, task: str, failed_step: Dict[str, Any], result: str, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def propose_replan(self, task: str, failed_step: Dict[str, Any], result: str, context: Dict[str, Any], remaining_steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def build_execution_context(self, task: str, plan: List[Dict[str, Any]]) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\core_planner_critic.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import copy
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence
+  from functions.planning.logic_plan_critic import CritiqueResult, PlanCritic, SEVERITY_BLOCK
+  from functions.planning.logic_task_runner import ON_ERROR_STOP, Plan, Task
+
+Сутності:
+def legacy_step_to_task(step: Mapping[str, Any], idx: int) -> Task:
+def legacy_plan_to_plan(legacy: Sequence[Mapping[str, Any]]) -> Plan:
+class LegacyCritiqueResult:
+    def blocking(self) -> bool:
+    def to_dict(self) -> Dict[str, Any]:
+def review_legacy_plan(legacy: Sequence[Mapping[str, Any]]) -> CritiqueResult:
+def review_and_replan_legacy(legacy: Sequence[Mapping[str, Any]]) -> LegacyCritiqueResult:
+def _format_concerns_for_prompt(critique: CritiqueResult) -> str:
+def make_planner_replan_fn(planner: Any, task_description: str) -> ReplanFn:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\core_planner_runner.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set
+  from functions.planning.core_planner_critic import LegacyCritiqueResult, legacy_plan_to_plan, review_and_replan_legacy
+  from functions.planning.logic_plan_critic import CritiqueResult, PlanCritic
+  from functions.planning.logic_task_runner import HandlerFn, Plan, RunResult, STATUS_ERROR, STATUS_OK, TaskContext, TaskRunner
+
+Сутності:
+def _coerce_status(raw: Mapping[str, Any]) -> str:
+def _extract_tool_result(function_registry: Any, fallback_message: Any) -> Dict[str, Any]:
+def make_legacy_action_handler(function_registry: Any) -> HandlerFn:
+def register_legacy_actions(runner: TaskRunner, function_registry: Any) -> List[str]:
+def _make_generic_dispatch_handler(function_registry: Any) -> HandlerFn:
+class LegacyRunResult:
+    def executed(self) -> bool:
+    def to_dict(self) -> Dict[str, Any]:
+def run_legacy_plan_via_runner(legacy_plan: Sequence[Mapping[str, Any]], function_registry: Any) -> LegacyRunResult:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\core_task_intake.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import re
+  import time
+  import uuid
+  from dataclasses import asdict, dataclass, field
+  from pathlib import Path
+  from typing import Any, Callable, List, Optional
+  from llm.logic_ai_adapter import ChatMessage, ChatRequest, ROLE_SYSTEM, ROLE_USER
+  from llm.response_parser import clean_llm_tokens, safe_json_loads
+  from llm.logic_provider_registry import ProviderRegistry, SelectionCriteria
+
+Сутності:
+class BudgetHints:
+    def __post_init__(self) -> None:
+    def to_dict(self) -> dict:
+class TaskSpec:
+    def __post_init__(self) -> None:
+    def to_dict(self) -> dict:
+    def from_dict(cls, data: dict) -> 'TaskSpec':
+class Clarification:
+    def to_dict(self) -> dict:
+    def from_dict(cls, data: dict) -> 'Clarification':
+class IntakeError(RuntimeError):
+def _build_user_prompt(tz_text: str, clarifications: List[Clarification]) -> str:
+def _extract_json_block(text: str) -> str:
+def _str_list(value: Any) -> List[str]:
+def _opt_float(value: Any) -> Optional[float]:
+def _opt_int(value: Any) -> Optional[int]:
+def _make_task_id() -> str:
+def parse_intake_response(response_text: str) -> 'IntakeResult':
+class IntakeResult:
+def create_task_spec_from_tz(tz_text: str) -> TaskSpec:
+def save_task_spec(spec: TaskSpec, path: Path) -> None:
+def load_task_spec(path: Path) -> TaskSpec:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\logic_agent_tools_schema.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from typing import Any, Dict, List, Mapping, Optional, Sequence
+
+Сутності:
+def _tool(name: str, description: str, properties: Optional[Mapping[str, Any]], required: Optional[Sequence[str]]) -> Dict[str, Any]:
+def get_tools_for_capabilities() -> List[Dict[str, Any]]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\logic_context_analyzer.py
+============================================================
+Імпорти:
+  import time
+  from typing import Dict, Any, List, Optional, Tuple
+  from dataclasses import dataclass, field
+  from enum import Enum
+  from functions.tools.tools_screen_capture import ScreenCapture, capture_screen
+  from functions.tools.tools_ocr import ocr_screen, find_text_on_screen
+  from functions.tools.tools_ui_detector import find_button_by_text, find_input_field, find_checkbox, find_progress_bar, find_label
+  from functions.tools.tools_app_recognizer import detect_active_application, detect_application_state, detect_file_dialog, detect_error_dialog, detect_context_menu
+
+Сутності:
+class ScreenElementType(Enum):
+class ScreenElement:
+class ScreenContext:
+class ContextSnapshot:
+    def __init__(self, context: Optional[ScreenContext]):
+    def capture(self) -> ScreenContext:
+    def capture_screen():
+    def compare(self, other: 'ContextSnapshot') -> Dict[str, Any]:
+class ContextHistory:
+    def __init__(self, max_size: int):
+    def add(self, snapshot: ContextSnapshot):
+class BlockerInfo:
+class ContextAnalyzer:
+    def __init__(self):
+    def analyze_screen(self):
+    def detect_ui_elements(self, image):
+    def extract_text_regions(self, image):
+    def analyze_current_context(self) -> Dict[str, Any]:
+    def _detect_all_elements(self) -> List[ScreenElement]:
+    def _infer_available_actions(self, context: ScreenContext) -> List[str]:
+    def suggest_next_action(self, goal: str) -> Dict[str, Any]:
+    def explain_screen(self, detail_level: str) -> str:
+    def detect_user_goal_completion(self, goal_description: str) -> Dict[str, Any]:
+    def detect_blocker(self) -> Optional[Dict[str, Any]]:
+    def get_context_changes(self, steps_back: int) -> Dict[str, Any]:
+def get_analyzer() -> ContextAnalyzer:
+def analyze_current_context() -> Dict[str, Any]:
+def suggest_next_action(goal: str) -> Dict[str, Any]:
+def explain_screen(detail_level: str) -> str:
+def detect_user_goal_completion(goal_description: str) -> Dict[str, Any]:
+def detect_blocker() -> Optional[Dict[str, Any]]:
+def get_context_changes(steps_back: int) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\logic_execution_report.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import threading
+  import time
+  from dataclasses import asdict, dataclass, field
+  from datetime import datetime, timezone
+  from pathlib import Path
+  from typing import Any, Dict, Iterable, List, Optional, TYPE_CHECKING
+  from dataclasses import dataclass, field
+  from pathlib import Path
+  from typing import Any, Dict, Iterable, List, Optional, TYPE_CHECKING
+  from functions.planning.core_task_intake import TaskSpec
+
+Сутності:
+class StepReport:
+    def icon(self) -> str:
+class ExecutionReportEvent:
+class ReportFooter:
+class ExecutionReport:
+    def __init__(self):
+    def record(self, step: StepReport) -> None:
+    def add_event(self, message: str) -> None:
+    def mark_finished(self) -> None:
+    def set_footer(self, footer: ReportFooter) -> None:
+    def totals(self) -> Dict[str, Any]:
+    def to_markdown(self) -> str:
+    def to_json(self) -> str:
+    def to_text(self) -> str:
+    def save(self, path: Optional[str]) -> Path:
+    def _autosave(self) -> None:
+    def _render(self, fmt: str) -> str:
+def _format_ts(value: float) -> str:
+def _format_duration(seconds: float) -> str:
+def _milestone_of(step: StepReport) -> str:
+def _extract_failed_expectations(steps: Iterable[StepReport]) -> List[Dict[str, Any]]:
+def _extract_partial_batches(steps: Iterable[StepReport]) -> List[Dict[str, Any]]:
+def _derive_next_steps(summary: 'ReportSummary') -> List[str]:
+def _collect_issues(report: ExecutionReport, steps: Iterable[StepReport]) -> List[str]:
+class ReportSummary:
+def build_report_summary(report: ExecutionReport) -> ReportSummary:
+def render_summary_markdown(summary: ReportSummary) -> str:
+def generate_report(report: ExecutionReport) -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\logic_expectations.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from dataclasses import dataclass, field
+  from pathlib import Path
+  from typing import Any, Callable, Dict, List, Optional
+
+Сутності:
+class ExpectSpec:
+    def from_dict(cls, data: Dict[str, Any]) -> 'ExpectSpec':
+    def to_dict(self) -> Dict[str, Any]:
+class ExpectationResult:
+    def to_dict(self) -> Dict[str, Any]:
+class ExpectContext:
+def _resolve_path(path_raw: str, cwd: Optional[str]) -> Path:
+def _eval_file_exists(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_file_missing(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_stdout_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_stderr_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_return_code(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_window_title_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_process_running(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_process_not_running(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_no_error_in_report(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_ok_count_at_least(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _read_file_text(spec: ExpectSpec, ctx: ExpectContext, default_encoding: str) -> Optional[str]:
+def _eval_file_size_between(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_file_lines_at_least(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_file_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_file_not_contains(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_regex_match(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_json_valid(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+def _eval_python_parseable(spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+class ExpectRegistry:
+    def __init__(self) -> None:
+    def register(self, kind: str, fn: EvaluatorFn) -> None:
+    def unregister(self, kind: str) -> bool:
+    def kinds(self) -> List[str]:
+    def get(self, kind: str) -> Optional[EvaluatorFn]:
+    def evaluate(self, spec: ExpectSpec, ctx: ExpectContext) -> ExpectationResult:
+    def evaluate_all(self, specs: List[ExpectSpec], ctx: ExpectContext) -> List[ExpectationResult]:
+    def _install_builtins(self) -> None:
+def parse_expect_list(raw: Any) -> List[ExpectSpec]:
+def all_ok(results: List[ExpectationResult]) -> bool:
+def failures(results: List[ExpectationResult]) -> List[ExpectationResult]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\logic_orchestrator.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import concurrent.futures
+  from dataclasses import dataclass, field
+  from typing import Any, Dict, List, Optional
+  from functions.llm.logic_ai_adapter import ChatRequest, ChatResponse
+  from functions.llm.logic_provider_registry import ProviderRegistry, SelectionCriteria
+
+Сутності:
+class SubTask:
+class OrchestrationResult:
+class Orchestrator:
+    def __init__(self, registry: ProviderRegistry) -> None:
+    def decompose_task(self, task: str, llm_fallback: bool) -> List[str]:
+    def delegate(self, task: str, criteria: Optional[SelectionCriteria]) -> ChatResponse:
+    def delegate_parallel(self, task: str, criteria: Optional[SelectionCriteria], max_providers: int) -> OrchestrationResult:
+    def run(self, task: str, criteria: Optional[SelectionCriteria], parallel: bool) -> OrchestrationResult:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\logic_plan_critic.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import re
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Optional
+  from functions.llm.logic_ai_adapter import ROLE_SYSTEM, ROLE_USER, ChatMessage, ChatRequest, ChatResponse, UsageInfo
+  from functions.llm.logic_provider_registry import ProviderRegistry, SelectionCriteria
+  from functions.planning.logic_task_runner import Plan, Task
+
+Сутності:
+class Concern:
+    def to_dict(self) -> Dict[str, Any]:
+class CritiqueResult:
+    def ok(self) -> bool:
+    def blocking(self) -> bool:
+    def to_dict(self) -> Dict[str, Any]:
+def _serialize_task(task: Task) -> Dict[str, Any]:
+def serialize_plan(plan: Plan) -> Dict[str, Any]:
+def build_critic_messages(plan: Plan) -> List[ChatMessage]:
+def _extract_json_block(text: str) -> str:
+def parse_critique_payload(payload: Dict[str, Any]) -> CritiqueResult:
+def parse_critic_response(response: ChatResponse) -> CritiqueResult:
+class PlanCritic:
+    def review(self, plan: Plan) -> CritiqueResult:
+class CriticRunResult:
+def review_and_run_plan(plan: Plan) -> CriticRunResult:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\logic_repair_loop.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  from dataclasses import dataclass
+  from enum import Enum
+  from typing import TYPE_CHECKING, Any, Dict, List, Optional
+  from functions.planning.logic_execution_report import ExecutionReport, StepReport
+  from functions.planning.logic_expectations import ExpectationResult, failures, all_ok
+  from functions.llm.logic_llm_tools import ask_llm_with_tools
+
+Сутності:
+class RepairAction(str, Enum):
+class RepairProposal:
+class RepairProposer:
+    def __init__(self, assistant):
+    def is_available(self) -> bool:
+    def propose_repair(self, expect_results: List[ExpectationResult], task: Task, report: ExecutionReport) -> Optional[RepairProposal]:
+    def _build_repair_context(self, failed: List[ExpectationResult], task: Task, report: ExecutionReport) -> Dict[str, Any]:
+    def _build_repair_prompt(self, context: Dict[str, Any]) -> str:
+    def _parse_repair_response(self, raw: Dict[str, Any]) -> Optional[RepairProposal]:
+class RepairLoop:
+    def __init__(self, proposer: RepairProposer):
+    def repair_failed_step(self, expect_results: List[ExpectationResult], task: Task, report: ExecutionReport) -> tuple[RepairAction, Optional[Dict[str, Any]]]:
+class RepairDecision:
+class StepRepairer:
+    def __init__(self, assistant, max_repairs: int):
+    def reset(self) -> None:
+    def repairs_remaining(self) -> int:
+    def is_available(self) -> bool:
+    def repair(self, failed_action: Dict[str, Any], act_result: Optional[Dict[str, Any]], observation: Optional[Any], history: List[Dict[str, Any]], expectations: Optional[List[Dict[str, Any]]]) -> Optional[RepairDecision]:
+    def _build_prompt(self, failed_action: Dict[str, Any], act_result: Optional[Dict[str, Any]], observation: Optional[Any], history: List[Dict[str, Any]], expectations: Optional[List[Dict[str, Any]]]) -> str:
+    def _parse_decision(self, raw: Dict[str, Any]) -> RepairDecision:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\logic_task_learner.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import re
+  import time
+  from dataclasses import dataclass, field
+  from typing import Any, Dict, List, Optional, Tuple
+  from functions.runtime.core_macro import Macro, MacroStep
+  from functions.runtime.core_app_profile import AppProfile
+
+Сутності:
+class TaskPattern:
+def detect_repeated_pattern(action_history: List[Dict[str, Any]], min_occurrences: int, max_sequence_len: int) -> Optional[TaskPattern]:
+def suggest_automation(pattern: TaskPattern) -> str:
+def create_macro_from_pattern(pattern: TaskPattern, name: str, description: str) -> Macro:
+def adaptive_click(description: str, fallback_list: List[Tuple[str, str]], selector_type: str) -> Dict[str, Any]:
+class ScenarioLearner:
+    def __init__(self):
+    def learn_from_scenario(self, scenario: Dict[str, Any], result: Dict[str, Any]) -> None:
+    def find_patterns(self, min_occurrences: int) -> List[TaskPattern]:
+    def auto_generate_macro(self, pattern: TaskPattern, name: str) -> Optional[Macro]:
+    def update_profile_with_learned(self, profile: AppProfile) -> AppProfile:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\logic_task_runner.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import logging
+  import subprocess
+  import threading
+  import time
+  from dataclasses import dataclass, field
+  from pathlib import Path
+  from typing import Any, Callable, Dict, List, Optional
+  from functions.planning.logic_execution_report import STATUS_DENIED, STATUS_ERROR, STATUS_EXPECT_FAILED, STATUS_OK, STATUS_PRECHECK_FAILED, STATUS_SKIPPED, ExecutionReport, StepReport
+  from functions.planning.logic_expectations import ExpectContext, ExpectRegistry, ExpectSpec, ExpectationResult, all_ok, failures, parse_expect_list
+  from functions.planning.logic_repair_loop import RepairLoop, RepairProposer
+  from functions.planning.plan_models import PlanPydantic, TaskPydantic
+  from functions.runtime.logic_permission_gate import ACTION_READ_FILE, ACTION_RUN_COMMAND, ACTION_WRITE_FILE, Decision, PermissionGate, PermissionRequest
+
+Сутності:
+class Task:
+    def display(self) -> str:
+class Plan:
+    def from_dict(cls, data: Dict[str, Any]) -> 'Plan':
+    def from_json(cls, payload: str) -> 'Plan':
+    def from_file(cls, path: str) -> 'Plan':
+    def to_pydantic(self) -> PlanPydantic:
+def _task_to_pydantic(data: Dict[str, Any]) -> TaskPydantic:
+def _task_from_pydantic(tp: TaskPydantic) -> Task:
+def _fallback_plan_parse(data: Dict[str, Any]) -> 'Plan':
+class TaskContext:
+class RunResult:
+class TaskRunner:
+    def __init__(self, gate: Optional[PermissionGate]):
+    def register(self, kind: str, handler: HandlerFn) -> None:
+    def unregister(self, kind: str) -> bool:
+    def _install_builtin_handlers(self) -> None:
+    def run(self, plan: Plan) -> RunResult:
+    def _run_one(self, task: Task, report: ExecutionReport, previous: Dict[str, Dict[str, Any]]) -> StepReport:
+    def _evaluate_expectations(self, specs: List[ExpectSpec]) -> List[ExpectationResult]:
+    def _budget_says_stop(self) -> bool:
+def _handler_noop(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_log(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_log_task_spec(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_sleep(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_run_command(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_read_file(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_write_file(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_call_provider(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_sub_plan(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_batch_task(ctx: TaskContext) -> Dict[str, Any]:
+def _handler_ask_user(ctx: TaskContext) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\pipeline_code.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import os
+  import re
+  import shlex
+  from dataclasses import dataclass
+  from typing import Any, Dict, List
+  from functions.planning.ai_actors import ActorRegistry, Provider, get_actor_registry
+  from functions.planning.core_task_intake import DOMAIN_CODE, TaskSpec
+  from functions.planning.logic_expectations import EXPECT_FILE_EXISTS, EXPECT_RETURN_CODE, ExpectSpec
+  from functions.planning.logic_task_runner import ON_ERROR_SKIP, ON_ERROR_STOP, Plan, Task
+
+Сутності:
+def _wants_tests(spec: TaskSpec) -> bool:
+def _wants_lint(spec: TaskSpec) -> bool:
+def _derive_filename(deliv: str, idx: int) -> str:
+def _is_testfile(filename: str) -> bool:
+def _scaffold_pytest_template(deliv: str, spec: TaskSpec, filename: str) -> str:
+def _scaffold_content(deliv: str, spec: TaskSpec, filename: str) -> str:
+def _resolve_output_dir(spec: TaskSpec) -> str:
+def _quote(s: str) -> str:
+def _file_path_join(dirpath: str, filename: str) -> str:
+class CodePipeline:
+    def __post_init__(self):
+    def _generate_with_ai(self, deliv: str, spec: TaskSpec, filename: str) -> str:
+    def compile(self, spec: TaskSpec) -> Plan:
+    def required_tools(self, spec: TaskSpec) -> List[str]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\plan_executor.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import logging
+  import threading
+  import time
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Optional
+
+Сутності:
+class PlanExecutionConfig:
+class PlanExecutionState:
+class PlanExecutor:
+    def __init__(self, assistant, gui_callback: Optional[GUICallback], config: Optional[PlanExecutionConfig]):
+    def _gui_msg(self, msg_type: str, data: Any):
+    def _gui_step_update(self, index: int, status: str, action: str, goal: str, detail: str):
+    def planner_steps_to_task_runner_plan(steps: List[Dict[str, Any]], plan_name: str) -> Dict[str, Any]:
+    def create_plan(self, task: str) -> Optional[List[Dict[str, Any]]]:
+    def execute_plan(self, steps: List[Dict[str, Any]], task: str) -> Dict[str, Any]:
+    def _execute_action(self, action: str, args: Dict[str, Any]) -> str:
+    def _mark_remaining_skipped(self, from_index: int, steps: List[Dict[str, Any]]):
+    def request_stop(self):
+    def plan_and_execute(self, task: str) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\plan_models.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  import time
+  from enum import Enum
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class DomainEnum(str, Enum):
+class PriorityEnum(str, Enum):
+class TaskSpecPydantic(BaseModel):
+    def description_not_empty(cls, v: str) -> str:
+    def to_dict(self) -> Dict[str, Any]:
+class CompiledPlanPydantic(BaseModel):
+    def duration_non_negative(cls, v: float) -> float:
+    def tokens_non_negative(cls, v: int) -> int:
+    def to_dict(self) -> Dict[str, Any]:
+class TaskPydantic(BaseModel):
+    def id_kind_not_empty(cls, v: str) -> str:
+    def max_retries_non_negative(cls, v: int) -> int:
+    def retry_delay_non_negative(cls, v: float) -> float:
+class PlanPydantic(BaseModel):
+    def name_not_empty(cls, v: str) -> str:
+class TaskContextPydantic(BaseModel):
+class RunResultPydantic(BaseModel):
+class ExpectSpecPydantic(BaseModel):
+    def kind_not_empty(cls, v: str) -> str:
+class ExpectationResultPydantic(BaseModel):
+    def kind_not_empty(cls, v: str) -> str:
+class ExpectContextPydantic(BaseModel):
+class StepReportPydantic(BaseModel):
+    def required_fields_not_empty(cls, v: str) -> str:
+    def non_negative(cls, v: float) -> float:
+    def tokens_non_negative(cls, v: int) -> int:
+class ExecutionReportEventPydantic(BaseModel):
+class ReportFooterPydantic(BaseModel):
+class ReportSummaryPydantic(BaseModel):
+class PlanExecutionConfigPydantic(BaseModel):
+class PlanExecutionStatePydantic(BaseModel):
+class ConcernPydantic(BaseModel):
+class CritiqueResultPydantic(BaseModel):
+class TaskPatternPydantic(BaseModel):
+class RepairProposalPydantic(BaseModel):
+class RepairDecisionPydantic(BaseModel):
+class LegacyCritiqueResultPydantic(BaseModel):
+class LegacyRunResultPydantic(BaseModel):
+class SkeletonPipelinePydantic(BaseModel):
+class AgentStatePydantic(BaseModel):
+class AgentLoopConfigPydantic(BaseModel):
+class ProviderEnum(str, Enum):
+class ActorResultPydantic(BaseModel):
+class CodePipelinePydantic(BaseModel):
+class ScreenElementTypeEnum(str, Enum):
+class ScreenElementPydantic(BaseModel):
+class ScreenContextPydantic(BaseModel):
+class BlockerInfoPydantic(BaseModel):
+class BudgetHintsPydantic(BaseModel):
+class ClarificationPydantic(BaseModel):
+class IntakeResultPydantic(BaseModel):
+
+============================================================
+Файл: D:\Python\agent\functions\planning\planner_prompt_builder.py
+============================================================
+Імпорти:
+  import json
+  import os
+  import re
+  from typing import Any, Dict, List, Optional, Set
+
+Сутності:
+class PlannerPromptBuilder:
+    def is_coding_task(task: str) -> bool:
+    def should_plan_check(task: str) -> bool:
+    def build_artifacts_summary(context: Dict[str, Any]) -> str:
+    def recent_history_section(conversation_history: List[Dict[str, Any]], limit: int) -> str:
+    def available_actions_description(registry: Any) -> str:
+    def resolve_placeholders(value: Any, context: Dict[str, Any]) -> Any:
+    def build_initial_plan_prompt(task: str, available_actions: str, history_section: str, context: Optional[Dict[str, Any]], is_coding: bool) -> str:
+    def build_retry_plan_prompt(task: str, available_actions: str) -> str:
+    def build_repair_prompt(task: str, failed_step: Dict[str, Any], result: str, artifacts_summary: str, available_actions: str) -> str:
+    def build_replan_prompt(task: str, failed_step: Dict[str, Any], result: str, artifacts_summary: str, available_actions: str, completed_steps: int, repair_attempts: int, replan_attempts: int, remaining_steps: List[Dict[str, Any]]) -> str:
+    def build_context_section_for_plan(context: Optional[Dict[str, Any]]) -> str:
+    def build_coding_section(is_coding: bool) -> str:
+    def build_forbidden_section() -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\planner_repair.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import logging
+  from typing import Any, Dict, List, Optional, Tuple
+  from planner_prompt_builder import PlannerPromptBuilder
+
+Сутності:
+class RepairStats:
+    def __init__(self) -> None:
+    def repair_exhausted(self) -> bool:
+    def replan_exhausted(self) -> bool:
+    def any_exhausted(self) -> bool:
+    def increment_repair(self) -> None:
+    def increment_replan(self) -> None:
+    def reset(self) -> None:
+    def to_dict(self) -> Dict[str, int]:
+class StepRepairer:
+    def __init__(self, ask_llm_fn, available_actions_fn, max_repairs: int):
+    def repairs_remaining(self) -> int:
+    def is_available(self) -> bool:
+    def reset(self) -> None:
+    def repair(self, task: str, failed_step: Dict[str, Any], result: str, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _extract_single_step(self, response: str) -> Optional[Dict[str, Any]]:
+class RepairLoop:
+    def __init__(self, repairer: StepRepairer, ask_llm_fn, available_actions_fn):
+    def stats(self) -> RepairStats:
+    def repairer(self) -> StepRepairer:
+    def reset_stats(self) -> None:
+    def try_repair(self, task: str, failed_step: Dict[str, Any], result: str, context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def try_replan(self, task: str, failed_step: Dict[str, Any], result: str, context: Dict[str, Any], remaining_steps: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def decide(self, task: str, failed_step: Dict[str, Any], result: str, context: Dict[str, Any], remaining_steps: List[Dict[str, Any]]) -> Tuple[str, Optional[Any]]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\planner_validator.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import os
+  import re
+  import time
+  from dataclasses import dataclass, field
+  from typing import Any, Dict, List, Optional, Tuple
+  from colorama import Fore
+  from runtime.core_tool_runtime import check_dangerous_content, check_ambiguous_content
+
+Сутності:
+class ValidationResult:
+    def __bool__(self) -> bool:
+class StepValidationResult:
+    def __bool__(self) -> bool:
+class JsonExtractResult:
+    def ok(self) -> bool:
+class PlannerValidator:
+    def detect_llm_error(response: str, task: str) -> bool:
+    def extract_json(text: str) -> JsonExtractResult:
+    def normalize_plan(raw_plan: Any) -> List[Dict[str, Any]]:
+    def validate_plan_safety(plan: List[Dict[str, Any]], task: str, registry: Optional[Any]) -> ValidationResult:
+    def extract_file_path(result_text: str) -> Optional[str]:
+    def validate_step(action: str, args: Dict[str, Any], result: str, context: Dict[str, Any], registry: Optional[Any]) -> StepValidationResult:
+    def validate_llm_response(cls, response: str, task: str, registry: Optional[Any]) -> Tuple[Optional[List[Dict[str, Any]]], ValidationResult]:
+
+============================================================
+Файл: D:\Python\agent\functions\planning\task_spec.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  from dataclasses import dataclass, field
+  from enum import Enum
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class Domain(Enum):
+class Priority(Enum):
+class TaskSpec:
+    def __post_init__(self):
+    def to_dict(self) -> Dict[str, Any]:
+class CompiledPlan:
+    def to_dict(self) -> Dict[str, Any]:
+class TaskSpecCompiler:
+    def __init__(self, assistant, registry):
+    def _detect_domain(self, description: str) -> Domain:
+    def parse(self, description: str, context: Optional[Dict[str, Any]]) -> TaskSpec:
+    def compile(self, spec: TaskSpec) -> CompiledPlan:
+    def validate_plan(self, plan: CompiledPlan) -> tuple[bool, str]:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\__init__.py
+============================================================
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\conditions_web.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import re
+  import time
+  from typing import Any, Dict, Optional
+  from urllib.parse import urlparse
+
+Сутності:
+def condition_url_response_contains(url: str, pattern: str, timeout: float, headers: Optional[Dict[str, str]], method: str) -> bool:
+def condition_url_status_ok(url: str, timeout: float) -> bool:
+def condition_chat_idle(chat_provider, idle_seconds: float) -> bool:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\conditions_windows.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import time
+  from typing import Any, Callable, Dict, List, Optional, Union
+
+Сутності:
+def _make_window_lister() -> Callable[[], List[str]]:
+def _make_process_lister() -> Callable[[], List[Dict[str, Any]]]:
+def condition_window_title_contains(substring: str) -> Callable[[Dict[str, Any]], bool]:
+def condition_process_running(name_or_pid: Union[str, int]) -> Callable[[Dict[str, Any]], bool]:
+def condition_process_finished(name_or_pid: Union[str, int]) -> Callable[[Dict[str, Any]], bool]:
+def condition_chat_idle(activity_fn: Callable[[], Any]) -> Callable[[Dict[str, Any]], bool]:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_action_recorder.py
+============================================================
+Імпорти:
+  import json
+  import time
+  import os
+  from typing import Dict, Any, List, Optional
+  from dataclasses import dataclass, field, asdict
+  from datetime import datetime
+  from pathlib import Path
+  import threading
+  from functions.tools.tools_screen_capture import ScreenCapture
+
+Сутності:
+class ActionRecord:
+class ActionRecorder:
+    def __new__(cls):
+    def __init__(self, logs_dir: str | None):
+    def _cleanup_old_records(self):
+    def _generate_screenshot_filename(self, action_type: str, before: bool) -> str:
+    def record_action(self, action_type: str, function_name: str, params: Dict[str, Any], result: Dict[str, Any], capture_screenshots: bool) -> ActionRecord:
+    def _save_record(self, record: ActionRecord):
+    def _truncate_params(self, params: Dict[str, Any], max_len: int) -> Dict[str, Any]:
+    def get_recent_actions(self, count: int) -> List[Dict[str, Any]]:
+    def export_session_log(self, format: str) -> str:
+    def generate_action_report(self) -> str:
+    def search_actions(self, filter_dict: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def get_recorder() -> ActionRecorder:
+def record_action(action_type: str, function_name: str, params: Dict[str, Any], result: Dict[str, Any], capture_screenshots: bool) -> Dict[str, Any]:
+def get_recent_actions(count: int) -> List[Dict[str, Any]]:
+def export_session_log(format: str) -> str:
+def generate_action_report() -> str:
+def search_actions(filter_dict: Optional[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def recordable(action_type: str, capture_screenshots: bool):
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_app_profile.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  from dataclasses import asdict, dataclass, field
+  from pathlib import Path
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class UIElement:
+class Workflow:
+class AppProfile:
+    def to_dict(self) -> Dict[str, Any]:
+    def from_dict(cls, data: Dict[str, Any]) -> 'AppProfile':
+    def add_shortcut(self, name: str, keys: str) -> None:
+    def add_element(self, element: UIElement) -> None:
+    def add_workflow(self, workflow: Workflow) -> None:
+    def find_element(self, name: str) -> Optional[UIElement]:
+    def find_workflow(self, name: str) -> Optional[Workflow]:
+def _seed_profiles() -> Dict[str, AppProfile]:
+class AppProfileRegistry:
+    def __init__(self, profiles_dir: str | Path | None):
+    def _load_all(self) -> None:
+    def get(self, app_name: str) -> Optional[AppProfile]:
+    def list_profiles(self) -> List[AppProfile]:
+    def save_profile(self, profile: AppProfile) -> Path:
+    def delete_profile(self, app_name: str) -> bool:
+    def learn_from_interaction(self, app_name: str, action: str, params: Optional[Dict[str, Any]], success: bool) -> AppProfile:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_cache.py
+============================================================
+Імпорти:
+  import json
+  from pathlib import Path
+  from datetime import datetime, timedelta
+  from typing import Optional, Tuple, Dict, Any
+  from colorama import Fore
+
+Сутності:
+class CacheManager:
+    def __init__(self, registry, cache_duration_hours: int):
+    def _load_cache(self) -> Dict[str, Any]:
+    def _save_cache(self) -> None:
+    def _is_idempotent_command(self, command_text: str, action: Optional[str]) -> bool:
+    def _extract_action_from_command(self, command_text: str) -> Optional[str]:
+    def get(self, command_text: str) -> Tuple[Optional[str], bool]:
+    def set(self, command_text: str, response: str, action: Optional[str]) -> bool:
+    def clear(self) -> int:
+    def get_stats(self) -> Dict[str, Any]:
+    def execute_cached_action(self, action_info: Optional[Dict]) -> None:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_checkpoint.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import logging
+  import time
+  from dataclasses import dataclass, field
+  from pathlib import Path
+  from typing import Any, Dict, Optional
+
+Сутності:
+class CheckpointData:
+    def __post_init__(self):
+    def to_dict(self) -> Dict[str, Any]:
+    def from_dict(cls, data: Dict[str, Any]) -> 'CheckpointData':
+class CheckpointManager:
+    def __init__(self, checkpoint_dir: Optional[Path]):
+    def _get_checkpoint_path(self, task_id: str) -> Path:
+    def save(self, checkpoint: CheckpointData) -> bool:
+    def load(self, task_id: str) -> Optional[CheckpointData]:
+    def delete(self, task_id: str) -> bool:
+    def list_checkpoints(self) -> list[str]:
+    def cleanup_old_checkpoints(self, max_age_hours: float) -> int:
+def get_checkpoint_manager(checkpoint_dir: Optional[Path]) -> CheckpointManager:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_dispatcher.py
+============================================================
+Імпорти:
+  import re
+  from colorama import Fore
+
+Сутності:
+class Dispatcher:
+    def __init__(self, registry):
+    def _build_routes(self):
+    def try_quick_route(self, command):
+# [Помилка синтаксису] D:\Python\agent\functions\runtime\core_executor.py
+
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_initializer_checks.py
+============================================================
+Імпорти:
+  import os
+  import requests
+  import subprocess
+  import time
+  from colorama import Fore
+
+Сутності:
+def get_primary_endpoint():
+def is_model_ready(base_url, model_name):
+def check_lm_studio_readiness():
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_loop_detector.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import logging
+  from dataclasses import dataclass, field
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+def _action_fingerprint(action: str, args: Dict[str, Any]) -> str:
+class LoopEvent:
+class LoopDetector:
+    def __init__(self, max_repeats: int, window_size: Optional[int]):
+    def is_looping(self, action: str, args: Dict[str, Any]) -> bool:
+    def on_action_success(self) -> None:
+    def reset(self) -> None:
+    def full_reset(self) -> None:
+    def should_force_fallback(self) -> bool:
+    def total_loops_detected(self) -> int:
+    def get_stuck_warning_message(self) -> str:
+    def get_loop_advice(self, action: Dict[str, Any]) -> str:
+    def get_correction_hint(self, action_name: str) -> str:
+    def get_stats(self) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_macro.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import time
+  from dataclasses import asdict, dataclass, field
+  from pathlib import Path
+  from typing import Any, Callable, Dict, List, Optional
+
+Сутності:
+class MacroStep:
+class Macro:
+    def to_dict(self) -> Dict[str, Any]:
+    def from_dict(cls, data: Dict[str, Any]) -> 'Macro':
+class MacroRunResult:
+class MacroStore:
+    def __init__(self, macros_dir: str | Path | None):
+    def save(self, macro: Macro) -> Path:
+    def load(self, name: str) -> Optional[Macro]:
+    def list_names(self) -> List[str]:
+    def delete(self, name: str) -> bool:
+class MacroRecorder:
+    def __init__(self, store: Optional[MacroStore]):
+    def start(self, name: str, description: str) -> Macro:
+    def pause(self) -> None:
+    def resume(self) -> None:
+    def record_step(self, action: str, params: Optional[Dict[str, Any]]) -> None:
+    def stop(self) -> Macro:
+    def is_recording(self) -> bool:
+    def play(self, macro: Macro | str, executor: Callable[[str, Dict[str, Any]], Dict[str, Any]], variables: Optional[Dict[str, Any]]) -> MacroRunResult:
+def _substitute_vars(params: Dict[str, Any], variables: Dict[str, Any]) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_memory.py
+============================================================
+Імпорти:
+  import json
+  import os
+  import uuid
+  from pathlib import Path
+  from datetime import datetime
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class SessionMemory:
+    def __init__(self):
+    def track_command(self) -> None:
+    def track_plan(self) -> None:
+    def track_error(self) -> None:
+    def set_current_task(self, task: str) -> None:
+    def add_active_file(self, path: str) -> None:
+    def snapshot(self) -> Dict[str, Any]:
+class TaskMemory:
+    def __init__(self, task_id: str, task_text: str):
+    def record_plan(self, plan: List[Dict[str, Any]]) -> None:
+    def record_step(self, step_result: Dict[str, Any]) -> None:
+    def set_artifact(self, key: str, value: Any) -> None:
+    def finish(self, status: str) -> None:
+    def to_dict(self) -> Dict[str, Any]:
+class MemoryManager:
+    def __init__(self, storage_path: Optional[Path], llm_caller):
+    def _load(self) -> Dict[str, Any]:
+    def save(self) -> None:
+    def update_task(self, task: str, plan: list, results: list) -> None:
+    def add_file_path(self, path: str) -> None:
+    def set_variable(self, key: str, value: Any) -> None:
+    def get_variable(self, key: str, default) -> Any:
+    def get_last_files(self, extension: Optional[str]) -> list:
+    def clear_memory(self) -> None:
+    def start_task(self, task_text: str) -> str:
+    def current_task(self) -> Optional[TaskMemory]:
+    def record_task_plan(self, plan: List[Dict[str, Any]]) -> None:
+    def record_task_step(self, step_result: Dict[str, Any]) -> None:
+    def finish_task(self, status: str) -> Optional[TaskMemory]:
+    def set_llm_caller(self, caller) -> None:
+    def _summarize_task(self, task: TaskMemory) -> Optional[str]:
+    def _fallback_task_summary(self, task: TaskMemory) -> str:
+    def summarize_conversation(self, messages: List[Dict[str, str]], max_messages: int) -> str:
+    def get_task_summaries(self, count: int) -> List[Dict[str, Any]]:
+    def get_session_info(self) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_safety_sandbox.py
+============================================================
+Імпорти:
+  import os
+  import sys
+  import subprocess
+  import json
+  import ctypes
+  import ctypes.wintypes
+  import time
+  import tempfile
+  import shutil
+  import signal
+  from pathlib import Path
+  from datetime import datetime
+  from colorama import Fore
+  from typing import Optional, Dict, Any, List
+
+Сутності:
+class SafetySandbox:
+    def __init__(self):
+    def _load_config(self):
+    def _save_config(self):
+    def is_safe_program(self, program_name):
+    def _log_action(self, action_type, program_name, success, message):
+    def _get_process_executable_name(self, process_name):
+    def _get_process_pids(self, process_name):
+    def _close_window_by_process_name(self, process_name):
+    def _force_close_program(self, process_name):
+    def close_safe_program(self, process_name, require_confirmation):
+    def execute_safe_program(self, program_name):
+    def add_allowed_program(self, program_name, program_path):
+    def enable_auto_confirm(self):
+    def disable_auto_confirm(self):
+    def execute_python_sandboxed(self, code: str, timeout: int) -> Dict[str, Any]:
+    def check_code_safety(self, code: str) -> Dict[str, Any]:
+    def print_status(self):
+def get_sandbox():
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_session_budget.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import time
+  from dataclasses import asdict, dataclass, field
+  from pathlib import Path
+  from typing import Any, Callable, Dict, List, Optional
+
+Сутності:
+class SessionLimits:
+class SessionUsage:
+    def duration_seconds(self) -> float:
+class BudgetCheckResult:
+    def as_dict(self) -> Dict[str, Any]:
+class SessionBudget:
+    def __init__(self, limits: Optional[SessionLimits]):
+    def record_step(self, n: int) -> None:
+    def record_tokens(self, n: int) -> None:
+    def record_error(self, n: int) -> None:
+    def record_cost(self, usd: float) -> None:
+    def stop(self, reason: str) -> None:
+    def _external_stop_triggered(self) -> Optional[str]:
+    def check(self) -> BudgetCheckResult:
+    def is_exhausted(self) -> bool:
+    def snapshot(self) -> Dict[str, Any]:
+    def reset(self) -> None:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_settings.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import os
+  import threading
+  from typing import Any, Dict, Optional
+  from functions import config
+
+Сутності:
+def get_runtime_dir() -> str:
+def get_settings_dir() -> str:
+def get_memory_dir() -> str:
+def get_checkpoints_dir() -> str:
+def get_cache_dir() -> str:
+def get_macros_dir() -> str:
+def get_profiles_dir() -> str:
+def get_self_learning_dir() -> str:
+def get_logs_dir() -> str:
+def get_snapshots_dir() -> str:
+class SettingsManager:
+    def __init__(self):
+    def _load(self):
+    def _save(self):
+    def get(self, key: str, default: Any) -> Any:
+    def set(self, key: str, value: Any, persist: bool) -> None:
+    def set_runtime(self, key: str, value: Any) -> None:
+    def reset(self, key: str) -> None:
+    def all_known_keys(self):
+    def as_dict(self) -> Dict[str, Any]:
+    def is_auto_approve_all(self) -> bool:
+    def enable_auto_approve_all(self, duration_seconds: Optional[int]) -> None:
+    def disable_auto_approve_all(self) -> None:
+    def set_active_model(self, model_name: str, context_limit: int) -> None:
+    def get_active_model(self) -> Optional[str]:
+    def get_active_model_context_limit(self) -> int:
+def get_settings() -> SettingsManager:
+def get_setting(key: str, default: Any) -> Any:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_tool_runtime.py
+============================================================
+Імпорти:
+  import json
+  import os
+  import re
+  import time
+  from datetime import datetime
+  from pathlib import Path
+  from typing import Any, Dict, List, Optional, Tuple
+
+Сутності:
+class AuditLog:
+    def __init__(self, log_dir: Optional[Path], max_entries: int):
+    def log(self, action: str, params: Dict[str, Any], result: Dict[str, Any], risk: str) -> None:
+    def _summarize_params(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def get_recent(self, count: int) -> List[Dict[str, Any]]:
+def get_audit_log() -> AuditLog:
+def check_dangerous_content(content: str) -> Optional[str]:
+def check_ambiguous_content(content: str) -> Optional[str]:
+def check_dangerous_content_full(content: str) -> Optional[Tuple[str, str]]:
+def check_params_safety(action: str, params: Dict[str, Any]) -> Optional[Dict[str, str]]:
+def make_tool_result(ok: bool, message: str) -> Dict[str, Any]:
+def validate_path_inside_work_dir(filepath: str) -> Optional[str]:
+def normalize_tool_result(raw_result: Any) -> Dict[str, Any]:
+def get_tool_policy(action: str) -> Dict[str, Any]:
+def get_tool_risk(action: str) -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_undo_manager.py
+============================================================
+Імпорти:
+  import json
+  import time
+  import os
+  import shutil
+  from typing import Dict, Any, List, Optional, Callable, Tuple
+  from dataclasses import dataclass, field
+  from datetime import datetime
+  from pathlib import Path
+  import threading
+  import uuid
+  from functions.tools.tools_screen_capture import ScreenCapture
+
+Сутності:
+class StateSnapshot:
+class UndoAction:
+class UndoResult:
+class UndoManager:
+    def __new__(cls):
+    def __init__(self, snapshots_dir: str | None):
+    def save_snapshot(self, label: str) -> Dict[str, Any]:
+    def restore_snapshot(self, snapshot_id: str) -> Dict[str, Any]:
+    def list_snapshots(self) -> List[Dict[str, Any]]:
+    def register_undoable(self, action: str, undo_fn: Callable, reversible: bool, irreversible_reason: Optional[str]):
+    def undo_last(self, count: int) -> Dict[str, Any]:
+    def undo_to_snapshot(self, snapshot_id: str) -> Dict[str, Any]:
+    def add_to_undo_stack(self, action: str, params: Dict[str, Any], reversible: bool, irreversible_reason: Optional[str]):
+    def clear_undo_stack(self):
+    def get_undo_stack(self) -> List[Dict[str, Any]]:
+    def _undo_mouse_click(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _undo_keyboard_type(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _undo_file_move(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _undo_file_delete(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _undo_window_close(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    def _undo_fill_form(self, params: Dict[str, Any]) -> Dict[str, Any]:
+def get_undo_manager() -> UndoManager:
+def save_snapshot(label: str) -> Dict[str, Any]:
+def restore_snapshot(snapshot_id: str) -> Dict[str, Any]:
+def list_snapshots() -> List[Dict[str, Any]]:
+def undo_last(count: int) -> Dict[str, Any]:
+def undo_to_snapshot(snapshot_id: str) -> Dict[str, Any]:
+def add_to_undo_stack(action: str, params: Dict[str, Any], reversible: bool, irreversible_reason: Optional[str]):
+def get_undo_stack() -> List[Dict[str, Any]]:
+def clear_undo_stack():
+class SnapshotContext:
+    def __init__(self, label: str):
+    def __enter__(self):
+    def __exit__(self, exc_type, exc_val, exc_tb):
+    def restore(self):
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\core_windsurf_watcher.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import threading
+  import time
+  from dataclasses import asdict, dataclass, field
+  from pathlib import Path
+  from typing import Any, Callable, Dict, List, Optional
+  from conditions_windows import condition_chat_idle
+  from core_session_budget import SessionBudget, SessionLimits
+  from functions.runtime.logic_watcher import ActionFn, ConditionFn, Watcher, WatcherConfig
+  from tools.tools_windsurf import SnapshotFn, WindowFinder, WindsurfState, WindsurfWindow, diff_snapshots, make_default_snapshot_fn, make_default_window_finder
+
+Сутності:
+class WindsurfWatcherConfig:
+def _make_activity_fn(window_finder: WindowFinder, snapshot_fn: SnapshotFn, state: WindsurfState, window_lost_flag: Dict[str, Any]) -> Callable[[], Any]:
+def _make_response_action(state: WindsurfState) -> ActionFn:
+def _make_auto_stop_condition(state: WindsurfState) -> ConditionFn:
+def _compose_conditions(idle_cond: ConditionFn, stop_cond: ConditionFn, stop_handle: Dict[str, Any]) -> ConditionFn:
+class WindsurfWatcherRunner:
+    def __init__(self, config: Optional[WindsurfWatcherConfig]) -> None:
+    def responses_captured(self) -> int:
+    def start(self) -> None:
+    def stop(self, reason: str) -> None:
+    def run_forever(self) -> Dict[str, Any]:
+    def summary(self) -> Dict[str, Any]:
+    def _auto_stop_loop(self) -> None:
+def create_windsurf_watcher() -> WindsurfWatcherRunner:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\logic_core.py
+============================================================
+Імпорти:
+  import os
+  import sys
+  import importlib
+  import inspect
+  from pathlib import Path
+  import time
+  from colorama import Fore, Back, Style
+  from functions.runtime.core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result, get_audit_log
+
+Сутності:
+class FunctionRegistry:
+    def __init__(self):
+    def refresh(self):
+    def load_all_modules(self):
+    def get_core_module(self, name):
+    def get_tool_policy(self, action):
+    def get_tool_risk(self, action):
+    def get_system_prompt(self, mode: str):
+    def get_coding_system_prompt(self):
+    def _get_voice_system_prompt(self):
+    def execute_function(self, action, params, auto_create):
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\logic_permission_gate.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import os
+  import re
+  import threading
+  from dataclasses import asdict, dataclass, field
+  from pathlib import Path
+  from typing import Any, Callable, Dict, List, Optional
+
+Сутності:
+class PermissionRequest:
+    def cache_key(self) -> str:
+class Decision:
+    def approve(cls, reason: str, persist: bool) -> 'Decision':
+    def deny(cls, reason: str) -> 'Decision':
+class PermissionPolicy:
+class PermissionGate:
+    def __init__(self, policy: Optional[PermissionPolicy], ask_fn: Optional[AskFn]):
+    def set_ask_fn(self, ask_fn: AskFn) -> None:
+    def check(self, request: PermissionRequest) -> Decision:
+    def ask(self, request: PermissionRequest) -> Decision:
+    def reset_session_cache(self) -> None:
+    def _evaluate(self, request: PermissionRequest) -> Decision:
+    def _check_deny(self, request: PermissionRequest) -> Optional[Decision]:
+    def _check_allow(self, request: PermissionRequest) -> Optional[Decision]:
+    def _in_project_root(self, path: str) -> bool:
+    def _remember(self, request: PermissionRequest, decision: Decision) -> None:
+    def _log(self, request: PermissionRequest, decision: Decision) -> None:
+    def _load_persistent(self) -> Dict[str, Decision]:
+    def _save_persistent(self) -> None:
+def always_allow() -> AskFn:
+def always_deny() -> AskFn:
+def console_ask(stream) -> AskFn:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\logic_watcher.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import threading
+  import time
+  import uuid
+  from dataclasses import asdict, dataclass, field
+  from pathlib import Path
+  from typing import Any, Callable, Dict, List, Optional
+  from functions.runtime.core_session_budget import SessionBudget
+
+Сутності:
+class WatcherConfig:
+class WatcherState:
+    def iterations(self) -> int:
+class Watcher:
+    def __init__(self, config: WatcherConfig, condition: ConditionFn, action: ActionFn):
+    def state(self) -> WatcherState:
+    def context(self) -> Dict[str, Any]:
+    def start(self) -> None:
+    def stop(self, reason: str, join: bool, timeout: float) -> None:
+    def _run(self) -> None:
+    def _safe_condition(self) -> bool:
+    def _safe_action(self) -> None:
+    def _interruptible_sleep(self, seconds: float) -> None:
+    def _record_error(self, message: str) -> None:
+    def _set_stop_reason(self, reason: str) -> None:
+    def _append_log(self, entry: Dict[str, Any]) -> None:
+class WatcherEngine:
+    def __init__(self, logs_dir: str | Path):
+    def register(self, watcher: Watcher) -> str:
+    def start(self, config: WatcherConfig, condition: ConditionFn, action: ActionFn) -> Watcher:
+    def stop(self, watcher_id: str, reason: str) -> bool:
+    def stop_all(self, reason: str) -> None:
+    def list_watchers(self) -> List[WatcherState]:
+    def get(self, watcher_id: str) -> Optional[Watcher]:
+def condition_file_changed(path: str | Path) -> ConditionFn:
+def condition_file_exists(path: str | Path) -> ConditionFn:
+def condition_idle_for(seconds: float) -> ConditionFn:
+def condition_counter_reached(target: int) -> ConditionFn:
+def condition_any() -> ConditionFn:
+def condition_all() -> ConditionFn:
+def _safe_repr(value: Any, limit: int) -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\self_learning.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import json
+  import os
+  from datetime import datetime
+  from pathlib import Path
+  from typing import Any, Dict, List, Optional, TYPE_CHECKING
+
+Сутності:
+class SelfLearning:
+    def __init__(self, data_dir: str | None):
+    def _load_json(self, file_path: Path, default: Any) -> Any:
+    def _save_json(self, file_path: Path, data: Any) -> None:
+    def log_execution(self, task: str, result: str, success: bool, error: Optional[str], steps: Optional[List[Dict]], metadata: Optional[Dict]) -> None:
+    def analyze_errors(self, limit: int) -> List[Dict]:
+    def generate_rules_from_errors(self, llm_client) -> List[Dict]:
+    def _heuristic_rules(self, errors: List[Dict]) -> List[Dict]:
+    def _build_analysis_prompt(self, errors: List[Dict]) -> str:
+    def _parse_rules_from_response(self, response: str) -> List[Dict]:
+    def add_skill(self, name: str, pattern: str, action: str, metadata: Dict) -> None:
+    def get_skill(self, pattern: str) -> Optional[Dict]:
+    def learn_from_pattern(self, pattern: 'TaskPattern') -> str:
+    def get_stats(self) -> Dict:
+def get_self_learning(data_dir: str) -> SelfLearning:
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\sync_settings_copy.py
+============================================================
+Імпорти:
+  import json
+  import os
+
+Сутності:
+def sync_settings_copy():
+
+============================================================
+Файл: D:\Python\agent\functions\runtime\windsurf_watcher_executor.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  import threading
+  import time
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, Optional
+
+Сутності:
+class WindsurfWatchConfig:
+class WindsurfWatchState:
+class WindsurfWatcherExecutor:
+    def __init__(self, config: Optional[WindsurfWatchConfig], gui_callback: Optional[GUICallback]):
+    def start(self) -> bool:
+    def stop(self, reason: str) -> bool:
+    def get_state(self) -> Dict[str, Any]:
+    def _monitor_loop(self):
+
+============================================================
+Файл: D:\Python\agent\functions\skills\__init__.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  from base import BaseSkill, SkillResult, SkillError
+  from registry import SkillRegistry
+  from browser_skills import OpenBrowser, SearchGoogle, FillForm
+
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\skills\base.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  from dataclasses import dataclass, field
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class SkillResult:
+class SkillError(Exception):
+    def __init__(self, message: str, error_code: str):
+class BaseSkill:
+    def __init__(self) -> None:
+    def __repr__(self) -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\skills\browser_skills.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import asyncio
+  import logging
+  import subprocess
+  import time
+  from typing import Any, Dict, List, Optional
+  from urllib.parse import quote_plus
+  from base import BaseSkill, SkillError, SkillResult
+
+Сутності:
+class OpenBrowser(BaseSkill):
+    def _has_playwright(self) -> bool:
+    def _has_cdp(self) -> bool:
+    def _open_with_cdp(self, url: str, browser: str) -> SkillResult:
+    def _open_with_subprocess(self, url: str, browser: str) -> None:
+class SearchGoogle(BaseSkill):
+    def _has_playwright(self) -> bool:
+    def _search_with_requests(self, url: str) -> List[Dict[str, str]]:
+class FillForm(BaseSkill):
+
+============================================================
+Файл: D:\Python\agent\functions\skills\registry.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  from typing import Any, Dict, List, Optional, Type
+  from base import BaseSkill, SkillResult
+
+Сутності:
+class SkillRegistry:
+    def __init__(self) -> None:
+    def register(self, skill: BaseSkill) -> None:
+    def unregister(self, name: str) -> bool:
+    def get(self, name: str) -> Optional[BaseSkill]:
+    def list_skills(self) -> List[Dict[str, Any]]:
+    def count(self) -> int:
+    def has(self, name: str) -> bool:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\__init__.py
+============================================================
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_architect.py
+============================================================
+Імпорти:
+  import ast
+  import json
+  import os
+  import re
+  import requests
+  from colorama import Fore
+  from functions.config import LM_STUDIO_URL
+  from functions.runtime.core_tool_runtime import make_tool_result
+
+Сутності:
+def fix_indentation(code_body, spaces):
+def validate_code(code):
+def llm_function_reg(name, description, parameters):
+def create_skill(task_description):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_code_tools.py
+============================================================
+Імпорти:
+  import os
+  import re
+  import subprocess
+  from pathlib import Path
+  from functions.runtime.core_tool_runtime import make_tool_result
+
+Сутності:
+def llm_function(name, description, parameters):
+def _resolve_path(filepath: str) -> str:
+def read_code_file(filepath, start_line, max_lines):
+def search_in_code(pattern, directory, file_pattern, max_results):
+def list_directory(directory, path):
+def git_status(directory):
+def git_diff(directory, staged):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_confirmation.py
+============================================================
+Імпорти:
+  import time
+  import threading
+  from colorama import Fore
+  from functions.runtime.core_tool_runtime import make_tool_result
+  from functions.runtime.core_settings import get_settings
+
+Сутності:
+def set_gui_instance(gui):
+def llm_function(name, description, parameters):
+def confirm_action(action, question):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_create_file.py
+============================================================
+Імпорти:
+  import os
+  from functions.runtime.core_tool_runtime import make_tool_result, validate_path_inside_work_dir
+
+Сутності:
+def llm_function(name, description, parameters):
+def create_file(filename, content, filepath, path, name, save_path):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_debug_code.py
+============================================================
+Імпорти:
+  import re
+  import requests
+  from colorama import Fore
+  from functions.config import LM_STUDIO_URL
+  from functions.runtime.core_tool_runtime import make_tool_result
+
+Сутності:
+def llm_function(name, description, parameters):
+class AutoDebugger:
+    def __init__(self, max_attempts):
+    def parse_error(self, stderr):
+    def ask_llm_to_fix(self, code, error_info, attempt):
+    def debug_and_fix(self, code):
+def debug_python_code(code):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_edit_file.py
+============================================================
+Імпорти:
+  import os
+  import shutil
+  from datetime import datetime
+  from functions.runtime.core_tool_runtime import make_tool_result, validate_path_inside_work_dir
+
+Сутності:
+def llm_function(name, description, parameters):
+def edit_file(filepath, new_content):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_execute_python.py
+============================================================
+Імпорти:
+  import os
+  import sys
+  import subprocess
+  import tempfile
+  import time
+  import re
+  from pathlib import Path
+  from datetime import datetime
+  from colorama import Fore
+  from functions.runtime.core_tool_runtime import make_tool_result
+
+Сутності:
+def llm_function(name, description, parameters):
+class PythonSandbox:
+    def __init__(self):
+    def validate_code(self, code: str, script_name: str) -> tuple:
+    def _auto_wrap_print(self, code: str) -> str:
+    def execute(self, code, script_name):
+def execute_python(code, script_name):
+def execute_python_code(code, script_name):
+def execute_python_file(filename):
+def list_sandbox_scripts():
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_file_operations.py
+============================================================
+Імпорти:
+  from pathlib import Path
+  from functions.tools.common_decorators import llm_function
+  from functions.runtime.core_tool_runtime import validate_path_inside_work_dir
+
+Сутності:
+def write_file(filepath: str, content: str) -> dict:
+def list_directory(directory: str, path: str) -> dict:
+def read_file(filepath: str) -> dict:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_open_browser.py
+============================================================
+Імпорти:
+  import webbrowser
+  from functions.runtime.core_tool_runtime import make_tool_result
+
+Сутності:
+def llm_function(name, description, parameters):
+def open_browser(url):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_open_interpreter.py
+============================================================
+Імпорти:
+  import os
+  import sys
+  from typing import Dict, Any, Optional
+  from dataclasses import dataclass
+  from functions.tools.common_decorators import llm_function
+
+Сутності:
+class OIResult:
+class OpenInterpreterExecutor:
+    def __init__(self, lm_studio_url: str):
+    def _initialize(self) -> bool:
+    def execute_with_healing(self, code: str, task_description: str, auto_run: bool) -> OIResult:
+def get_executor(lm_studio_url: Optional[str]) -> OpenInterpreterExecutor:
+def oi_execute_with_healing(code: str, task_description: str, auto_run: bool) -> OIResult:
+def is_available() -> bool:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_programs.py
+============================================================
+Імпорти:
+  import os
+  import subprocess
+  from colorama import Fore
+  from functions.runtime.core_tool_runtime import make_tool_result
+
+Сутності:
+def llm_function(name, description, parameters):
+def open_program(program_name, file_path):
+def close_program(process_name):
+def add_allowed_program(program_name, program_path):
+def show_sandbox_status():
+def enable_auto_confirm():
+def disable_auto_confirm():
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_system.py
+============================================================
+Імпорти:
+  import os
+  import shutil
+  from colorama import Fore
+  from functions.runtime.core_tool_runtime import make_tool_result
+
+Сутності:
+def llm_function(name, description, parameters):
+def clear_cache():
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_utility_tools.py
+============================================================
+Імпорти:
+  import os
+  import re
+  from functions.runtime.core_tool_runtime import make_tool_result
+
+Сутності:
+def llm_function(name, description, parameters):
+def create_folder(folder_name, path, name, foldername):
+def search_in_text(text, query, regex, pattern, search):
+def count_words(text, content, string):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\aaa_voice_input.py
+============================================================
+Імпорти:
+  import sounddevice
+  import numpy
+  import torch
+  import pyautogui
+  import time
+  import re
+  import subprocess
+  import pyperclip
+  from functions.runtime.core_tool_runtime import make_tool_result
+  from functions.config import MICROPHONE_DEVICE_ID
+
+Сутності:
+def llm_function(name, description, parameters):
+def set_assistant(assistant):
+def clean_recognized_text(text):
+def get_active_window_info():
+def activate_window_by_hwnd(hwnd):
+def activate_window_by_title(title):
+def safe_paste_text():
+def transcribe_audio_w2v(audio, sample_rate):
+def voice_input(duration):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\common_decorators.py
+============================================================
+Імпорти:
+  from typing import Callable, Dict, Any
+
+Сутності:
+def llm_function(name: str, description: str, parameters: Dict[str, Any]) -> Callable:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\screen_helper.py
+============================================================
+Імпорти:
+  import ctypes
+  import logging
+
+Сутності:
+def get_windows_scale_factor() -> float:
+def normalize_coordinates(x: int, y: int) -> tuple[int, int]:
+def get_screen_resolution() -> tuple[int, int] | None:
+def denormalize_coordinates(x: int, y: int) -> tuple[int, int]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_app_recognizer.py
+============================================================
+Імпорти:
+  import cv2
+  import numpy
+  from typing import Dict, Any, List, Optional, Tuple
+  import win32gui
+  import win32process
+  import psutil
+  from functions.tools.tools_screen_capture import ScreenCapture
+  from functions.tools.tools_ocr import ScreenOCR
+  from functions.tools.tools_window_manager import WindowManager
+
+Сутності:
+class AppRecognizer:
+    def __init__(self, screen_capture: Optional[ScreenCapture], screen_ocr: Optional[ScreenOCR]):
+    def _load_default_profiles(self) -> Dict[str, Dict[str, Any]]:
+    def detect_active_application(self, hwnd: Optional[int]) -> Dict[str, Any]:
+    def detect_application_state(self, hwnd: Optional[int]) -> Dict[str, Any]:
+    def is_application_ready(self, hwnd: Optional[int], timeout: float) -> Dict[str, Any]:
+    def detect_file_dialog(self, hwnd: Optional[int]) -> Optional[Dict[str, Any]]:
+    def detect_error_dialog(self, hwnd: Optional[int]) -> Optional[Dict[str, Any]]:
+    def detect_context_menu(self, hwnd: Optional[int]) -> Optional[Dict[str, Any]]:
+    def _calculate_app_match(self, title: str, exe_name: str, profile: Dict[str, Any]) -> float:
+    def _determine_app_type(self, exe_name: str, title: str, matched_profile: Optional[str]) -> str:
+    def _detect_dialog_state(self, screenshot) -> Dict[str, Any]:
+    def _detect_error_state(self, screenshot) -> Dict[str, Any]:
+    def _detect_loading_state(self, screenshot) -> Dict[str, Any]:
+def get_app_recognizer() -> AppRecognizer:
+def detect_active_application(hwnd: Optional[int]) -> Dict[str, Any]:
+def detect_application_state(hwnd: Optional[int]) -> Dict[str, Any]:
+def is_application_ready(hwnd: Optional[int], timeout: float) -> Dict[str, Any]:
+def detect_file_dialog(hwnd: Optional[int]) -> Dict[str, Any]:
+def detect_error_dialog(hwnd: Optional[int]) -> Dict[str, Any]:
+def detect_context_menu(hwnd: Optional[int]) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_browser_cdp.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import os
+  import re
+  import socket
+  import subprocess
+  import time
+  import logging
+  from pathlib import Path
+  from typing import Any, Dict, List, Optional, Tuple
+  from functions.runtime.core_tool_runtime import make_tool_result
+  from functions.tools.common_decorators import llm_function
+
+Сутності:
+def is_ai_refusal(text: str) -> bool:
+def _is_port_open(host: str, port: int) -> bool:
+def _find_chrome_exe() -> Optional[str]:
+def _launch_chrome(port: int, url: str, timeout: int) -> bool:
+def _connect_cdp(port: int, timeout_s: int) -> Tuple[Any, Any]:
+def _get_all_pages(browser) -> List:
+def _find_page_by(pages: List, title_pattern: str, url_pattern: str) -> Optional[Any]:
+def _ensure_cdp_connection(port: int, auto_launch: bool) -> Tuple[Any, Any]:
+def _disconnect_cdp():
+def _get_or_find_page(title: str, url: str) -> Any:
+def _first_visible(page, selectors: List[str]):
+def _click_first_visible(page, selectors: List[str], timeout_ms: int) -> bool:
+def _type_via_clipboard(page, text: str) -> bool:
+def _wait_for_response(page, timeout: int, poll_interval: float) -> bool:
+def _click_copy_button(page) -> bool:
+def _read_response_dom(page) -> Optional[str]:
+def cdp_ensure_chrome(url: str, port: int) -> Dict[str, Any]:
+def cdp_list_tabs() -> Dict[str, Any]:
+def cdp_open_tab(url: str, reuse_tab: bool) -> Dict[str, Any]:
+def cdp_switch_tab(title: str, url: str, index: int) -> Dict[str, Any]:
+def cdp_type_text(text: str, selector: str, submit: bool) -> Dict[str, Any]:
+def cdp_get_response(timeout: int, max_retries: int) -> Dict[str, Any]:
+def cdp_get_page_text(selector: str) -> Dict[str, Any]:
+def cdp_click(selector: str, force: bool) -> Dict[str, Any]:
+def cdp_click_text(text: str, exact: bool, timeout: int) -> Dict[str, Any]:
+def cdp_wait_for_text(text: str, timeout: int) -> Dict[str, Any]:
+def cdp_fill(selector_or_label: str, text: str) -> Dict[str, Any]:
+def cdp_screenshot(selector: str) -> Dict[str, Any]:
+def cdp_evaluate_js(code: str) -> Dict[str, Any]:
+def cdp_send_to_ai(prompt: str, wait_timeout: int, max_retries: int) -> Dict[str, Any]:
+def cdp_disconnect() -> Dict[str, Any]:
+def register_cdp_tools(registry):
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_image_pillow.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import os
+  from pathlib import Path
+  from typing import Any, Dict, Optional, Tuple, List
+
+Сутності:
+def open_image(file_path: str) -> Dict[str, Any]:
+def save_image(img: Any, file_path: str, quality: int) -> Dict[str, Any]:
+def resize_image(img: Any, width: int, height: Optional[int], maintain_aspect: bool) -> Dict[str, Any]:
+def crop_image(img: Any, left: int, top: int, right: int, bottom: int) -> Dict[str, Any]:
+def rotate_image(img: Any, degrees: float) -> Dict[str, Any]:
+def convert_format(img: Any, target_format: str) -> Dict[str, Any]:
+def apply_blur(img: Any, radius: float) -> Dict[str, Any]:
+def adjust_brightness(img: Any, factor: float) -> Dict[str, Any]:
+def adjust_contrast(img: Any, factor: float) -> Dict[str, Any]:
+def add_text_to_image(img: Any, text: str, position: Tuple[int, int], size: int, color: str) -> Dict[str, Any]:
+def get_image_info(img: Any) -> Dict[str, Any]:
+def create_thumbnail(img: Any, size: Tuple[int, int]) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_mouse_keyboard.py
+============================================================
+Імпорти:
+  import ctypes
+  import os
+  import sys
+  import time
+  from io import BytesIO
+  from typing import Dict, Any, Optional, Tuple
+  import pyautogui
+  import pyperclip
+  from PIL import Image
+
+Сутності:
+def _get_dpi_scaling_cached() -> float:
+def _apply_dpi_correction(x: int, y: int) -> Tuple[int, int]:
+class MouseKeyboardController:
+    def __init__(self):
+    def mouse_click(self, x: int, y: int, button: str, clicks: int, interval: float) -> Dict[str, Any]:
+    def mouse_move(self, x: int, y: int, duration: float) -> Dict[str, Any]:
+    def mouse_scroll(self, amount: int, direction: str, x: Optional[int], y: Optional[int]) -> Dict[str, Any]:
+    def mouse_drag(self, start_x: int, start_y: int, end_x: int, end_y: int, duration: float, button: str) -> Dict[str, Any]:
+    def get_mouse_position(self) -> Dict[str, Any]:
+    def mouse_click_image(self, image_path: str, confidence: float) -> Dict[str, Any]:
+    def keyboard_press(self, key: str) -> Dict[str, Any]:
+    def _get_foreground_window_title(self) -> str:
+    def _paste_via_win32(self) -> bool:
+    def keyboard_type(self, text: str, interval: float) -> Dict[str, Any]:
+    def keyboard_hotkey(self) -> Dict[str, Any]:
+    def keyboard_hold(self, key: str, duration: float) -> Dict[str, Any]:
+    def keyboard_send_special(self, key_name: str) -> Dict[str, Any]:
+    def clipboard_copy_text(self, text: str) -> Dict[str, Any]:
+    def clipboard_get_text(self) -> Dict[str, Any]:
+    def send_input_unicode(self, text: str) -> Dict[str, Any]:
+    def insert_text_smart(self, text: str) -> Dict[str, Any]:
+    def _convert_image_to_dib(self, image_path: str) -> bytes:
+    def clipboard_copy_image(self, image_path: str) -> Dict[str, Any]:
+def _ensure_controller() -> MouseKeyboardController:
+def mouse_click(x: int, y: int, button: str, clicks: int, interval: float) -> Dict[str, Any]:
+def mouse_move(x: int, y: int, duration: float) -> Dict[str, Any]:
+def mouse_scroll(amount: int, direction: str, x: Optional[int], y: Optional[int]) -> Dict[str, Any]:
+def mouse_drag(start_x: int, start_y: int, end_x: int, end_y: int, duration: float, button: str) -> Dict[str, Any]:
+def get_mouse_position() -> Dict[str, Any]:
+def wait_for_response(duration: int, check_interval: int, check_for_confirmation: bool, check_for_response: bool, response_keywords: list, use_uia: bool) -> Dict[str, Any]:
+def mouse_click_image(image_path: str, confidence: float) -> Dict[str, Any]:
+def keyboard_press(key: str) -> Dict[str, Any]:
+def keyboard_type(text: str, interval: float) -> Dict[str, Any]:
+def keyboard_hotkey() -> Dict[str, Any]:
+def keyboard_hold(key: str, duration: float) -> Dict[str, Any]:
+def keyboard_send_special(key_name: str) -> Dict[str, Any]:
+def clipboard_copy_text(text: str) -> Dict[str, Any]:
+def clipboard_get_text() -> Dict[str, Any]:
+def send_input_unicode(text: str) -> Dict[str, Any]:
+def insert_text_smart(text: str) -> Dict[str, Any]:
+def clipboard_copy_image(image_path: str) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_notification.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import sys
+  import threading
+
+Сутності:
+def notify_user(title: str, message: str, duration_seconds: int) -> None:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_ocr.py
+============================================================
+Імпорти:
+  import os
+  import io
+  import time
+  from typing import Dict, Any, List, Optional, Tuple, Union
+  from PIL import Image, ImageEnhance, ImageFilter
+  import numpy
+  from functions.tools.tools_screen_capture import ScreenCapture
+
+Сутності:
+class OCREngine:
+    def __init__(self, engine: str, languages: List[str]):
+    def _init_engines(self):
+    def _get_easyocr_reader(self):
+    def _preprocess_image(self, img: Image.Image, enhance: bool) -> Image.Image:
+    def recognize(self, image: Union[Image.Image, str, np.ndarray], engine: Optional[str]) -> Dict[str, Any]:
+    def _recognize_pytesseract(self, img: Image.Image) -> Dict[str, Any]:
+    def _recognize_easyocr(self, img: Image.Image) -> Dict[str, Any]:
+    def recognize_with_fallback(self, image: Union[Image.Image, str, np.ndarray]) -> Dict[str, Any]:
+class ScreenOCR:
+    def __init__(self, engine: str, languages: List[str]):
+    def ocr_screen(self, save_screenshot: Optional[str], lang: str) -> Dict[str, Any]:
+    def ocr_region(self, x: int, y: int, width: int, height: int, save_screenshot: Optional[str], lang: str) -> Dict[str, Any]:
+    def ocr_window(self, hwnd: int, save_screenshot: Optional[str], lang: str) -> Dict[str, Any]:
+    def ocr_image(self, image_path: str) -> Dict[str, Any]:
+    def _capture_window_image(self, hwnd: int) -> Optional[Image.Image]:
+    def find_text_on_screen(self, search_text: str, case_sensitive: bool, confidence_threshold: float) -> Dict[str, Any]:
+    def find_all_text_on_screen(self, search_text: str, case_sensitive: bool) -> List[Dict[str, Any]]:
+    def click_text(self, search_text: str, offset_x: int, offset_y: int, case_sensitive: bool) -> Dict[str, Any]:
+    def wait_for_text(self, search_text: str, timeout: float, interval: float, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
+    def ocr_to_string(self, region: Optional[Tuple[int, int, int, int]]) -> str:
+def _get_screen_ocr() -> ScreenOCR:
+def ocr_screen(save_screenshot: Optional[str], lang: str) -> Dict[str, Any]:
+def ocr_region(x: int, y: int, width: int, height: int, save_screenshot: Optional[str], lang: str) -> Dict[str, Any]:
+def ocr_window(hwnd: int, save_screenshot: Optional[str], lang: str) -> Dict[str, Any]:
+def ocr_image(image_path: str) -> Dict[str, Any]:
+def find_text_on_screen(search_text: str, case_sensitive: bool) -> Dict[str, Any]:
+def find_all_text_on_screen(search_text: str, case_sensitive: bool) -> List[Dict[str, Any]]:
+def click_text(search_text: str, offset_x: int, offset_y: int) -> Dict[str, Any]:
+def wait_for_text(search_text: str, timeout: float, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
+def ocr_to_string(region: Optional[Tuple[int, int, int, int]]) -> str:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_playwright.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import time
+  from pathlib import Path
+  from typing import Any, Dict, Optional
+  from functions.runtime.core_tool_runtime import make_tool_result
+  from functions.tools.common_decorators import llm_function
+
+Сутності:
+def _is_cdp_port_open(port: int) -> bool:
+def _ensure_browser(headless: bool, cdp_port: int, prefer_cdp: bool) -> Page:
+def _close_browser() -> None:
+def _screenshot_dir() -> Path:
+def playwright_navigate(url: str) -> Dict[str, Any]:
+def playwright_click(selector: str, wait: int) -> Dict[str, Any]:
+def playwright_type(selector: str, text: str, submit) -> Dict[str, Any]:
+def playwright_screenshot(selector: Optional[str], full_page: bool) -> Dict[str, Any]:
+def playwright_get_text(selector: Optional[str]) -> Dict[str, Any]:
+def playwright_evaluate(js_code: str) -> Dict[str, Any]:
+def playwright_close() -> Dict[str, Any]:
+def register_playwright_tools(registry):
+def open_browser_playwright(url: str) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_screen_capture.py
+============================================================
+Імпорти:
+  import time
+  import os
+  from typing import Dict, Any, List, Optional, Tuple
+  from PIL import Image
+  import numpy
+  import win32gui
+  import win32con
+  import win32ui
+
+Сутності:
+def get_dpi_scaling() -> float:
+def get_dpi_scaling_global() -> float:
+class ScreenCapture:
+    def __init__(self):
+    def take_screenshot(self, save_path: Optional[str]) -> Dict[str, Any]:
+    def capture_monitor(self, monitor_index: int, save_path: Optional[str]) -> Dict[str, Any]:
+    def capture_region(self, x: int, y: int, width: int, height: int, save_path: Optional[str]) -> Dict[str, Any]:
+    def capture_window(self, hwnd: int, save_path: Optional[str]) -> Dict[str, Any]:
+    def capture_active_window(self, save_path: Optional[str]) -> Dict[str, Any]:
+    def get_screen_size(self) -> Dict[str, Any]:
+    def get_monitors_info(self) -> List[Dict[str, Any]]:
+    def get_pixel_color(self, x: int, y: int) -> Dict[str, Any]:
+    def find_image_on_screen(self, template_path: str, confidence: float) -> Dict[str, Any]:
+    def wait_for_image(self, template_path: str, timeout: float, interval: float, confidence: float) -> Dict[str, Any]:
+    def pixel_matches_color(self, x: int, y: int, color: Tuple[int, int, int], tolerance: int) -> Dict[str, Any]:
+    def wait_for_color(self, x: int, y: int, color: Tuple[int, int, int], timeout: float, tolerance: int) -> Dict[str, Any]:
+    def _screenshot_pil(self) -> Image.Image:
+    def _cache_screenshot(self, img: Image.Image):
+    def clear_cache(self):
+def take_screenshot(save_path: Optional[str]) -> Dict[str, Any]:
+def capture_monitor(monitor_index: int, save_path: Optional[str]) -> Dict[str, Any]:
+def capture_region(x: int, y: int, width: int, height: int, save_path: Optional[str]) -> Dict[str, Any]:
+def capture_window(hwnd: int, save_path: Optional[str]) -> Dict[str, Any]:
+def capture_active_window(save_path: Optional[str]) -> Dict[str, Any]:
+def get_screen_size() -> Dict[str, Any]:
+def get_monitors_info() -> List[Dict[str, Any]]:
+def get_pixel_color(x: int, y: int) -> Dict[str, Any]:
+def get_dpi_scaling_global() -> float:
+def find_image_on_screen(template_path: str, confidence: float) -> Dict[str, Any]:
+def wait_for_image(template_path: str, timeout: float, interval: float, confidence: float) -> Dict[str, Any]:
+def pixel_matches_color(x: int, y: int, color: Tuple[int, int, int], tolerance: int) -> Dict[str, Any]:
+def wait_for_color(x: int, y: int, color: Tuple[int, int, int], timeout: float, tolerance: int) -> Dict[str, Any]:
+def capture_screen(save_path: Optional[str]) -> Dict[str, Any]:
+def save_screenshot(save_path: str) -> Dict[str, Any]:
+def clear_screenshot_cache() -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_ui_accessibility.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import logging
+  from dataclasses import dataclass
+  from typing import Any, Dict, List, Optional
+
+Сутності:
+class UIElement:
+    def __post_init__(self):
+class UIAWrapper:
+    def __init__(self):
+    def _init_uia(self):
+    def is_available(self) -> bool:
+    def get_root_element(self) -> Optional[UIElement]:
+    def get_focused_element(self) -> Optional[UIElement]:
+    def find_element_by_name(self, name: str, root: Optional[UIElement]) -> Optional[UIElement]:
+    def find_element_by_automation_id(self, automation_id: str, root: Optional[UIElement]) -> Optional[UIElement]:
+    def get_children(self, element: UIElement, max_depth: int) -> List[UIElement]:
+    def get_ui_tree(self, hwnd: Optional[int], depth: int) -> Optional[Dict[str, Any]]:
+    def list_all_buttons(self, root: Optional[UIElement], max_count: int) -> List[UIElement]:
+    def list_all_inputs(self, root: Optional[UIElement], max_count: int) -> List[UIElement]:
+    def list_all_checkboxes(self, root: Optional[UIElement], max_count: int) -> List[UIElement]:
+    def get_value(self, element: UIElement) -> Dict[str, Any]:
+    def wait_for_element(self, name: str, timeout: float, poll_interval: float) -> Optional[UIElement]:
+    def click_element(self, element: UIElement) -> Dict[str, Any]:
+    def set_text(self, element: UIElement, text: str) -> Dict[str, Any]:
+def get_uia_wrapper() -> UIAWrapper:
+def uia_list_elements(args: Dict[str, Any]) -> Dict[str, Any]:
+def uia_find_button(args: Dict[str, Any]) -> Dict[str, Any]:
+def uia_click_element(args: Dict[str, Any]) -> Dict[str, Any]:
+def uia_set_text(args: Dict[str, Any]) -> Dict[str, Any]:
+def uia_get_value(args: Dict[str, Any]) -> Dict[str, Any]:
+def uia_wait_for_element(args: Dict[str, Any]) -> Dict[str, Any]:
+def uia_list_buttons(args: Dict[str, Any]) -> Dict[str, Any]:
+def uia_list_inputs(args: Dict[str, Any]) -> Dict[str, Any]:
+def uia_get_focused_element(args: Dict[str, Any]) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_ui_detector.py
+============================================================
+Імпорти:
+  import cv2
+  import numpy
+  from typing import Dict, Any, List, Optional, Tuple
+  from PIL import Image
+  import colorsys
+  from functions.tools.tools_screen_capture import ScreenCapture
+  from functions.tools.tools_ocr import ScreenOCR
+
+Сутності:
+class UIDetector:
+    def __init__(self, screen_capture: Optional[ScreenCapture], screen_ocr: Optional[ScreenOCR]):
+    def find_button_by_image(self, template_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]]) -> Optional[Dict[str, Any]]:
+    def find_icon(self, icon_name_or_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]]) -> Optional[Dict[str, Any]]:
+    def find_all_matches(self, template_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]], max_results: int) -> List[Dict[str, Any]]:
+    def find_checkbox(self, region: Optional[Tuple[int, int, int, int]], checked: Optional[bool]) -> List[Dict[str, Any]]:
+    def find_input_field(self, region: Optional[Tuple[int, int, int, int]], min_width: int, min_height: int, use_uia_first: bool) -> List[Dict[str, Any]]:
+    def find_progress_bar(self, region: Optional[Tuple[int, int, int, int]], min_width: int) -> Optional[Dict[str, Any]]:
+    def find_button_by_text(self, text: str, region: Optional[Tuple[int, int, int, int]], confidence: float, use_uia_first: bool) -> Optional[Dict[str, Any]]:
+    def find_label(self, text: str, region: Optional[Tuple[int, int, int, int]]) -> Optional[Dict[str, Any]]:
+    def find_input_near_label(self, label_text: str, region: Optional[Tuple[int, int, int, int]], max_distance: int) -> Optional[Dict[str, Any]]:
+    def is_button_enabled(self, x: int, y: int, width: int, height: int) -> bool:
+    def is_checkbox_checked(self, x: int, y: int, width: int, height: int) -> bool:
+    def get_button_state(self, x: int, y: int, width: int, height: int) -> str:
+    def _get_screenshot(self, region: Optional[Tuple[int, int, int, int]]) -> np.ndarray:
+    def _load_template(self, template_path: str) -> np.ndarray:
+    def _analyze_checkbox_state(self, roi: np.ndarray) -> bool:
+    def _has_border(self, gray_img: np.ndarray, x: int, y: int, w: int, h: int) -> bool:
+    def _estimate_progress_percent(self, screenshot: np.ndarray, x: int, y: int, w: int, h: int) -> float:
+def get_ui_detector() -> UIDetector:
+def find_button_by_image(template_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
+def find_icon(icon_name_or_path: str, confidence: float, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
+def find_checkbox(region: Optional[Tuple[int, int, int, int]], checked: Optional[bool]) -> Dict[str, Any]:
+def find_input_field(region: Optional[Tuple[int, int, int, int]], min_width: int, min_height: int, use_uia_first: bool) -> Dict[str, Any]:
+def find_progress_bar(region: Optional[Tuple[int, int, int, int]], min_width: int) -> Dict[str, Any]:
+def find_button_by_text(text: str, region: Optional[Tuple[int, int, int, int]], confidence: float, use_uia_first: bool) -> Dict[str, Any]:
+def click_text(text: str, region: Optional[Tuple[int, int, int, int]], confidence: float, use_uia_first: bool) -> Dict[str, Any]:
+def find_label(text: str, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
+def find_input_near_label(label_text: str, region: Optional[Tuple[int, int, int, int]], max_distance: int) -> Dict[str, Any]:
+def is_button_enabled(x: int, y: int, width: int, height: int) -> Dict[str, Any]:
+def is_checkbox_checked(x: int, y: int, width: int, height: int) -> Dict[str, Any]:
+def get_button_state(x: int, y: int, width: int, height: int) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_visual_diff.py
+============================================================
+Імпорти:
+  import cv2
+  import numpy
+  from typing import Dict, Any, List, Optional, Tuple
+  from PIL import Image, ImageDraw
+  import time
+  import os
+  from pathlib import Path
+  from functions.tools.tools_screen_capture import ScreenCapture
+
+Сутності:
+class VisualDiff:
+    def __init__(self, baseline_dir: str, screen_capture: Optional[ScreenCapture]):
+    def compare_images(self, image1: Image.Image, image2: Image.Image, threshold: float) -> Dict[str, Any]:
+    def compare_with_baseline(self, name: str, current_image: Optional[Image.Image], threshold: float) -> Dict[str, Any]:
+    def highlight_changes(self, before: Image.Image, after: Image.Image, highlight_color: Tuple[int, int, int]) -> Image.Image:
+    def capture_baseline(self, name: str, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
+    def delete_baseline(self, name: str) -> Dict[str, Any]:
+    def list_baselines(self) -> List[Dict[str, Any]]:
+    def wait_for_visual_change(self, region: Optional[Tuple[int, int, int, int]], timeout: float, interval: float, threshold: float) -> Dict[str, Any]:
+    def wait_for_visual_stable(self, region: Optional[Tuple[int, int, int, int]], stable_time: float, timeout: float, interval: float, threshold: float) -> Dict[str, Any]:
+    def wait_for_element_appear(self, element_checker: callable, timeout: float, interval: float) -> Dict[str, Any]:
+    def _find_diff_regions(self, thresh: np.ndarray, min_area: int) -> List[Dict[str, Any]]:
+def get_visual_diff() -> VisualDiff:
+def capture_baseline(name: str, region: Optional[Tuple[int, int, int, int]]) -> Dict[str, Any]:
+def delete_baseline(name: str) -> Dict[str, Any]:
+def list_baselines() -> Dict[str, Any]:
+def compare_with_baseline(name: str, threshold: float) -> Dict[str, Any]:
+def highlight_changes(before_path: str, after_path: str, save_path: Optional[str]) -> Dict[str, Any]:
+def wait_for_visual_change(region: Optional[Tuple[int, int, int, int]], timeout: float, threshold: float) -> Dict[str, Any]:
+def wait_for_visual_stable(region: Optional[Tuple[int, int, int, int]], stable_time: float, timeout: float, threshold: float) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_window_manager.py
+============================================================
+Імпорти:
+  import time
+  import re
+  from typing import Dict, Any, List, Optional, Callable
+  import psutil
+  import win32gui
+  import win32con
+  import win32process
+
+Сутності:
+class WindowManager:
+    def __init__(self):
+    def list_windows(self, include_hidden: bool) -> List[Dict[str, Any]]:
+    def find_window_by_title(self, pattern: str, exact: bool) -> Optional[int]:
+    def find_window_by_process(self, process_name: str) -> List[int]:
+    def find_window_by_class(self, class_name: str) -> List[int]:
+    def get_active_window(self) -> Dict[str, Any]:
+    def activate_window(self, hwnd: int) -> Dict[str, Any]:
+    def minimize_window(self, hwnd: int) -> Dict[str, Any]:
+    def maximize_window(self, hwnd: int) -> Dict[str, Any]:
+    def restore_window(self, hwnd: int) -> Dict[str, Any]:
+    def close_window(self, hwnd: int, force: bool) -> Dict[str, Any]:
+    def hide_window(self, hwnd: int) -> Dict[str, Any]:
+    def show_window(self, hwnd: int) -> Dict[str, Any]:
+    def move_window(self, hwnd: int, x: int, y: int) -> Dict[str, Any]:
+    def resize_window(self, hwnd: int, width: int, height: int) -> Dict[str, Any]:
+    def move_resize_window(self, hwnd: int, x: int, y: int, width: int, height: int) -> Dict[str, Any]:
+    def get_window_rect(self, hwnd: int) -> Dict[str, Any]:
+    def center_window(self, hwnd: int) -> Dict[str, Any]:
+    def is_window_visible(self, hwnd: int) -> bool:
+    def is_window_minimized(self, hwnd: int) -> bool:
+    def is_window_maximized(self, hwnd: int) -> bool:
+    def wait_for_window(self, title_pattern: str, timeout: float) -> Optional[int]:
+    def wait_window_close(self, hwnd: int, timeout: float) -> bool:
+    def bring_all_to_top(self, process_name: str) -> Dict[str, Any]:
+    def _get_window_pid(self, hwnd: int) -> Optional[int]:
+    def _get_process_name(self, pid: int) -> str:
+def list_windows(include_hidden: bool, format_output: bool) -> str:
+def find_window_by_title(pattern: str, exact: bool) -> Optional[int]:
+def find_window_by_process(process_name: str) -> List[int]:
+def find_window_by_class(class_name: str) -> List[int]:
+def get_active_window() -> Dict[str, Any]:
+def activate_window(hwnd: int) -> Dict[str, Any]:
+def minimize_window(hwnd: int) -> Dict[str, Any]:
+def maximize_window(hwnd: int) -> Dict[str, Any]:
+def restore_window(hwnd: int) -> Dict[str, Any]:
+def close_window(hwnd: int, force: bool) -> Dict[str, Any]:
+def hide_window(hwnd: int) -> Dict[str, Any]:
+def show_window(hwnd: int) -> Dict[str, Any]:
+def move_window(hwnd: int, x: int, y: int) -> Dict[str, Any]:
+def resize_window(hwnd: int, width: int, height: int) -> Dict[str, Any]:
+def move_resize_window(hwnd: int, x: int, y: int, width: int, height: int) -> Dict[str, Any]:
+def get_window_rect(hwnd: int) -> Dict[str, Any]:
+def center_window(hwnd: int) -> Dict[str, Any]:
+def is_window_visible(hwnd: int) -> bool:
+def is_window_minimized(hwnd: int) -> bool:
+def is_window_maximized(hwnd: int) -> bool:
+def wait_for_window(title_pattern: str, timeout: float) -> Optional[int]:
+def wait_window_close(hwnd: int, timeout: float) -> bool:
+def bring_all_to_top(process_name: str) -> Dict[str, Any]:
+
+============================================================
+Файл: D:\Python\agent\functions\tools\tools_windsurf.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import time
+  from dataclasses import dataclass, field
+  from typing import Any, Callable, Dict, List, Optional, Tuple
+
+Сутності:
+class SnapshotDiff:
+def diff_snapshots(old: str, new: str) -> SnapshotDiff:
+class WindsurfState:
+    def register_response(self, at: float, diff: SnapshotDiff, max_keep: int) -> Dict[str, Any]:
+class WindsurfWindow:
+    def find(self) -> Optional[Dict[str, Any]]:
+    def _as_dict(self, hwnd: int) -> Dict[str, Any]:
+def make_default_window_finder() -> WindowFinder:
+def make_default_snapshot_fn() -> SnapshotFn:
+
+============================================================
+Файл: D:\Python\agent\functions\__init__.py
+============================================================
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\config.py
+============================================================
+(немає класів чи функцій верхнього рівня)
+
+============================================================
+Файл: D:\Python\agent\functions\global_voice_input.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import ctypes
+  import threading
+  import time
+  from typing import Callable, Optional
+  import numpy
+  import pyperclip
+  import sounddevice
+  from functions.audio.core_stt_listener import STTListener
+  from functions.config import SAMPLE_RATE, LISTEN_DURATION, VOLUME_THRESHOLD, SILENCE_DURATION, MICROPHONE_DEVICE_ID
+  from functions.gui.voice_tray_icon import get_voice_tray_icon, VoiceStatus
+
+Сутності:
+class KBDLLHOOKSTRUCT(ctypes.Structure):
+class GUITHREADINFO(ctypes.Structure):
+class HotkeyHook:
+    def __init__(self, hotkey: str):
+    def set_callback(self, callback: Callable) -> None:
+    def _on_press(self, key):
+    def _on_release(self, key):
+    def start(self) -> bool:
+    def stop(self):
+class GlobalVoiceInput:
+    def __init__(self, hotkey: str, callback: Optional[Callable[[str], None]], status_callback: Optional[Callable[[str], None]]):
+    def _debug_find_edit_control(self, parent_hwnd: int):
+    def _get_window_class_name(self, hwnd: int) -> str:
+    def _resolve_focus_target(self, hwnd: int) -> tuple[int, str]:
+    def _find_chrome_render_widget(self, parent_hwnd: int) -> Optional[int]:
+    def _find_qt_edit_control(self, parent_hwnd: int) -> Optional[int]:
+    def _get_insert_strategy(self, class_name: str, title: str) -> str:
+    def _set_clipboard_text_verified(self, text: str, retries: int, delay: float) -> bool:
+    def _update_status(self, status: str):
+    def _update_tray_status(self, voice_status: VoiceStatus, text: str):
+    def _on_stt_status(self, status: str, data):
+    def _on_hotkey_pressed(self):
+    def _start_recording(self):
+    def _record_and_recognize(self):
+    def _on_text_recognized(self, text: str):
+    def _paste_into_window(self, hwnd: int) -> bool:
+    def _insert_segment(self, segment_text: str) -> bool:
+    def _send_input_unicode(self, text: str) -> bool:
+    def _insert_text_with_script(self, text: str) -> bool:
+    def _insert_text(self, text: str) -> bool:
+    def start(self) -> bool:
+    def stop(self):
+
+============================================================
+Файл: D:\Python\agent\functions\project_indexer.py
+============================================================
+Імпорти:
+  import ast
+  import json
+  import logging
+  import os
+  from pathlib import Path
+
+Сутності:
+def _get_relative_path(abspath: Path) -> str:
+def _parse_py_file(filepath: Path) -> dict | None:
+def _format_function(node: ast.FunctionDef | ast.AsyncFunctionDef) -> dict:
+def _resolve_import_to_path(module_name: str) -> str | None:
+def _format_annotation(annotation: ast.AST) -> str:
+def scan_project() -> dict:
+def build_repo_map(output_path: str | Path | None) -> str:
+def get_repo_map() -> str:
+def _compact_method_signature(func: dict) -> str:
+def get_file_dependents(filepath: str) -> list[str]:
+def update_file_in_map(filepath: str | Path) -> bool:
+
+============================================================
+Файл: D:\Python\agent\functions\tools_project_indexer.py
+============================================================
+Імпорти:
+  from functions.project_indexer import get_repo_map, update_file_in_map, build_repo_map, get_file_dependents
+
+Сутності:
+def get_repo_map() -> str:
+def update_repo_map(filepath: str) -> str:
+def rebuild_repo_map() -> str:
+def get_file_dependents(filepath: str) -> str:
+# Невідомий тип: D:\Python\agent\macros
+
+# Невідомий тип: D:\Python\agent\profiles
+
+# Невідомий тип: D:\Python\agent\runtime\cache
+
+# Невідомий тип: D:\Python\agent\runtime\checkpoints
+
+# Невідомий тип: D:\Python\agent\runtime\logs\screenshots
+
+# Невідомий тип: D:\Python\agent\runtime\macros
+
+# Невідомий тип: D:\Python\agent\runtime\memory
+
+# Невідомий тип: D:\Python\agent\runtime\profiles
+
+# Невідомий тип: D:\Python\agent\runtime\self_learning
+
+# Невідомий тип: D:\Python\agent\runtime\settings
+
+# Невідомий тип: D:\Python\agent\runtime\snapshots
+
+# [Помилка синтаксису] D:\Python\agent\main.py
+
+
+============================================================
+Файл: D:\Python\agent\run.py
+============================================================
+Імпорти:
+  from __future__ import annotations
+  import os
+  import sys
+  import run_assistant_qt
+
+(немає класів чи функцій верхнього рівня)
+# [Помилка синтаксису] D:\Python\agent\run_assistant.py
+
+
+============================================================
+Файл: D:\Python\agent\run_assistant_qt.py
+============================================================
+Імпорти:
+  import os
+  import queue
+  import sys
+  import threading
+  import time
+  from functions.runtime.core_settings import get_settings
+  from PyQt6.QtWidgets import QApplication
+  from core_gui_pyqt6 import MainWindowPyQt6
+  from main import AssistantCore
+  from functions.tools.aaa_confirmation import set_gui_instance
+
+Сутності:
+def log_console(message: str) -> None:
+class AssistantAppQt:
+    def __init__(self):
+    def _handle_restart(self) -> None:
+    def _handle_process_text(self, text: str) -> None:
+    def gui_callback(self, action: str, data) -> None:
+    def queue_dispatcher(self) -> None:
+    def run_core_in_thread(self) -> None:
+    def start(self) -> None:
