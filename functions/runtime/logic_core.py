@@ -1,5 +1,6 @@
 # runtime/logic_core.py
 """Ядро асистента - реєстр функцій та VoiceAssistant"""
+import logging
 import os
 import sys
 import importlib
@@ -8,6 +9,8 @@ from pathlib import Path
 import time
 from colorama import Fore, Back, Style
 from functions.runtime.core_tool_runtime import get_tool_policy, get_tool_risk, normalize_tool_result, get_audit_log
+
+logger = logging.getLogger("logic_core")
 
 # Глобальне посилання на реєстр, щоб aaa_architect міг його оновити
 global_registry = None
@@ -236,15 +239,149 @@ class FunctionRegistry:
         return get_tool_risk(action)
     
     def get_system_prompt(self, mode: str = None):
-        """Згенерувати system prompt залежно від режиму ('voice' або 'coding')."""
+        """Згенерувати system prompt залежно від режиму ('voice' або 'coding').
+
+        Використовує JSON-шаблони з ``runtime/prompts/`` (Phase 7.3).
+        Fallback на вбудовані промпти якщо JSON-файли недоступні.
+        """
         from functions.config import AGENT_MODE
         active_mode = mode or AGENT_MODE
+
+        try:
+            from functions.runtime.prompt_loader import load_prompt_template
+            if active_mode == "coding":
+                return self._build_prompt_from_template("coding_prompt", active_mode)
+            return self._build_prompt_from_template("voice_prompt", active_mode)
+        except (FileNotFoundError, KeyError) as e:
+            logger.warning("Prompt template not available, using fallback: %s", e)
+            if active_mode == "coding":
+                return self.get_coding_system_prompt()
+            return self._get_voice_system_prompt()
+
+    def _build_prompt_from_template(self, template_name: str, active_mode: str) -> str:
+        """Побудувати prompt з JSON-шаблону та підставити змінні."""
+        from functions.runtime.prompt_loader import load_prompt_template
+        from functions.config import ASSISTANT_NAME, ASSISTANT_MODES
+
+        template = load_prompt_template(template_name)
+        mode_info = ASSISTANT_MODES.get(active_mode, {})
+
+        functions_list = self._format_functions_list()
+
+        # Безпечне форматування — замінюємо тільки наявні плейсхолдери
+        try:
+            prompt = template.format(
+                ASSISTANT_NAME=ASSISTANT_NAME,
+                ACTIVE_MODE=active_mode,
+                max_words=mode_info.get("max_words", 10),
+                max_sentences=mode_info.get("max_sentences", 2),
+                FUNCTIONS_LIST=functions_list,
+                MAX_FUNCTIONS=15,
+            )
+        except KeyError:
+            # Якщо шаблон містить додаткові плейсхолдери — використовуємо safe format
+            replacements = {
+                "{ASSISTANT_NAME}": ASSISTANT_NAME,
+                "{ACTIVE_MODE}": active_mode,
+                "{max_words}": str(mode_info.get("max_words", 10)),
+                "{max_sentences}": str(mode_info.get("max_sentences", 2)),
+                "{FUNCTIONS_LIST}": functions_list,
+                "{MAX_FUNCTIONS}": "15",
+            }
+            prompt = template
+            for key, val in replacements.items():
+                prompt = prompt.replace(key, val)
+
+        # Додати Repo Map для coding режиму
         if active_mode == "coding":
-            return self.get_coding_system_prompt()
-        return self._get_voice_system_prompt()
+            repo_map_text = self._get_repo_map()
+            if repo_map_text:
+                prompt = self._append_repo_map(prompt, repo_map_text)
+
+        # Додати повний список функцій (якщо в шаблоні немає {FUNCTIONS_LIST})
+        if self.functions and "{FUNCTIONS_LIST}" not in template:
+            prompt = self._append_functions_to_prompt(prompt)
+
+        return prompt
+
+    def _append_repo_map(self, prompt: str, repo_map_text: str) -> str:
+        """Додати Repo Map до промпту зі стисненням для великих карт."""
+        import re as _re
+        ESTIMATED_TOKENS = len(repo_map_text) // 4
+
+        if ESTIMATED_TOKENS > 3000:
+            condensed_lines = []
+            for line in repo_map_text.split("\n"):
+                if not line.strip():
+                    continue
+                if " => " in line:
+                    filepath, symbols = line.split(" => ", 1)
+                    symbols_clean = _re.sub(r"\.\{[^}]+\}", "", symbols)
+                    symbols_clean = _re.sub(r"\([^)]*\)", "()", symbols_clean)
+                    condensed_lines.append(f"{filepath} => {symbols_clean}")
+                else:
+                    condensed_lines.append(line)
+            repo_block = "\n".join(condensed_lines)
+            prompt += (
+                f"\n\n📋 REPO MAP (condensed, {len(condensed_lines)} files):\n"
+                f"{repo_block}\n"
+            )
+        else:
+            prompt += (
+                f"\n\n📋 REPO MAP (повна карта проєкту):\n"
+                f"{repo_map_text}\n"
+            )
+        return prompt
+
+    def _format_functions_list(self, max_funcs: int = 15) -> str:
+        """Сформувати список функцій для вставки в промпт."""
+        if not self.functions:
+            return "⚠️ Функції недоступні."
+        lines = []
+        for name, info in sorted(self.functions.items())[:max_funcs]:
+            lines.append(f"• {name}: {info['description'][:50]}...")
+        if len(self.functions) > max_funcs:
+            lines.append(f"... та ще {len(self.functions) - max_funcs} функцій")
+        return "\n".join(lines)
+
+    def _get_repo_map(self) -> str:
+        """Отримати карту проєкту (безпечний виклик)."""
+        try:
+            from functions.project_indexer import get_repo_map
+            return get_repo_map()
+        except Exception:
+            return ""
+
+    def _append_functions_to_prompt(self, prompt: str) -> str:
+        """Додати скорочений список функцій до промпту."""
+        MAX_FUNCTIONS_IN_PROMPT = 15
+        prompt += f"\n\nДОСТУПНІ ФУНКЦІЇ (перші {MAX_FUNCTIONS_IN_PROMPT}):\n"
+
+        priority_funcs = [
+            'execute_python', 'debug_python_code', 'open_program', 'close_program',
+            'create_file', 'edit_file', 'list_directory',
+            'mouse_click', 'keyboard_type', 'take_screenshot', 'ocr_screen',
+            'click_text', 'list_windows', 'find_window_by_title', 'activate_window',
+            'cdp_ensure_chrome', 'cdp_open_tab', 'cdp_switch_tab', 'cdp_type_text',
+            'cdp_get_response', 'cdp_send_to_ai', 'cdp_list_tabs', 'cdp_get_page_text'
+        ]
+
+        added = set()
+        for func_name in priority_funcs:
+            if func_name in self.functions and len(added) < MAX_FUNCTIONS_IN_PROMPT:
+                func_info = self.functions[func_name]
+                prompt += f"• {func_info['name']}: {func_info['description'][:50]}...\n"
+                added.add(func_name)
+
+        for func_name, func_info in self.functions.items():
+            if func_name not in added and len(added) < MAX_FUNCTIONS_IN_PROMPT:
+                prompt += f"• {func_info['name']}: {func_info['description'][:40]}\n"
+                added.add(func_name)
+
+        return prompt
 
     def get_coding_system_prompt(self):
-        """System prompt для режиму coding agent.
+        """System prompt для режиму coding agent (fallback без JSON-шаблону).
 
         Цикл: аналіз задачі -> пошук у коді -> читання -> редагування -> верифікація.
         """

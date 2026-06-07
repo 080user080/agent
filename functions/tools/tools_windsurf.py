@@ -73,9 +73,14 @@ class WindsurfState:
         diff: SnapshotDiff,
         max_keep: int,
     ) -> Dict[str, Any]:
-        """Реєструє нову відповідь, обрізає історію до max_keep."""
+        """Реєструє нову відповідь, обрізає історію до max_keep.
+
+        Текст нормалізується (strip()), щоб уникнути провідних/кінцевих
+        пробілів у diff-ах між snapshot-ами (тест test_second_response_extracts_tail).
+        """
+        new_text = diff.new_text.strip() if diff.new_text else diff.new_text
         entry: Dict[str, Any] = {
-            "text": diff.new_text,
+            "text": new_text,
             "timestamp": at,
         }
         self.responses.append(entry)

@@ -69,7 +69,14 @@ from functions.config import (
 
 
 class AssistantCore:
-    """Ядро асистента з інтеграцією GUI"""
+    """Ядро асистента з інтеграцією GUI.
+
+    Зв'язок з GUI:
+      ``self.gui`` встановлюється зовні (``run_assistant_qt.py → AssistantAppQt``)
+      через ``core.set_assistant(self)`` після створення ``AssistantCore``.
+      Метод ``run()`` викликає ``self.gui.set_assistant(self)`` для двонаправленого
+      зв'язку: GUI → Core (через ``process_text_command``) та Core → GUI (через ``gui_queue``).
+    """
     
     def __init__(self, gui_queue=None):
         self.gui_queue = gui_queue
@@ -84,6 +91,11 @@ class AssistantCore:
         self.planner = None  #GPT
         self.is_running = False
         self.self_learning = None  # Self-learning module
+
+        # Посилання на GUI — встановлюється зовні через run_assistant_qt.py
+        # після створення AssistantCore. Використовується для двонаправленого
+        # зв'язку: GUI → Core (process_text_command) та Core → GUI (gui_queue).
+        self.gui = None
 
         # Черги для спілкування між потоками
         self.command_queue = queue.Queue()
@@ -200,6 +212,20 @@ class AssistantCore:
         from functions.runtime.core_initializer_checks import check_lm_studio_readiness
         return check_lm_studio_readiness()
     
+    def _stream_to_gui(self, sender: str, message: str) -> None:
+        """Streaming wrapper — передає чанки 'assistant' у GUI, решту — в оригінальний callback.
+
+        Використовується ``process_text_command`` для забезпечення
+        потокового відображення відповіді LLM у GUI (Phase 7.2).
+        """
+        if sender == "assistant":
+            if self.gui_queue:
+                self.gui_queue.put(("stream_chunk", message))
+        else:
+            # Делегуємо оригінальний callback (log_to_gui тощо)
+            if self._original_gui_callback:
+                self._original_gui_callback(sender, message)
+
     def process_text_command(self, text):
         """Обробити текстову команду з GUI — всі команди йдуть до LLM."""
         if not text or len(text.strip()) == 0:
@@ -220,28 +246,27 @@ class AssistantCore:
                 # Сигналізуємо GUI про початок стрімінгу
                 if self.gui_queue:
                     self.gui_queue.put(('stream_start', None))
-                # Використовуємо відлов відповіді через зміну gui_log_callback
-                original_callback = self.assistant.gui_log_callback
-                def stream_wrapper(sender, message):
-                    if sender == "assistant":
-                        # Під час стрімінгу — передаємо чанки
-                        if self.gui_queue:
-                            self.gui_queue.put(('stream_chunk', message))
-                    else:
-                        if original_callback:
-                            original_callback(sender, message)
-                self.assistant.gui_log_callback = stream_wrapper
+
+                # Тимчасово підмінюємо callback на streaming wrapper
+                self._original_gui_callback = self.assistant.gui_log_callback
+                self.assistant.gui_log_callback = self._stream_to_gui
+
                 self.assistant.process_command(text, from_gui=True)
+
                 # Сигналізуємо GUI про завершення стрімінгу
                 if self.gui_queue:
                     self.gui_queue.put(('stream_end', None))
+
                 # Відновлюємо оригінальний callback
-                self.assistant.gui_log_callback = original_callback
+                self.assistant.gui_log_callback = self._original_gui_callback
             except Exception as e:
                 print(f"[ERROR] process_command failed: {e}")
                 if self.gui_queue:
                     self.gui_queue.put(('add_message', ('assistant', f'❌ Помилка: {e}')))
                     self.gui_queue.put(('stream_end', None))
+                # Відновлюємо callback навіть при помилці
+                if hasattr(self, "_original_gui_callback") and self._original_gui_callback:
+                    self.assistant.gui_log_callback = self._original_gui_callback
         else:
             if self.gui_queue:
                 self.gui_queue.put(('add_message', ('assistant', '⏳ Зачекайте ініціалізації асистента...')))
@@ -273,6 +298,10 @@ class AssistantCore:
     def _classify_task(self, task: str) -> str:
         """Швидка класифікація завдання без LLM.
 
+        .. deprecated::
+            Використовуйте ``functions.gui.commands_planner.classify_task()``
+            для уникнення дублювання (Phase 7.2).
+
         Returns:
             FILE_OP — файлові операції (не потрібен екран)
             CODE_OP — виконання коду (не потрібен екран)
@@ -280,36 +309,8 @@ class AssistantCore:
             GUI_ACTION — GUI дії (потрібен екран)
             AGENT — fallback — повний AgentLoop
         """
-        task_lower = task.lower()
-
-        # Файлові операції — не потрібен екран
-        file_keywords = ["створи файл", "запиши файл", "прочитай файл",
-                         "видали файл", "перейменуй", "create file", "write file", "read file"]
-        if any(k in task_lower for k in file_keywords):
-            return "FILE_OP"
-
-        # Питання — просто відповідь
-        question_keywords = ["що таке", "поясни", "як працює",
-                            "what is", "explain", "how does"]
-        if any(k in task_lower for k in question_keywords):
-            return "CHAT"
-
-        # Вітання / розмова — просто відповідь (не запускати AgentLoop)
-        greeting_keywords = [
-            "привіт", "вітаю", "добрий день", "добрий вечір",
-            "hello", "hi", "hey", "how are you",
-            "good morning", "good evening",
-        ]
-        if any(k in task_lower for k in greeting_keywords):
-            return "CHAT"
-
-        # GUI дії — потрібен екран
-        gui_keywords = ["клікни", "відкрий програму", "натисни",
-                        "знайди на екрані", "click", "open app", "екран", "вікно", "кнопк"]
-        if any(k in task_lower for k in gui_keywords):
-            return "GUI_ACTION"
-
-        return "AGENT"  # fallback — повний AgentLoop (включає виконання коду)
+        from functions.gui.commands_planner import classify_task as _classify
+        return _classify(task)
 
     def _execute_direct(self, task: str, action: str) -> None:
         """Пряме виконання функції без AgentLoop (для простих операцій)."""

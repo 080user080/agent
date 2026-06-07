@@ -348,7 +348,7 @@ class TestMakePlannerReplanFn:
             summary="план небезпечний",
         )
         critique.concerns.append(
-            __import__("functions.logic_plan_critic", fromlist=["Concern"]).Concern(
+            __import__("functions.planning.logic_plan_critic", fromlist=["Concern"]).Concern(
                 message="шлях містить rm -rf",
                 severity=SEVERITY_BLOCK,
                 suggestion="використати cleanup_tmp",
@@ -418,7 +418,7 @@ class TestIntegrationWithRealPlanCritic:
         self,
     ) -> None:
         """Критик повинен мати доступ до `goal`/`validation` через params._legacy."""
-        from functions.logic_plan_critic import serialize_plan
+        from functions.planning.logic_plan_critic import serialize_plan
 
         plan = legacy_plan_to_plan(_sample_legacy_plan())
         serialized = serialize_plan(plan)

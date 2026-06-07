@@ -1,5 +1,7 @@
 # 🔒 Безпека
 
+> Оновлено: 07.06.2026
+
 ## ⚠️ Ризики
 
 ### Виконання коду
@@ -8,7 +10,7 @@
 - Рекомендується використовувати віртуальне середовище (venv)
 
 ### Файлові операції
-- Створення/видалення файлів вимагає підтвердження (див. `functions/gui/core_gui_guardian.py`)
+- Створення/видалення файлів вимагає підтвердження (див. `functions/runtime/core_gui_guardian.py`)
 - 30-секундний таймер для скасування небезпечних дій
 - Логування всіх файлових операцій в `logs/gui_actions.jsonl`
 
@@ -25,11 +27,13 @@
 
 | Захід | Реалізація | Модуль |
 |-------|------------|--------|
-| Підтвердження дій | 30-секундний зворотний відлік | `functions/gui/core_gui_guardian.py` |
-| Сендбокс для коду | Обмежений доступ до файлів/мережі | `functions/runtime/core_safety_sandbox.py` |
-| Кеш тільки для idempotent операцій | Не кешуємо створення/видалення | `functions/core_cache.py` |
-| Логування дій | Запис у `logs/gui_actions.jsonl` | `functions/core_action_recorder.py` |
+| Підтвердження дій | 30-секундний зворотний відлік | `functions/runtime/core_gui_guardian.py` |
+| Сендбокс для коду | Обмежений доступ до файлів/мережі + AST-валідація | `functions/runtime/core_safety_sandbox.py` |
+| Кеш тільки для idempotent операцій | Не кешуємо створення/видалення | `functions/runtime/core_cache.py` |
+| Логування дій | Запис у `logs/gui_actions.jsonl` | `functions/runtime/core_action_recorder.py` |
 | Tool policies | Обмеження на виконання певних інструментів | `functions/runtime/core_tool_runtime.py` |
+| 4-рівнева policy stack | PermissionGate з пріоритетами | `functions/runtime/logic_permission_gate.py` |
+| Snapshot + undo | Відкат небезпечних файлових операцій | `functions/runtime/core_undo_manager.py` |
 
 ## 🛡️ Рекомендації користувачам
 

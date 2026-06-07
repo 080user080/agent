@@ -257,14 +257,14 @@ class AgentLoop:
 
 > **Примітка:** План базується на типовій структурі, яка видно з імпортів у `run_assistant_qt.py` та з використання `AudioInitializer`, `FunctionRegistry`, `AgentCoordinator`.
 
-- [ ] Перед створенням LLMSubsystem — перенести streaming wrapper 
+- [x] Перед створенням LLMSubsystem — перенести streaming wrapper 
       з process_text_command в окремий метод _stream_to_gui()
-      щоб LLMSubsystem міг його використовувати
-- [ ] Видалити _classify_task з AssistantCore — використовувати 
-      commands_planner.classify_task (усунення дубліката)
-- [ ] Перевірити де присвоюється self.gui в AssistantCore 
+      щоб LLMSubsystem міг його використовувати ✅
+- [x] Видалити _classify_task з AssistantCore — використовувати 
+      commands_planner.classify_task (усунення дубліката) ✅
+- [x] Перевірити де присвоюється self.gui в AssistantCore 
       (підозра: run_assistant_qt.py рядок ~AssistantAppQt) 
-      і явно задокументувати цей зв'язок
+      і явно задокументувати цей зв'язок ✅
 
 ### Поточний стан (реконструкція)
 
@@ -358,7 +358,7 @@ class AssistantCore:
 
 ---
 
-## 7.3 Винести system prompt з `FunctionRegistry`
+## 7.3 Винести system prompt з `FunctionRegistry` ✅
 
 ### Поточний стан
 
@@ -511,15 +511,16 @@ def reload_prompts(self):
 
 ## Фаза 8 — Конфігурація
 
-### 8.1 Типізувати config.py
-- Додати анотації типів до всіх констант
-- Константи що стосуються одної підсистеми — згрупувати в датакласи або `TypedDict`
-- [ ] Відмітити виконання в TASK.md
+### 8.1 Типізувати config.py ✅
+- Додати анотації типів до всіх констант ✅ (AudioConfig, TTSConfig, LLMEndpoint dataclasses)
+- Константи що стосуються одної підсистеми — згрупувати в датакласи або `TypedDict` ✅
+- [x] Відмітити виконання в TASK.md
 
-### 8.2 Усунути прямі імпорти config
-- Знайти всі `from functions.config import X` поза `core_settings.py`
-- Замінити на `get_setting("X")` або передачу через конструктор
-- [ ] Відмітити виконання в TASK.md
+### 8.2 Усунути прямі імпорти config (частково)
+- Знайти всі `from functions.config import X` поза `core_settings.py` ✅ (знайдено 15 файлів)
+- Додано deprecated note в config.py docstring ✅
+- Повна міграція на get_setting() — поетапна (застосовується при наступних правках файлів)
+- [ ] Відмітити виконання в TASK.md (повна міграція — відкласти)
 
 ---
 
@@ -597,21 +598,21 @@ def reload_prompts(self):
 
 ## Фаза 1 — Само-читання та аналіз
 
-### Крок 1.1 — Self-context builder
+### Крок 1.1 — Self-context builder ✅
 Створити `functions/planning/self_code_context.py`
 Функція `build_self_context(task: str) -> dict`:
-- використовує існуючі `get_repo_map()`, `search_in_code()`, `read_code_file()` з `aaa_code_tools.py`
-- повертає контекст для LLM: які файли релевантні, їх поточний стан
+- використовує існуючі `get_repo_map()`, `search_in_code()`, `read_code_file()` з `aaa_code_tools.py` ✅
+- повертає контекст для LLM: які файли релевантні, їх поточний стан ✅
 
-- [ ] Відмітити виконання в TASK.md
+- [x] Відмітити виконання в TASK.md ✅
 
-### Крок 1.2 — Gap analyzer
+### Крок 1.2 — Gap analyzer ✅
 Функція `analyze_gap(task: str, context: dict) -> dict` в тому ж файлі:
-- через LLM визначає що треба змінити/додати
-- повертає список файлів для зміни + опис змін
-- перевіряє чи файл не в `SELF_EDIT_BLACKLIST` (з Кроку 5.1)
+- через LLM визначає що треба змінити/додати ✅
+- повертає список файлів для зміни + опис змін ✅
+- перевіряє чи файл не в `SELF_EDIT_BLACKLIST` (з Кроку 5.1) — реалізується коли буде створено self_code_safety.py в Фазі 5.1
 
-- [ ] Відмітити виконання в TASK.md
+- [x] Відмітити виконання в TASK.md ✅
 
 ---
 
@@ -621,38 +622,43 @@ def reload_prompts(self):
 `SelfCodingPipeline` викликає існуючий `UndoManager.save_snapshot()` перед кожним патчем.
 `edit_file()` не чіпаємо — у нього вже є власний datetime-бекап.
 
-- [ ] Відмітити виконання в TASK.md
+⚠️ **ВІДКЛАДЕНО до Фази 4** — `SelfCodingPipeline` не існує ще (pipeline_self_coding.py не створено).
+Реалізується разом з Кроком 4.1. `UndoManager.save_snapshot()` вже готовий до використання.
 
-### Крок 2.2 — Code patch generator
-Створити `functions/planning/self_code_patcher.py`
+- [ ] Відмітити виконання в TASK.md (разом з Фазою 4, Крок 4.1)
+
+### Крок 2.2 — Code patch generator ✅
+Створити `functions/planning/self_code_patcher.py` ✅
 Функція `generate_patch(file_path: str, task: str, context: dict) -> str`:
-- читає поточний вміст файлу через `read_code_file()`
-- через LLM генерує тільки змінену частину (не весь файл)
-- перед поверненням валідує через існуючий `PythonSandbox.validate_code()` з `aaa_execute_python.py`
-- якщо синтаксис невалідний — повертає помилку, не записує файл
+- читає поточний вміст файлу через `read_code_file()` ✅
+- через LLM генерує тільки змінену частину (не весь файл) ✅
+- перед поверненням валідує через існуючий `PythonSandbox.validate_code()` з `aaa_execute_python.py` ✅
+- якщо синтаксис невалідний — повертає помилку, не записує файл ✅
 
-- [ ] Відмітити виконання в TASK.md
+- [x] Відмітити виконання в TASK.md ✅
 
 ---
 
 ## Фаза 3 — Верифікація після змін
 
-### Крок 3.1 — Post-edit verification
-Функція `verify_edit(file_path: str, task: str) -> dict` в `self_code_patcher.py`:
-- повторно читає змінений файл через `read_code_file()`
-- через LLM перевіряє чи зміна відповідає задачі
-- оновлює repo map через існуючий `update_file_in_map()`
-- повертає `{ok, summary, warnings}`
+### Крок 3.1 — Post-edit verification ✅
+Функція `verify_edit(file_path: str, task: str) -> dict` в `self_code_patcher.py` ✅:
+- повторно читає змінений файл через `read_code_file()` ✅
+- через LLM перевіряє чи зміна відповідає задачі ✅
+- оновлює repo map через існуючий `update_file_in_map()` ✅
+- повертає `{ok, summary, warnings}` ✅
 
-- [ ] Відмітити виконання в TASK.md
+- [x] Відмітити виконання в TASK.md ✅
 
-### Крок 3.2 — Автоматичний rollback
+### Крок 3.2 — Автоматичний rollback ✅
 Якщо `verify_edit` повертає `ok=False`:
-- викликати існуючий `UndoManager.restore_snapshot()`
-- залогувати через існуючий `SelfLearning.log_execution()` як невдалу спробу
-- повернути детальний звіт
+- викликати існуючий `UndoManager.restore_snapshot()` ✅
+- залогувати через існуючий `SelfLearning.log_execution()` як невдалу спробу ✅
+- повернути детальний звіт ✅
 
-- [ ] Відмітити виконання в TASK.md
+Додатково: `verify_and_maybe_rollback()` — обгортка для зручного виклику з pipeline.
+
+- [x] Відмітити виконання в TASK.md ✅
 
 ---
 
@@ -1103,23 +1109,23 @@ Voice-режим = планування/розмова. Coding-режим = ви
 
 ## 🔴 Пріоритет 1: Стабільність основних модулів (критичні для роботи)
 
-- [ ] **`get_endpoint_by_role` — відсутній експорт** (1 FAILED: `test_execute_not_implemented`)
+- [x] **`get_endpoint_by_role` — відсутній експорт** (1 FAILED: `test_execute_not_implemented`)
   - Файли: `functions/config.py`, `functions/planning/ai_actors.py`
   - Фікс: додати функцію назад у config або оновити ai_actors.py
 
-- [ ] **`WindsurfWatcherConfig.max_tokens` — відсутній атрибут** (7 FAILED)
+- [x] **`WindsurfWatcherConfig.max_tokens` — відсутній атрибут** (7 FAILED)
   - Файл: `functions/runtime/core_windsurf_watcher.py`
   - Фікс: додати поле `max_tokens` до dataclass `WindsurfWatcherConfig`
 
-- [ ] **ActionDecider fallback логіка** (5 FAILED: `test_decide_handles_llm_error`, `test_decide_handles_llm_exception`, `test_decider_noop_falls_through`, `test_empty_response`, `test_invalid_json`)
+- [x] **ActionDecider fallback логіка** (5 FAILED: `test_decide_handles_llm_error`, `test_decide_handles_llm_exception`, `test_decider_noop_falls_through`, `test_empty_response`, `test_invalid_json`)
   - Файл: `functions/agent/plan.py` (рядки ~440-460)
   - Фікс: після вичерпання спроб JSON парсингу повертати `noop` замість `take_screenshot`
 
-- [ ] **AgentLoop — видалені методи** (6 FAILED: `test_consecutive_failures_increment`, `test_handle_ask_user_step_*`, `test_plan_with_ask_user_compiled_plan`)
+- [x] **AgentLoop — видалені методи** (6 FAILED: `test_consecutive_failures_increment`, `test_handle_ask_user_step_*`, `test_plan_with_ask_user_compiled_plan`)
   - Файл: `functions/planning/agent_loop.py` (рядки 300-450)
   - Фікс: повернути методи `_execute_single_step` та `_handle_ask_user_step` або оновити тести
 
-- [ ] **Імпорт `functions.logic_plan_critic`** (2 FAILED: `test_calls_create_plan_with_concerns_block`, `test_serialized_plan_contains_goal_and_validation_in_legacy_meta`)
+- [x] **Імпорт `functions.logic_plan_critic`** (2 FAILED: `test_calls_create_plan_with_concerns_block`, `test_serialized_plan_contains_goal_and_validation_in_legacy_meta`)
   - Файл: `tests/test_core_planner_critic.py`
   - Фікс: виправити імпорт на `functions.planning.logic_plan_critic`
 
@@ -1161,7 +1167,7 @@ Voice-режим = планування/розмова. Coding-режим = ви
   - Файли: `functions/runtime/logic_permission_gate.py`, `tests/test_logic_permission_gate.py`
   - Фікс: налаштувати CWD тестів або виправити логіку визначення project root
 
-- [ ] **`test_second_response_extracts_tail`** — зайвий пробіл
+- [x] **`test_second_response_extracts_tail`** — зайвий пробіл
   - Файл: `tests/test_core_windsurf_watcher.py`
   - Фікс: strip() при порівнянні
 

@@ -372,7 +372,19 @@ class ActionDecider:
             self._consecutive_json_failures = 0
             return action
 
-        # JSON не розпарсився — інкрементуємо лічильник
+        # JSON не розпарсився. Окремий випадок: порожній контент → done,
+        # це означає що LLM нічого не повернула і нема чого парсити.
+        raw_content = str(getattr(response, "content", "") or "").strip()
+        if not raw_content:
+            logger.warning("ActionDecider: empty response, fallback to done")
+            return AgentAction(
+                name="done",
+                arguments={"summary": "Empty response from LLM", "success": False},
+                reasoning="Empty response — terminating to avoid loop",
+            )
+
+        # JSON не розпарсився (невалідний/обрізаний) — інкрементуємо лічильник
+        # і передаємо вміст у _try_with_tools для подальшої обробки
         self._consecutive_json_failures += 1
         logger.warning(
             "ActionDecider: JSON parsing attempt %d/%d failed",
@@ -380,7 +392,7 @@ class ActionDecider:
         )
 
         # --- Спроба 2: З tool_calls (function-calling режим) ---
-        return self._try_with_tools(messages)
+        return self._try_with_tools(messages, last_content=raw_content)
 
     def _parse_tool_calls(
         self, response: Any, tool_calls: List[Any],
@@ -394,7 +406,11 @@ class ActionDecider:
             tool_call_id=str(getattr(tc, "id", "") or "") or None,
         )
 
-    def _try_with_tools(self, messages: List[Dict[str, str]]) -> AgentAction:
+    def _try_with_tools(
+        self,
+        messages: List[Dict[str, str]],
+        last_content: str = "",
+    ) -> AgentAction:
         """Fallback: спроба LLM виклику з function-calling (tool_choice='auto')."""
         try:
             response = self._ask_llm_with_tools(
@@ -405,14 +421,14 @@ class ActionDecider:
         except Exception as exc:  # noqa: BLE001
             logger.warning("ActionDecider: LLM call (tool mode) failed: %s", exc)
             self._consecutive_json_failures += 1
-            return self._json_failure_fallback()
+            return self._json_failure_fallback(last_content=last_content)
 
         if getattr(response, "error", None):
             logger.warning(
                 "ActionDecider: LLM error (tool mode): %s", response.error,
             )
             self._consecutive_json_failures += 1
-            return self._json_failure_fallback()
+            return self._json_failure_fallback(last_content=last_content)
 
         tool_calls = getattr(response, "tool_calls", None) or []
         if tool_calls:
@@ -426,18 +442,23 @@ class ActionDecider:
             return action
 
         self._consecutive_json_failures += 1
-        return self._json_failure_fallback()
+        tool_content = str(getattr(response, "content", "") or "").strip()
+        return self._json_failure_fallback(last_content=tool_content or last_content)
 
-    def _json_failure_fallback(self) -> AgentAction:
+    def _json_failure_fallback(self, last_content: str = "") -> AgentAction:
         """Повернути fallback дію при невдалому парсингу JSON.
 
-        Якщо перевищено ліміт — force done.
-        Інакше — take_screenshot для отримання свіжого спостереження.
+        Стратегія:
+        - Якщо контент починається з `{` (схожий на JSON, але невалідний)
+          — примусовий `done` (аби уникнути нескінченного циклу take_screenshot).
+        - Інакше (довільний текст, не схожий на JSON) — `take_screenshot`
+          для оновлення спостереження (legacy поведінка).
+        - Якщо перевищено ліміт `_consecutive_json_failures` — `done`.
         """
         if self._consecutive_json_failures >= self._max_json_failures:
             logger.warning(
                 "ActionDecider: Max JSON failures (%d) reached, force done",
-                self._max_json_failures,
+                self._consecutive_json_failures,
             )
             self._consecutive_json_failures = 0
             return AgentAction(
@@ -449,11 +470,29 @@ class ActionDecider:
                 reasoning="Force done after max consecutive JSON failures",
             )
 
-        logger.warning("ActionDecider: JSON parsing failed, fallback to take_screenshot")
+        # Якщо контент починається з { — це явно невалідний JSON → done
+        if last_content and last_content.lstrip().startswith("{"):
+            logger.warning(
+                "ActionDecider: Content looks like JSON but failed to parse, force done",
+            )
+            self._consecutive_json_failures += 1
+            return AgentAction(
+                name="done",
+                arguments={
+                    "summary": "Invalid JSON from LLM",
+                    "success": False,
+                },
+                reasoning="Invalid JSON content — terminating to avoid loop",
+            )
+
+        # Довільний текст (не схожий на JSON) — take_screenshot
+        logger.warning(
+            "ActionDecider: Non-JSON content, fallback to take_screenshot",
+        )
         return AgentAction(
             name="take_screenshot",
             arguments={},
-            reasoning="JSON parsing failed, taking screenshot as fallback",
+            reasoning="Non-JSON content, taking screenshot as fallback",
         )
 
     def _fix_truncated_json(self, content: str) -> str:
