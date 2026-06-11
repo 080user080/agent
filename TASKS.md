@@ -671,12 +671,12 @@ def reload_prompts(self):
 - будує `Plan` з кроків у послідовності:
   `build_self_context` → `analyze_gap` → `confirm_action` → `save_snapshot` → `generate_patch` → `verify_edit` → (rollback якщо треба)
 
-- [ ] Відмітити виконання в TASK.md
+- [x] Відмітити виконання в TASK.md
 
 ### Крок 4.2 — Реєстрація в `make_default_registry()`
 В `core_plan_compiler.py` додати `DOMAIN_SELF_CODE` та зареєструвати `SelfCodingPipeline`.
 
-- [ ] Відмітити виконання в TASK.md
+- [x] Відмітити виконання в TASK.md
 
 ---
 

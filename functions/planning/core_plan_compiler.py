@@ -28,6 +28,7 @@ from functions.planning.core_task_intake import (
     DOMAIN_MIXED,
     DOMAIN_PHOTO_BATCH,
     DOMAIN_PRESENTATION,
+    DOMAIN_SELF_CODE,
     DOMAIN_UNKNOWN,
     DOMAIN_WEB_RESEARCH,
     TaskSpec,
@@ -178,10 +179,12 @@ def make_default_registry() -> PipelineRegistry:
     """
     # Локальний імпорт щоб уникнути циклу `pipeline_code → ... → core_plan_compiler`.
     from functions.planning.pipeline_code import CodePipeline
+    from functions.planning.pipeline_self_coding import SelfCodingPipeline
 
     registry = PipelineRegistry()
     skeleton = SkeletonPipeline(name="skeleton")
     registry.register(DOMAIN_CODE, CodePipeline())
+    registry.register(DOMAIN_SELF_CODE, SelfCodingPipeline())
     for domain in (
         DOMAIN_PHOTO_BATCH,
         DOMAIN_PRESENTATION,

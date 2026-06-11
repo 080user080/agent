@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QLineEdit, QFileDialog, QCheckBox, QRadioButton,
     QButtonGroup, QGroupBox, QTreeView, QPlainTextEdit, QProgressDialog,
     QMessageBox, QLabel, QSplitter, QScrollArea, QMenu, QStyle,
-    QHeaderView
+    QHeaderView, QComboBox
 )
 
 # ----------------------- Константи -----------------------
@@ -82,12 +82,6 @@ class ScannerWorker(QObject):
         file_paths = []
         dir_structure = {}
 
-        def should_exclude_dir(parts: Set[str]) -> bool:
-            if not self.show_system:
-                if parts & SYSTEM_DIRS:
-                    return True
-            return False
-
         for root, dirs, files in os.walk(self.root):
             rel_root = Path(root).relative_to(self.root)
             dirs_to_remove = []
@@ -111,62 +105,78 @@ class ScannerWorker(QObject):
             if current_files:
                 file_paths.extend([Path(root) / f for f in current_files])
 
-            # Завжди зберігаємо інформацію про теку, навіть якщо файлів немає,
-            # щоб можна було відобразити всі підпапки в дереві.
-            # ВАЖЛИВО: використовуємо as_posix() для сумісності з побудовою дерева на всіх ОС
             dir_structure[rel_root.as_posix()] = {
                 "dirs": dirs,
                 "files": current_files
             }
 
-        # Видаляємо лише ті теки, які не містять ані файлів, ані підпапок
         dir_structure = {k: v for k, v in dir_structure.items() if v["files"] or v["dirs"]}
         self.finished.emit([str(p) for p in sorted(file_paths)], dir_structure)
 
 # ------------------- Робочий потік генерації звіту -------------------
 class GeneratorWorker(QObject):
-    finished = pyqtSignal(str)
+    finished = pyqtSignal(list)
     progress = pyqtSignal(int)
 
-    def __init__(self, selected_files: List[str], root: Path, detail: str, include_imports: bool):
+    def __init__(self, selected_files: List[str], root: Path, configs: List[dict]):
         super().__init__()
         self.selected_files = selected_files
         self.root = root
-        self.detail = detail
-        self.include_imports = include_imports
+        self.configs = configs
 
     def run(self):
-        report_lines = []
-        report_lines.append("СТРУКТУРА ПРОЄКТУ")
-        report_lines.append("=" * 60)
-        report_lines.append(str(self.root))
-        for f in self.selected_files:
-            rel = Path(f).relative_to(self.root)
-            report_lines.append(str(rel))
-        report_lines.append("\n" + "=" * 60)
-        report_lines.append(f"ДЕТАЛІЗАЦІЯ КОДУ (рівень: {self.detail})")
-        report_lines.append("=" * 60)
+        results = []
+        total_files = len(self.selected_files)
+        total_steps = len(self.configs) * total_files
+        current_step = 0
 
-        total = len(self.selected_files)
-        for idx, file_path in enumerate(self.selected_files):
-            self.progress.emit(int((idx / total) * 100))
-            report_lines.append(self._process_file(Path(file_path)))
+        for config in self.configs:
+            report_lines = []
+            report_lines.append("СТРУКТУРА ПРОЄКТУ")
+            report_lines.append("=" * 60)
+            report_lines.append(str(self.root))
+            
+            # Фільтруємо файли для структури згідно з поточним конфігом
+            valid_files = []
+            for f in self.selected_files:
+                ext = Path(f).suffix.lower()
+                if ext in DOC_EXTENSIONS and not config.get("docs", False):
+                    continue
+                if ext in OTHER_TEXT_EXTENSIONS and not config.get("other", False):
+                    continue
+                valid_files.append(f)
+                rel = Path(f).relative_to(self.root)
+                report_lines.append(str(rel))
+
+            report_lines.append("\n" + "=" * 60)
+            report_lines.append(f"ДЕТАЛІЗАЦІЯ КОДУ (рівень: {config['detail']})")
+            report_lines.append("=" * 60)
+
+            for file_path in valid_files:
+                current_step += 1
+                self.progress.emit(int((current_step / total_steps) * 100))
+                report_lines.append(self._process_file(Path(file_path), config))
+
+            results.append({
+                "filename": config["filename"],
+                "content": "\n".join(report_lines)
+            })
 
         self.progress.emit(100)
-        self.finished.emit("\n".join(report_lines))
+        self.finished.emit(results)
 
-    def _process_file(self, file_path: Path) -> str:
+    def _process_file(self, file_path: Path, config: dict) -> str:
         ext = file_path.suffix.lower()
         if ext in PY_EXTENSIONS:
-            return self._process_py(file_path)
+            return self._process_py(file_path, config)
         elif ext in DOC_EXTENSIONS or ext in OTHER_TEXT_EXTENSIONS:
-            if self.detail == "low":
+            if config["detail"] == "low":
                 return f"# Пропущено (low деталізація): {file_path}\n"
             return self._process_text(file_path)
         else:
             return f"# Невідомий тип: {file_path}\n"
 
-    def _process_py(self, file_path: Path) -> str:
+    def _process_py(self, file_path: Path, config: dict) -> str:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 source = f.read()
@@ -181,13 +191,13 @@ class GeneratorWorker(QObject):
         lines.append(f"Файл: {file_path}")
         lines.append(f"{'='*60}")
 
-        if self.detail == "high":
+        if config["detail"] == "high":
             lines.append("```python")
             lines.append(source)
             lines.append("```")
             return "\n".join(lines)
 
-        if self.include_imports:
+        if config.get("imports", False):
             imports = []
             for node in ast.iter_child_nodes(tree):
                 if isinstance(node, ast.Import):
@@ -206,11 +216,11 @@ class GeneratorWorker(QObject):
         for node in ast.iter_child_nodes(tree):
             if isinstance(node, ast.ClassDef):
                 class_lines = [get_class_signature(node)]
-                if self.detail == "medium":
+                if config["detail"] == "medium":
                     doc = extract_docstring(node)
                     if doc:
                         class_lines.append(f'    """{doc}"""')
-                elif self.detail == "full_doc":
+                elif config["detail"] == "full_doc":
                     doc = extract_full_docstring(node)
                     if doc:
                         class_lines.append(f'    """{doc}"""')
@@ -218,11 +228,11 @@ class GeneratorWorker(QObject):
                     if isinstance(item, ast.FunctionDef):
                         sig = get_function_signature(item)
                         method_lines = [f"    {sig}"]
-                        if self.detail == "medium":
+                        if config["detail"] == "medium":
                             doc = extract_docstring(item)
                             if doc:
                                 method_lines.append(f'        """{doc}"""')
-                        elif self.detail == "full_doc":
+                        elif config["detail"] == "full_doc":
                             doc = extract_full_docstring(item)
                             if doc:
                                 method_lines.append(f'        """{doc}"""')
@@ -231,11 +241,11 @@ class GeneratorWorker(QObject):
             elif isinstance(node, ast.FunctionDef):
                 sig = get_function_signature(node)
                 func_lines = [sig]
-                if self.detail == "medium":
+                if config["detail"] == "medium":
                     doc = extract_docstring(node)
                     if doc:
                         func_lines.append(f'    """{doc}"""')
-                elif self.detail == "full_doc":
+                elif config["detail"] == "full_doc":
                     doc = extract_full_docstring(node)
                     if doc:
                         func_lines.append(f'    """{doc}"""')
@@ -268,7 +278,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Project Context Generator")
-        self.setMinimumSize(900, 600)
+        self.setMinimumSize(900, 650)
 
         self.settings_path = Path(__file__).parent / "settings.ini"
         self.exclusions_path = Path(__file__).parent / "exclusions.json"
@@ -325,6 +335,11 @@ class MainWindow(QMainWindow):
         detail_layout.addWidget(self.radio_full_doc)
         detail_layout.addWidget(self.radio_high)
         self.radio_medium.setChecked(True)
+        
+        # Чекбокс генерації всіх варіантів
+        self.generate_all_check = QCheckBox("Створити всі варіанти звітів (Batch)")
+        self.generate_all_check.setToolTip("Генерує 12 файлів (усі рівні + варіанти з імпортами/документацією)")
+        detail_layout.addWidget(self.generate_all_check)
         params_layout.addLayout(detail_layout)
 
         options_layout = QVBoxLayout()
@@ -353,11 +368,21 @@ class MainWindow(QMainWindow):
         search_layout.addWidget(self.search_edit)
         tree_layout.addLayout(search_layout)
 
-        # Чекбокс для згортання/розгортання дерева
+        # Панель керування деревом
+        tree_controls_layout = QHBoxLayout()
+        
         self.expand_check = QCheckBox("Розгорнути все")
         self.expand_check.setChecked(True)
         self.expand_check.toggled.connect(self.on_expand_toggled)
-        tree_layout.addWidget(self.expand_check)
+        tree_controls_layout.addWidget(self.expand_check)
+
+        self.selection_combo = QComboBox()
+        self.selection_combo.addItems(["Відновити попередній вибір", "Відмітити все", "Зняти всі"])
+        self.selection_combo.currentIndexChanged.connect(self.on_selection_combo_changed)
+        tree_controls_layout.addWidget(self.selection_combo)
+        
+        tree_controls_layout.addStretch()
+        tree_layout.addLayout(tree_controls_layout)
 
         self.tree_view = QTreeView()
         self.tree_view.setHeaderHidden(True)
@@ -441,6 +466,12 @@ class MainWindow(QMainWindow):
 
     def on_scan_finished(self, file_paths: List[str], dir_structure: dict):
         self.current_file_paths = file_paths
+        
+        # Скидаємо комбобокс виділення без тригерування сигналу
+        self.selection_combo.blockSignals(True)
+        self.selection_combo.setCurrentIndex(0)
+        self.selection_combo.blockSignals(False)
+        
         self.build_tree(dir_structure)
         self.tree_group.setVisible(True)
         self.scan_btn.setEnabled(True)
@@ -498,7 +529,6 @@ class MainWindow(QMainWindow):
         self.proxy_model.setRecursiveFilteringEnabled(True)
         self.tree_view.setModel(self.proxy_model)
 
-        # Розгортаємо все, якщо чекбокс активний
         if self.expand_check.isChecked():
             self.tree_view.expandAll()
 
@@ -506,11 +536,44 @@ class MainWindow(QMainWindow):
         model.itemChanged.connect(self.on_item_changed)
 
     def on_expand_toggled(self, checked: bool):
-        """Згортає або розгортає дерево файлів."""
         if checked:
             self.tree_view.expandAll()
         else:
             self.tree_view.collapseAll()
+
+    def on_selection_combo_changed(self, index: int):
+        if not self.file_tree_model:
+            return
+        if index == 1:
+            self._set_all_checkstate(Qt.CheckState.Checked)
+        elif index == 2:
+            self._set_all_checkstate(Qt.CheckState.Unchecked)
+        elif index == 0:
+            self.apply_saved_selection()
+
+    def apply_saved_selection(self):
+        if not self.file_tree_model or not self.project_root:
+            return
+        project_hash = hashlib.sha1(str(self.project_root).encode()).hexdigest()
+        excluded_relative = set(self.exclusions_cache.get(project_hash, []))
+
+        self.file_tree_model.itemChanged.disconnect(self.on_item_changed)
+        root = self.file_tree_model.invisibleRootItem()
+
+        def apply_to_node(item: QStandardItem):
+            for row in range(item.rowCount()):
+                child = item.child(row)
+                rel = child.data(Qt.ItemDataRole.UserRole)
+                if rel and child.isCheckable():
+                    if rel in excluded_relative:
+                        child.setCheckState(Qt.CheckState.Unchecked)
+                    else:
+                        child.setCheckState(Qt.CheckState.Checked)
+                apply_to_node(child)
+
+        apply_to_node(root)
+        self._update_all_parents(root)
+        self.file_tree_model.itemChanged.connect(self.on_item_changed)
 
     def on_item_changed(self, item: QStandardItem):
         if not item.isCheckable():
@@ -566,8 +629,10 @@ class MainWindow(QMainWindow):
         action = menu.exec(self.tree_view.viewport().mapToGlobal(pos))
         if action == select_all:
             self._set_all_checkstate(Qt.CheckState.Checked)
+            self.selection_combo.setCurrentIndex(1)
         elif action == deselect_all:
             self._set_all_checkstate(Qt.CheckState.Unchecked)
+            self.selection_combo.setCurrentIndex(2)
         elif action == invert:
             self._invert_checkstates()
 
@@ -615,8 +680,7 @@ class MainWindow(QMainWindow):
         return "medium"
 
     def _generate_filename(self) -> str:
-        """Формує назву файлу на основі вибраних опцій."""
-        detail = self._get_current_detail().capitalize()  # Low, Medium, Full_doc, High
+        detail = self._get_current_detail().capitalize()
         parts = [detail]
         if self.imports_check.isChecked():
             parts.append("imp")
@@ -645,48 +709,96 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Помилка", "Не вибрано жодного файлу.")
             return
 
-        detail = self._get_current_detail()
-        include_imports = self.imports_check.isChecked()
+        configs = []
+        is_batch = self.generate_all_check.isChecked()
 
-        # Вихідний шлях
-        output_path = self.output_edit.text()
-        if self.auto_save_check.isChecked() and self.project_root:
-            auto_name = self._generate_filename()
-            output_path = str(self.project_root / auto_name)
-            self.output_edit.setText(output_path)  # показати користувачу
-        elif not output_path:
-            output_path = None
+        if is_batch:
+            levels = ["low", "medium", "full_doc", "high"]
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            for lvl in levels:
+                configs.append({
+                    "detail": lvl, "imports": False, "docs": False, "other": False,
+                    "filename": f"{lvl.capitalize()}_base_context.txt"
+                })
+                configs.append({
+                    "detail": lvl, "imports": True, "docs": False, "other": False,
+                    "filename": f"{lvl.capitalize()}_imports_context.txt"
+                })
+                configs.append({
+                    "detail": lvl, "imports": True, "docs": True, "other": True,
+                    "filename": f"{lvl.capitalize()}_full_mix_context.txt"
+                })
+        else:
+            configs.append({
+                "detail": self._get_current_detail(),
+                "imports": self.imports_check.isChecked(),
+                "docs": self.docs_check.isChecked(),
+                "other": self.other_text_check.isChecked(),
+                "filename": self._generate_filename()
+            })
+
+        output_path = self.output_edit.text() if not is_batch else None
+        if not is_batch and self.auto_save_check.isChecked() and self.project_root:
+            output_path = str(self.project_root / configs[0]["filename"])
+            self.output_edit.setText(output_path)
 
         self.generate_btn.setEnabled(False)
-        progress = QProgressDialog("Генерація звіту...", "Скасувати", 0, 100, self)
+        progress = QProgressDialog("Генерація звітів...", "Скасувати", 0, 100, self)
         progress.setWindowModality(Qt.WindowModality.WindowModal)
         progress.setMinimumDuration(0)
         progress.setValue(0)
 
-        self.generator_worker = GeneratorWorker(selected_files, self.project_root, detail, include_imports)
+        self.generator_worker = GeneratorWorker(selected_files, self.project_root, configs)
         self.generator_thread = QThread()
         self.generator_worker.moveToThread(self.generator_thread)
         self.generator_thread.started.connect(self.generator_worker.run)
         self.generator_worker.progress.connect(progress.setValue)
-        self.generator_worker.finished.connect(lambda report: self.on_generation_finished(report, output_path))
+        
+        self.generator_worker.finished.connect(lambda res: self.on_generation_finished(res, output_path, is_batch))
         self.generator_worker.finished.connect(self.generator_thread.quit)
         self.generator_worker.finished.connect(progress.close)
         self.generator_thread.start()
 
-    def on_generation_finished(self, report: str, output_path: Optional[str]):
-        self.full_report = report
-        lines = report.splitlines()
-        preview = "\n".join(lines[:100])
-        self.preview_text.setPlainText(preview)
-        if output_path:
-            try:
-                with open(output_path, "w", encoding="utf-8") as f:
-                    f.write(report)
-                QMessageBox.information(self, "Успіх", f"Звіт збережено у {output_path}")
-            except Exception as e:
-                QMessageBox.warning(self, "Помилка", f"Не вдалося зберегти файл: {e}")
+    def on_generation_finished(self, results: List[dict], user_output_path: Optional[str], is_batch: bool):
+        if not results:
+            self.generate_btn.setEnabled(True)
+            return
+
+        if not is_batch:
+            self.full_report = results[0]["content"]
+            lines = self.full_report.splitlines()
+            self.preview_text.setPlainText("\n".join(lines[:100]))
+            
+            if user_output_path:
+                try:
+                    with open(user_output_path, "w", encoding="utf-8") as f:
+                        f.write(self.full_report)
+                    QMessageBox.information(self, "Успіх", f"Звіт збережено у {user_output_path}")
+                except Exception as e:
+                    QMessageBox.warning(self, "Помилка", f"Не вдалося зберегти файл: {e}")
+            else:
+                QMessageBox.information(self, "Готово", "Звіт згенеровано. Ви можете зберегти його вручну або скопіювати.")
         else:
-            QMessageBox.information(self, "Готово", "Звіт згенеровано. Ви можете зберегти його вручну або скопіювати в буфер обміну.")
+            self.full_report = results[-1]["content"] 
+            self.preview_text.setPlainText("Згенеровано пакет звітів. Відображено останній:\n\n" + "\n".join(self.full_report.splitlines()[:100]))
+            
+            save_dir = self.project_root if self.auto_save_check.isChecked() else Path(QFileDialog.getExistingDirectory(self, "Виберіть папку для збереження всіх звітів"))
+            
+            if save_dir:
+                save_dir = Path(save_dir)
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                batch_dir = save_dir / f"ContextReports_{timestamp}"
+                batch_dir.mkdir(parents=True, exist_ok=True)
+                
+                try:
+                    for res in results:
+                        file_path = batch_dir / res["filename"]
+                        with open(file_path, "w", encoding="utf-8") as f:
+                            f.write(res["content"])
+                    QMessageBox.information(self, "Успіх", f"Всі {len(results)} звітів збережено у папку:\n{batch_dir}")
+                except Exception as e:
+                    QMessageBox.warning(self, "Помилка", f"Сталася помилка при збереженні: {e}")
+
         self.generate_btn.setEnabled(True)
         self._save_exclusions()
 
@@ -701,17 +813,14 @@ class MainWindow(QMainWindow):
     def _collect_checked(self, item: QStandardItem, result: List[str]):
         for row in range(item.rowCount()):
             child = item.child(row)
-            # Якщо елемент має чекбокс і не позначений — пропускаємо всю гілку
             if child.isCheckable() and child.checkState() != Qt.CheckState.Checked:
                 continue
             if child.rowCount() == 0:
-                # Це файл
                 rel_path = child.data(Qt.ItemDataRole.UserRole)
                 if rel_path:
                     full = (self.project_root / rel_path).as_posix()
                     result.append(full)
             else:
-                # Це папка — рекурсивно обробляємо лише якщо вона Checked
                 self._collect_checked(child, result)
 
     def copy_to_clipboard(self):
@@ -729,6 +838,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("LastSession/show_system_dirs", self.system_dirs_check.isChecked())
         self.settings.setValue("LastSession/include_docs", self.docs_check.isChecked())
         self.settings.setValue("LastSession/include_other_text", self.other_text_check.isChecked())
+        self.settings.setValue("LastSession/generate_all", self.generate_all_check.isChecked())
         self.settings.setValue("LastSession/output_path", self.output_edit.text())
         self.settings.setValue("LastSession/remember_output", self.remember_output_check.isChecked())
         self.settings.setValue("LastSession/auto_save", self.auto_save_check.isChecked())
@@ -747,6 +857,7 @@ class MainWindow(QMainWindow):
         self.system_dirs_check.setChecked(self.settings.value("LastSession/show_system_dirs", False) == "true")
         self.docs_check.setChecked(self.settings.value("LastSession/include_docs", True) != "false")
         self.other_text_check.setChecked(self.settings.value("LastSession/include_other_text", False) == "true")
+        self.generate_all_check.setChecked(self.settings.value("LastSession/generate_all", False) == "true")
         self.output_edit.setText(self.settings.value("LastSession/output_path", ""))
         self.remember_output_check.setChecked(self.settings.value("LastSession/remember_output", False) == "true")
         self.auto_save_check.setChecked(self.settings.value("LastSession/auto_save", False) == "true")
