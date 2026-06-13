@@ -694,7 +694,7 @@ def reload_prompts(self):
 
 Функція `is_edit_allowed(file_path: str) -> tuple[bool, str]`
 
-- [ ] Відмітити виконання в TASK.md
+- [x] Відмітити виконання в TASK.md
 
 ### Крок 5.2 — Підтвердження користувача
 `SelfCodingPipeline` викликає існуючий `confirm_action()` з `aaa_confirmation.py` перед кожним записом патча.
