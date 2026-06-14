@@ -30,6 +30,7 @@ user_settings.json
 # Distribution / packaging
 .Python
 build/
+.devin/
 develop-eggs/
 dist/
 downloads/

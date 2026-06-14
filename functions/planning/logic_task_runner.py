@@ -306,6 +306,7 @@ class TaskRunner:
         self.register("sub_plan", _handler_sub_plan)
         self.register("batch_task", _handler_batch_task)
         self.register("ask_user", _handler_ask_user)
+        self.register("confirm_action", _handler_confirm_action)
 
     # ----- Core loop -----
 
@@ -990,6 +991,57 @@ def _handler_ask_user(ctx: TaskContext) -> Dict[str, Any]:
         # Fallback — логуємо питання і повертаємо пусту відповідь
         logger.warning("ask_user_callback не встановлено, питання: %s", question)
         return {"ok": False, "error": "ask_user_callback not set"}
+
+
+def _handler_confirm_action(ctx: TaskContext) -> Dict[str, Any]:
+    """Handler для confirm_action — викликає aaa_confirmation.confirm_action().
+
+    Використовується SelfCodingPipeline (Крок 5.2) перед записом патча.
+    Без підтвердження — тільки читання та аналіз, жодного запису.
+    """
+    params = ctx.task.params
+    action = params.get("task", params.get("action", "self_coding_edit"))
+    question = params.get("prompt", params.get("question", "Дозволити зміни?"))
+
+    try:
+        from functions.tools.aaa_confirmation import confirm_action
+        result = confirm_action(action=action, question=question)
+    except ImportError:
+        return {
+            "status": STATUS_ERROR,
+            "error": "aaa_confirmation not available",
+            "summary": "confirm_action handler: модуль aaa_confirmation недоступний",
+        }
+    except Exception as exc:
+        return {
+            "status": STATUS_ERROR,
+            "error": f"confirm_action failed: {type(exc).__name__}: {exc}",
+            "summary": f"confirm_action handler: помилка виклику: {exc}",
+        }
+
+    if isinstance(result, dict):
+        ok = bool(result.get("ok", False))
+        if ok:
+            status = STATUS_OK
+            summary = f"✅ Підтверджено: {action}"
+        else:
+            status = STATUS_DENIED
+            summary = f"❌ Відхилено: {action}"
+        return {
+            "status": status,
+            "summary": summary,
+            "metadata": {
+                "confirmed": ok,
+                "action": action,
+                "raw_result": result,
+            },
+        }
+
+    return {
+        "status": STATUS_ERROR,
+        "error": "unexpected confirm_action result type",
+        "summary": "confirm_action повернув неочікуваний тип результату",
+    }
 
 
 __all__ = [
